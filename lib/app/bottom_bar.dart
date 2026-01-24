@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_application_1/features/drawer/app_drawer.dart'; 
-import 'package:flutter_application_1/core/theme/text_styles.dart';
+import 'package:moto_comm_app_1/features/drawer/app_drawer.dart'; 
+import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 
 final GlobalKey<ScaffoldState> mainScaffoldKey = GlobalKey<ScaffoldState>();
 

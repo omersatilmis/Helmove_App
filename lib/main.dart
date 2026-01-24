@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // 🔥 BU EKSİKTİ (Provider paketi)
 
 // 🔥 BU IMPORTLAR EKSİKTİ (Kendi dosyaların)
-import 'package:flutter_application_1/app/app_router.dart'; 
-import 'package:flutter_application_1/core/theme/app_theme.dart';
-import 'package:flutter_application_1/core/theme/theme_provider.dart';
+import 'package:moto_comm_app_1/app/app_router.dart';
+import 'package:moto_comm_app_1/core/theme/app_theme.dart';
+import 'package:moto_comm_app_1/core/theme/theme_provider.dart';
 
 void main() {
   runApp(
-    // Uygulamanın en tepesini Provider ile sarmalıyoruz ki 
+    // Uygulamanın en tepesini Provider ile sarmalıyoruz ki
     // her yerden temaya erişebilelim.
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -27,14 +27,14 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp.router(
       title: 'Rider App',
-      
+
       // Temaları tanımlıyoruz
-      theme: AppTheme.lightTheme, 
+      theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      
+
       // 🔥 Büyü burada: Provider'dan gelen moda göre tema değişiyor (System/Light/Dark)
-      themeMode: themeProvider.themeMode, 
-      
+      themeMode: themeProvider.themeMode,
+
       routerConfig: router, // app_router.dart içindeki router
       debugShowCheckedModeBanner: false,
     );

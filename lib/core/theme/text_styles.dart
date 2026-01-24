@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/core/theme/app_colors.dart';
+import 'package:moto_comm_app_1/core/theme/app_colors.dart';
 
 class AppTextStyles {
   // Sınıfın örneğinin oluşturulmasını engelliyoruz

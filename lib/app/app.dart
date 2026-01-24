@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/app/app_router.dart';
-import 'package:flutter_application_1/core/theme/app_theme.dart'; // YENİ TEMA DOSYASI
+import 'package:moto_comm_app_1/app/app_router.dart';
+import 'package:moto_comm_app_1/core/theme/app_theme.dart'; // YENİ TEMA DOSYASI
 
 class MotoCommApp extends StatelessWidget {
   const MotoCommApp({super.key});

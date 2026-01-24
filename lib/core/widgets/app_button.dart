@@ -192,3 +192,4 @@ class AppButton extends StatelessWidget {
   BorderRadius get _radius =>
       borderRadius ?? BorderRadius.circular(14);
 }
+
