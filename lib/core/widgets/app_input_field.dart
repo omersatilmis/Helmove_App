@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // InputFormatter için gerekli
 
-/// ---------------- ENUMS (Aynen korundu) ----------------
-enum AppInputType { standard, email, password, firstName, lastName, discover, phone }
+enum AppInputType {
+  standard,
+  email,
+  password,
+  newPassword, // Yeni kayıt ekranları için (güçlü şifre önerisi tetikler)
+  firstName,
+  lastName,
+  discover,
+  phone,
+}
+
 enum AppInputVariant { filled, outlined }
+
 enum AppInputSize { small, medium, large }
 
 class AppInputField extends StatefulWidget {
@@ -10,17 +21,24 @@ class AppInputField extends StatefulWidget {
   final AppInputType type;
   final AppInputVariant variant;
   final AppInputSize size;
-  
+
   final String? label;
   final String? hint;
   final String? helperText;
-  
-  // YENİ: Validator (Form kontrolü için)
+
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>?
+  onFieldSubmitted; // Klavyeden 'Enter'/'Next' yakalamak için
+  final List<TextInputFormatter>?
+  inputFormatters; // Özel formatlar (örn: sadece sayı)
+  final Iterable<String>?
+  autofillHints; // Dışarıdan manuel autofill vermek istersen
+
   final String? Function(String?)? validator;
 
   final bool enabled;
   final int maxLines;
-  
+
   final IconData? leadingIcon;
   final IconData? trailingIcon;
   final VoidCallback? onTrailingTap;
@@ -34,12 +52,16 @@ class AppInputField extends StatefulWidget {
     this.label,
     this.hint,
     this.helperText,
-    this.validator, // <-- Validation eklendi
+    this.validator,
     this.enabled = true,
     this.maxLines = 1,
     this.leadingIcon,
     this.trailingIcon,
     this.onTrailingTap,
+    this.textInputAction,
+    this.onFieldSubmitted,
+    this.inputFormatters,
+    this.autofillHints,
   });
 
   @override
@@ -47,54 +69,67 @@ class AppInputField extends StatefulWidget {
 }
 
 class _AppInputFieldState extends State<AppInputField> {
-  // Şifre görünürlüğünü yöneten yerel değişken
   bool _obscureText = false;
 
   @override
   void initState() {
     super.initState();
-    // Eğer tip şifre ise, başlangıçta gizli olsun
-    _obscureText = widget.type == AppInputType.password;
+    // password veya newPassword ise gizli başla
+    _obscureText =
+        widget.type == AppInputType.password ||
+        widget.type == AppInputType.newPassword;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // TextField yerine TextFormField kullandık
     return TextFormField(
       controller: widget.controller,
       enabled: widget.enabled,
-      validator: widget.validator, // Form doğrulama fonksiyonu
-      
+      validator: widget.validator,
+
+      // --- LOGIC GÜNCELLEMELERİ ---
+      autofillHints: _getAutofillHints, // Akıllı autofill
+      onFieldSubmitted: widget.onFieldSubmitted, // Klavye aksiyonu
+      textInputAction: widget.textInputAction,
+      inputFormatters: widget.inputFormatters,
+
+      // -----------------------------
       obscureText: _obscureText,
       keyboardType: _keyboardType,
       textCapitalization: _capitalization,
-      maxLines: widget.type == AppInputType.password ? 1 : widget.maxLines,
-      
-      style: TextStyle(
-        fontSize: _fontSize,
-        color: theme.colorScheme.onSurface,
-      ),
-      
+      maxLines:
+          (widget.type == AppInputType.password ||
+              widget.type == AppInputType.newPassword)
+          ? 1
+          : widget.maxLines,
+
+      style: TextStyle(fontSize: _fontSize, color: theme.colorScheme.onSurface),
+
       decoration: InputDecoration(
         labelText: widget.label ?? _defaultLabel,
         hintText: widget.hint ?? _defaultHint,
         helperText: widget.helperText,
-        
+
+        // Hata stili
+        errorStyle: TextStyle(fontSize: 12, color: theme.colorScheme.error),
+
         filled: widget.variant == AppInputVariant.filled,
         fillColor: _fillColor(theme),
-        
+
         contentPadding: _contentPadding,
 
-        // Sol İkon
-        prefixIcon: widget.leadingIcon != null 
-            ? Icon(widget.leadingIcon, size: 20, color: theme.colorScheme.onSurfaceVariant) 
+        prefixIcon: widget.leadingIcon != null
+            ? Icon(
+                widget.leadingIcon,
+                size: 20,
+                color: theme.colorScheme.onSurfaceVariant,
+              )
             : null,
 
-        // Sağ İkon (Otomatik Şifre Gözü veya Özel İkon)
         suffixIcon: _buildSuffixIcon(theme),
-        
+
         border: _border(theme),
         enabledBorder: _border(theme),
         focusedBorder: _focusedBorder(theme),
@@ -105,14 +140,42 @@ class _AppInputFieldState extends State<AppInputField> {
     );
   }
 
-  /// ---------------- LOGIC ----------------
+  // --- GETTERS & LOGIC ---
+
+  // Otomatik Doldurma İpuçları
+  Iterable<String>? get _getAutofillHints {
+    if (widget.autofillHints != null) return widget.autofillHints;
+
+    switch (widget.type) {
+      case AppInputType.email:
+        return const [AutofillHints.email];
+      case AppInputType.password:
+        return const [AutofillHints.password];
+      case AppInputType.newPassword:
+        return const [AutofillHints.newPassword]; // Yeni şifre önerisi
+      case AppInputType.firstName:
+        return const [AutofillHints.givenName];
+      case AppInputType.lastName:
+        return const [AutofillHints.familyName];
+      case AppInputType.phone:
+        return const [AutofillHints.telephoneNumber];
+      case AppInputType.standard: // Kullanıcı adı genelde standarda düşer
+        // Eğer kullanıcı adıysa 'username' dönebilirsin, ama bazen karışır.
+        // Şimdilik null bırakıyorum, RegisterPage'de manuel verebilirsin.
+        return null;
+      default:
+        return null;
+    }
+  }
 
   Widget? _buildSuffixIcon(ThemeData theme) {
-    // 1. Durum: Şifre alanıysa Göz İkonu koy
-    if (widget.type == AppInputType.password) {
+    if (widget.type == AppInputType.password ||
+        widget.type == AppInputType.newPassword) {
       return IconButton(
         icon: Icon(
-          _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          _obscureText
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined,
           color: theme.colorScheme.onSurfaceVariant,
         ),
         onPressed: () {
@@ -123,11 +186,14 @@ class _AppInputFieldState extends State<AppInputField> {
       );
     }
 
-    // 2. Durum: Dışarıdan özel ikon verildiyse onu koy (Örn: Arama silme X)
     if (widget.trailingIcon != null) {
       return GestureDetector(
         onTap: widget.onTrailingTap,
-        child: Icon(widget.trailingIcon, size: 20, color: theme.colorScheme.onSurfaceVariant),
+        child: Icon(
+          widget.trailingIcon,
+          size: 20,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       );
     }
 
@@ -136,10 +202,21 @@ class _AppInputFieldState extends State<AppInputField> {
 
   TextInputType get _keyboardType {
     switch (widget.type) {
-      case AppInputType.email: return TextInputType.emailAddress;
-      case AppInputType.phone: return TextInputType.phone;
-      case AppInputType.discover: return TextInputType.text;
-      default: return TextInputType.text;
+      case AppInputType.email:
+        return TextInputType.emailAddress;
+      case AppInputType.phone:
+        return TextInputType.phone;
+      case AppInputType.password:
+      case AppInputType.newPassword:
+        // 'visiblePassword' klavyedeki önerileri (predictive text) kapatır. Güvenlik için şart.
+        return TextInputType.visiblePassword;
+      case AppInputType.discover:
+        return TextInputType.text;
+      case AppInputType.firstName:
+      case AppInputType.lastName:
+        return TextInputType.name; // İsim klavyesi açar
+      default:
+        return TextInputType.text;
     }
   }
 
@@ -148,6 +225,8 @@ class _AppInputFieldState extends State<AppInputField> {
       case AppInputType.firstName:
       case AppInputType.lastName:
         return TextCapitalization.words;
+      case AppInputType.discover:
+        return TextCapitalization.sentences;
       default:
         return TextCapitalization.none;
     }
@@ -155,31 +234,48 @@ class _AppInputFieldState extends State<AppInputField> {
 
   String? get _defaultLabel {
     switch (widget.type) {
-      case AppInputType.email: return "Email";
-      case AppInputType.password: return "Şifre";
-      case AppInputType.firstName: return "Ad";
-      case AppInputType.lastName: return "Soyad";
-      case AppInputType.phone: return "Telefon";
-      case AppInputType.discover: return "Ara";
-      default: return widget.label;
+      case AppInputType.email:
+        return "E-Posta";
+      case AppInputType.password:
+        return "Şifre";
+      case AppInputType.newPassword:
+        return "Yeni Şifre";
+      case AppInputType.firstName:
+        return "Ad";
+      case AppInputType.lastName:
+        return "Soyad";
+      case AppInputType.phone:
+        return "Telefon";
+      case AppInputType.discover:
+        return "Ara";
+      default:
+        return widget.label;
     }
   }
 
   String? get _defaultHint {
     switch (widget.type) {
-      case AppInputType.email: return "ornek@mail.com";
-      case AppInputType.password: return "••••••••";
-      case AppInputType.phone: return "5XX XXX XX XX";
-      case AppInputType.discover: return "Kullanıcı veya grup ara...";
-      default: return widget.hint;
+      case AppInputType.email:
+        return "ornek@mail.com";
+      case AppInputType.password:
+      case AppInputType.newPassword:
+        return "••••••••";
+      case AppInputType.phone:
+        return "5XX XXX XX XX";
+      case AppInputType.discover:
+        return "Kullanıcı veya grup ara...";
+      default:
+        return widget.hint;
     }
   }
 
-  /// ---------------- STYLES (Seninkilerle aynı mantıkta) ----------------
+  // --- STYLES ---
 
   Color _fillColor(ThemeData theme) {
-    if (!widget.enabled) return theme.colorScheme.surfaceContainerHighest.withAlpha(128);
-    return theme.colorScheme.surfaceContainerLow; // Material 3 Uyumlu
+    if (!widget.enabled) {
+      return theme.colorScheme.surfaceContainerHighest.withAlpha(128);
+    }
+    return theme.colorScheme.surfaceContainerLow;
   }
 
   OutlineInputBorder _border(ThemeData theme) {
@@ -202,18 +298,22 @@ class _AppInputFieldState extends State<AppInputField> {
       borderSide: BorderSide(color: Colors.red.shade600),
     );
   }
-  
+
   OutlineInputBorder _disabledBorder(ThemeData theme) {
-     return OutlineInputBorder(
+    return OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: theme.disabledColor.withAlpha(51)),
     );
   }
 
-  double get _fontSize => widget.size == AppInputSize.small ? 13 : 15;
+  double get _fontSize => widget.size == AppInputSize.small
+      ? 14
+      : 16; // Fontu bir tık büyüttüm (Okunabilirlik)
 
   EdgeInsets get _contentPadding {
-    final double p = widget.size == AppInputSize.small ? 12 : 16;
+    final double p = widget.size == AppInputSize.small
+        ? 14
+        : 18; // Paddingleri rahatlattım
     return EdgeInsets.symmetric(horizontal: p, vertical: p);
   }
 }

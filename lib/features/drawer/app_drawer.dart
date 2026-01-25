@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/features/drawer/drawer_item.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Profil bilgilerini dinle
+    final profileProvider = context.watch<ProfileProvider>();
+    final firstName = profileProvider.firstName;
+    final lastName = profileProvider.lastName;
+    final email = profileProvider.email;
+    final profileImage =
+        profileProvider.profileImageUrl ?? 'https://i.pravatar.cc/150?img=11';
+
     final theme = Theme.of(context);
     // Güvenli alan (Çentik) kontrolü
     final padding = MediaQuery.of(context).padding;
@@ -27,14 +38,21 @@ class AppDrawer extends StatelessWidget {
           // 🎨 CUSTOM HEADER (GRADYANLI & MODERN)
           // -----------------------------------------------------------
           Container(
-            padding: EdgeInsets.only(top: padding.top + 20, bottom: 30, left: 24, right: 24),
+            padding: EdgeInsets.only(
+              top: padding.top + 20,
+              bottom: 30,
+              left: 24,
+              right: 24,
+            ),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
                   theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha: 0.8), // Hafif ton farkı
+                  theme.colorScheme.primary.withValues(
+                    alpha: 0.8,
+                  ), // Hafif ton farkı
                 ],
               ),
               borderRadius: const BorderRadius.only(
@@ -47,7 +65,10 @@ class AppDrawer extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      width: 2,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.2),
@@ -56,15 +77,15 @@ class AppDrawer extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const CircleAvatar(
+                  child: CircleAvatar(
                     radius: 30,
-                    backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+                    backgroundImage: NetworkImage(profileImage),
                     // Resim yüklenmezse diye arka plan
-                    backgroundColor: Colors.white, 
+                    backgroundColor: Colors.white,
                   ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // İsim ve Mail Bilgisi
                 Expanded(
                   child: Column(
@@ -72,18 +93,19 @@ class AppDrawer extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Ahmet Yılmaz",
-                        style: AppTextStyles.h3.copyWith(
-                          color: Colors.white, 
-                          fontSize: 18,
+                        "$firstName $lastName",
+                        style: AppTextStyles.regular.copyWith(
+                          color: Colors.white,
+                          fontSize: 20,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
-                        "ahmet@motocomm.app",
-                        style: AppTextStyles.bodySmall.copyWith(
+                        email,
+                        style: AppTextStyles.regular.copyWith(
                           color: Colors.white.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.w500,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -103,7 +125,8 @@ class AppDrawer extends StatelessWidget {
               children: [
                 //Profilim Alanı
                 DrawerItem(
-                  iconPath: 'assets/icons/ic_profile.png', // 👈 Dosya ismini kendine göre düzelt
+                  iconPath:
+                      'assets/icons/ic_profile.png', // 👈 Dosya ismini kendine göre düzelt
                   title: "Profilim",
                   onTap: () {
                     context.pop();
@@ -113,11 +136,14 @@ class AppDrawer extends StatelessWidget {
 
                 // Premium Alanı
                 DrawerItem(
-                  iconPath: 'assets/icons/ic_premium.png', // 👈 Premium ikonu (Yoksa ic_star.png falan koy)
+                  iconPath:
+                      'assets/icons/ic_premium.png', // 👈 Premium ikonu (Yoksa ic_star.png falan koy)
                   title: "Premium Planlar",
                   iconColor: const Color(0xFF9C27B0),
-                  textColor: const Color(0xFF9C27B0), 
-                  backgroundColor: const Color(0xFF9C27B0).withValues(alpha: 0.1),
+                  textColor: const Color(0xFF9C27B0),
+                  backgroundColor: const Color(
+                    0xFF9C27B0,
+                  ).withValues(alpha: 0.1),
                   onTap: () {
                     context.pop();
                     context.push('/plans');
@@ -126,7 +152,8 @@ class AppDrawer extends StatelessWidget {
 
                 // Topluluklar Alanı
                 DrawerItem(
-                  iconPath: 'assets/icons/ic_community.png', // 👈 Senin istediğin topluluk ikonu
+                  iconPath:
+                      'assets/icons/ic_community.png', // 👈 Senin istediğin topluluk ikonu
                   title: "Topluluklar",
                   onTap: () {
                     context.pop();
@@ -135,8 +162,15 @@ class AppDrawer extends StatelessWidget {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  child: Divider(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  child: Divider(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.5,
+                    ),
+                  ),
                 ),
 
                 // Ayarlar Alanı
@@ -170,9 +204,9 @@ class AppDrawer extends StatelessWidget {
             child: DrawerItem(
               iconPath: 'assets/icons/ic_logout.png', // 👈 Çıkış ikonu
               title: "Çıkış Yap",
-              isDestructive: true, 
+              isDestructive: true,
               onTap: () {
-                context.go('/login');
+                context.read<AuthProvider>().logout();
               },
             ),
           ),

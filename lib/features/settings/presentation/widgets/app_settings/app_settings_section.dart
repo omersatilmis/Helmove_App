@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/settings_section_header.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
 
 // 🔥 YENİ OLUŞTURDUĞUMUZ HELPER DOSYASINI IMPORT ET
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/helper_widgets.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/helper_widgets.dart';
 
 class AppSettingsSection extends StatefulWidget {
   const AppSettingsSection({super.key});

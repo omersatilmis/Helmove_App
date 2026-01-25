@@ -1,14 +1,25 @@
-import 'dart:math'
-    as math; // 🔥 1. Ekleme: Matematik kütüphanesi (Max işlemi için)
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+// --- KENDİ PROJE IMPORTLARIN ---
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_info.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_tabs.dart';
-import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
+
+// 🔥 PROVIDER IMPORTLARI
+import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  // Opsiyonel: Eğer dışarıdan bir ID ile gelindiyse bu parametre dolu olur.
+  // Boş ise "Kendi profilim" varsayılır.
+  final String? userId;
+
+  const ProfilePage({super.key, this.userId});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -17,15 +28,10 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _profileInfoKey = GlobalKey();
+  final GlobalKey _optionsButtonKey =
+      GlobalKey(); // 🔥 Seçenekler butonu için key
 
-  // Veriler (Başlangıçta boş veya placeholder olabilir)
-  final String _firstName = "MarcusX";
-  final String _lastName = "Teanly";
-  final String _username = "marcusteanly";
-
-  // 🔥 2. Düzeltme: Başlangıç değeri 0 olmasın, güvenli bir değer olsun.
   double _dynamicHeight = 450;
-
   double _headerOpacity = 1.0;
   double _statsOpacity = 1.0;
   bool _showPinnedTitle = false;
@@ -35,8 +41,28 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     _scrollController.addListener(_handleScroll);
 
-    // İlk açılışta ölçüm yap
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<AuthProvider>();
+      final myIdStr = authProvider.currentUser?.id;
+
+      // Kendi profilim mi diye kontrol et
+      bool isMe = false;
+      if (widget.userId == null) {
+        isMe = true;
+      } else if (myIdStr != null && widget.userId == myIdStr) {
+        isMe = true;
+      }
+
+      if (isMe) {
+        context.read<ProfileProvider>().loadProfile();
+      } else {
+        // Başkasının profili, ID'yi int'e çevirip yükle
+        final userIdInt = int.tryParse(widget.userId!);
+        if (userIdInt != null) {
+          context.read<ProfileProvider>().loadUserProfile(userIdInt);
+        }
+      }
+
       _calculateHeight();
     });
   }
@@ -45,7 +71,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final RenderBox? renderBox =
         _profileInfoKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox != null) {
-      // Eğer ölçülen boyut ile mevcut boyut farklıysa güncelle
       if (renderBox.size.height != _dynamicHeight) {
         setState(() {
           _dynamicHeight = renderBox.size.height;
@@ -59,18 +84,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
     final offset = _scrollController.offset;
     final topSafe = MediaQuery.of(context).padding.top;
-
-    // 0'a bölünme hatasını önlemek için kontrol
     final totalHeight = _dynamicHeight > 0 ? _dynamicHeight : 300.0;
 
     final headerFade = (1 - (offset / (totalHeight * 0.75))).clamp(0.0, 1.0);
     final statsStart = totalHeight * 0.35;
     final statsEnd = totalHeight * 0.55;
-
-    // statsEnd - statsStart 0 olursa hata verir, onu da koruyalım
     final range = (statsEnd - statsStart) > 0 ? (statsEnd - statsStart) : 1.0;
     final statsFade = (1 - ((offset - statsStart) / range)).clamp(0.0, 1.0);
-
     final showTitle = offset > (totalHeight - kToolbarHeight - topSafe - 20);
 
     if (headerFade != _headerOpacity ||
@@ -95,12 +115,38 @@ class _ProfilePageState extends State<ProfilePage> {
     final theme = Theme.of(context);
     final topSafe = MediaQuery.of(context).padding.top;
 
-    // 🔥 4. Çözüm: Minimum Yükseklik Hesabı (ExpandedHeight Koruması)
-    // Toolbar yüksekliği + Status bar + biraz boşluk
+    // 🔥 1. AuthProvider'dan BENİM ID'mi al
+    final authProvider = context.watch<AuthProvider>();
+    final myIdStr = authProvider.currentUser?.id;
+    final myId = myIdStr != null ? int.tryParse(myIdStr) : null;
+
+    // 🔥 4. Kendi profilim mi kontrolü (Logic taşıdık)
+    bool isOwnProfile = false;
+    if (widget.userId == null) {
+      isOwnProfile = true;
+    } else if (myId != null && widget.userId == myId.toString()) {
+      isOwnProfile = true;
+    }
+
+    // 🔥 2. ProfileProvider'dan DOĞRU kullanıcıyı al
+    final profileProvider = context.watch<ProfileProvider>();
+    // Eğer kendi profilimse 'profile', başkasıysa 'visitedProfile'
+    final displayedUser = isOwnProfile
+        ? profileProvider.profile
+        : profileProvider.visitedProfile;
+
+    // 🔥 3. Verileri hazırla (Null check)
+    final firstName = displayedUser?.firstName ?? "";
+    final lastName = displayedUser?.lastName ?? "";
+    final username = displayedUser?.username ?? "";
+
     final double minAppBarHeight = kToolbarHeight + topSafe + 20;
 
+    // Loading durumu (Opsiyonel: İstersen tam sayfa loading yapabilirsin)
+    // if (profileProvider.isLoading) return Scaffold(...Loading...);
+
     return DefaultTabController(
-      length: 5,
+      length: 5, // Tab sayısı
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: Stack(
@@ -117,14 +163,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         context,
                       ),
                       sliver: SliverAppBar(
-                        // 🔥 5. Çözüm: math.max kullanımı
-                        // Dinamik yükseklik ne kadar küçük gelirse gelsin,
-                        // asla minAppBarHeight'tan daha küçük olamaz. Hata vermez.
                         expandedHeight: math.max(
                           _dynamicHeight,
                           minAppBarHeight,
                         ),
-
                         toolbarHeight: kToolbarHeight + topSafe + 15,
                         pinned: true,
                         elevation: 0,
@@ -132,6 +174,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         backgroundColor: theme.scaffoldBackgroundColor,
                         centerTitle: true,
 
+                        // Pinned Title (Kaydırınca çıkan isim)
                         title: AnimatedOpacity(
                           duration: const Duration(milliseconds: 180),
                           opacity: _showPinnedTitle ? 1 : 0,
@@ -141,14 +184,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  "$_firstName $_lastName",
+                                  "$firstName $lastName",
                                   style: AppTextStyles.h3.copyWith(
                                     fontSize: 18,
                                     color: theme.colorScheme.onSurface,
                                   ),
                                 ),
                                 Text(
-                                  "@$_username",
+                                  "@$username",
                                   style: AppTextStyles.bodySmall.copyWith(
                                     fontSize: 12,
                                     color: theme.colorScheme.onSurface
@@ -170,19 +213,21 @@ class _ProfilePageState extends State<ProfilePage> {
                                 child: SingleChildScrollView(
                                   physics: const NeverScrollableScrollPhysics(),
                                   child: Container(
-                                    // 🔥 Key burada olduğu sürece her şeyi ölçeriz
                                     key: _profileInfoKey,
                                     padding: const EdgeInsets.only(bottom: 12),
+
+                                    // 🔥 5. isOwnProfile değerini widget'a gönder
                                     child: ProfileInfo(
-                                      firstName: _firstName,
-                                      lastName: _lastName,
-                                      username: _username,
+                                      firstName: firstName,
+                                      lastName: lastName,
+                                      username: username,
+                                      isOwnProfile: isOwnProfile,
                                     ),
                                   ),
                                 ),
                               ),
 
-                              // Fade efektleri (Aynı kalıyor)
+                              // Header Fade Efekti
                               IgnorePointer(
                                 child: AnimatedOpacity(
                                   duration: const Duration(milliseconds: 120),
@@ -192,6 +237,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ),
                                 ),
                               ),
+                              // İstatistik Fade Efekti
                               Positioned(
                                 bottom: 0,
                                 left: 0,
@@ -219,7 +265,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
 
-            // Butonlar (Aynı kalıyor)
+            // Üst Butonlar (Geri / Seçenekler)
             Positioned(
               top: topSafe + 5,
               left: 12,
@@ -229,11 +275,33 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   AppFrostedButton(
                     icon: Icons.arrow_back_ios_new_rounded,
-                    onTap: () => context.pop(),
+                    onTap: () {
+                      // Eğer navigasyon geçmişi varsa geri dön, yoksa anasayfaya
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        // context.go('/home'); // İsteğe bağlı
+                      }
+                    },
                   ),
-                  AppFrostedButton(
-                    icon: Icons.more_horiz_rounded,
-                    onTap: () {},
+
+                  // 🔥 Opsiyonel: Kendi profilimse Ayarlar, değilse Şikayet/Block ikonu
+                  Container(
+                    key: _optionsButtonKey, // Pozisyon almak için
+                    child: AppFrostedButton(
+                      // 🔥 İKON: Artık her iki durumda da 3 nokta
+                      icon: Icons.more_horiz_rounded,
+
+                      // 🔥 MANTIK: Tıklanınca yine kimin profili olduğuna bakıyor
+                      onTap: () {
+                        if (isOwnProfile) {
+                          _showOptionsMenu(context);
+                        } else {
+                          // Başkasının profili: Şikayet et / Engelle menüsü
+                          // print("Başkasının profili: Şikayet menüsünü aç");
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -242,5 +310,86 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+  }
+
+  void _showOptionsMenu(BuildContext context) {
+    // Butonun konumunu al
+    final RenderBox? renderBox =
+        _optionsButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+    final theme = Theme.of(context);
+
+    showMenu(
+      context: context,
+      // Butonun hemen altında açılması için pozisyon hesabı
+      position: RelativeRect.fromLTRB(
+        offset.dx - 150 + size.width, // Sağa yaslı olması için solunu kaydır
+        offset.dy + size.height + 10,
+        offset.dx + size.width, // Sağ sınır
+        offset.dy + size.height + 200, // Alt sınır
+      ),
+      elevation: 8,
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      items: <PopupMenuEntry<String>>[
+        PopupMenuItem<String>(
+          value: 'edit',
+          child: Row(
+            children: [
+              Icon(Icons.edit_outlined, color: theme.colorScheme.onSurface),
+              const SizedBox(width: 12),
+              Text(
+                "Profili Düzenle",
+                style: AppTextStyles.medium.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'share',
+          child: Row(
+            children: [
+              Icon(Icons.share_outlined, color: theme.colorScheme.onSurface),
+              const SizedBox(width: 12),
+              Text(
+                "Profili Paylaş",
+                style: AppTextStyles.medium.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'settings',
+          child: Row(
+            children: [
+              Icon(Icons.settings_outlined, color: theme.colorScheme.onSurface),
+              const SizedBox(width: 12),
+              Text(
+                "Ayarlar",
+                style: AppTextStyles.medium.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'edit') {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const EditProfilePage()));
+      } else if (value == 'settings') {
+        context.push('/settings');
+      }
+    });
   }
 }

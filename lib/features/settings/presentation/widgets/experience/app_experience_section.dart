@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Provider ekle
 import 'package:moto_comm_app_1/core/theme/theme_provider.dart'; // ThemeProvider ekle
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/helper_widgets.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/settings_section_header.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/settings_tile.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/helper_widgets.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_tile.dart';
 import 'package:moto_comm_app_1/core/theme/app_colors.dart';
 
 class AppExperienceSection extends StatefulWidget {

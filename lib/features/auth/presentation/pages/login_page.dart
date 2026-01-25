@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
-// ⚠️ Proje ismini kontrol et
 import 'package:moto_comm_app_1/core/widgets/app_button.dart';
 import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
+import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_divider_widget.dart';
+import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_header_widget.dart';
+import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_footer_widget.dart';
+import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_error_widget.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,12 +18,19 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   // Controller'lar
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
+
   // State
   bool _rememberMe = false;
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
+  }
 
   @override
   void dispose() {
@@ -28,260 +39,219 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // Giriş işlemini tetikleyen fonksiyon
+  Future<void> _handleLogin(AuthProvider authProvider) async {
+    if (_formKey.currentState!.validate()) {
+      // Klavyeyi kapat
+      FocusScope.of(context).unfocus();
+
+      final success = await authProvider.login(
+        _emailController.text.trim(), // Boşlukları temizle
+        _passwordController.text,
+      );
+
+      if (success && mounted) {
+        context.go('/homepage');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 🎨 ARTIK TEMAYI MERKEZDEN ALIYORUZ
-    // Manuel renk tanımlarına gerek kalmadı!
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      body: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              
-              // 1. KAVİSLİ (WAVE) BAŞLIK ALANI
-              _buildCurvedHeader(size, theme),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-
-                    // 2. INPUT ALANLARI
-                    AppInputField(
-                      controller: _emailController,
-                      type: AppInputType.email,
-                      label: "E-Posta",
-                      leadingIcon: Icons.email_outlined,
-                      validator: (val) => (val == null || !val.contains('@')) 
-                          ? 'Geçerli bir e-posta girin' : null,
+      // Klavye açılınca ekranın yukarı kaymasını engeller (Sabit Kalır)
+      resizeToAvoidBottomInset: false,
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Column(
+                children: [
+                  // 1. KAVİSLİ HEADER ALANI
+                  SizedBox(
+                    height: (size.height * 0.35).clamp(240.0, 400.0),
+                    child: const AuthHeaderWidget(
+                      title: "Tekrar Hoşgeldiniz!",
+                      subtitle: "Sürüşe başlamak için giriş yapın.",
+                      icon: Icons.two_wheeler,
                     ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    AppInputField(
-                      controller: _passwordController,
-                      type: AppInputType.password,
-                      label: "Şifre",
-                      leadingIcon: Icons.lock_outline,
-                      validator: (val) => (val == null || val.length < 6) 
-                          ? 'En az 6 karakter gerekli' : null,
-                    ),
+                  ),
 
-                    // 3. BENİ HATIRLA & ŞİFREMİ UNUTTUM
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Checkbox(
-                              value: _rememberMe,
-                              // Checkbox teması AppTheme'den otomatik gelir
-                              onChanged: (val) => setState(() => _rememberMe = val ?? false),
-                            ),
-                            Text("Beni Hatırla", style: theme.textTheme.bodyMedium),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: () {},
-                          child: Text(
-                            "Şifremi Unuttum?",
-                            style: TextStyle(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w700,
+                  // 2. FORM VE İÇERİK ALANI
+                  Expanded(
+                    child: Center(
+                      child: Container(
+                        // Tablet/Web için max genişlik sınırı (Modern Görünüm)
+                        constraints: const BoxConstraints(maxWidth: 450),
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Form(
+                          key: _formKey,
+                          child: AutofillGroup(
+                            // Otomatik doldurma desteği
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const SizedBox(height: 24),
+
+                                // Hata Mesajı (Varsa Göster)
+                                Consumer<AuthProvider>(
+                                  builder: (context, auth, _) {
+                                    if (auth.errorMessage == null) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return AuthErrorWidget(
+                                      message: auth.errorMessage!,
+                                    );
+                                  },
+                                ),
+
+                                // E-Posta Alanı
+                                AppInputField(
+                                  controller: _emailController,
+                                  type: AppInputType.email,
+                                  label: "E-Posta",
+                                  leadingIcon: Icons.email_outlined,
+                                  // 🔥 Klavye 'İleri' tuşu çıkar
+                                  textInputAction: TextInputAction.next,
+                                  validator: (val) =>
+                                      (val == null || !val.contains('@'))
+                                      ? 'Geçerli bir e-posta girin'
+                                      : null,
+                                ),
+
+                                const SizedBox(height: 16),
+
+                                // Şifre Alanı
+                                AppInputField(
+                                  controller: _passwordController,
+                                  type: AppInputType.password,
+                                  label: "Şifre",
+                                  leadingIcon: Icons.lock_outline,
+                                  // 🔥 Klavye 'Tamam' tuşu çıkar
+                                  textInputAction: TextInputAction.done,
+                                  validator: (val) =>
+                                      (val == null || val.length < 6)
+                                      ? 'En az 6 karakter gerekli'
+                                      : null,
+                                ),
+
+                                // Beni Hatırla & Şifremi Unuttum
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          SizedBox(
+                                            height: 24,
+                                            width: 24,
+                                            child: Checkbox(
+                                              value: _rememberMe,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              onChanged: (val) => setState(
+                                                () =>
+                                                    _rememberMe = val ?? false,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "Beni Hatırla",
+                                            style: theme.textTheme.bodyMedium,
+                                          ),
+                                        ],
+                                      ),
+                                      TextButton(
+                                        onPressed: () {},
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: const Size(0, 0),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: Text(
+                                          "Şifremi Unuttum?",
+                                          style: TextStyle(
+                                            color: theme.colorScheme.primary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // Giriş Butonu
+                                Consumer<AuthProvider>(
+                                  builder: (context, authProvider, _) {
+                                    return AppButton(
+                                      text: "Giriş Yap",
+                                      isLoading: authProvider.isLoading,
+                                      size: AppButtonSize.large,
+                                      borderRadius: BorderRadius.circular(16),
+                                      isFullWidth: true,
+                                      onPressed: () =>
+                                          _handleLogin(authProvider),
+                                    );
+                                  },
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // Veya Ayıracı
+                                const AuthDividerWidget(),
+
+                                const SizedBox(height: 24),
+
+                                // Google Giriş
+                                AppButton(
+                                  text: "Google ile devam et",
+                                  onPressed: () {},
+                                  variant: AppButtonVariant.secondary,
+                                  style: AppButtonStyle.outlined,
+                                  isFullWidth: true,
+                                  icon: Icons.g_mobiledata,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+
+                                const SizedBox(height: 24),
+                              ],
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
+                  ),
 
-                    const SizedBox(height: 24),
-
-                    // 4. GİRİŞ BUTONU
-                    AppButton(
-                      text: "Giriş Yap",
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          // Başarılı giriş, Home sayfasına git
-                          context.go('/home');
-                        }
-                      },
-                      isFullWidth: true,
-                      size: AppButtonSize.large,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // 5. AYIRAÇ
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text("veya devam et", style: theme.textTheme.bodySmall),
-                        ),
-                        Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // 6. GOOGLE GİRİŞ
-                    AppButton(
-                      text: "Google ile Giriş Yap",
-                      onPressed: () {},
-                      variant: AppButtonVariant.secondary,
-                      style: AppButtonStyle.outlined,
-                      isFullWidth: true,
-                      icon: Icons.g_mobiledata,
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    // 7. KAYIT OL LİNKİ
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("Hesabınız yok mu?", style: theme.textTheme.bodyMedium),
-                        TextButton(
-                          onPressed: () {
-                            // Kayıt sayfasına git
-                            context.push('/register'); 
-                          },
-                          child: Text(
-                            "Kayıt Ol",
-                            style: TextStyle(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 24),
-                  ],
-                ),
+                  // 3. FOOTER ALANI (Alt kısma sabitlenen link)
+                  AuthFooterWidget(
+                    questionText: "Hesabınız yok mu?",
+                    actionText: "Kayıt Ol",
+                    onPressed: () => context.push('/register'),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-
-  // -----------------------------------------------------------
-  // 🌊 HEADER YAPISI
-  // -----------------------------------------------------------
-  Widget _buildCurvedHeader(Size size, ThemeData theme) {
-    // Header rengini moda göre ayarlıyoruz:
-    // Light Mod: Secondary (Koyu Gri)
-    // Dark Mod: SurfaceContainerLow (Koyu Gri - Antrasit)
-    // Böylece her iki modda da yazı beyaz kalır ve okunur.
-    final headerColor = theme.brightness == Brightness.light 
-        ? theme.colorScheme.secondary 
-        : theme.colorScheme.surfaceContainerLow;
-
-    return Stack(
-      children: [
-        // KATMAN 1: Koyu Arka Plan
-        Container(
-          height: size.height * 0.40,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: headerColor, 
-          ),
-        ),
-
-        // KATMAN 2: Wave Shape (Beyaz/Siyah Dalga)
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: SizedBox(
-            height: 100,
-            child: CustomPaint(
-              // Dalga rengi sayfanın zemin rengiyle aynı olmalı ki bütünleşsin
-              painter: WavePainter(color: theme.colorScheme.surface),
-            ),
-          ),
-        ),
-
-        // KATMAN 3: İçerik
-        Positioned.fill(
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Spacer(flex: 2), 
-                  
-                  Icon(
-                    Icons.two_wheeler,
-                    size: 64,
-                    color: theme.colorScheme.primary, // Turuncu İkon
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "İyi Sürüşler,",
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white, // Koyu zemin üstünde beyaz yazı
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    "Hesabınıza giriş yapın.",
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                  
-                  const Spacer(flex: 3),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// -----------------------------------------------------------
-// 🎨 WAVE PAINTER
-// -----------------------------------------------------------
-class WavePainter extends CustomPainter {
-  final Color color;
-
-  WavePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..style = PaintingStyle.fill;
-    final path = Path();
-    final w = size.width;
-    final h = size.height;
-
-    path.moveTo(0, h * 0.75);
-    path.cubicTo(w * 0.28, h * 0.5, w * 0.72, h, w, 0);
-    path.lineTo(w, h);
-    path.lineTo(0, h);
-    path.close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

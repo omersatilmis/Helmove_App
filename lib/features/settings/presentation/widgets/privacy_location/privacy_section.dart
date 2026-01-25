@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/settings_tile.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/settings_section_header.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/helper_widgets.dart'; // 🔥 Helper'ı dahil ettik
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_tile.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/helper_widgets.dart'; // 🔥 Helper'ı dahil ettik
 
 class PrivacySection extends StatefulWidget {
   const PrivacySection({super.key});

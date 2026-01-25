@@ -6,11 +6,11 @@ import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
 
 // Parçaları import ediyoruz
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/account_section.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/app_experience_section.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/app_settings_section.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/privacy_section.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/support_section.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/account/account_section.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/experience/app_experience_section.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/app_settings/app_settings_section.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/privacy_location/privacy_section.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/widgets/support/support_section.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});

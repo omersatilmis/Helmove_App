@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/login_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.dart';
+import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 
 // 🔥 YENİ SAYFALARIN IMPORTLARI
 import 'package:moto_comm_app_1/features/homepage/presentation/pages/home_page.dart';
@@ -39,95 +40,135 @@ class PlaceholderScreen extends StatelessWidget {
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-final router = GoRouter(
-  navigatorKey: _rootNavigatorKey,
-  initialLocation: '/homepage',
-  routes: [
-    // --- 1. TAM EKRAN SAYFALAR ---
-    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-    GoRoute(
-      path: '/register',
-      builder: (context, state) => const RegisterPage(),
-    ),
+// --- REFACTOR: Router'ı bir fonksiyon haline getirdik ---
+// Böylece AuthProvider'ı dinleyip yönlendirme yapabiliriz.
 
-    // Drawer içinden gidilen sayfalar
-    GoRoute(path: '/profile', builder: (context, state) => const ProfilePage()),
-    GoRoute(path: '/plans', builder: (context, state) => const PlanPage()),
-    GoRoute(
-      path: '/communities',
-      builder: (context, state) => const CommunitiesPage(),
-    ),
-    GoRoute(
-      path: '/settings',
-      builder: (context, state) => const SettingsPage(),
-    ),
-    GoRoute(path: '/help', builder: (context, state) => const HelpPage()),
+GoRouter createRouter(AuthProvider authProvider) {
+  return GoRouter(
+    navigatorKey: _rootNavigatorKey,
+    initialLocation: '/login',
 
-    // Homepage topbarından  gidilen sayfalar
-    GoRoute(
-      path: '/messages',
-      builder: (context, state) => const MessagesPage(),
-    ),
-    GoRoute(
-      path: '/notifications',
-      builder: (context, state) => const NotificationsPage(),
-    ),
+    // AuthProvider'ı dinle: Oturum durumu değişince yönlendir
+    refreshListenable: authProvider,
 
-    // Profile Jots Tabından açılan sayfa
-    GoRoute(
-      path: '/create_jots',
-      builder: (context, state) => const CreateJotsPage(),
-    ),
+    redirect: (context, state) async {
+      // 1. Kullanıcı giriş yapmış mı?
+      // AuthProvider'da isLoggedIn bool olarak tutulmalı veya buradan kontrol edilmeli.
+      // En sağlıklısı AuthProvider içinde bir getter veya method olması.
+      final isLoggedIn = await authProvider.checkAuthStatus();
 
-    // --- 2. BOTTOM BARLI SAYFALAR ---
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) {
-        return BottomBarWrapper(navigationShell: navigationShell);
-      },
-      branches: [
-        // Şube 1: Ana Sayfa
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/homepage',
-              builder: (context, state) => const HomePageWithDrawer(),
-            ),
-          ],
-        ),
-        // Şube 2: Keşfet (YENİLENDİ)
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/discover',
-              builder: (context, state) => const DiscoverPage(),
-            ),
-          ],
-        ),
-        // Şube 3: Paylaş (YENİLENDİ)
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/add_post',
-              builder: (context, state) => const AddPostPage(),
-            ),
-          ],
-        ),
-        // Şube 4: Harita (YENİLENDİ)
-        StatefulShellBranch(
-          routes: [
-            GoRoute(path: '/map', builder: (context, state) => const MapPage()),
-          ],
-        ),
-        // Şube 5: İletişim (YENİLENDİ)
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/communication',
-              builder: (context, state) => const CommunicationPage(),
-            ),
-          ],
-        ),
-      ],
-    ),
-  ],
-);
+      // Sadece kontrol amaçlı (döngüye girmesin diye)
+      final isLoggingIn = state.uri.toString() == '/login';
+      final isRegistering = state.uri.toString() == '/register';
+
+      if (!isLoggedIn) {
+        // Giriş yapmamışsa ve zaten login/register sayfasında değilse -> Login'e git
+        if (!isLoggingIn && !isRegistering) {
+          return '/login';
+        }
+      } else {
+        // Giriş yapmışsa ve login/register sayfasındaysa -> HomePage'e git
+        if (isLoggingIn || isRegistering) {
+          return '/homepage';
+        }
+      }
+
+      return null; // Değişiklik yok
+    },
+
+    routes: [
+      // --- 1. TAM EKRAN SAYFALAR ---
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterPage(),
+      ),
+
+      // Drawer içinden gidilen sayfalar
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfilePage(),
+      ),
+      GoRoute(path: '/plans', builder: (context, state) => const PlanPage()),
+      GoRoute(
+        path: '/communities',
+        builder: (context, state) => const CommunitiesPage(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(path: '/help', builder: (context, state) => const HelpPage()),
+
+      // Homepage topbarından  gidilen sayfalar
+      GoRoute(
+        path: '/messages',
+        builder: (context, state) => const MessagesPage(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsPage(),
+      ),
+
+      // Profile Jots Tabından açılan sayfa
+      GoRoute(
+        path: '/create_jots',
+        builder: (context, state) => const CreateJotsPage(),
+      ),
+
+      // --- 2. BOTTOM BARLI SAYFALAR ---
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return BottomBarWrapper(navigationShell: navigationShell);
+        },
+        branches: [
+          // Şube 1: Ana Sayfa
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/homepage',
+                builder: (context, state) => const HomePageWithDrawer(),
+              ),
+            ],
+          ),
+          // Şube 2: Keşfet (YENİLENDİ)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/discover',
+                builder: (context, state) => const DiscoverPage(),
+              ),
+            ],
+          ),
+          // Şube 3: Paylaş (YENİLENDİ)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/add_post',
+                builder: (context, state) => const AddPostPage(),
+              ),
+            ],
+          ),
+          // Şube 4: Harita (YENİLENDİ)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/map',
+                builder: (context, state) => const MapPage(),
+              ),
+            ],
+          ),
+          // Şube 5: İletişim (YENİLENDİ)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/communication',
+                builder: (context, state) => const CommunicationPage(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+}
