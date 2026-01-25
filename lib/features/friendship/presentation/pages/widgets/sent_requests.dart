@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../../../core/di/injection_container.dart';
 import '../../bloc/action/friendship_action_bloc.dart';
 import '../../bloc/action/friendship_action_event.dart';
 import '../../bloc/list/friendship_list_bloc.dart';
