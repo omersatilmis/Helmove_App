@@ -2,19 +2,22 @@
 
 import 'package:flutter/material.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/about/bike_model.dart';
-
-// bike_model.dart : backende bağlayınca bunu sil, gerçek modelle değiştir, importunu üste ekle bike_card_widgette de var bundan
+import 'package:moto_comm_app_1/features/profile/domain/entities/motorcycle_entity.dart';
+import 'package:provider/provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 
 class BikeCardWidget extends StatefulWidget {
-  final BikeModel bike;
-  final VoidCallback onDelete;
-  final bool initialEdit; // Yeni eklendiğinde direkt edit modunda açılması için
+  final MotorcycleEntity bike;
+  final VoidCallback?
+  onDelete; // Opsiyonel yaptık, provider üzerinden de silinebilir
+  final VoidCallback? onSave; // 🔥 Kayıt başarılı olduğunda çağrılır
+  final bool initialEdit;
 
   const BikeCardWidget({
     super.key,
     required this.bike,
-    required this.onDelete,
+    this.onDelete,
+    this.onSave,
     this.initialEdit = false,
   });
 
@@ -38,12 +41,16 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
     super.initState();
     _isEditing = widget.initialEdit;
 
-    _makeModelCtrl = TextEditingController(text: widget.bike.makeModel);
-    _ccCtrl = TextEditingController(text: widget.bike.cc);
-    _yearCtrl = TextEditingController(text: widget.bike.year);
-    _colorCtrl = TextEditingController(text: widget.bike.color);
-    _plateCtrl = TextEditingController(text: widget.bike.plate);
-    _descCtrl = TextEditingController(text: widget.bike.description);
+    _makeModelCtrl = TextEditingController(
+      text: "${widget.bike.brand} ${widget.bike.model}".trim(),
+    );
+    _ccCtrl = TextEditingController(
+      text: widget.bike.engineSize?.toString() ?? "",
+    );
+    _yearCtrl = TextEditingController(text: widget.bike.year?.toString() ?? "");
+    _colorCtrl = TextEditingController(text: widget.bike.color ?? "");
+    _plateCtrl = TextEditingController(text: widget.bike.licensePlate ?? "");
+    _descCtrl = TextEditingController(text: widget.bike.description ?? "");
   }
 
   @override
@@ -57,32 +64,76 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
     super.dispose();
   }
 
-  void _save() {
-    setState(() {
-      widget.bike.makeModel = _makeModelCtrl.text;
-      widget.bike.cc = _ccCtrl.text;
-      widget.bike.year = _yearCtrl.text;
-      widget.bike.color = _colorCtrl.text;
-      widget.bike.plate = _plateCtrl.text;
-      widget.bike.description = _descCtrl.text;
-      _isEditing = false;
-    });
+  Future<void> _save() async {
+    final provider = context.read<ProfileProvider>();
+    final parts = _makeModelCtrl.text.trim().split(' ');
+    final brand = parts.isNotEmpty ? parts[0] : "";
+    final model = parts.length > 1 ? parts.sublist(1).join(' ') : "";
+
+    final engineSize = int.tryParse(_ccCtrl.text.trim());
+    final year = int.tryParse(_yearCtrl.text.trim());
+
+    bool success = false;
+
+    if (widget.bike.id != null) {
+      // Güncelleme
+      success = await provider.updateMotorcycle(
+        motorcycleId: widget.bike.id!,
+        brand: brand,
+        model: model,
+        year: year,
+        licensePlate: _plateCtrl.text.trim(),
+        color: _colorCtrl.text.trim(),
+        engineSize: engineSize,
+        description: _descCtrl.text.trim(),
+        isPrimary: widget.bike.isPrimary,
+      );
+    } else {
+      // Yeni Ekleme (ID yoksa)
+      // Ancak buradaki widget genellikle listede gösterilir.
+      // Eğer "yeni ekle" butonu boş bir kart açıyorsa burası çalışır.
+      // Fakat genelde Add butonu direkt provider.addMotorcycle ile ekleyip
+      // sonra listeyi yenileyeceği için buraya gerek kalmayabilir.
+      // Yine de mantığı kuralım:
+      success = await provider.addMotorcycle(
+        brand: brand,
+        model: model,
+        year: year,
+        licensePlate: _plateCtrl.text.trim(),
+        color: _colorCtrl.text.trim(),
+        engineSize: engineSize,
+        description: _descCtrl.text.trim(),
+        isPrimary: widget.bike.isPrimary,
+      );
+    }
+
+    if (success && mounted) {
+      setState(() {
+        _isEditing = false;
+      });
+      widget.onSave?.call(); // 🔥 Kayıt başarılı callback
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Motosiklet kaydedildi")));
+    }
   }
 
   void _cancel() {
-    // Eğer motor yeni eklenmişse (ismi yoksa) ve iptal edildiyse, kartı tamamen sil
-    if (widget.bike.makeModel.isEmpty && _makeModelCtrl.text.isEmpty) {
-      widget.onDelete();
+    // Eğer yeni eklenmeye çalışılan (ID'si olmayan) bir motorsa ve iptal edildiyse
+    // listeden kaldırılmalı (parent widget bunu yönetmeli veya providerdan silinmeli).
+    // Burada basitçe edit modundan çıkıyoruz.
+    if (widget.bike.id == null) {
+      widget.onDelete?.call();
       return;
     }
 
     setState(() {
-      _makeModelCtrl.text = widget.bike.makeModel;
-      _ccCtrl.text = widget.bike.cc;
-      _yearCtrl.text = widget.bike.year;
-      _colorCtrl.text = widget.bike.color;
-      _plateCtrl.text = widget.bike.plate;
-      _descCtrl.text = widget.bike.description;
+      _makeModelCtrl.text = widget.bike.fullName;
+      _ccCtrl.text = widget.bike.engineSize?.toString() ?? "";
+      _yearCtrl.text = widget.bike.year?.toString() ?? "";
+      _colorCtrl.text = widget.bike.color ?? "";
+      _plateCtrl.text = widget.bike.licensePlate ?? "";
+      _descCtrl.text = widget.bike.description ?? "";
       _isEditing = false;
     });
   }
@@ -116,15 +167,22 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
               children: [
                 // FAVORİ BUTONU
                 IconButton(
-                  onPressed: () => setState(
-                    () => widget.bike.isFavorite = !widget.bike.isFavorite,
-                  ),
+                  onPressed: () async {
+                    // Favori (Primary) yapma işlemi
+                    if (widget.bike.id != null) {
+                      await context
+                          .read<ProfileProvider>()
+                          .setPrimaryMotorcycle(widget.bike.id!);
+                    }
+                  },
                   icon: Icon(
-                    widget.bike.isFavorite
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    color: widget.bike.isFavorite
-                        ? Colors.redAccent
+                    widget.bike.isPrimary
+                        ? Icons
+                              .star_rounded // Favori için yıldız daha uygun
+                        : Icons.star_border_rounded,
+                    color: widget.bike.isPrimary
+                        ? Colors
+                              .amber // Favori rengi
                         : theme.colorScheme.onSurface.withValues(alpha: 0.3),
                   ),
                 ),
@@ -164,7 +222,15 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          onPressed: widget.onDelete,
+          onPressed: () async {
+            if (widget.bike.id != null) {
+              await context.read<ProfileProvider>().deleteMotorcycle(
+                widget.bike.id!,
+              );
+            } else {
+              widget.onDelete?.call();
+            }
+          },
           icon: const Icon(
             Icons.delete_outline_rounded,
             color: Colors.redAccent,
@@ -197,7 +263,7 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
       children: [
         _infoRow(
           "Marka ve Model",
-          widget.bike.makeModel,
+          widget.bike.fullName,
           labelStyle,
           valueStyle.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
         ),
@@ -205,10 +271,20 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
         Row(
           children: [
             Expanded(
-              child: _infoRow("CC", widget.bike.cc, labelStyle, valueStyle),
+              child: _infoRow(
+                "CC",
+                widget.bike.engineSizeFormatted,
+                labelStyle,
+                valueStyle,
+              ),
             ),
             Expanded(
-              child: _infoRow("Yıl", widget.bike.year, labelStyle, valueStyle),
+              child: _infoRow(
+                "Yıl",
+                widget.bike.year?.toString() ?? "-",
+                labelStyle,
+                valueStyle,
+              ),
             ),
           ],
         ),
@@ -218,7 +294,7 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
             Expanded(
               child: _infoRow(
                 "Renk",
-                widget.bike.color,
+                widget.bike.color ?? "-",
                 labelStyle,
                 valueStyle,
               ),
@@ -226,19 +302,20 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
             Expanded(
               child: _infoRow(
                 "Plaka",
-                widget.bike.plate,
+                widget.bike.licensePlate ?? "-",
                 labelStyle,
                 valueStyle,
               ),
             ),
           ],
         ),
-        if (widget.bike.description.isNotEmpty) ...[
+        if (widget.bike.description != null &&
+            widget.bike.description!.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text("Açıklama", style: labelStyle),
           const SizedBox(height: 4),
           Text(
-            widget.bike.description,
+            widget.bike.description!,
             style: AppTextStyles.thin.copyWith(fontSize: 14),
           ),
         ],

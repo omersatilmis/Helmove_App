@@ -47,6 +47,47 @@ class ProfileEntity {
   /// Has location data
   bool get hasLocation => latitude != null && longitude != null;
 
+  /// CopyWith for optimistic updates
+  ProfileEntity copyWith({
+    int? id,
+    String? username,
+    String? email,
+    String? firstName,
+    String? lastName,
+    String? bio,
+    String? phoneNumber,
+    String? address,
+    String? city,
+    String? region,
+    String? profileImageUrl,
+    bool? shareLocation,
+    bool? showProfileToOthers,
+    double? latitude,
+    double? longitude,
+    DateTime? lastSeen,
+    bool? isOnline,
+  }) {
+    return ProfileEntity(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      bio: bio ?? this.bio,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      region: region ?? this.region,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      shareLocation: shareLocation ?? this.shareLocation,
+      showProfileToOthers: showProfileToOthers ?? this.showProfileToOthers,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      lastSeen: lastSeen ?? this.lastSeen,
+      isOnline: isOnline ?? this.isOnline,
+    );
+  }
+
   @override
   String toString() {
     return 'ProfileEntity(id: $id, username: $username, fullName: $fullName)';

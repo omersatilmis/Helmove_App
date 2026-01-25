@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart'; // 👈 Import burada
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -26,6 +29,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _twitterController;
 
   bool _isChanged = false; // Kaydet butonu kontrolü
+  File? _localCoverPhoto; // Arkaplan için yerel (geçici) dosya
 
   @override
   void initState() {
@@ -65,11 +69,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final p = context.read<ProfileProvider>();
     // Herhangi bir alan ilk halinden farklı mı?
     final changed =
-        _firstNameController.text != (p.firstName ?? "") ||
-        _lastNameController.text != (p.lastName ?? "") ||
-        _usernameController.text != (p.username ?? "") ||
+        _firstNameController.text != p.firstName ||
+        _lastNameController.text != p.lastName ||
+        _usernameController.text != p.username ||
         _phoneController.text != (p.phoneNumber ?? "") ||
-        _emailController.text != (p.email ?? "") ||
+        _emailController.text != p.email ||
         _bioController.text != (p.bio ?? "") ||
         _cityController.text != (p.city ?? "") ||
         _regionController.text != (p.region ?? "");
@@ -99,16 +103,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(
-            Icons.close_rounded,
-          ), // Çıkış hissi için X veya geri oku
-          onPressed: () => Navigator.pop(context),
+        // 🔥 Custom Frosted Button (Geri Tuşu)
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0), // Kenarlardan nefes payı
+          child: AppFrostedButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: () => Navigator.pop(context),
+          ),
         ),
+
         title: Text("Profili Düzenle", style: AppTextStyles.h3),
         centerTitle: true,
+
         actions: [
           TextButton(
+            // Değişiklik varsa fonksiyon çalışır, yoksa null (tıklanmaz)
             onPressed: _isChanged ? () => _saveProfile() : null,
             child: Text(
               "Kaydet",
@@ -124,6 +133,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           const SizedBox(width: 8),
         ],
       ),
+
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -249,6 +259,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Widget _buildPhotoSection(ThemeData theme) {
+    // Profil fotosu provider'dan (güncellenirse orası değişiyor)
+    final provider = context.watch<ProfileProvider>();
+    final profileUrl = provider.profileImageUrl;
+
     return SizedBox(
       height: 200,
       child: Stack(
@@ -258,17 +272,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Positioned.fill(
             bottom: 40,
             child: GestureDetector(
-              onTap: () {}, // TODO: ImagePicker
+              onTap: () => _pickImage(isProfilePhoto: false),
               child: Container(
                 color: theme.colorScheme.surfaceContainerHighest,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Image.asset(
-                      'assets/images/profile_bg_photo.png',
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
+                    if (_localCoverPhoto != null)
+                      Image.file(
+                        _localCoverPhoto!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      )
+                    else
+                      Image.asset(
+                        'assets/images/profile_bg_photo.png',
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      ),
                     Container(color: Colors.black26),
                     const Icon(
                       Icons.camera_enhance_outlined,
@@ -282,14 +303,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
           // Profil Fotoğrafı
           GestureDetector(
-            onTap: () {}, // TODO: ImagePicker
+            onTap: () => _pickImage(isProfilePhoto: true),
             child: CircleAvatar(
               radius: 55,
               backgroundColor: theme.scaffoldBackgroundColor,
-              child: const CircleAvatar(
+              child: CircleAvatar(
                 radius: 50,
-                backgroundImage: AssetImage('assets/icons/ic_profile.png'),
-                child: Icon(Icons.add_a_photo, color: Colors.white, size: 24),
+                backgroundImage: profileUrl != null
+                    ? NetworkImage(profileUrl) as ImageProvider
+                    : const AssetImage('assets/icons/ic_profile.png'),
+                child: const Icon(
+                  Icons.add_a_photo,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
             ),
           ),
@@ -298,10 +325,63 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  void _saveProfile() {
-    // API Call: PUT /api/Profile/me
-    print("Kaydediliyor...");
-    // İşlem bitince:
-    setState(() => _isChanged = false);
+  Future<void> _pickImage({required bool isProfilePhoto}) async {
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null && mounted) {
+        if (isProfilePhoto) {
+          // Profil fotosu -> Backend'e hemen yükle
+          final provider = context.read<ProfileProvider>();
+          final success = await provider.updateProfilePicture(pickedFile.path);
+          if (success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profil fotoğrafı güncellendi')),
+            );
+          }
+        } else {
+          // Kapak fotosu -> Sadece local göster (Backend entity'de yoksa)
+          setState(() {
+            _localCoverPhoto = File(pickedFile.path);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Kapak fotoğrafı seçildi (Önizleme)')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Resim seçme hatası: $e");
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    // 1. Klavyeyi kapat
+    FocusScope.of(context).unfocus();
+
+    // 2. Provider'a update isteği at
+    final provider = context.read<ProfileProvider>();
+    final success = await provider.updateProfile(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      bio: _bioController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      city: _cityController.text.trim(),
+      region: _regionController.text.trim(),
+    );
+
+    if (success && mounted) {
+      setState(() => _isChanged = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil başarıyla güncellendi')),
+      );
+      Navigator.pop(context); // İsteğe göre kapatabiliriz veya kalabiliriz
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.errorMessage ?? 'Bir hata oluştu'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

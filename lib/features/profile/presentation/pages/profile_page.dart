@@ -12,7 +12,14 @@ import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_ta
 // 🔥 PROVIDER IMPORTLARI
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile.dart';
+
+// 🔥 FRIENDSHIP BLOC IMPORTLARI
+import 'package:flutter_bloc/flutter_bloc.dart'
+    hide ReadContext, WatchContext, SelectContext;
+import 'package:moto_comm_app_1/core/di/injection_container.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_event.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_state.dart';
 
 class ProfilePage extends StatefulWidget {
   // Opsiyonel: Eğer dışarıdan bir ID ile gelindiyse bu parametre dolu olur.
@@ -36,6 +43,9 @@ class _ProfilePageState extends State<ProfilePage> {
   double _statsOpacity = 1.0;
   bool _showPinnedTitle = false;
 
+  // 🔥 Friendship Stats Bloc
+  FriendshipListBloc? _friendshipBloc;
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +65,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (isMe) {
         context.read<ProfileProvider>().loadProfile();
+        // 🔥 Kendi profilimizse arkadaşlık istatistiklerini yükle
+        _friendshipBloc = sl<FriendshipListBloc>()
+          ..add(LoadFriendshipStatsEvent());
       } else {
         // Başkasının profili, ID'yi int'e çevirip yükle
         final userIdInt = int.tryParse(widget.userId!);
@@ -104,9 +117,69 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  // 🔥 ProfileInfo'yu Bloc ile sarmalayan yardımcı metod
+  Widget _buildProfileInfoWithBloc({
+    required String firstName,
+    required String lastName,
+    required String username,
+    required bool isOwnProfile,
+  }) {
+    // Eğer kendi profilimiz değilse veya bloc yoksa standart widget döndür
+    if (!isOwnProfile || _friendshipBloc == null) {
+      return ProfileInfo(
+        firstName: firstName,
+        lastName: lastName,
+        username: username,
+        isOwnProfile: isOwnProfile,
+        onFriendsTap: () => context.push('/friends'),
+      );
+    }
+
+    // Kendi profilimizse BlocBuilder ile dinamik arkadaş sayısı göster
+    return BlocBuilder<FriendshipListBloc, FriendshipListState>(
+      bloc: _friendshipBloc,
+      builder: (context, state) {
+        String friendCount = "0";
+        if (state is FriendshipStatsLoaded) {
+          friendCount = state.stats.totalFriends.toString();
+        }
+
+        return ProfileInfo(
+          firstName: firstName,
+          lastName: lastName,
+          username: username,
+          isOwnProfile: isOwnProfile,
+          friendCount: friendCount,
+          onFriendsTap: () => context.push('/friends'),
+          onRatingTap: () {
+            // TODO: Rating sayfasına yönlendir
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Rating sayfası yakında...")),
+            );
+          },
+          onFollowersTap: () {
+            // TODO: Followers sayfasına yönlendir
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Takipçiler sayfası yakında...")),
+            );
+          },
+          onFollowingTap: () {
+            // TODO: Following sayfasına yönlendir
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Takip edilenler sayfası yakında..."),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
+    _friendshipBloc?.close();
     super.dispose();
   }
 
@@ -217,7 +290,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     padding: const EdgeInsets.only(bottom: 12),
 
                                     // 🔥 5. isOwnProfile değerini widget'a gönder
-                                    child: ProfileInfo(
+                                    child: _buildProfileInfoWithBloc(
                                       firstName: firstName,
                                       lastName: lastName,
                                       username: username,
@@ -336,21 +409,6 @@ class _ProfilePageState extends State<ProfilePage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       items: <PopupMenuEntry<String>>[
         PopupMenuItem<String>(
-          value: 'edit',
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, color: theme.colorScheme.onSurface),
-              const SizedBox(width: 12),
-              Text(
-                "Profili Düzenle",
-                style: AppTextStyles.medium.copyWith(
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-        PopupMenuItem<String>(
           value: 'share',
           child: Row(
             children: [
@@ -383,10 +441,8 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ],
     ).then((value) {
-      if (value == 'edit') {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const EditProfilePage()));
+      if (value == 'share') {
+        // TODO: Profil paylaşımı implementasyonu
       } else if (value == 'settings') {
         context.push('/settings');
       }

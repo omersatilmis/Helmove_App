@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/about/about_section.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/about/bike_card_widget.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/about/bike_model.dart';
+import 'package:moto_comm_app_1/features/profile/domain/entities/motorcycle_entity.dart';
+import 'package:provider/provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 
 class ProfileAboutTab extends StatefulWidget {
   const ProfileAboutTab({super.key});
@@ -12,22 +14,29 @@ class ProfileAboutTab extends StatefulWidget {
 }
 
 class _ProfileAboutTabState extends State<ProfileAboutTab> {
-  // 🔥 Motorların tutulduğu ana liste burada kalmalı
-  final List<BikeModel> _myBikes = [];
+  // Yeni motor ekleniyor mu? (Boş kart göstermek için)
+  bool _isAddingNew = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Motorları yükle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileProvider>().loadMotorcycles();
+    });
+  }
 
   // Yeni motor ekleme fonksiyonu
   void _addNewBike() {
     setState(() {
-      _myBikes.add(
-        BikeModel(id: DateTime.now().millisecondsSinceEpoch.toString()),
-      );
+      _isAddingNew = true;
     });
   }
 
-  // Listeden motor silme fonksiyonu
-  void _removeBike(String id) {
+  // Yeni ekleme iptal edilirse
+  void _cancelAddNew() {
     setState(() {
-      _myBikes.removeWhere((bike) => bike.id == id);
+      _isAddingNew = false;
     });
   }
 
@@ -66,16 +75,38 @@ class _ProfileAboutTabState extends State<ProfileAboutTab> {
               const SizedBox(height: 16),
 
               // 3. BÖLÜM: Motor Kartları Listesi
-              // Spread operatörü (...) ile listeyi buraya dağıtıyoruz
-              ..._myBikes.map((bike) {
-                return BikeCardWidget(
-                  key: ValueKey(bike.id),
-                  bike: bike,
-                  // Eğer marka model boşsa (yeni eklenmişse) edit modunda başlasın
-                  initialEdit: bike.makeModel.isEmpty,
-                  onDelete: () => _removeBike(bike.id),
-                );
-              }),
+              Consumer<ProfileProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading && provider.motorcycles.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  return Column(
+                    children: [
+                      // Varsa Listelenen Motorlar
+                      ...provider.motorcycles.map((bike) {
+                        return BikeCardWidget(
+                          key: ValueKey(bike.id ?? bike.hashCode),
+                          bike: bike,
+                          // Var olan motor silinince provider'dan sil
+                          onDelete: () {}, // BikeCard içinde yönetiliyor
+                        );
+                      }),
+
+                      // Yeni Eklenen (Henüz kaydedilmemiş) Boş Kart
+                      if (_isAddingNew)
+                        BikeCardWidget(
+                          key: const ValueKey("new_bike"),
+                          bike: const MotorcycleEntity(brand: "", model: ""),
+                          initialEdit: true,
+                          onDelete: _cancelAddNew,
+                          onSave:
+                              _cancelAddNew, // 🔥 Kayıt başarılı olunca da kapat (çünkü liste yenilendi)
+                        ),
+                    ],
+                  );
+                },
+              ),
 
               const SizedBox(height: 20),
 

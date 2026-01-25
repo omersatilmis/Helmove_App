@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_tile.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
+import 'package:go_router/go_router.dart';
 
 class AccountSection extends StatelessWidget {
   const AccountSection({super.key});
@@ -17,7 +18,7 @@ class AccountSection extends StatelessWidget {
           title: "Profili Düzenle",
           subtitle: "Ad, Soyad, Fotoğraf",
           onTap: () {
-            // context.push('/edit-profile');
+            context.push('/edit-profile');
           },
         ),
 
@@ -27,7 +28,7 @@ class AccountSection extends StatelessWidget {
           title: "Garajım",
           subtitle: "Motorlarını ekle ve yönet",
           onTap: () {
-            // context.push('/my-garage');
+            context.push('/my-garage');
           },
         ),
 

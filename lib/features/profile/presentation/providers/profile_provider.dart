@@ -3,6 +3,8 @@ import 'package:moto_comm_app_1/features/profile/domain/entities/profile_entity.
 import 'package:moto_comm_app_1/features/profile/domain/entities/motorcycle_entity.dart';
 import 'package:moto_comm_app_1/features/profile/domain/repositories/profile_repository.dart';
 import 'package:moto_comm_app_1/core/utils/app_logger.dart';
+import 'package:moto_comm_app_1/core/network/network_service.dart';
+import 'package:moto_comm_app_1/core/utils/image_compressor.dart';
 
 /// ProfileProvider - Profil verilerini yönetir
 class ProfileProvider extends ChangeNotifier {
@@ -69,7 +71,7 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
-  /// Profili günceller
+  /// Profili günceller (Optimistic UI ile)
   Future<bool> updateProfile({
     String? firstName,
     String? lastName,
@@ -81,9 +83,33 @@ class ProfileProvider extends ChangeNotifier {
     bool? shareLocation,
     bool? showProfileToOthers,
   }) async {
-    _setLoading(true);
-    clearError();
+    // 1. Bağlantı kontrolü
+    if (!await NetworkService().checkConnection()) {
+      _setError('İnternet bağlantısı yok');
+      return false;
+    }
 
+    // 2. Eski profili sakla (geri dönüş için)
+    final oldProfile = _profile;
+
+    // 3. Optimistic Update: UI'yı hemen güncelle
+    if (_profile != null) {
+      _profile = _profile!.copyWith(
+        firstName: firstName ?? _profile!.firstName,
+        lastName: lastName ?? _profile!.lastName,
+        bio: bio ?? _profile!.bio,
+        phoneNumber: phoneNumber ?? _profile!.phoneNumber,
+        address: address ?? _profile!.address,
+        city: city ?? _profile!.city,
+        region: region ?? _profile!.region,
+        shareLocation: shareLocation ?? _profile!.shareLocation,
+        showProfileToOthers:
+            showProfileToOthers ?? _profile!.showProfileToOthers,
+      );
+      notifyListeners();
+    }
+
+    // 4. Backend'e gönder
     try {
       _profile = await _profileRepository.updateProfile(
         firstName: firstName,
@@ -96,22 +122,37 @@ class ProfileProvider extends ChangeNotifier {
         shareLocation: shareLocation,
         showProfileToOthers: showProfileToOthers,
       );
-      _setLoading(false);
+      notifyListeners();
       return true;
     } catch (e) {
+      // 5. Hata durumunda geri al
+      _profile = oldProfile;
       _setError(e.toString());
-      _setLoading(false);
+      notifyListeners();
       return false;
     }
   }
 
-  /// Profil resmini günceller
+  /// Profil resmini günceller (Sıkıştırma ile)
   Future<bool> updateProfilePicture(String imagePath) async {
+    // 1. Bağlantı kontrolü
+    if (!await NetworkService().checkConnection()) {
+      _setError('İnternet bağlantısı yok');
+      return false;
+    }
+
     _setLoading(true);
     clearError();
 
     try {
-      await _profileRepository.updateProfilePicture(imagePath);
+      // 2. Resmi sıkıştır
+      final compressedPath = await ImageCompressor.compress(
+        imagePath: imagePath,
+      );
+      AppLogger.info('ProfileProvider: Image compressed, uploading...');
+
+      // 3. Yükle
+      await _profileRepository.updateProfilePicture(compressedPath);
       await loadProfile(); // Profili yenile
       _setLoading(false);
       return true;
@@ -192,6 +233,49 @@ class ProfileProvider extends ChangeNotifier {
     try {
       await _profileRepository.deleteMotorcycle(motorcycleId);
       _motorcycles.removeWhere((m) => m.id == motorcycleId);
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Motosikleti günceller
+  Future<bool> updateMotorcycle({
+    required int motorcycleId,
+    required String brand,
+    required String model,
+    int? year,
+    String? licensePlate,
+    String? color,
+    int? engineSize,
+    String? description,
+    bool isPrimary = false,
+  }) async {
+    _setLoading(true);
+    clearError();
+
+    try {
+      final updatedBike = await _profileRepository.updateMotorcycle(
+        motorcycleId: motorcycleId,
+        brand: brand,
+        model: model,
+        year: year,
+        licensePlate: licensePlate,
+        color: color,
+        engineSize: engineSize,
+        description: description,
+        isPrimary: isPrimary,
+      );
+
+      // Listeyi güncelle
+      final index = _motorcycles.indexWhere((m) => m.id == motorcycleId);
+      if (index != -1) {
+        _motorcycles[index] = updatedBike;
+      }
       _setLoading(false);
       notifyListeners();
       return true;

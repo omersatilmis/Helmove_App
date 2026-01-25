@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile.dart';
 
 class ProfileInfo extends StatelessWidget {
   final String firstName;
@@ -9,12 +10,24 @@ class ProfileInfo extends StatelessWidget {
   // 🔥 YENİ: Bu profil oturum açan kişiye mi ait?
   final bool isOwnProfile;
 
+  // 🔥 YENİ: İstatistik verileri ve callback'ler
+  final String? friendCount;
+  final VoidCallback? onFriendsTap;
+  final VoidCallback? onRatingTap;
+  final VoidCallback? onFollowersTap;
+  final VoidCallback? onFollowingTap;
+
   const ProfileInfo({
     super.key,
     required this.firstName,
     required this.lastName,
     required this.username,
     this.isOwnProfile = false, // Varsayılan olarak başkası
+    this.friendCount,
+    this.onFriendsTap,
+    this.onRatingTap,
+    this.onFollowersTap,
+    this.onFollowingTap,
   });
 
   @override
@@ -29,7 +42,13 @@ class ProfileInfo extends StatelessWidget {
           username: username,
         ),
 
-        const _StatsSection(),
+        _StatsSection(
+          friendCount: friendCount ?? "0",
+          onFriendsTap: onFriendsTap,
+          onRatingTap: onRatingTap,
+          onFollowersTap: onFollowersTap,
+          onFollowingTap: onFollowingTap,
+        ),
 
         // 🔥 Durumu alt widget'a iletiyoruz
         _ActionButtonsSection(isOwnProfile: isOwnProfile),
@@ -135,18 +154,31 @@ class _NameSection extends StatelessWidget {
 }
 
 class _StatsSection extends StatelessWidget {
-  const _StatsSection();
-  // ... (İstatistikler aynen kalıyor)
+  final String friendCount;
+  final VoidCallback? onFriendsTap;
+  final VoidCallback? onRatingTap;
+  final VoidCallback? onFollowersTap;
+  final VoidCallback? onFollowingTap;
+
+  const _StatsSection({
+    required this.friendCount,
+    this.onFriendsTap,
+    this.onRatingTap,
+    this.onFollowersTap,
+    this.onFollowingTap,
+  });
+
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 40),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _StatItem("256790", "Rating"),
-          _StatItem("1.5K", "Followers"),
-          _StatItem("1.2K", "Following"),
+          _StatItem("256790", "Rating", onTap: onRatingTap),
+          _StatItem(friendCount, "Friends", onTap: onFriendsTap),
+          _StatItem("1.5K", "Followers", onTap: onFollowersTap),
+          _StatItem("1.2K", "Following", onTap: onFollowingTap),
         ],
       ),
     );
@@ -156,30 +188,39 @@ class _StatsSection extends StatelessWidget {
 class _StatItem extends StatelessWidget {
   final String count;
   final String label;
-  const _StatItem(this.count, this.label);
+  final VoidCallback? onTap;
+
+  const _StatItem(this.count, this.label, {this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      children: [
-        Text(
-          count,
-          style: AppTextStyles.h3.copyWith(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: theme.colorScheme.onSurface,
-          ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Column(
+          children: [
+            Text(
+              count,
+              style: AppTextStyles.h3.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: AppTextStyles.bodySmall.copyWith(
+                fontSize: 13,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: AppTextStyles.bodySmall.copyWith(
-            fontSize: 13,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -214,7 +255,9 @@ class _ActionButtonsSection extends StatelessWidget {
       Expanded(
         child: ElevatedButton.icon(
           onPressed: () {
-            // context.push('/edit-profile');
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const EditProfilePage()));
           },
           icon: const Icon(Icons.edit_outlined, size: 20),
           label: const Text(

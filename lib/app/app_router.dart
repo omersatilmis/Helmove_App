@@ -14,10 +14,12 @@ import 'package:moto_comm_app_1/features/communication/presentation/pages/commun
 
 // Drawer Sayfalarının Importları
 import 'package:moto_comm_app_1/features/profile/presentation/pages/profile_page.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile.dart';
 import 'package:moto_comm_app_1/features/plan/presentation/pages/plan_page.dart';
 import 'package:moto_comm_app_1/features/communities/presentation/pages/communities_page.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/pages/settings_page.dart';
 import 'package:moto_comm_app_1/features/help/presentation/pages/help_page.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/pages/my_garage_page.dart';
 
 // Homepage den girilen sayfaların Importları
 import 'package:moto_comm_app_1/features/messages/presentation/pages/messages_page.dart';
@@ -25,6 +27,9 @@ import 'package:moto_comm_app_1/features/notification/presentation/pages/notific
 
 // Profile Jots Tabından açılan sayfa
 import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/jots/create_jots.dart';
+
+// Arkadaşlık sayfası
+import 'package:moto_comm_app_1/features/friendship/presentation/pages/friends_page.dart';
 
 // --- Placeholder (Hala yapmadığımız yan sayfalar için kalsın) ---
 class PlaceholderScreen extends StatelessWidget {
@@ -89,6 +94,10 @@ GoRouter createRouter(AuthProvider authProvider) {
         path: '/profile',
         builder: (context, state) => const ProfilePage(),
       ),
+      GoRoute(
+        path: '/edit-profile',
+        builder: (context, state) => const EditProfilePage(),
+      ),
       GoRoute(path: '/plans', builder: (context, state) => const PlanPage()),
       GoRoute(
         path: '/communities',
@@ -97,6 +106,10 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: '/my-garage',
+        builder: (context, state) => const MyGaragePage(),
       ),
       GoRoute(path: '/help', builder: (context, state) => const HelpPage()),
 
@@ -114,6 +127,12 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/create_jots',
         builder: (context, state) => const CreateJotsPage(),
+      ),
+
+      // Arkadaşlık sayfası
+      GoRoute(
+        path: '/friends',
+        builder: (context, state) => const FriendsPage(),
       ),
 
       // --- 2. BOTTOM BARLI SAYFALAR ---
