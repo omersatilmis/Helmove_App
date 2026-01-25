@@ -1,10 +1,9 @@
-import 'package:dio/dio.dart';
-import '../../../../core/network/api_endpoints.dart';
+import '../../domain/entities/friendship_status.dart';
+import '../api/friendship_api.dart';
 import '../dto/friend_request_dto.dart';
 import '../dto/friend_stats_dto.dart';
 import '../dto/friend_user_dto.dart';
 import '../dto/friendship_dto.dart';
-import '../../domain/entities/friendship_status.dart';
 
 abstract class FriendshipRemoteDataSource {
   Future<FriendshipModel> sendFriendRequest(int targetUserId, String message);
@@ -26,121 +25,77 @@ abstract class FriendshipRemoteDataSource {
 }
 
 class FriendshipRemoteDataSourceImpl implements FriendshipRemoteDataSource {
-  final Dio dio;
+  final FriendshipApi api;
 
-  FriendshipRemoteDataSourceImpl(this.dio);
+  FriendshipRemoteDataSourceImpl(this.api);
 
   @override
-  Future<FriendshipModel> sendFriendRequest(
-    int targetUserId,
-    String message,
-  ) async {
-    final response = await dio.post(
-      ApiEndpoints.sendFriendRequest,
-      data: {'targetUserId': targetUserId, 'message': message},
-    );
-    return FriendshipModel.fromJson(response.data);
+  Future<FriendshipModel> sendFriendRequest(int targetUserId, String message) {
+    return api.sendFriendRequest(targetUserId, message);
   }
 
   @override
-  Future<FriendshipModel> acceptFriendRequest(int friendshipId) async {
-    final response = await dio.post(
-      ApiEndpoints.acceptFriendRequest(friendshipId),
-    );
-    return FriendshipModel.fromJson(response.data);
+  Future<FriendshipModel> acceptFriendRequest(int friendshipId) {
+    return api.acceptFriendRequest(friendshipId);
   }
 
   @override
-  Future<FriendshipModel> rejectFriendRequest(int friendshipId) async {
-    final response = await dio.post(
-      ApiEndpoints.rejectFriendRequest(friendshipId),
-    );
-    return FriendshipModel.fromJson(response.data);
+  Future<FriendshipModel> rejectFriendRequest(int friendshipId) {
+    return api.rejectFriendRequest(friendshipId);
   }
 
   @override
-  Future<FriendshipModel> removeFriend(int friendId) async {
-    final response = await dio.delete(ApiEndpoints.removeFriend(friendId));
-    return FriendshipModel.fromJson(response.data);
+  Future<FriendshipModel> removeFriend(int friendId) {
+    return api.removeFriend(friendId);
   }
 
   @override
-  Future<FriendshipModel> blockUser(int targetUserId) async {
-    final response = await dio.post(ApiEndpoints.blockUser(targetUserId));
-    return FriendshipModel.fromJson(response.data);
+  Future<FriendshipModel> blockUser(int targetUserId) {
+    return api.blockUser(targetUserId);
   }
 
   @override
-  Future<FriendshipModel> unblockUser(int targetUserId) async {
-    final response = await dio.post(ApiEndpoints.unblockUser(targetUserId));
-    return FriendshipModel.fromJson(response.data);
+  Future<FriendshipModel> unblockUser(int targetUserId) {
+    return api.unblockUser(targetUserId);
   }
 
   @override
-  Future<List<FriendUserModel>> getMyFriends() async {
-    final response = await dio.get(ApiEndpoints.myFriends);
-    final data = response.data;
-    // API Map döndürüyorsa (orn: {"data": [...]}) listeyi çıkar
-    final List list = data is List
-        ? data
-        : (data['data'] ?? data['items'] ?? []);
-    return list.map((e) => FriendUserModel.fromJson(e)).toList();
+  Future<List<FriendUserModel>> getMyFriends() {
+    return api.getMyFriends();
   }
 
   @override
-  Future<List<FriendRequestModel>> getPendingRequests() async {
-    final response = await dio.get(ApiEndpoints.pendingRequests);
-    final data = response.data;
-    final List list = data is List
-        ? data
-        : (data['data'] ?? data['items'] ?? []);
-    return list.map((e) => FriendRequestModel.fromJson(e)).toList();
+  Future<List<FriendRequestModel>> getPendingRequests() {
+    return api.getPendingRequests();
   }
 
   @override
-  Future<List<FriendRequestModel>> getSentRequests() async {
-    final response = await dio.get(ApiEndpoints.sentRequests);
-    final data = response.data;
-    final List list = data is List
-        ? data
-        : (data['data'] ?? data['items'] ?? []);
-    return list.map((e) => FriendRequestModel.fromJson(e)).toList();
+  Future<List<FriendRequestModel>> getSentRequests() {
+    return api.getSentRequests();
   }
 
   @override
-  Future<FriendStatsModel> getFriendshipStats() async {
-    final response = await dio.get(ApiEndpoints.friendshipStats);
-    return FriendStatsModel.fromJson(response.data);
+  Future<FriendStatsModel> getFriendshipStats() {
+    return api.getFriendshipStats();
   }
 
   @override
-  Future<List<FriendUserModel>> getMutualFriends(int targetUserId) async {
-    final response = await dio.get(ApiEndpoints.mutualFriends(targetUserId));
-    return (response.data as List)
-        .map((e) => FriendUserModel.fromJson(e))
-        .toList();
+  Future<List<FriendUserModel>> getMutualFriends(int targetUserId) {
+    return api.getMutualFriends(targetUserId);
   }
 
   @override
-  Future<List<FriendUserModel>> searchFriends(String query) async {
-    final response = await dio.get(
-      ApiEndpoints.searchFriends,
-      queryParameters: {'searchTerm': query},
-    );
-    return (response.data as List)
-        .map((e) => FriendUserModel.fromJson(e))
-        .toList();
+  Future<List<FriendUserModel>> searchFriends(String query) {
+    return api.searchFriends(query);
   }
 
   @override
-  Future<bool> checkAreFriends(int targetUserId) async {
-    final response = await dio.get(ApiEndpoints.areFriends(targetUserId));
-    return response.data as bool;
+  Future<bool> checkAreFriends(int targetUserId) {
+    return api.checkAreFriends(targetUserId);
   }
 
   @override
-  Future<FriendshipStatus> getFriendshipStatus(int targetUserId) async {
-    final response = await dio.get(ApiEndpoints.friendshipStatus(targetUserId));
-    return friendshipStatusFromString(response.data.toString());
+  Future<FriendshipStatus> getFriendshipStatus(int targetUserId) {
+    return api.getFriendshipStatus(targetUserId);
   }
 }

@@ -31,8 +31,8 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   @override
   Widget build(BuildContext context) {
     final profileProvider = context.watch<ProfileProvider>();
-    final firstName = profileProvider.firstName ?? 'Sürücü';
-    final lastName = profileProvider.lastName ?? '';
+    final firstName = profileProvider.firstName;
+    final lastName = profileProvider.lastName;
     final profileImage =
         profileProvider.profileImageUrl ?? 'https://i.pravatar.cc/150?img=11';
 
@@ -68,7 +68,9 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
                         style: AppTextStyles.regular.copyWith(
                           fontSize: 13,
                           fontWeight: FontWeight.w300,
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.7,
+                          ),
                         ),
                       ),
                       Text(
@@ -123,10 +125,10 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               // Hafif transparan marka rengi
-              color: theme.colorScheme.primary.withOpacity(0.08),
+              color: theme.colorScheme.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: theme.colorScheme.primary.withOpacity(0.15),
+                color: theme.colorScheme.primary.withValues(alpha: 0.15),
               ),
             ),
             child: Row(

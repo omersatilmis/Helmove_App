@@ -16,6 +16,7 @@ import '../../features/profile/data/repositories/profile_repository_impl.dart';
 import '../../features/profile/domain/repositories/profile_repository.dart';
 
 // Friendship Feature
+import '../../features/friendship/data/api/friendship_api.dart';
 import '../../features/friendship/data/datasources/friendship_remote_datasource.dart';
 import '../../features/friendship/data/repositories/friendship_repository_impl.dart';
 import '../../features/friendship/domain/repositories/friendship_repository.dart';
@@ -35,6 +36,23 @@ import '../../features/friendship/domain/usecases/send_friend_request_usecase.da
 import '../../features/friendship/domain/usecases/unblock_user_usecase.dart';
 import '../../features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
 import '../../features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
+
+// Messages Feature
+import '../../features/messages/data/datasources/message_remote_data_source.dart';
+import '../../features/messages/data/repositories/message_repository_impl.dart';
+import '../../features/messages/domain/repositories/message_repository.dart';
+import '../../features/messages/domain/usecases/delete_conversation_usecase.dart';
+import '../../features/messages/domain/usecases/delete_message_usecase.dart';
+import '../../features/messages/domain/usecases/edit_message_usecase.dart';
+import '../../features/messages/domain/usecases/get_conversation_messages_usecase.dart';
+import '../../features/messages/domain/usecases/get_conversations_usecase.dart';
+import '../../features/messages/domain/usecases/get_unread_count_usecase.dart';
+import '../../features/messages/domain/usecases/mark_as_read_usecase.dart';
+import '../../features/messages/domain/usecases/mark_conversation_as_read_usecase.dart';
+
+import '../../features/messages/domain/usecases/send_message_usecase.dart';
+import '../../features/messages/presentation/bloc/conversations/conversations_bloc.dart';
+import '../../features/messages/presentation/bloc/chat/chat_bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -79,6 +97,10 @@ Future<void> init() async {
   );
 
   //! Friendship Feature
+  //! Friendship Feature
+  // API
+  sl.registerLazySingleton(() => FriendshipApi(sl()));
+
   // Data Sources
   sl.registerLazySingleton<FriendshipRemoteDataSource>(
     () => FriendshipRemoteDataSourceImpl(sl()),
@@ -125,6 +147,47 @@ Future<void> init() async {
       getStats: sl(),
       getMutualFriends: sl(),
       searchFriends: sl(),
+    ),
+  );
+
+  //! Messages Feature
+  // Data Sources
+  sl.registerLazySingleton<MessageRemoteDataSource>(
+    () => MessageRemoteDataSourceImpl(sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<MessageRepository>(
+    () => MessageRepositoryImpl(sl()),
+  );
+
+  // UseCases
+  sl.registerLazySingleton(() => SendMessageUseCase(sl()));
+  sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
+  sl.registerLazySingleton(() => GetConversationMessagesUseCase(sl()));
+  sl.registerLazySingleton(() => MarkAsReadUseCase(sl()));
+  sl.registerLazySingleton(() => MarkConversationAsReadUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteMessageUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteConversationUseCase(sl()));
+  sl.registerLazySingleton(() => EditMessageUseCase(sl()));
+  sl.registerLazySingleton(() => GetUnreadCountUseCase(sl()));
+
+  // Blocs
+  sl.registerFactory(
+    () => ConversationsBloc(
+      getConversations: sl(),
+      deleteConversation: sl(),
+      markConversationAsRead: sl(),
+      getUnreadCount: sl(),
+    ),
+  );
+
+  sl.registerFactory(
+    () => ChatBloc(
+      getMessages: sl(),
+      sendMessage: sl(),
+      editMessage: sl(),
+      deleteMessage: sl(),
     ),
   );
 }

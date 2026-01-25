@@ -26,30 +26,20 @@ class AppFrostedButton extends StatelessWidget {
     final backgroundColor = isDark
         ? const Color(0x9028140A) // Dark: %50 Siyah (Koyu Buzlu Cam)
         : const Color.fromARGB(
-            118,
-            160,
-            160,
-            160,
+            127,
+            255,
+            255,
+            255,
           ); // Light: %70 Beyaz (Sütlü Buzlu Cam)
 
     // Çerçeve (Border) Rengi
     final borderColor = isDark
-        ? const Color.fromARGB(
-            174,
-            255,
-            255,
-            255,
-          ) // Dark: %40 Beyaz (Net görünen beyaz çizgi)
-        : const Color.fromARGB(
-            185,
-            24,
-            23,
-            23,
-          ); // Light: %10 Siyah (Kibar gri çizgi)
+        ? const Color(0xADFFFFFF) // Dark: %40 Beyaz (Net görünen beyaz çizgi)
+        : const Color(0xB8181717); // Light: %10 Siyah (Kibar gri çizgi)
 
     // İkon Rengi
     final iconColor = isDark
-        ? const Color.fromARGB(126, 91, 88, 84) // Dark: Beyaz İkon
+        ? const Color(0xFFFFFFFF) // Dark: Beyaz İkon
         : const Color(0xFF1F1F1F); // Light: Koyu Gri İkon
 
     // Köşe Yuvarlaklığı (Senin beğendiğin ayar)
