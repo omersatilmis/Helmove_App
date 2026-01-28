@@ -64,7 +64,13 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     };
 
     final response = await dio.post(MessageEndpoints.send, data: body);
-    return MessageModel.fromJson(response.data);
+
+    var data = response.data;
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      data = data['data'];
+    }
+
+    return MessageModel.fromJson(data);
   }
 
   @override
@@ -73,13 +79,28 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     int page = 1,
     int pageSize = 50,
   }) async {
-    final response = await dio.get(
-      MessageEndpoints.conversation(otherUserId),
-      queryParameters: {'page': page, 'pageSize': pageSize},
-    );
+    try {
+      final url = MessageEndpoints.conversation(otherUserId);
+      print('GET Conversation URL: $url');
+      print('Params: page=$page, pageSize=$pageSize');
 
-    final List list = response.data is List ? response.data : [];
-    return list.map((e) => MessageModel.fromJson(e)).toList();
+      final response = await dio.get(
+        url,
+        queryParameters: {'page': page, 'pageSize': pageSize},
+      );
+
+      var data = response.data;
+      if (data is Map<String, dynamic> && data.containsKey('data')) {
+        data = data['data'];
+      }
+
+      final List list = data is List ? data : [];
+      return list.map((e) => MessageModel.fromJson(e)).toList();
+    } on DioException catch (e) {
+      print('GetConversation Error: ${e.response?.statusCode}');
+      print('Error Data: ${e.response?.data}');
+      rethrow;
+    }
   }
 
   @override
@@ -91,7 +112,12 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   Future<List<ConversationModel>> getConversations() async {
     final response = await dio.get(MessageEndpoints.conversations);
 
-    final List list = response.data is List ? response.data : [];
+    var data = response.data;
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      data = data['data'];
+    }
+
+    final List list = data is List ? data : [];
     return list.map((e) => ConversationModel.fromJson(e)).toList();
   }
 
@@ -114,7 +140,13 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       MessageEndpoints.edit(messageId),
       data: {'content': newContent},
     );
-    return MessageModel.fromJson(response.data);
+
+    var data = response.data;
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      data = data['data'];
+    }
+
+    return MessageModel.fromJson(data);
   }
 
   @override
@@ -125,7 +157,13 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   @override
   Future<int> getUnreadCount() async {
     final response = await dio.get(MessageEndpoints.unreadCount);
-    return response.data as int;
+
+    var data = response.data;
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      data = data['data'];
+    }
+
+    return data as int;
   }
 
   @override
@@ -133,6 +171,12 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     final response = await dio.get(
       MessageEndpoints.unreadCountWithUser(otherUserId),
     );
-    return response.data as int;
+
+    var data = response.data;
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      data = data['data'];
+    }
+
+    return data as int;
   }
 }

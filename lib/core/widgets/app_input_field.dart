@@ -42,6 +42,9 @@ class AppInputField extends StatefulWidget {
   final IconData? leadingIcon;
   final IconData? trailingIcon;
   final VoidCallback? onTrailingTap;
+  final double radius;
+  final Widget? prefixWidget;
+  final Widget? suffixWidget;
 
   const AppInputField({
     super.key,
@@ -62,6 +65,9 @@ class AppInputField extends StatefulWidget {
     this.onFieldSubmitted,
     this.inputFormatters,
     this.autofillHints,
+    this.radius = 12.0,
+    this.prefixWidget,
+    this.suffixWidget,
   });
 
   @override
@@ -120,15 +126,17 @@ class _AppInputFieldState extends State<AppInputField> {
 
         contentPadding: _contentPadding,
 
-        prefixIcon: widget.leadingIcon != null
-            ? Icon(
-                widget.leadingIcon,
-                size: 20,
-                color: theme.colorScheme.onSurfaceVariant,
-              )
-            : null,
+        prefixIcon:
+            widget.prefixWidget ??
+            (widget.leadingIcon != null
+                ? Icon(
+                    widget.leadingIcon,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )
+                : null),
 
-        suffixIcon: _buildSuffixIcon(theme),
+        suffixIcon: widget.suffixWidget ?? _buildSuffixIcon(theme),
 
         border: _border(theme),
         enabledBorder: _border(theme),
@@ -280,21 +288,21 @@ class _AppInputFieldState extends State<AppInputField> {
 
   OutlineInputBorder _border(ThemeData theme) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(widget.radius),
       borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
     );
   }
 
   OutlineInputBorder _focusedBorder(ThemeData theme) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(widget.radius),
       borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
     );
   }
 
   OutlineInputBorder _errorBorder() {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(widget.radius),
       borderSide: BorderSide(color: Colors.red.shade600),
     );
   }

@@ -36,7 +36,10 @@ class LoginDataDto {
 
   factory LoginDataDto.fromJson(Map<String, dynamic> json) {
     return LoginDataDto(
-      token: json['token'] ?? '',
+      token:
+          json['accessToken'] ??
+          json['token'] ??
+          '', // accessToken veya token olarak gelebilir
       id: json['id']?.toString(),
       username: json['username'],
       email: json['email'],

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/entities/auth_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/di/injection_container.dart' as di;
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
@@ -111,6 +112,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _authRepository.logout();
       _currentUser = null; // Kullanıcı bilgisini temizle
+      // Singleton önbelleklerini temizle - yeni kullanıcı için taze veri
+      await di.resetOnLogout();
     } catch (e) {
       // Logout hatası olsa bile token silineceği için kullanıcı çıkmış sayılır
       AppLogger.warning("Logout provider error: $e");

@@ -1,4 +1,7 @@
 import '../entities/auth_entity.dart';
+import '../../data/dto/refresh_token_request_dto.dart';
+import '../../data/dto/revoke_token_request_dto.dart';
+import '../../data/dto/session_dto.dart';
 
 abstract class AuthRepository {
   Future<AuthEntity> login(String email, String password);
@@ -26,4 +29,8 @@ abstract class AuthRepository {
     required String newPassword,
     required String confirmNewPassword,
   });
+
+  Future<void> refreshToken(RefreshTokenRequestDto request);
+  Future<void> revokeToken(RevokeTokenRequestDto request);
+  Future<List<SessionDto>> getSessions();
 }

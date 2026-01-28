@@ -16,9 +16,12 @@ class FriendUserModel extends FriendUserEntity {
   });
 
   factory FriendUserModel.fromJson(Map<String, dynamic> json) {
+    // Profile/search endpoint'i 'id' döndürüyor, Friendship endpoint'i 'userId' döndürüyor
+    // İkisini de destekleyelim
+    final userIdValue = json['userId'] ?? json['id'] ?? 0;
     return FriendUserModel(
       id: json['id'] ?? 0,
-      userId: json['userId'] ?? 0,
+      userId: userIdValue,
       username: json['username'] ?? '',
       firstName: json['firstName'],
       lastName: json['lastName'],

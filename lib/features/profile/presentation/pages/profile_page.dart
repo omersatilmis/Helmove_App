@@ -20,6 +20,14 @@ import 'package:moto_comm_app_1/core/di/injection_container.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_event.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_state.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_bloc.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_event.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_state.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_event.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_state.dart';
+import 'package:moto_comm_app_1/features/friendship/domain/entities/friendship_status.dart';
+import 'package:moto_comm_app_1/features/messages/presentation/pages/chat_page.dart';
 
 class ProfilePage extends StatefulWidget {
   // Opsiyonel: Eğer dışarıdan bir ID ile gelindiyse bu parametre dolu olur.
@@ -45,6 +53,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // 🔥 Friendship Stats Bloc
   FriendshipListBloc? _friendshipBloc;
+  FriendshipStatusBloc? _statusBloc;
 
   @override
   void initState() {
@@ -73,6 +82,10 @@ class _ProfilePageState extends State<ProfilePage> {
         final userIdInt = int.tryParse(widget.userId!);
         if (userIdInt != null) {
           context.read<ProfileProvider>().loadUserProfile(userIdInt);
+
+          // 🔥 Status Bloc Başlat
+          _statusBloc = sl<FriendshipStatusBloc>()
+            ..add(CheckFriendshipStatusEvent(targetUserId: userIdInt));
         }
       }
 
@@ -123,14 +136,138 @@ class _ProfilePageState extends State<ProfilePage> {
     required String lastName,
     required String username,
     required bool isOwnProfile,
+    String? bio,
+    String? profileImageUrl,
+    int? otherUserId,
   }) {
+    // Navigation callback
+    final onMessageTap = (otherUserId != null)
+        ? () {
+            if (!mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    ChatPage(otherUserId: otherUserId, username: username),
+              ),
+            );
+          }
+        : null;
+
     // Eğer kendi profilimiz değilse veya bloc yoksa standart widget döndür
-    if (!isOwnProfile || _friendshipBloc == null) {
+    if (isOwnProfile) {
+      // (Kendi profilimizse aşağıda işleniyor zaten)
+    } else if (_statusBloc != null) {
+      // 🔥 BAŞKASININ PROFİLİ: Status Bloc Dinle + Action Listener
+      return BlocListener<FriendshipActionBloc, FriendshipActionState>(
+        listener: (context, actionState) {
+          if (actionState is FriendshipActionSuccess) {
+            // Action başarılı oldu, status'u yenile
+            if (otherUserId != null) {
+              _statusBloc?.add(
+                CheckFriendshipStatusEvent(targetUserId: otherUserId),
+              );
+            }
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(actionState.message)));
+          } else if (actionState is FriendshipActionFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(actionState.error),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        child: BlocBuilder<FriendshipStatusBloc, FriendshipStatusState>(
+          bloc: _statusBloc,
+          builder: (context, state) {
+            FriendshipStatus? status;
+            FriendRequestType? requestType;
+            int? friendshipId;
+
+            if (state is FriendshipStatusLoaded) {
+              status = state.status;
+              requestType = state.requestType;
+              friendshipId = state.friendshipId;
+            }
+
+            return ProfileInfo(
+              firstName: firstName,
+              lastName: lastName,
+              username: username,
+              bio: bio,
+              profileImageUrl: profileImageUrl,
+              isOwnProfile: false,
+              friendshipStatus: status,
+              friendRequestType: requestType,
+              onMessageTap: onMessageTap,
+              onSendRequest: () {
+                if (otherUserId != null) {
+                  context.read<FriendshipActionBloc>().add(
+                    SendFriendRequestEvent(
+                      targetUserId: otherUserId,
+                      message: "Merhaba!",
+                    ),
+                  );
+                }
+              },
+              onCancelRequest: () {
+                // Cancel Sent Request -> Backend endpoint yok, devre dışı
+                // Endpoint eklenince aktifleştirilecek
+              },
+              onAcceptRequest: () {
+                if (friendshipId != null) {
+                  context.read<FriendshipActionBloc>().add(
+                    AcceptFriendRequestEvent(friendshipId: friendshipId),
+                  );
+                }
+              },
+              onRejectRequest: () {
+                if (friendshipId != null) {
+                  context.read<FriendshipActionBloc>().add(
+                    RejectFriendRequestEvent(friendshipId: friendshipId),
+                  );
+                }
+              },
+              onRemoveFriend: () {
+                if (otherUserId != null) {
+                  context.read<FriendshipActionBloc>().add(
+                    RemoveFriendEvent(friendId: otherUserId),
+                  );
+                }
+              },
+            );
+          },
+        ),
+      );
+    }
+
+    if (!isOwnProfile) {
+      // Fallback if bloc is null
       return ProfileInfo(
         firstName: firstName,
         lastName: lastName,
         username: username,
+        bio: bio,
+        profileImageUrl: profileImageUrl,
         isOwnProfile: isOwnProfile,
+        onFriendsTap: () => context.push('/friends'),
+        onMessageTap: onMessageTap,
+      );
+    }
+
+    // Kendi profilimizse - bloc null ise fallback göster
+    if (_friendshipBloc == null) {
+      return ProfileInfo(
+        firstName: firstName,
+        lastName: lastName,
+        username: username,
+        bio: bio,
+        profileImageUrl: profileImageUrl,
+        isOwnProfile: true,
+        friendCount: "0",
         onFriendsTap: () => context.push('/friends'),
       );
     }
@@ -148,9 +285,12 @@ class _ProfilePageState extends State<ProfilePage> {
           firstName: firstName,
           lastName: lastName,
           username: username,
+          bio: bio,
+          profileImageUrl: profileImageUrl,
           isOwnProfile: isOwnProfile,
           friendCount: friendCount,
           onFriendsTap: () => context.push('/friends'),
+          onMessageTap: onMessageTap,
           onRatingTap: () {
             // TODO: Rating sayfasına yönlendir
             ScaffoldMessenger.of(context).showSnackBar(
@@ -180,6 +320,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void dispose() {
     _scrollController.dispose();
     _friendshipBloc?.close();
+    _statusBloc?.close();
     super.dispose();
   }
 
@@ -212,180 +353,193 @@ class _ProfilePageState extends State<ProfilePage> {
     final firstName = displayedUser?.firstName ?? "";
     final lastName = displayedUser?.lastName ?? "";
     final username = displayedUser?.username ?? "";
+    final bio = displayedUser?.bio;
+    final profileImageUrl = displayedUser?.profileImageUrl;
 
     final double minAppBarHeight = kToolbarHeight + topSafe + 20;
 
     // Loading durumu (Opsiyonel: İstersen tam sayfa loading yapabilirsin)
     // if (profileProvider.isLoading) return Scaffold(...Loading...);
 
-    return DefaultTabController(
-      length: 5, // Tab sayısı
-      child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        body: Stack(
-          children: [
-            MediaQuery.removePadding(
-              context: context,
-              removeTop: true,
-              child: NestedScrollView(
-                controller: _scrollController,
-                headerSliverBuilder: (context, innerBoxIsScrolled) {
-                  return [
-                    SliverOverlapAbsorber(
-                      handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
-                        context,
-                      ),
-                      sliver: SliverAppBar(
-                        expandedHeight: math.max(
-                          _dynamicHeight,
-                          minAppBarHeight,
+    return BlocProvider<FriendshipActionBloc>(
+      create: (_) => sl<FriendshipActionBloc>(),
+      child: DefaultTabController(
+        length: 5, // Tab sayısı
+        child: Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          body: Stack(
+            children: [
+              MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: NestedScrollView(
+                  controller: _scrollController,
+                  headerSliverBuilder: (context, innerBoxIsScrolled) {
+                    return [
+                      SliverOverlapAbsorber(
+                        handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                          context,
                         ),
-                        toolbarHeight: kToolbarHeight + topSafe + 15,
-                        pinned: true,
-                        elevation: 0,
-                        scrolledUnderElevation: 0,
-                        backgroundColor: theme.scaffoldBackgroundColor,
-                        centerTitle: true,
+                        sliver: SliverAppBar(
+                          expandedHeight: math.max(
+                            _dynamicHeight,
+                            minAppBarHeight,
+                          ),
+                          toolbarHeight: kToolbarHeight + topSafe + 15,
+                          pinned: true,
+                          elevation: 0,
+                          scrolledUnderElevation: 0,
+                          backgroundColor: theme.scaffoldBackgroundColor,
+                          centerTitle: true,
 
-                        // Pinned Title (Kaydırınca çıkan isim)
-                        title: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 180),
-                          opacity: _showPinnedTitle ? 1 : 0,
-                          child: Padding(
-                            padding: EdgeInsets.only(top: topSafe / 1.5),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                          // Pinned Title (Kaydırınca çıkan isim)
+                          title: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 180),
+                            opacity: _showPinnedTitle ? 1 : 0,
+                            child: Padding(
+                              padding: EdgeInsets.only(top: topSafe / 1.5),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "$firstName $lastName",
+                                    style: AppTextStyles.h3.copyWith(
+                                      fontSize: 18,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  Text(
+                                    "@$username",
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          flexibleSpace: FlexibleSpaceBar(
+                            collapseMode: CollapseMode.parallax,
+                            background: Stack(
+                              fit: StackFit.expand,
                               children: [
-                                Text(
-                                  "$firstName $lastName",
-                                  style: AppTextStyles.h3.copyWith(
-                                    fontSize: 18,
-                                    color: theme.colorScheme.onSurface,
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: SingleChildScrollView(
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    child: Container(
+                                      key: _profileInfoKey,
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+
+                                      // 🔥 5. isOwnProfile değerini widget'a gönder
+                                      child: _buildProfileInfoWithBloc(
+                                        firstName: firstName,
+                                        lastName: lastName,
+                                        username: username,
+                                        bio: bio,
+                                        profileImageUrl: profileImageUrl,
+                                        isOwnProfile: isOwnProfile,
+                                        otherUserId: displayedUser?.id,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  "@$username",
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    fontSize: 12,
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.6),
+
+                                // Header Fade Efekti
+                                IgnorePointer(
+                                  child: AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 120),
+                                    opacity: 1 - _headerOpacity,
+                                    child: Container(
+                                      color: theme.scaffoldBackgroundColor,
+                                    ),
+                                  ),
+                                ),
+                                // İstatistik Fade Efekti
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: 160,
+                                  child: IgnorePointer(
+                                    child: AnimatedOpacity(
+                                      duration: const Duration(
+                                        milliseconds: 120,
+                                      ),
+                                      opacity: 1 - _statsOpacity,
+                                      child: Container(
+                                        color: theme.scaffoldBackgroundColor,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-
-                        flexibleSpace: FlexibleSpaceBar(
-                          collapseMode: CollapseMode.parallax,
-                          background: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Align(
-                                alignment: Alignment.bottomCenter,
-                                child: SingleChildScrollView(
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  child: Container(
-                                    key: _profileInfoKey,
-                                    padding: const EdgeInsets.only(bottom: 12),
-
-                                    // 🔥 5. isOwnProfile değerini widget'a gönder
-                                    child: _buildProfileInfoWithBloc(
-                                      firstName: firstName,
-                                      lastName: lastName,
-                                      username: username,
-                                      isOwnProfile: isOwnProfile,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              // Header Fade Efekti
-                              IgnorePointer(
-                                child: AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 120),
-                                  opacity: 1 - _headerOpacity,
-                                  child: Container(
-                                    color: theme.scaffoldBackgroundColor,
-                                  ),
-                                ),
-                              ),
-                              // İstatistik Fade Efekti
-                              Positioned(
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                height: 160,
-                                child: IgnorePointer(
-                                  child: AnimatedOpacity(
-                                    duration: const Duration(milliseconds: 120),
-                                    opacity: 1 - _statsOpacity,
-                                    child: Container(
-                                      color: theme.scaffoldBackgroundColor,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
-                    ),
-                    const ProfileTabBarSliver(),
-                  ];
-                },
-                body: const ProfileTabViews(),
+                      const ProfileTabBarSliver(),
+                    ];
+                  },
+                  body: const ProfileTabViews(),
+                ),
               ),
-            ),
 
-            // Üst Butonlar (Geri / Seçenekler)
-            Positioned(
-              top: topSafe + 5,
-              left: 12,
-              right: 12,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  AppFrostedButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    onTap: () {
-                      // Eğer navigasyon geçmişi varsa geri dön, yoksa anasayfaya
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        // context.go('/home'); // İsteğe bağlı
-                      }
-                    },
-                  ),
-
-                  // 🔥 Opsiyonel: Kendi profilimse Ayarlar, değilse Şikayet/Block ikonu
-                  Container(
-                    key: _optionsButtonKey, // Pozisyon almak için
-                    child: AppFrostedButton(
-                      // 🔥 İKON: Artık her iki durumda da 3 nokta
-                      icon: Icons.more_horiz_rounded,
-
-                      // 🔥 MANTIK: Tıklanınca yine kimin profili olduğuna bakıyor
+              // Üst Butonlar (Geri / Seçenekler)
+              Positioned(
+                top: topSafe + 5,
+                left: 12,
+                right: 12,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppFrostedButton(
+                      icon: Icons.arrow_back_ios_new_rounded,
                       onTap: () {
-                        if (isOwnProfile) {
-                          _showOptionsMenu(context);
+                        // Eğer navigasyon geçmişi varsa geri dön, yoksa anasayfaya
+                        if (context.canPop()) {
+                          context.pop();
                         } else {
-                          // Başkasının profili: Şikayet et / Engelle menüsü
-                          // print("Başkasının profili: Şikayet menüsünü aç");
+                          // context.go('/home'); // İsteğe bağlı
                         }
                       },
                     ),
-                  ),
-                ],
+
+                    // 🔥 Opsiyonel: Kendi profilimse Ayarlar, değilse Şikayet/Block ikonu
+                    Container(
+                      key: _optionsButtonKey, // Pozisyon almak için
+                      child: AppFrostedButton(
+                        // 🔥 İKON: Artık her iki durumda da 3 nokta
+                        icon: Icons.more_horiz_rounded,
+
+                        // 🔥 MANTIK: Tıklanınca yine kimin profili olduğuna bakıyor
+                        onTap: () {
+                          if (isOwnProfile) {
+                            _showOptionsMenu(context);
+                          } else {
+                            // Başkasının profili: Şikayet et / Engelle menüsü
+                            // print("Başkasının profili: Şikayet menüsünü aç");
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _showOptionsMenu(BuildContext context) {
+  Future<void> _showOptionsMenu(BuildContext context) async {
     // Butonun konumunu al
     final RenderBox? renderBox =
         _optionsButtonKey.currentContext?.findRenderObject() as RenderBox?;
@@ -395,7 +549,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final size = renderBox.size;
     final theme = Theme.of(context);
 
-    showMenu(
+    final value = await showMenu(
       context: context,
       // Butonun hemen altında açılması için pozisyon hesabı
       position: RelativeRect.fromLTRB(
@@ -440,12 +594,14 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ],
-    ).then((value) {
-      if (value == 'share') {
-        // TODO: Profil paylaşımı implementasyonu
-      } else if (value == 'settings') {
-        context.push('/settings');
-      }
-    });
+    );
+
+    if (!mounted) return;
+    if (value == 'share') {
+      // TODO: Profil paylaşımı implementasyonu
+    } else if (value == 'settings') {
+      // ignore: use_build_context_synchronously
+      context.push('/settings');
+    }
   }
 }

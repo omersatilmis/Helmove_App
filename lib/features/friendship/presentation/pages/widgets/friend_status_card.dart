@@ -6,6 +6,7 @@ enum FriendshipCardType {
   friends, // Mevcut Arkadaşlar
   sent, // Gönderilen İstek (Beklemede)
   received, // Gelen İstek (Onay Bekliyor)
+  discover, // Keşfet (Arkadaş Değil)
 }
 
 class FriendStatusCard extends StatelessWidget {
@@ -24,6 +25,7 @@ class FriendStatusCard extends StatelessWidget {
   final VoidCallback? onCancelRequestTap; // İsteği iptal et
   final VoidCallback? onAcceptTap; // İsteği kabul et
   final VoidCallback? onRejectTap; // İsteği reddet
+  final VoidCallback? onAddFriendTap; // Arkadaş Ekle (Keşfet)
 
   const FriendStatusCard({
     super.key,
@@ -40,6 +42,7 @@ class FriendStatusCard extends StatelessWidget {
     this.onCancelRequestTap,
     this.onAcceptTap,
     this.onRejectTap,
+    this.onAddFriendTap,
   });
 
   @override
@@ -169,6 +172,7 @@ class FriendStatusCard extends StatelessWidget {
 
       case FriendshipCardType.sent:
         // DURUM 2: BEKLEYEN (GÖNDERİLEN)
+        // Not: İptal butonu kaldırıldı - backend endpoint mevcut değil
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -187,12 +191,7 @@ class FriendStatusCard extends StatelessWidget {
                 size: 22,
               ),
             ),
-            _ActionButton(
-              icon: Icons.close_rounded, // İptal X ikonu
-              color: Colors.redAccent,
-              onTap: onCancelRequestTap,
-              tooltip: "İptal Et",
-            ),
+            // İptal butonu devre dışı - backend endpoint eklenince aktifleştirilecek
           ],
         );
 
@@ -218,6 +217,21 @@ class FriendStatusCard extends StatelessWidget {
               color: Colors.redAccent,
               onTap: onRejectTap,
               tooltip: "Reddet",
+            ),
+          ],
+        );
+
+      case FriendshipCardType.discover:
+        // DURUM 4: KEŞFET (ARKADAŞ EKLE)
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ActionButton(
+              icon: Icons.person_add_rounded,
+              color:
+                  theme.colorScheme.primary, // Tema rengi (Turuncu/Mavi neyse)
+              onTap: onAddFriendTap,
+              tooltip: "Arkadaş Ekle",
             ),
           ],
         );

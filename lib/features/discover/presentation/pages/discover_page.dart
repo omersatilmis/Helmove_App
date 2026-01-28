@@ -1,21 +1,172 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:moto_comm_app_1/core/di/injection_container.dart';
+import '../../../../core/widgets/app_input_field.dart';
+import '../bloc/discover_bloc.dart';
+import '../bloc/discover_event.dart';
+import '../bloc/discover_state.dart';
 
 class DiscoverPage extends StatelessWidget {
   const DiscoverPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<DiscoverBloc>(),
+      child: const _DiscoverView(),
+    );
+  }
+}
+
+class _DiscoverView extends StatefulWidget {
+  const _DiscoverView();
+
+  @override
+  State<_DiscoverView> createState() => _DiscoverViewState();
+}
+
+class _DiscoverViewState extends State<_DiscoverView> {
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _performSearch() {
+    final query = _searchController.text.trim();
+    debugPrint('🔍 [DiscoverPage] _performSearch called with query: "$query"');
+    if (query.isNotEmpty) {
+      context.read<DiscoverBloc>().add(SearchUsersEvent(query: query));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Keşfet")),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.explore, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text("Keşfet Sayfası Burada Olacak"),
-          ],
-        ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: AppInputField(
+              controller: _searchController,
+              type: AppInputType.discover,
+              hint: "Kullanıcı ara...",
+              // Sol tarafa büyüteç ikonu (Hint tarzı)
+              leadingIcon: Icons.search,
+              // Sağ tarafa "Ara" butonu
+              suffixWidget: TextButton(
+                onPressed: _performSearch,
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                ),
+                child: const Text("Ara"),
+              ),
+              textInputAction: TextInputAction.search,
+              onFieldSubmitted: (_) => _performSearch(),
+              // prefixWidget kaldırıldı çünkü artık leadingIcon kullanıyoruz
+            ),
+          ),
+
+          // Controller listener'ı burada attach etmek yerine, AppInputField stateful olduğu için
+          // ve build içinde controller veriyoruz. En temizi controller.addListener initState'de.
+          // Aşağıda düzeltiyorum.
+          Expanded(
+            child: BlocBuilder<DiscoverBloc, DiscoverState>(
+              builder: (context, state) {
+                if (state is DiscoverLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is DiscoverFailure) {
+                  return Center(child: Text(state.message));
+                } else if (state is DiscoverLoaded) {
+                  final results = state.results;
+                  if (results.isEmpty) {
+                    return const Center(child: Text("Sonuç bulunamadı."));
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    itemCount: results.length,
+                    itemBuilder: (context, index) {
+                      final user = results[index];
+                      final theme = Theme.of(context);
+                      final fullName =
+                          "${user.firstName ?? ''} ${user.lastName ?? ''}"
+                              .trim();
+
+                      return ListTile(
+                        onTap: () {
+                          // Profil sayfasına yönlendir
+                          context.push('/profile/${user.userId}');
+                        },
+                        leading: CircleAvatar(
+                          radius: 24,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          backgroundImage:
+                              (user.profilePictureUrl != null &&
+                                  user.profilePictureUrl!.isNotEmpty)
+                              ? NetworkImage(user.profilePictureUrl!)
+                              : null,
+                          child:
+                              (user.profilePictureUrl == null ||
+                                  user.profilePictureUrl!.isEmpty)
+                              ? Text(
+                                  fullName.isNotEmpty
+                                      ? fullName[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        title: Text(
+                          fullName.isNotEmpty ? fullName : user.username,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '@${user.username}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      );
+                    },
+                  );
+                }
+                // Initial State
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search, size: 64, color: Colors.grey[300]),
+                      const SizedBox(height: 16),
+                      const Text("Aramak için yazmaya başlayın..."),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -5,13 +5,21 @@ import '../dto/register_request_dto.dart';
 import '../dto/register_response_dto.dart';
 import '../dto/forgot_password_request_dto.dart';
 import '../dto/reset_password_request_dto.dart';
+import '../dto/refresh_token_request_dto.dart';
+import '../dto/revoke_token_request_dto.dart';
+import '../dto/session_dto.dart';
 
 abstract class AuthRemoteDataSource {
   Future<LoginResponseDto> login(LoginRequestDto request);
   Future<RegisterResponseDto> register(RegisterRequestDto request);
-  Future<void> logout();
+  Future<void> logout({RevokeTokenRequestDto? request});
   Future<void> forgotPassword(ForgotPasswordRequestDto request);
   Future<void> resetPassword(ResetPasswordRequestDto request);
+
+  // New methods
+  Future<LoginResponseDto> refreshToken(RefreshTokenRequestDto request);
+  Future<void> revokeToken(RevokeTokenRequestDto request);
+  Future<List<SessionDto>> getSessions();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -30,8 +38,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> logout() async {
-    return await api.logout();
+  Future<void> logout({RevokeTokenRequestDto? request}) async {
+    return await api.logout(request: request);
   }
 
   @override
@@ -42,5 +50,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> resetPassword(ResetPasswordRequestDto request) async {
     return await api.resetPassword(request);
+  }
+
+  @override
+  Future<LoginResponseDto> refreshToken(RefreshTokenRequestDto request) async {
+    return await api.refreshToken(request);
+  }
+
+  @override
+  Future<void> revokeToken(RevokeTokenRequestDto request) async {
+    return await api.revokeToken(request);
+  }
+
+  @override
+  Future<List<SessionDto>> getSessions() async {
+    return await api.getSessions();
   }
 }

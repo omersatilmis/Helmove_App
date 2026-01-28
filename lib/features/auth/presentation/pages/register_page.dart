@@ -6,6 +6,7 @@ import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provid
 import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_footer_widget.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_header_widget.dart';
 import 'register/register_form_widget.dart';
+import 'package:moto_comm_app_1/core/presentation/widgets/professional_error_bottom_sheet.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -85,22 +86,31 @@ class _RegisterPageState extends State<RegisterPage> {
     );
 
     // 4. Başarı Durumu
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Kayıt başarılı! Giriş yapabilirsiniz."),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      context.pop(); // Login sayfasına dön
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Kayıt başarılı! Giriş yapabilirsiniz."),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        context.pop(); // Login sayfasına dön
+      } else if (authProvider.errorMessage != null) {
+        ProfessionalErrorBottomSheet.show(
+          context,
+          message: authProvider.errorMessage!,
+          title: "Kayıt Başarısız",
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
+    // Remove MediaQuery.of(context) to prevent rebuilds on keyboard open
+    // final size = MediaQuery.of(context).size;
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
@@ -108,46 +118,64 @@ class _RegisterPageState extends State<RegisterPage> {
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         top: false,
-        child: CustomScrollView(
-          slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Column(
-                children: [
-                  // 1. HEADER (Dalgalı Tasarım)
-                  SizedBox(
-                    height: (size.height * 0.25).clamp(220.0, 260.0),
-                    child: const AuthHeaderWidget(
-                      title: "Aramıza Katılın",
-                      subtitle: "Sürüş deneyiminizi başlatın.",
-                    ),
-                  ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      // 1. HEADER (Dalgalı Tasarım)
+                      SizedBox(
+                        height: (constraints.maxHeight * 0.25).clamp(
+                          220.0,
+                          260.0,
+                        ),
+                        child: const AuthHeaderWidget(
+                          title: "Aramıza Katılın",
+                          subtitle: "Sürüş deneyiminizi başlatın.",
+                        ),
+                      ),
 
-                  const Spacer(),
+                      const Spacer(),
 
-                  // 2. FORM ALANI
-                  RegisterFormWidget(
-                    formKey: _formKey,
-                    usernameController: _usernameController,
-                    firstNameController: _firstNameController,
-                    lastNameController: _lastNameController,
-                    emailController: _emailController,
-                    passwordController: _passwordController,
-                    confirmPasswordController: _confirmPasswordController,
-                    authProvider: authProvider,
-                    onRegister: () => _handleRegister(authProvider),
-                  ),
+                      // 2. FORM ALANI
+                      // Formu ortalamak ve genişliği sınırlamak için container
+                      Center(
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 450),
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: RegisterFormWidget(
+                            formKey: _formKey,
+                            usernameController: _usernameController,
+                            firstNameController: _firstNameController,
+                            lastNameController: _lastNameController,
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            confirmPasswordController:
+                                _confirmPasswordController,
+                            authProvider: authProvider,
+                            onRegister: () => _handleRegister(authProvider),
+                          ),
+                        ),
+                      ),
 
-                  // 3. FOOTER
-                  AuthFooterWidget(
-                    questionText: "Zaten hesabınız var mı?",
-                    actionText: "Giriş Yap",
-                    onPressed: () => context.pop(),
+                      const Spacer(),
+
+                      // 3. FOOTER
+                      AuthFooterWidget(
+                        questionText: "Zaten hesabınız var mı?",
+                        actionText: "Giriş Yap",
+                        onPressed: () => context.pop(),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

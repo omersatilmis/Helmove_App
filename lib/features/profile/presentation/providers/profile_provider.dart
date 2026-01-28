@@ -56,6 +56,9 @@ class ProfileProvider extends ChangeNotifier {
 
   /// Başkasının profilini yükler
   Future<void> loadUserProfile(int userId) async {
+    debugPrint(
+      '🔍 [ProfileProvider] loadUserProfile called with userId: $userId',
+    );
     _setLoading(true);
     clearError();
     _visitedProfile = null; // Önce temizle
@@ -63,8 +66,12 @@ class ProfileProvider extends ChangeNotifier {
     try {
       final response = await _profileRepository.getUserProfile(userId);
       _visitedProfile = response;
+      debugPrint(
+        '🔍 [ProfileProvider] visitedProfile loaded: ${_visitedProfile?.firstName} ${_visitedProfile?.lastName}',
+      );
       notifyListeners();
     } catch (e) {
+      debugPrint('❌ [ProfileProvider] loadUserProfile error: $e');
       _setError(e.toString());
     } finally {
       _setLoading(false);

@@ -6,6 +6,9 @@ import '../dto/login_request_dto.dart';
 import '../dto/register_request_dto.dart';
 import '../dto/forgot_password_request_dto.dart';
 import '../dto/reset_password_request_dto.dart';
+import '../dto/refresh_token_request_dto.dart';
+import '../dto/revoke_token_request_dto.dart';
+import '../dto/session_dto.dart';
 import '../mapper/auth_mapper.dart';
 import '../../../../core/error/error_handler.dart';
 import '../../../../core/utils/app_logger.dart';
@@ -29,6 +32,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _localDataSource.saveToken(responseDto.data!.token);
       return AuthMapper.toEntity(responseDto);
     } catch (e) {
+      // ErrorHandler.getErrorMessage ile detaylı hata mesajı al
       throw Exception(ErrorHandler.getErrorMessage(e));
     }
   }
@@ -58,6 +62,7 @@ class AuthRepositoryImpl implements AuthRepository {
         throw Exception(responseDto.message ?? "Kayıt başarısız");
       }
     } catch (e) {
+      // ErrorHandler.getErrorMessage zaten okunabilir bir string döner
       throw Exception(ErrorHandler.getErrorMessage(e));
     }
   }
@@ -104,6 +109,36 @@ class AuthRepositoryImpl implements AuthRepository {
         confirmNewPassword: confirmNewPassword,
       );
       await _remoteDataSource.resetPassword(requestDto);
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<void> refreshToken(RefreshTokenRequestDto request) async {
+    try {
+      final responseDto = await _remoteDataSource.refreshToken(request);
+      if (responseDto.success && responseDto.data != null) {
+        await _localDataSource.saveToken(responseDto.data!.token);
+      }
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<void> revokeToken(RevokeTokenRequestDto request) async {
+    try {
+      await _remoteDataSource.revokeToken(request);
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<List<SessionDto>> getSessions() async {
+    try {
+      return await _remoteDataSource.getSessions();
     } catch (e) {
       throw Exception(ErrorHandler.getErrorMessage(e));
     }

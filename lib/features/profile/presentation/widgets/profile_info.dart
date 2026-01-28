@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile.dart';
+import 'package:moto_comm_app_1/features/friendship/domain/entities/friendship_status.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_state.dart';
 
 class ProfileInfo extends StatelessWidget {
   final String firstName;
   final String lastName;
   final String username;
+  final String? bio;
+  final String? profileImageUrl;
 
   // 🔥 YENİ: Bu profil oturum açan kişiye mi ait?
   final bool isOwnProfile;
@@ -16,31 +20,54 @@ class ProfileInfo extends StatelessWidget {
   final VoidCallback? onRatingTap;
   final VoidCallback? onFollowersTap;
   final VoidCallback? onFollowingTap;
+  final VoidCallback? onMessageTap;
+
+  // 🔥 FRIENDSHIP ACTIONS
+  final FriendshipStatus? friendshipStatus;
+  final FriendRequestType? friendRequestType;
+  final VoidCallback? onSendRequest;
+  final VoidCallback? onCancelRequest;
+  final VoidCallback? onAcceptRequest;
+  final VoidCallback? onRejectRequest;
+  final VoidCallback? onRemoveFriend;
 
   const ProfileInfo({
     super.key,
     required this.firstName,
     required this.lastName,
     required this.username,
+    this.bio,
+    this.profileImageUrl,
     this.isOwnProfile = false, // Varsayılan olarak başkası
     this.friendCount,
     this.onFriendsTap,
     this.onRatingTap,
     this.onFollowersTap,
     this.onFollowingTap,
+    this.onMessageTap,
+    this.friendshipStatus,
+    this.friendRequestType,
+    this.onSendRequest,
+    this.onCancelRequest,
+    this.onAcceptRequest,
+    this.onRejectRequest,
+    this.onRemoveFriend,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _ProfileHeaderSection(),
+        _ProfileHeaderSection(profileImageUrl: profileImageUrl),
 
         _NameSection(
           firstName: firstName,
           lastName: lastName,
           username: username,
         ),
+
+        // Bio bölümü (varsa göster)
+        if (bio != null && bio!.isNotEmpty) _BioSection(bio: bio!),
 
         _StatsSection(
           friendCount: friendCount ?? "0",
@@ -51,16 +78,27 @@ class ProfileInfo extends StatelessWidget {
         ),
 
         // 🔥 Durumu alt widget'a iletiyoruz
-        _ActionButtonsSection(isOwnProfile: isOwnProfile),
+        _ActionButtonsSection(
+          isOwnProfile: isOwnProfile,
+          onMessageTap: onMessageTap,
+          friendshipStatus: friendshipStatus,
+          friendRequestType: friendRequestType,
+          onSendRequest: onSendRequest,
+          onCancelRequest: onCancelRequest,
+          onAcceptRequest: onAcceptRequest,
+          onRejectRequest: onRejectRequest,
+          onRemoveFriend: onRemoveFriend,
+        ),
       ],
     );
   }
 }
 
 class _ProfileHeaderSection extends StatelessWidget {
-  const _ProfileHeaderSection();
+  final String? profileImageUrl;
 
-  // ... (Header kodu aynen kalıyor, burayı ellemedim)
+  const _ProfileHeaderSection({this.profileImageUrl});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -95,13 +133,40 @@ class _ProfileHeaderSection extends StatelessWidget {
                 color: theme.scaffoldBackgroundColor,
                 shape: BoxShape.circle,
               ),
-              child: const CircleAvatar(
+              child: CircleAvatar(
                 radius: 52,
-                backgroundImage: AssetImage('assets/icons/ic_profile.png'),
+                backgroundImage:
+                    (profileImageUrl != null && profileImageUrl!.isNotEmpty)
+                    ? NetworkImage(profileImageUrl!)
+                    : const AssetImage('assets/icons/ic_profile.png')
+                          as ImageProvider,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Bio Section Widget
+class _BioSection extends StatelessWidget {
+  final String bio;
+
+  const _BioSection({required this.bio});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Text(
+        bio,
+        textAlign: TextAlign.center,
+        style: AppTextStyles.medium.copyWith(
+          fontSize: 14,
+          color: theme.colorScheme.onSurface.withOpacity(0.7),
+        ),
       ),
     );
   }
@@ -227,8 +292,26 @@ class _StatItem extends StatelessWidget {
 
 class _ActionButtonsSection extends StatelessWidget {
   final bool isOwnProfile;
+  final VoidCallback? onMessageTap;
+  final FriendshipStatus? friendshipStatus;
+  final FriendRequestType? friendRequestType;
+  final VoidCallback? onSendRequest;
+  final VoidCallback? onCancelRequest;
+  final VoidCallback? onAcceptRequest;
+  final VoidCallback? onRejectRequest;
+  final VoidCallback? onRemoveFriend;
 
-  const _ActionButtonsSection({required this.isOwnProfile});
+  const _ActionButtonsSection({
+    required this.isOwnProfile,
+    this.onMessageTap,
+    this.friendshipStatus,
+    this.friendRequestType,
+    this.onSendRequest,
+    this.onCancelRequest,
+    this.onAcceptRequest,
+    this.onRejectRequest,
+    this.onRemoveFriend,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -245,13 +328,10 @@ class _ActionButtonsSection extends StatelessWidget {
   // --- KENDİ PROFİLİMİZ İSE GÖRÜNECEKLER (GÜNCELLENDİ) ---
   List<Widget> _buildOwnProfileButtons(BuildContext context) {
     final theme = Theme.of(context);
-
-    // Turuncu rengi tanımlayalım (Temaya göre ton seçebilirsin)
-    // DeepOrange genellikle beyaz/siyah zeminlerde daha iyi okunur.
     const orangeColor = Colors.deepOrange;
 
     return [
-      // 1. Profili Düzenle (ARTIK FILLED / DOLU)
+      // 1. Profili Düzenle
       Expanded(
         child: ElevatedButton.icon(
           onPressed: () {
@@ -266,9 +346,7 @@ class _ActionButtonsSection extends StatelessWidget {
           ),
           style: ElevatedButton.styleFrom(
             elevation: 0,
-            // Temanın ana rengiyle dolu olsun
             backgroundColor: theme.colorScheme.primary,
-            // Yazısı kontrast olsun (beyaz veya siyah)
             foregroundColor: theme.colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
@@ -279,27 +357,22 @@ class _ActionButtonsSection extends StatelessWidget {
       ),
       const SizedBox(width: 12),
 
-      // 2. İçerik Ekle (ARTIK OUTLINED / TURUNCU)
+      // 2. İçerik Ekle
       Expanded(
         child: OutlinedButton.icon(
-          onPressed: () {
-            // İçerik ekleme modalı
-          },
+          onPressed: () {},
           icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
           label: const Text(
             "İçerik Ekle",
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           style: OutlinedButton.styleFrom(
-            // Yazı ve İkon rengi Turuncu
             foregroundColor: orangeColor,
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            // Çerçeve Rengi Turuncu
             side: const BorderSide(color: orangeColor, width: 1.5),
-            // Tıklanınca çıkan efekt rengi (hafif turuncu)
             overlayColor: orangeColor.withValues(alpha: 0.1),
           ),
         ),
@@ -307,33 +380,170 @@ class _ActionButtonsSection extends StatelessWidget {
     ];
   }
 
-  // --- BAŞKASININ PROFİLİ İSE GÖRÜNECEKLER (AYNI KALDI) ---
+  // --- BAŞKASININ PROFİLİ İSE GÖRÜNECEKLER (GÜNCELLENDİ) ---
   List<Widget> _buildOtherProfileButtons(BuildContext context) {
-    return [
-      // 1. Takip Et
-      Expanded(
-        child: ElevatedButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-          label: const Text(
-            "Takip Et",
-            style: TextStyle(fontWeight: FontWeight.bold),
+    final theme = Theme.of(context);
+    // Düğme yapısı duruma göre değişecek
+
+    Widget mainActionBtn;
+    // İkincil aksiyon (Mesaj) genellikle sabit kalır veya duruma göre değişebilir.
+
+    if (friendshipStatus == null || friendshipStatus == FriendshipStatus.none) {
+      // Arkadaş Ekle
+      mainActionBtn = ElevatedButton.icon(
+        onPressed: onSendRequest,
+        icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+        label: const Text(
+          "Arkadaş Ekle",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
+        ),
+      );
+    } else if (friendshipStatus == FriendshipStatus.accepted) {
+      // Arkadaşsınız (Belki Çıkar butonu veya sadece 'Arkadaş' etiketi + menü)
+      // Burada 'Arkadaş' yazıp tıklayınca menü açılan bir logic kurulabilir,
+      // şimdilik 'Arkadaş' butonu yapalım.
+      mainActionBtn = OutlinedButton.icon(
+        onPressed: () {
+          // Basit bir sheet açıp çıkar diyelim
+          showModalBottomSheet(
+            context: context,
+            builder: (c) {
+              return SafeArea(
+                child: Wrap(
+                  children: [
+                    ListTile(
+                      leading: const Icon(
+                        Icons.person_remove,
+                        color: Colors.red,
+                      ),
+                      title: const Text(
+                        "Arkadaşlıktan Çıkar",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      onTap: () {
+                        Navigator.pop(c);
+                        if (onRemoveFriend != null) onRemoveFriend!();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+        icon: const Icon(Icons.check, size: 20, color: Colors.green),
+        label: const Text(
+          "Arkadaşsınız",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      );
+    } else if (friendshipStatus == FriendshipStatus.pending) {
+      if (friendRequestType == FriendRequestType.sent) {
+        // İstek Gönderildi -> İptal butonu devre dışı (backend endpoint yok)
+        mainActionBtn = OutlinedButton.icon(
+          onPressed:
+              null, // Backend endpoint eklenince onCancelRequest kullanılacak
+          icon: const Icon(Icons.access_time, size: 20),
+          label: const Text(
+            "İstek Gönderildi",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
           ),
+        );
+      } else {
+        // İstek Geldi -> Kabul / Red
+        // Bu durumda yer darlığı olabilir, Expanded yerine Row içinde sığdırmalıyız.
+        // Tek buton yerine Kabul butonunu ana buton yapalım, Reddet'i yanda ikon yapabiliriz.
+        return [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: onAcceptRequest,
+              icon: const Icon(Icons.check_circle_outline, size: 20),
+              label: const Text(
+                "Kabul Et",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.red),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              onPressed: onRejectRequest,
+              icon: const Icon(Icons.close, color: Colors.red),
+              tooltip: "Reddet",
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Mesaj İkonu
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: theme.colorScheme.outline),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              onPressed: onMessageTap,
+              icon: const Icon(Icons.mail_outline_rounded),
+              tooltip: "Mesaj",
+            ),
+          ),
+        ];
+      }
+    } else {
+      // Blocked veya bilinmeyen
+      mainActionBtn = ElevatedButton.icon(
+        onPressed: () {},
+        icon: const Icon(Icons.block, size: 20),
+        label: const Text("Engelli"),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
-      ),
+      );
+    }
+
+    return [
+      Expanded(child: mainActionBtn),
       const SizedBox(width: 12),
 
-      // 2. Mesaj Gönder
+      // 2. Mesaj Gönder (Standart)
       Expanded(
         child: OutlinedButton.icon(
-          onPressed: () {},
+          onPressed: onMessageTap,
           icon: const Icon(Icons.mail_outline_rounded, size: 20),
           label: const Text(
             "Mesaj",

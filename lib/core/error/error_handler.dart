@@ -18,16 +18,55 @@ class ErrorHandler {
           return "Bağlantı zaman aşımına uğradı. İnternetini kontrol et.";
 
         case DioExceptionType.badResponse:
-          final message = error.response?.data['message'];
-          if (message != null) return message.toString();
+          final data = error.response?.data;
+
+          if (data != null) {
+            // 1. Önce yaygın hata alanlarını kontrol et
+            if (data is Map<String, dynamic>) {
+              if (data.containsKey('message') && data['message'] != null) {
+                return data['message'].toString();
+              }
+              if (data.containsKey('error') && data['error'] != null) {
+                return data['error'].toString();
+              }
+              if (data.containsKey('detail') && data['detail'] != null) {
+                return data['detail'].toString();
+              }
+              if (data.containsKey('errors')) {
+                // 'errors' genellikle validasyon hatalarını içerir
+                final errors = data['errors'];
+                if (errors is Map) {
+                  // Map ise her bir hatayı birleştir
+                  return errors.entries
+                      .map((e) => "${e.key}: ${e.value}")
+                      .join("\n");
+                } else if (errors is List) {
+                  return errors.join("\n");
+                }
+                return errors.toString();
+              }
+
+              // Eğer hiçbiri yoksa ve data boş değilse, datayı string olarak göster
+              // Bu, "null" hatası yerine ham veriyi görmemizi sağlar
+              if (data.isNotEmpty) {
+                return data.toString();
+              }
+            } else if (data is String) {
+              return data;
+            }
+          }
 
           final statusCode = error.response?.statusCode;
-          if (statusCode == 401)
+          if (statusCode == 401) {
             return "Oturum süresi doldu veya şifre yanlış.";
+          }
           if (statusCode == 404) return "İstenen kaynak bulunamadı.";
-          if (statusCode == 500)
+          if (statusCode == 500) {
             return "Sunucu hatası. Daha sonra tekrar dene.";
-          return "Bir şeyler ters gitti. Hata kodu: $statusCode";
+          }
+
+          // Eğer data null ise ve status code varsa
+          return "Bir şeyler ters gitti. Hata kodu: $statusCode\nDetay: ${error.message}";
 
         case DioExceptionType.connectionError:
           return "Sunucuya ulaşılamıyor. İnternet bağlantını kontrol et.";
@@ -40,6 +79,7 @@ class ErrorHandler {
       }
     }
 
+    // Exception: prefix'ini temizle ve string döndür
     return error.toString().replaceAll("Exception: ", "");
   }
 

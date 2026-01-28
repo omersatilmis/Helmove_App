@@ -3,7 +3,7 @@ import 'package:moto_comm_app_1/core/widgets/app_button.dart';
 import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_divider_widget.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_error_widget.dart';
+// import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_error_widget.dart';
 
 class RegisterFormWidget extends StatelessWidget {
   final GlobalKey<FormState> formKey;
@@ -132,9 +132,9 @@ class RegisterFormWidget extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Hata Mesajı Kutusu
-              if (authProvider.errorMessage != null)
-                AuthErrorWidget(message: authProvider.errorMessage!),
+              // Hata Mesajı Kutusu (Bottom Sheet ile gösteriliyor)
+              // if (authProvider.errorMessage != null)
+              //   AuthErrorWidget(message: authProvider.errorMessage!),
 
               // Kayıt Ol Butonu
               AppButton(

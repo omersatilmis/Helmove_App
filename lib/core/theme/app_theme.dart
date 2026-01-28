@@ -12,7 +12,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      
+
       // Renk Şeması
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
@@ -20,6 +20,8 @@ class AppTheme {
         secondary: AppColors.darkSurface, // İkincil renk olarak koyu ton
         onSecondary: Colors.white,
         error: AppColors.error,
+        errorContainer: Color(0xFFFFDAD6),
+        onErrorContainer: Color(0xFF410002),
         surface: AppColors.lightBackground,
         onSurface: AppColors.lightTextPrimary,
         surfaceContainerLow: AppColors.lightSurface, // Kart zeminleri
@@ -49,7 +51,9 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
@@ -60,7 +64,9 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary, // Yazı ve İkon Rengi
           side: const BorderSide(color: AppColors.primary), // Kenarlık Rengi
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
@@ -70,7 +76,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.lightSurfaceContainer,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -88,7 +97,9 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         labelStyle: const TextStyle(color: AppColors.lightTextSecondary),
-        hintStyle: TextStyle(color: AppColors.lightTextSecondary.withAlpha(150)),
+        hintStyle: TextStyle(
+          color: AppColors.lightTextSecondary.withAlpha(150),
+        ),
       ),
 
       // Checkbox Teması
@@ -120,6 +131,8 @@ class AppTheme {
         secondary: AppColors.lightSurface,
         onSecondary: AppColors.darkBackground,
         error: AppColors.error,
+        errorContainer: Color(0xFF93000A),
+        onErrorContainer: Color(0xFFFFDAD6),
         surface: AppColors.darkBackground, // Sıcak Antrasit Zemin
         onSurface: AppColors.darkTextPrimary,
         surfaceContainerLow: AppColors.darkSurface,
@@ -149,7 +162,9 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
@@ -160,7 +175,9 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary, // Yazı ve İkon Rengi
           side: const BorderSide(color: AppColors.primary), // Kenarlık Rengi
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
@@ -170,7 +187,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.darkSurfaceContainer, // Koyu zeminli input
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,

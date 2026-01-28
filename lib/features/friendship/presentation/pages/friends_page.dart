@@ -7,6 +7,7 @@ import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
 import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_event.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
 import 'widgets/friends_list.dart';
 import 'widgets/pending_requests.dart';
 import 'widgets/sent_requests.dart';
@@ -23,7 +24,8 @@ class _FriendsPageState extends State<FriendsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  late FriendshipListBloc _listBloc;
+  late FriendshipListBloc _searchBloc;
+  late FriendshipActionBloc _actionBloc;
   Timer? _debounce;
   bool _isSearching = false;
 
@@ -31,7 +33,8 @@ class _FriendsPageState extends State<FriendsPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _listBloc = sl<FriendshipListBloc>();
+    _searchBloc = sl<FriendshipListBloc>();
+    _actionBloc = sl<FriendshipActionBloc>();
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -40,7 +43,8 @@ class _FriendsPageState extends State<FriendsPage>
     _debounce?.cancel();
     _tabController.dispose();
     _searchController.dispose();
-    _listBloc.close();
+    _searchBloc.close();
+    _actionBloc.close();
     super.dispose();
   }
 
@@ -52,7 +56,7 @@ class _FriendsPageState extends State<FriendsPage>
         _isSearching = query.isNotEmpty;
       });
       if (query.isNotEmpty) {
-        _listBloc.add(SearchFriendsEvent(query: query));
+        _searchBloc.add(SearchFriendsEvent(query: query));
       }
     });
   }
@@ -62,7 +66,7 @@ class _FriendsPageState extends State<FriendsPage>
     final theme = Theme.of(context);
 
     return BlocProvider.value(
-      value: _listBloc,
+      value: _actionBloc,
       child: Scaffold(
         appBar: AppBar(
           leading: Padding(
@@ -109,16 +113,30 @@ class _FriendsPageState extends State<FriendsPage>
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: const [
-                    FriendsList(),
-                    PendingRequests(),
-                    SentRequests(),
+                  children: [
+                    BlocProvider(
+                      create: (_) => sl<FriendshipListBloc>(),
+                      child: const FriendsList(),
+                    ),
+                    BlocProvider(
+                      create: (_) => sl<FriendshipListBloc>(),
+                      child: const PendingRequests(),
+                    ),
+                    BlocProvider(
+                      create: (_) => sl<FriendshipListBloc>(),
+                      child: const SentRequests(),
+                    ),
                   ],
                 ),
               ),
             ] else ...[
               // 🔍 ARAMA SONUÇLARI
-              Expanded(child: const SearchResultsList()),
+              Expanded(
+                child: BlocProvider.value(
+                  value: _searchBloc,
+                  child: const SearchResultsList(),
+                ),
+              ),
             ],
           ],
         ),

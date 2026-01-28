@@ -22,7 +22,7 @@ import 'package:moto_comm_app_1/features/help/presentation/pages/help_page.dart'
 import 'package:moto_comm_app_1/features/settings/presentation/pages/my_garage_page.dart';
 
 // Homepage den girilen sayfaların Importları
-import 'package:moto_comm_app_1/features/messages/presentation/pages/conversations_page.dart';
+import 'package:moto_comm_app_1/features/messages/presentation/pages/messages_page.dart';
 import 'package:moto_comm_app_1/features/notification/presentation/pages/notification_page.dart';
 
 // Profile Jots Tabından açılan sayfa
@@ -51,7 +51,7 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/login',
+    initialLocation: '/homepage',
 
     // AuthProvider'ı dinle: Oturum durumu değişince yönlendir
     refreshListenable: authProvider,
@@ -93,6 +93,13 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfilePage(),
+      ),
+      GoRoute(
+        path: '/profile/:userId',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId'];
+          return ProfilePage(userId: userId);
+        },
       ),
       GoRoute(
         path: '/edit-profile',
