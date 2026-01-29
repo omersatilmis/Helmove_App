@@ -17,6 +17,8 @@ class FriendStatusCard extends StatelessWidget {
   final VoidCallback? onAcceptTap;
   final VoidCallback? onRejectTap;
   final VoidCallback? onAddFriendTap;
+  final VoidCallback? onCardTap; // Kartın tamamına tıklayınca
+  final bool showActions; // Aksiyon butonlarını göster/gizle
 
   const FriendStatusCard({
     super.key,
@@ -31,6 +33,8 @@ class FriendStatusCard extends StatelessWidget {
     this.onAcceptTap,
     this.onRejectTap,
     this.onAddFriendTap,
+    this.onCardTap,
+    this.showActions = true,
   });
 
   @override
@@ -51,78 +55,81 @@ class FriendStatusCard extends StatelessWidget {
           ),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        child: Row(
-          children: [
-            // 1. AVATAR (Biraz daha küçük ve zarif)
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              backgroundImage: imageUrl.isNotEmpty
-                  ? NetworkImage(imageUrl)
-                  : null,
-              child: imageUrl.isEmpty
-                  ? Text(
-                      firstName.isNotEmpty ? firstName[0].toUpperCase() : "?",
-                      style: TextStyle(color: colorScheme.onSurfaceVariant),
-                    )
-                  : null,
-            ),
-
-            const SizedBox(width: 16),
-
-            // 2. İSİM VE BİLGİ (Geniş Alan)
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // İsim
-                  Text(
-                    "$firstName $lastName",
-                    style: AppTextStyles.bold.copyWith(
-                      fontSize: 15,
-                      color: colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  // Kullanıcı Adı ve Durum tek satırda
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          "@$username",
-                          style: AppTextStyles.medium.copyWith(
-                            fontSize: 13,
-                            color: colorScheme.onSurface.withOpacity(0.5),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Araya nokta koyup durumu yazıyoruz
-                      if (statusInfo.isNotEmpty) ...[
-                        Text(
-                          " • $statusInfo",
-                          style: AppTextStyles.medium.copyWith(
-                            fontSize: 12,
-                            color: colorScheme.onSurface.withOpacity(0.4),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
+      child: InkWell(
+        onTap: onCardTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          child: Row(
+            children: [
+              // 1. AVATAR (Biraz daha küçük ve zarif)
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                backgroundImage: imageUrl.isNotEmpty
+                    ? NetworkImage(imageUrl)
+                    : null,
+                child: imageUrl.isEmpty
+                    ? Text(
+                        firstName.isNotEmpty ? firstName[0].toUpperCase() : "?",
+                        style: TextStyle(color: colorScheme.onSurfaceVariant),
+                      )
+                    : null,
               ),
-            ),
 
-            const SizedBox(width: 8),
+              const SizedBox(width: 16),
 
-            // 3. AKSİYON BUTONLARI (Minimalize edilmiş)
-            _buildMinimalActions(context),
-          ],
+              // 2. İSİM VE BİLGİ (Geniş Alan)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // İsim
+                    Text(
+                      "$firstName $lastName",
+                      style: AppTextStyles.bold.copyWith(
+                        fontSize: 15,
+                        color: colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // Kullanıcı Adı ve Durum tek satırda
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            "@$username",
+                            style: AppTextStyles.medium.copyWith(
+                              fontSize: 13,
+                              color: colorScheme.onSurface.withOpacity(0.5),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Araya nokta koyup durumu yazıyoruz
+                        if (statusInfo.isNotEmpty) ...[
+                          Text(
+                            " • $statusInfo",
+                            style: AppTextStyles.medium.copyWith(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withOpacity(0.4),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // 3. AKSİYON BUTONLARI (Minimalize edilmiş)
+              if (showActions) _buildMinimalActions(context),
+            ],
+          ),
         ),
       ),
     );

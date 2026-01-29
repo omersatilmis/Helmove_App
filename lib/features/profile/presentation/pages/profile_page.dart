@@ -157,8 +157,13 @@ class _ProfilePageState extends State<ProfilePage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    ChatPage(otherUserId: otherUserId, username: username),
+                builder: (_) => ChatPage(
+                  otherUserId: otherUserId,
+                  username: username,
+                  firstName: firstName,
+                  lastName: lastName,
+                  profileImageUrl: profileImageUrl,
+                ),
               ),
             );
           }

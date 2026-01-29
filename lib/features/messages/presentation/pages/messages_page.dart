@@ -6,6 +6,7 @@ import '../../../../core/theme/text_styles.dart';
 import '../bloc/conversations/conversations_bloc.dart';
 import '../bloc/conversations/conversations_event.dart';
 import '../bloc/conversations/conversations_state.dart';
+import 'package:moto_comm_app_1/features/friendship/presentation/pages/pick_friend_page.dart';
 import 'chat_page.dart';
 
 class ConversationsPage extends StatelessWidget {
@@ -44,15 +45,16 @@ class ConversationsView extends StatelessWidget {
       backgroundColor: theme.colorScheme.surface,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Arkadaş listesine yönlendir veya yeni sohbet dialogu aç
-          // Şimdilik arkadaş sayfasına yönlendirelim veya boş bırakalım
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "Yeni sohbet başlatmak için Arkadaşlar sayfasına gidin.",
-              ),
-            ),
-          );
+          // Yeni sohbet başlatma sayfası (Kişi Seçimi)
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PickFriendPage()),
+          ).then((_) {
+            // Döndüğümüzde listeyi yenileyelim (belki sohbet başlatıldı)
+            if (context.mounted) {
+              context.read<ConversationsBloc>().add(RefreshConversations());
+            }
+          });
         },
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
@@ -76,7 +78,7 @@ class ConversationsView extends StatelessWidget {
               elevation: 0,
               centerTitle: false,
               title: Text(
-                'MotoComm',
+                'Sohbetler',
                 style: AppTextStyles.h2.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.bold,
@@ -182,6 +184,8 @@ class ConversationsView extends StatelessWidget {
                                 MaterialPageRoute(
                                   builder: (_) => ChatPage(
                                     otherUserId: conversation.userId,
+                                    firstName: conversation.firstName ?? '',
+                                    lastName: conversation.lastName ?? '',
                                     username: conversation.username,
                                   ),
                                 ),

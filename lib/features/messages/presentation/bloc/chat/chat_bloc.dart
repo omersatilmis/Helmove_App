@@ -31,6 +31,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(ChatLoading());
     try {
       final messages = await getMessages(otherUserId: event.otherUserId);
+      // Ensure messages are sorted descending (newest first) for reversed list
+      messages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
       emit(ChatLoaded(messages: messages));
     } catch (e) {
       emit(ChatError(e.toString()));

@@ -13,12 +13,16 @@ import 'package:moto_comm_app_1/features/auth/domain/repositories/auth_repositor
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/profile/domain/repositories/profile_repository.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:intl/date_symbol_data_local.dart'; // LocaleDataException için gerekli
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 1. Dependency Injection Kurulumu
   await di.init();
+
+  // 2. Date Formatting Başlatma (Türkçe için)
+  await initializeDateFormatting('tr_TR', null);
 
   runApp(
     MultiProvider(

@@ -9,7 +9,9 @@ import '../../bloc/list/friendship_list_state.dart';
 import 'friend_status_card.dart';
 
 class FriendsList extends StatefulWidget {
-  const FriendsList({super.key});
+  final Function(dynamic friend)? onFriendSelected;
+
+  const FriendsList({super.key, this.onFriendSelected});
 
   @override
   State<FriendsList> createState() => _FriendsListState();
@@ -88,6 +90,10 @@ class _FriendsListState extends State<FriendsList> {
             username: friend.username,
             statusInfo: friend.isOnline ? "Çevrimiçi" : "Çevrimdışı",
             type: FriendshipCardType.friends,
+            showActions: widget.onFriendSelected == null,
+            onCardTap: widget.onFriendSelected != null
+                ? () => widget.onFriendSelected!(friend)
+                : null,
             onMessageTap: () {
               // Navigate to chat
               ScaffoldMessenger.of(context).showSnackBar(
