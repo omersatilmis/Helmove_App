@@ -146,7 +146,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       Center(
                         child: Container(
                           constraints: const BoxConstraints(maxWidth: 450),
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
                           child: RegisterFormWidget(
                             formKey: _formKey,
                             usernameController: _usernameController,
@@ -162,7 +161,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ),
 
-                      const Spacer(),
+                      const SizedBox(height: 8),
 
                       // 3. FOOTER
                       AuthFooterWidget(
