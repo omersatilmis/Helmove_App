@@ -76,7 +76,9 @@ class FriendshipListBloc
     Emitter<FriendshipListState> emit,
   ) async {
     emit(FriendshipListLoading());
-    final result = await getStats(NoParams());
+    final result = await getStats(
+      GetFriendshipStatsParams(userId: event.userId),
+    );
     result.fold(
       (failure) => emit(FriendshipListFailure(failure.message)),
       (stats) => emit(FriendshipStatsLoaded(stats)),

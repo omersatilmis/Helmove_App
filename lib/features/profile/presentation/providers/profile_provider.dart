@@ -43,6 +43,7 @@ class ProfileProvider extends ChangeNotifier {
   Future<void> loadProfile() async {
     _setLoading(true);
     clearError();
+    _visitedProfile = null; // Kendi profilimize geçerken visited'ı temizle
 
     try {
       _profile = await _profileRepository.getMyProfile();

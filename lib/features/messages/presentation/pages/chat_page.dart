@@ -17,7 +17,6 @@ class ChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('ChatPage - otherUserId: $otherUserId, username: $username');
     return BlocProvider(
       create: (_) => sl<ChatBloc>()..add(LoadMessages(otherUserId)),
       child: ChatView(username: username, otherUserId: otherUserId),

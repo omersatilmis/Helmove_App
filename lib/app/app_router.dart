@@ -26,7 +26,7 @@ import 'package:moto_comm_app_1/features/messages/presentation/pages/messages_pa
 import 'package:moto_comm_app_1/features/notification/presentation/pages/notification_page.dart';
 
 // Profile Jots Tabından açılan sayfa
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/jots/create_jots.dart';
+import 'package:moto_comm_app_1/features/content/jots/presentation/pages/create_jot_page.dart';
 
 // Arkadaşlık sayfası
 import 'package:moto_comm_app_1/features/friendship/presentation/pages/friends_page.dart';

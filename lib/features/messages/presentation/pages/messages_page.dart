@@ -69,34 +69,34 @@ class ConversationsView extends StatelessWidget {
             SliverAppBar(
               floating: true,
               pinned: true,
-              expandedHeight: 110.0,
+              expandedHeight: 60.0,
               backgroundColor: theme.colorScheme.surface,
-              surfaceTintColor: theme.colorScheme.surface,
+              surfaceTintColor: theme.colorScheme.surfaceTint,
               scrolledUnderElevation: 2,
               elevation: 0,
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
+              centerTitle: false,
+              title: Text(
+                'MotoComm',
+                style: AppTextStyles.h2.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
                 ),
-                title: Text(
-                  'Mesajlar',
-                  style: AppTextStyles.h2.copyWith(
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                centerTitle: false,
               ),
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  onPressed: () {},
+                  tooltip: 'Camera',
+                ),
+                IconButton(
                   icon: const Icon(Icons.search_rounded),
-                  onPressed: () {
-                    // Arama özelliği
-                  },
+                  onPressed: () {},
+                  tooltip: 'Search',
                 ),
                 IconButton(
                   icon: const Icon(Icons.more_vert_rounded),
                   onPressed: () {},
+                  tooltip: 'Options',
                 ),
               ],
             ),
@@ -105,45 +105,62 @@ class ConversationsView extends StatelessWidget {
             BlocBuilder<ConversationsBloc, ConversationsState>(
               builder: (context, state) {
                 if (state is ConversationsLoading) {
-                  return const SliverFillRemaining(
-                    child: Center(child: CircularProgressIndicator()),
+                  return SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.7,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
                   );
                 } else if (state is ConversationsError) {
-                  return SliverFillRemaining(
-                    child: Center(
-                      child: Text(
-                        'Hata: ${state.message}',
-                        style: TextStyle(color: theme.colorScheme.error),
+                  return SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.7,
+                      child: Center(
+                        child: Text(
+                          'Hata: ${state.message}',
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
                       ),
                     ),
                   );
                 } else if (state is ConversationsLoaded) {
                   if (state.conversations.isEmpty) {
-                    return SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              size: 80,
-                              color: theme.colorScheme.outline.withOpacity(0.3),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Henüz mesajınız yok',
-                              style: AppTextStyles.h3.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                    return SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: MediaQuery.sizeOf(context).height * 0.7,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer
+                                      .withOpacity(0.3),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  size: 48,
+                                  color: theme.colorScheme.primary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Arkadaşlarınızla sohbet başlatın!',
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                              const SizedBox(height: 24),
+                              Text(
+                                'No messages yet',
+                                style: AppTextStyles.h3.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              Text(
+                                'Start chatting with your moto friends!',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -156,110 +173,9 @@ class ConversationsView extends StatelessWidget {
                       final lastMessageTime = conversation.lastMessage?.sentAt;
 
                       return Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            // AVATAR
-                            leading: CircleAvatar(
-                              radius: 26,
-                              backgroundColor:
-                                  theme.colorScheme.primaryContainer,
-                              backgroundImage:
-                                  conversation.profilePictureUrl != null
-                                  ? NetworkImage(
-                                      conversation.profilePictureUrl!,
-                                    )
-                                  : null,
-                              child: conversation.profilePictureUrl == null
-                                  ? Text(
-                                      (conversation.username.isNotEmpty
-                                              ? conversation.username[0]
-                                              : "?")
-                                          .toUpperCase(),
-                                      style: AppTextStyles.h3.copyWith(
-                                        color: theme
-                                            .colorScheme
-                                            .onPrimaryContainer,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                            // İSİM
-                            title: Text(
-                              conversation.firstName != null &&
-                                      conversation.lastName != null
-                                  ? '${conversation.firstName} ${conversation.lastName}'
-                                  : conversation.username,
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            // SON MESAJ
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
-                              child: Text(
-                                conversation.lastMessage?.content ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  fontWeight: isUnread
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                                  color: isUnread
-                                      ? theme.colorScheme.onSurface
-                                      : theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                            // SAĞ TARAF (ZAMAN & BADGE)
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (lastMessageTime != null)
-                                  Text(
-                                    _formatDate(lastMessageTime),
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: isUnread
-                                          ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurfaceVariant,
-                                      fontWeight: isUnread
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                const SizedBox(height: 6),
-                                if (isUnread)
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 22,
-                                      minHeight: 22,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        conversation.unreadCount > 9
-                                            ? '9+'
-                                            : conversation.unreadCount
-                                                  .toString(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
+                          InkWell(
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -277,11 +193,178 @@ class ConversationsView extends StatelessWidget {
                                 }
                               });
                             },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  // AVATAR
+                                  CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: theme
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                                    backgroundImage:
+                                        conversation.profilePictureUrl != null
+                                        ? NetworkImage(
+                                            conversation.profilePictureUrl!,
+                                          )
+                                        : null,
+                                    child:
+                                        conversation.profilePictureUrl == null
+                                        ? Text(
+                                            (conversation.username.isNotEmpty
+                                                    ? conversation.username[0]
+                                                    : "?")
+                                                .toUpperCase(),
+                                            style: AppTextStyles.h3.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 14),
+
+                                  // CONTENT
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // TOP ROW: Name + Time
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                conversation.firstName !=
+                                                            null &&
+                                                        conversation.lastName !=
+                                                            null
+                                                    ? '${conversation.firstName} ${conversation.lastName}'
+                                                    : conversation.username,
+                                                style: AppTextStyles.bodyLarge
+                                                    .copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 16,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurface,
+                                                    ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (lastMessageTime != null)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  left: 8.0,
+                                                ),
+                                                child: Text(
+                                                  _formatDate(lastMessageTime),
+                                                  style: AppTextStyles.bodySmall
+                                                      .copyWith(
+                                                        color: isUnread
+                                                            ? theme
+                                                                  .colorScheme
+                                                                  .primary
+                                                            : theme
+                                                                  .colorScheme
+                                                                  .onSurfaceVariant,
+                                                        fontWeight: isUnread
+                                                            ? FontWeight.w600
+                                                            : FontWeight.normal,
+                                                        fontSize: 12,
+                                                      ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+
+                                        // BOTTOM ROW: Message + Badge
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                conversation
+                                                        .lastMessage
+                                                        ?.content ??
+                                                    '',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: AppTextStyles.bodyMedium
+                                                    .copyWith(
+                                                      fontSize: 14,
+                                                      fontWeight: isUnread
+                                                          ? FontWeight.w500
+                                                          : FontWeight.normal,
+                                                      color: isUnread
+                                                          ? theme
+                                                                .colorScheme
+                                                                .onSurface
+                                                          : theme
+                                                                .colorScheme
+                                                                .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            ),
+                                            if (isUnread)
+                                              Container(
+                                                margin: const EdgeInsets.only(
+                                                  left: 8,
+                                                ),
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      minWidth: 22,
+                                                      minHeight: 22,
+                                                    ),
+                                                child: Center(
+                                                  child: Text(
+                                                    conversation.unreadCount > 9
+                                                        ? '9+'
+                                                        : conversation
+                                                              .unreadCount
+                                                              .toString(),
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          // SEPARATOR (WhatsApp style inset)
+                          // SEPARATOR
                           Divider(
                             height: 1,
-                            indent: 84, // Avatar + padding
+                            indent:
+                                72 +
+                                16, // Avatar (56) + Gap (16) + Padding (Left 16) approx
                             endIndent: 0,
                             color: theme.colorScheme.outlineVariant.withOpacity(
                               0.3,

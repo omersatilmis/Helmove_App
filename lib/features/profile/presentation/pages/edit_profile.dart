@@ -143,7 +143,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionTitle("Kişisel Bilgiler"),
+                  _sectionTitle("Kişisel Bilgiler", theme),
                   AppInputField(
                     controller: _firstNameController,
                     label: "Ad",
@@ -170,7 +170,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
 
                   const SizedBox(height: 24),
-                  _sectionTitle("İletişim"),
+                  _sectionTitle("İletişim", theme),
                   AppInputField(
                     controller: _emailController,
                     label: "E-Posta",
@@ -184,7 +184,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
 
                   const SizedBox(height: 24),
-                  _sectionTitle("Konum"),
+                  _sectionTitle("Konum", theme),
                   Row(
                     children: [
                       Expanded(
@@ -216,7 +216,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
 
                   const SizedBox(height: 24),
-                  _sectionTitle("Sosyal Medya"),
+                  _sectionTitle("Sosyal Medya", theme),
                   AppInputField(
                     controller: _instaController,
                     label: "Instagram",
@@ -245,14 +245,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(String title, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0, left: 4),
       child: Text(
         title,
         style: AppTextStyles.h3.copyWith(
           fontSize: 16,
-          color: Colors.deepOrange,
+          color: theme.colorScheme.primary,
         ),
       ),
     );
@@ -264,59 +264,153 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final profileUrl = provider.profileImageUrl;
 
     return SizedBox(
-      height: 200,
+      height: 220,
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
-          // Arka Plan Fotoğrafı
-          Positioned.fill(
-            bottom: 40,
+          // --- ARKA PLAN (KAPAK) FOTOĞRAFI ---
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 60,
             child: GestureDetector(
               onTap: () => _pickImage(isProfilePhoto: false),
               child: Container(
-                color: theme.colorScheme.surfaceContainerHighest,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if (_localCoverPhoto != null)
-                      Image.file(
-                        _localCoverPhoto!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                      )
-                    else
-                      Image.asset(
-                        'assets/images/profile_bg_photo.png',
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                      ),
-                    Container(color: Colors.black26),
-                    const Icon(
-                      Icons.camera_enhance_outlined,
-                      color: Colors.white,
-                      size: 30,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(24),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (_localCoverPhoto != null)
+                        Image.file(_localCoverPhoto!, fit: BoxFit.cover)
+                      else
+                        Image.asset(
+                          'assets/images/profile_bg_photo.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.2,
+                                ),
+                                child: Icon(
+                                  Icons.image_outlined,
+                                  size: 40,
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                        ),
+                      // Modern Gradient Overlay
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.4),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Edit Icon for Cover
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white24, width: 1),
+                          ),
+                          child: const Icon(
+                            Icons.camera_enhance_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-          // Profil Fotoğrafı
-          GestureDetector(
-            onTap: () => _pickImage(isProfilePhoto: true),
-            child: CircleAvatar(
-              radius: 55,
-              backgroundColor: theme.scaffoldBackgroundColor,
-              child: CircleAvatar(
-                radius: 50,
-                backgroundImage: profileUrl != null
-                    ? NetworkImage(profileUrl) as ImageProvider
-                    : const AssetImage('assets/icons/ic_profile.png'),
-                child: const Icon(
-                  Icons.add_a_photo,
-                  color: Colors.white,
-                  size: 24,
-                ),
+
+          // --- PROFİL FOTOĞRAFI ---
+          Positioned(
+            bottom: 0,
+            child: GestureDetector(
+              onTap: () => _pickImage(isProfilePhoto: true),
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: theme.scaffoldBackgroundColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
+                      backgroundImage: profileUrl != null
+                          ? NetworkImage(profileUrl) as ImageProvider
+                          : const AssetImage('assets/icons/ic_profile.png'),
+                    ),
+                  ),
+                  // Profile Edit Badge
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: theme.scaffoldBackgroundColor,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -327,11 +421,70 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> _pickImage({required bool isProfilePhoto}) async {
     final picker = ImagePicker();
+
+    // Modern Kaynak Seçimi (Bottom Sheet)
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Text(
+              isProfilePhoto
+                  ? "Profil Fotoğrafını Değiştir"
+                  : "Kapak Fotoğrafını Değiştir",
+              style: AppTextStyles.h3.copyWith(fontSize: 18),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _sourceButton(
+                  context: context,
+                  icon: Icons.camera_alt_rounded,
+                  label: "Kamera",
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                _sourceButton(
+                  context: context,
+                  icon: Icons.photo_library_rounded,
+                  label: "Galeri",
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
     try {
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      final pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1080,
+      );
+
       if (pickedFile != null && mounted) {
         if (isProfilePhoto) {
-          // Profil fotosu -> Backend'e hemen yükle
           final provider = context.read<ProfileProvider>();
           final success = await provider.updateProfilePicture(pickedFile.path);
           if (success && mounted) {
@@ -340,7 +493,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             );
           }
         } else {
-          // Kapak fotosu -> Sadece local göster (Backend entity'de yoksa)
           setState(() {
             _localCoverPhoto = File(pickedFile.path);
           });
@@ -352,6 +504,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
     } catch (e) {
       debugPrint("Resim seçme hatası: $e");
     }
+  }
+
+  Widget _sourceButton({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 30),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: AppTextStyles.medium),
+        ],
+      ),
+    );
   }
 
   Future<void> _saveProfile() async {

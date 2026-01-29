@@ -20,7 +20,14 @@ class JotsApi {
         data: request.toJson(),
       );
 
-      return JotModel.fromJson(response.data);
+      final dynamic responseData = response.data;
+      final Map<String, dynamic> jotJson =
+          (responseData is Map<String, dynamic> &&
+              responseData.containsKey('data'))
+          ? responseData['data']
+          : responseData;
+
+      return JotModel.fromJson(jotJson);
     } catch (e) {
       throw _handleError(e, 'Jot oluşturulamadı');
     }
@@ -79,10 +86,29 @@ class JotsApi {
     dynamic data,
     T Function(Map<String, dynamic>) fromJson,
   ) {
-    final List list = data is List
-        ? data
-        : (data['data'] ?? data['items'] ?? data['jots'] ?? []);
-    return list.map((e) => fromJson(e)).toList();
+    if (data == null) return [];
+
+    dynamic source;
+    if (data is List) {
+      source = data;
+    } else if (data is Map<String, dynamic>) {
+      // Önce 'data', 'items' veya 'jots' alanlarına bak
+      source = data['data'] ?? data['items'] ?? data['jots'];
+
+      // Eğer hala bir Map ise (Pagination yapısı: { data: { items: [] } })
+      if (source is Map<String, dynamic>) {
+        source = source['items'] ?? source['data'] ?? source['jots'];
+      }
+
+      // Eğer root Map'in kendisi direkt listeyse (Fallback)
+      source ??= data;
+    }
+
+    if (source is List) {
+      return source.map((e) => fromJson(e as Map<String, dynamic>)).toList();
+    }
+
+    return [];
   }
 
   Exception _handleError(dynamic e, String defaultMessage) {

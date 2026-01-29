@@ -26,7 +26,7 @@ abstract class FriendshipRepository {
   Future<Either<Failure, List<FriendUserEntity>>> getMyFriends();
   Future<Either<Failure, List<FriendRequestEntity>>> getPendingRequests();
   Future<Either<Failure, List<FriendRequestEntity>>> getSentRequests();
-  Future<Either<Failure, FriendStatsEntity>> getFriendshipStats();
+  Future<Either<Failure, FriendStatsEntity>> getFriendshipStats({int? userId});
   Future<Either<Failure, List<FriendUserEntity>>> getMutualFriends(
     int targetUserId,
   );
@@ -37,4 +37,7 @@ abstract class FriendshipRepository {
   Future<Either<Failure, FriendshipStatus>> getFriendshipStatus(
     int targetUserId,
   );
+
+  // Cache Management
+  void clearCache();
 }

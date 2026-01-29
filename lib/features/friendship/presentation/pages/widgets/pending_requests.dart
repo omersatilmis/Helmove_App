@@ -41,83 +41,77 @@ class _PendingRequestsState extends State<PendingRequests> {
         builder: (context, state) {
           if (state is FriendshipListLoading) {
             return const Center(child: CircularProgressIndicator());
-          } else if (state is FriendshipListFailure) {
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<FriendshipListBloc>().add(
-                  LoadPendingRequestsEvent(),
-                );
-              },
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                  Center(child: Text("Hata: ${state.message}")),
-                ],
-              ),
-            );
-          } else if (state is PendingRequestsLoaded) {
-            final requests = state.requests;
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<FriendshipListBloc>().add(
-                  LoadPendingRequestsEvent(),
-                );
-              },
-              child: requests.isEmpty
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.3,
-                        ),
-                        const Center(child: Text("Bekleyen istek yok.")),
-                      ],
-                    )
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: requests.length,
-                      itemBuilder: (context, index) {
-                        final request = requests[index];
-                        return FriendStatusCard(
-                          index: index,
-                          imageUrl: request.requesterProfilePicture ?? '',
-                          firstName: request.requesterName ?? '',
-                          lastName: '',
-                          username: request.requesterUsername,
-                          statusInfo: request.requestedAt != null
-                              ? "${request.requestedAt!.day}/${request.requestedAt!.month} tarihinde"
-                              : "Beklemede",
-                          type: FriendshipCardType.received,
-                          onMessageTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Henüz arkadaş değilsiniz."),
-                              ),
-                            );
-                          },
-                          onAcceptTap: () {
-                            context.read<FriendshipActionBloc>().add(
-                              AcceptFriendRequestEvent(
-                                friendshipId: request.id,
-                              ),
-                            );
-                          },
-                          onRejectTap: () {
-                            context.read<FriendshipActionBloc>().add(
-                              RejectFriendRequestEvent(
-                                friendshipId: request.id,
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-            );
           }
-          return const SizedBox();
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<FriendshipListBloc>().add(
+                LoadPendingRequestsEvent(),
+              );
+            },
+            child: _buildContent(context, state),
+          );
         },
       ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, FriendshipListState state) {
+    if (state is FriendshipListFailure) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+          Center(child: Text("Hata: ${state.message}")),
+        ],
+      );
+    } else if (state is PendingRequestsLoaded) {
+      final requests = state.requests;
+      if (requests.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            const Center(child: Text("Bekleyen istek yok.")),
+          ],
+        );
+      }
+      return ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: requests.length,
+        itemBuilder: (context, index) {
+          final request = requests[index];
+          return FriendStatusCard(
+            imageUrl: request.requesterProfilePicture ?? '',
+            firstName: request.requesterName ?? '',
+            lastName: '',
+            username: request.requesterUsername,
+            statusInfo: request.requestedAt != null
+                ? "${request.requestedAt!.day}/${request.requestedAt!.month} tarihinde"
+                : "Beklemede",
+            type: FriendshipCardType.received,
+            onMessageTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Henüz arkadaş değilsiniz.")),
+              );
+            },
+            onAcceptTap: () {
+              context.read<FriendshipActionBloc>().add(
+                AcceptFriendRequestEvent(friendshipId: request.id),
+              );
+            },
+            onRejectTap: () {
+              context.read<FriendshipActionBloc>().add(
+                RejectFriendRequestEvent(friendshipId: request.id),
+              );
+            },
+          );
+        },
+      );
+    }
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: const [SizedBox()],
     );
   }
 }

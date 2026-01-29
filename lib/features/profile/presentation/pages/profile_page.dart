@@ -60,35 +60,45 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     _scrollController.addListener(_handleScroll);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = context.read<AuthProvider>();
-      final myIdStr = authProvider.currentUser?.id;
+    // 🔥 INITIALIZE BLOCS IMMEDIATELY to avoid null crash in first build
+    final authProvider = context.read<AuthProvider>();
+    final myIdStr = authProvider.currentUser?.id;
 
-      // Kendi profilim mi diye kontrol et
-      bool isMe = false;
-      if (widget.userId == null) {
-        isMe = true;
-      } else if (myIdStr != null && widget.userId == myIdStr) {
-        isMe = true;
+    // Kendi profilim mi diye kontrol et
+    bool isMe = false;
+    if (widget.userId == null) {
+      isMe = true;
+    } else if (myIdStr != null && widget.userId == myIdStr) {
+      isMe = true;
+    }
+
+    if (isMe) {
+      // 🔥 Kendi profilimizse arkadaşlık istatistiklerini yükle
+      _friendshipBloc = sl<FriendshipListBloc>()
+        ..add(LoadFriendshipStatsEvent());
+    } else {
+      // Başkasının profili, ID'yi int'e çevirip yükle
+      final userIdInt = int.tryParse(widget.userId!);
+      if (userIdInt != null) {
+        // 🔥 Status Bloc Başlat
+        _statusBloc = sl<FriendshipStatusBloc>()
+          ..add(CheckFriendshipStatusEvent(targetUserId: userIdInt));
+
+        // 🔥 NEW: Load stats for visited profile too
+        _friendshipBloc = sl<FriendshipListBloc>()
+          ..add(LoadFriendshipStatsEvent(userId: userIdInt));
       }
+    }
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (isMe) {
         context.read<ProfileProvider>().loadProfile();
-        // 🔥 Kendi profilimizse arkadaşlık istatistiklerini yükle
-        _friendshipBloc = sl<FriendshipListBloc>()
-          ..add(LoadFriendshipStatsEvent());
       } else {
-        // Başkasının profili, ID'yi int'e çevirip yükle
         final userIdInt = int.tryParse(widget.userId!);
         if (userIdInt != null) {
           context.read<ProfileProvider>().loadUserProfile(userIdInt);
-
-          // 🔥 Status Bloc Başlat
-          _statusBloc = sl<FriendshipStatusBloc>()
-            ..add(CheckFriendshipStatusEvent(targetUserId: userIdInt));
         }
       }
-
       _calculateHeight();
     });
   }
@@ -154,111 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
           }
         : null;
 
-    // Eğer kendi profilimiz değilse veya bloc yoksa standart widget döndür
-    if (isOwnProfile) {
-      // (Kendi profilimizse aşağıda işleniyor zaten)
-    } else if (_statusBloc != null) {
-      // 🔥 BAŞKASININ PROFİLİ: Status Bloc Dinle + Action Listener
-      return BlocListener<FriendshipActionBloc, FriendshipActionState>(
-        listener: (context, actionState) {
-          if (actionState is FriendshipActionSuccess) {
-            // Action başarılı oldu, status'u yenile
-            if (otherUserId != null) {
-              _statusBloc?.add(
-                CheckFriendshipStatusEvent(targetUserId: otherUserId),
-              );
-            }
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(actionState.message)));
-          } else if (actionState is FriendshipActionFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(actionState.error),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        },
-        child: BlocBuilder<FriendshipStatusBloc, FriendshipStatusState>(
-          bloc: _statusBloc,
-          builder: (context, state) {
-            FriendshipStatus? status;
-            FriendRequestType? requestType;
-            int? friendshipId;
-
-            if (state is FriendshipStatusLoaded) {
-              status = state.status;
-              requestType = state.requestType;
-              friendshipId = state.friendshipId;
-            }
-
-            return ProfileInfo(
-              firstName: firstName,
-              lastName: lastName,
-              username: username,
-              bio: bio,
-              profileImageUrl: profileImageUrl,
-              isOwnProfile: false,
-              friendshipStatus: status,
-              friendRequestType: requestType,
-              onMessageTap: onMessageTap,
-              onSendRequest: () {
-                if (otherUserId != null) {
-                  context.read<FriendshipActionBloc>().add(
-                    SendFriendRequestEvent(
-                      targetUserId: otherUserId,
-                      message: "Merhaba!",
-                    ),
-                  );
-                }
-              },
-              onCancelRequest: () {
-                // Cancel Sent Request -> Backend endpoint yok, devre dışı
-                // Endpoint eklenince aktifleştirilecek
-              },
-              onAcceptRequest: () {
-                if (friendshipId != null) {
-                  context.read<FriendshipActionBloc>().add(
-                    AcceptFriendRequestEvent(friendshipId: friendshipId),
-                  );
-                }
-              },
-              onRejectRequest: () {
-                if (friendshipId != null) {
-                  context.read<FriendshipActionBloc>().add(
-                    RejectFriendRequestEvent(friendshipId: friendshipId),
-                  );
-                }
-              },
-              onRemoveFriend: () {
-                if (otherUserId != null) {
-                  context.read<FriendshipActionBloc>().add(
-                    RemoveFriendEvent(friendId: otherUserId),
-                  );
-                }
-              },
-            );
-          },
-        ),
-      );
-    }
-
-    if (!isOwnProfile) {
-      // Fallback if bloc is null
-      return ProfileInfo(
-        firstName: firstName,
-        lastName: lastName,
-        username: username,
-        bio: bio,
-        profileImageUrl: profileImageUrl,
-        isOwnProfile: isOwnProfile,
-        onFriendsTap: () => context.push('/friends'),
-        onMessageTap: onMessageTap,
-      );
-    }
-
-    // Kendi profilimizse - bloc null ise fallback göster
+    // 🔥 Safety Check: Eğer bloc null ise (hata durumu veya geçersiz ID) düz ProfileInfo döndür
     if (_friendshipBloc == null) {
       return ProfileInfo(
         firstName: firstName,
@@ -266,54 +172,143 @@ class _ProfilePageState extends State<ProfilePage> {
         username: username,
         bio: bio,
         profileImageUrl: profileImageUrl,
-        isOwnProfile: true,
+        isOwnProfile: isOwnProfile,
         friendCount: "0",
-        onFriendsTap: () => context.push('/friends'),
+        onMessageTap: onMessageTap,
       );
     }
 
-    // Kendi profilimizse BlocBuilder ile dinamik arkadaş sayısı göster
-    return BlocBuilder<FriendshipListBloc, FriendshipListState>(
+    // Ortak BlocBuilder: Hem kendi hem başkasının profili için istatistikleri dinle
+    // Eğer _friendshipBloc yoksa (bir hata durumu vs.) statik "0" gösteririz.
+
+    // Arkadaşlık DURUMU (Status) için Listener/Builder (Sadece başkasının profilinde)
+    Widget profileInfo = BlocBuilder<FriendshipListBloc, FriendshipListState>(
       bloc: _friendshipBloc,
-      builder: (context, state) {
+      builder: (context, statsState) {
         String friendCount = "0";
-        if (state is FriendshipStatsLoaded) {
-          friendCount = state.stats.totalFriends.toString();
+        if (statsState is FriendshipStatsLoaded) {
+          friendCount = statsState.stats.totalFriends.toString();
         }
 
-        return ProfileInfo(
-          firstName: firstName,
-          lastName: lastName,
-          username: username,
-          bio: bio,
-          profileImageUrl: profileImageUrl,
-          isOwnProfile: isOwnProfile,
-          friendCount: friendCount,
-          onFriendsTap: () => context.push('/friends'),
-          onMessageTap: onMessageTap,
-          onRatingTap: () {
-            // TODO: Rating sayfasına yönlendir
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Rating sayfası yakında...")),
-            );
+        // Eğer kendi profilimizse direkt ProfileInfo döndür
+        if (isOwnProfile) {
+          return ProfileInfo(
+            firstName: firstName,
+            lastName: lastName,
+            username: username,
+            bio: bio,
+            profileImageUrl: profileImageUrl,
+            isOwnProfile: true,
+            friendCount: friendCount, // 🔥 Dinamik Arkadaş Sayısı
+            onFriendsTap: () => context.push('/friends'),
+            onMessageTap: onMessageTap,
+            onRatingTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Rating sayfası yakında...")),
+              );
+            },
+            onFollowersTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Takipçiler sayfası yakında...")),
+              );
+            },
+            onFollowingTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Takip edilenler sayfası yakında..."),
+                ),
+              );
+            },
+          );
+        }
+
+        // Başkasının profili ise FriendshipStatusBloc ile sarmala
+        return BlocListener<FriendshipActionBloc, FriendshipActionState>(
+          listener: (context, actionState) {
+            if (actionState is FriendshipActionSuccess) {
+              if (otherUserId != null) {
+                _statusBloc?.add(
+                  CheckFriendshipStatusEvent(targetUserId: otherUserId),
+                );
+              }
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(actionState.message)));
+            } else if (actionState is FriendshipActionFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(actionState.error),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           },
-          onFollowersTap: () {
-            // TODO: Followers sayfasına yönlendir
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Takipçiler sayfası yakında...")),
-            );
-          },
-          onFollowingTap: () {
-            // TODO: Following sayfasına yönlendir
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Takip edilenler sayfası yakında..."),
-              ),
-            );
-          },
+          child: BlocBuilder<FriendshipStatusBloc, FriendshipStatusState>(
+            bloc: _statusBloc,
+            builder: (context, statusState) {
+              FriendshipStatus? status;
+              FriendRequestType? requestType;
+              int? friendshipId;
+
+              if (statusState is FriendshipStatusLoaded) {
+                status = statusState.status;
+                requestType = statusState.requestType;
+                friendshipId = statusState.friendshipId;
+              }
+
+              return ProfileInfo(
+                firstName: firstName,
+                lastName: lastName,
+                username: username,
+                bio: bio,
+                profileImageUrl: profileImageUrl,
+                isOwnProfile: false,
+                friendCount: friendCount, // 🔥 Dinamik Arkadaş Sayısı (Visited)
+                friendshipStatus: status,
+                friendRequestType: requestType,
+                onMessageTap: onMessageTap,
+                onSendRequest: () {
+                  if (otherUserId != null) {
+                    context.read<FriendshipActionBloc>().add(
+                      SendFriendRequestEvent(
+                        targetUserId: otherUserId,
+                        message: "Merhaba!",
+                      ),
+                    );
+                  }
+                },
+                onCancelRequest: () {
+                  // Backend endpoint yok
+                },
+                onAcceptRequest: () {
+                  if (friendshipId != null) {
+                    context.read<FriendshipActionBloc>().add(
+                      AcceptFriendRequestEvent(friendshipId: friendshipId),
+                    );
+                  }
+                },
+                onRejectRequest: () {
+                  if (friendshipId != null) {
+                    context.read<FriendshipActionBloc>().add(
+                      RejectFriendRequestEvent(friendshipId: friendshipId),
+                    );
+                  }
+                },
+                onRemoveFriend: () {
+                  if (otherUserId != null) {
+                    context.read<FriendshipActionBloc>().add(
+                      RemoveFriendEvent(friendId: otherUserId),
+                    );
+                  }
+                },
+              );
+            },
+          ),
         );
       },
     );
+
+    return profileInfo;
   }
 
   @override
@@ -361,8 +356,15 @@ class _ProfilePageState extends State<ProfilePage> {
     // Loading durumu (Opsiyonel: İstersen tam sayfa loading yapabilirsin)
     // if (profileProvider.isLoading) return Scaffold(...Loading...);
 
-    return BlocProvider<FriendshipActionBloc>(
-      create: (_) => sl<FriendshipActionBloc>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<FriendshipActionBloc>(
+          create: (_) => sl<FriendshipActionBloc>(),
+        ),
+        if (_friendshipBloc != null)
+          BlocProvider.value(value: _friendshipBloc!),
+        if (_statusBloc != null) BlocProvider.value(value: _statusBloc!),
+      ],
       child: DefaultTabController(
         length: 5, // Tab sayısı
         child: Scaffold(

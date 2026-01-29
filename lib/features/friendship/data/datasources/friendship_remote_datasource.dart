@@ -16,7 +16,7 @@ abstract class FriendshipRemoteDataSource {
   Future<List<FriendUserModel>> getMyFriends();
   Future<List<FriendRequestModel>> getPendingRequests();
   Future<List<FriendRequestModel>> getSentRequests();
-  Future<FriendStatsModel> getFriendshipStats();
+  Future<FriendStatsModel> getFriendshipStats({int? userId});
   Future<List<FriendUserModel>> getMutualFriends(int targetUserId);
   Future<List<FriendUserModel>> searchFriends(String query);
 
@@ -75,8 +75,8 @@ class FriendshipRemoteDataSourceImpl implements FriendshipRemoteDataSource {
   }
 
   @override
-  Future<FriendStatsModel> getFriendshipStats() {
-    return api.getFriendshipStats();
+  Future<FriendStatsModel> getFriendshipStats({int? userId}) {
+    return api.getFriendshipStats(userId: userId);
   }
 
   @override

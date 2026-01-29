@@ -17,7 +17,10 @@ class JotEntity {
 
   // User info (if returned with jot)
   final String? username;
+  final String? firstName;
+  final String? lastName;
   final String? userProfilePictureUrl;
+  final String? bikeModel;
 
   const JotEntity({
     required this.id,
@@ -30,6 +33,9 @@ class JotEntity {
     this.createdAt,
     this.updatedAt,
     this.username,
+    this.firstName,
+    this.lastName,
     this.userProfilePictureUrl,
+    this.bikeModel,
   });
 }

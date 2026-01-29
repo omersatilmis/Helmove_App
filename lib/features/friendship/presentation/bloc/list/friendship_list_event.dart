@@ -13,7 +13,13 @@ class LoadPendingRequestsEvent extends FriendshipListEvent {}
 
 class LoadSentRequestsEvent extends FriendshipListEvent {}
 
-class LoadFriendshipStatsEvent extends FriendshipListEvent {}
+class LoadFriendshipStatsEvent extends FriendshipListEvent {
+  final int? userId; // Opsiyonel: null ise current user
+  const LoadFriendshipStatsEvent({this.userId});
+
+  @override
+  List<Object> get props => [userId ?? 'current'];
+}
 
 class LoadMutualFriendsEvent extends FriendshipListEvent {
   final int targetUserId;

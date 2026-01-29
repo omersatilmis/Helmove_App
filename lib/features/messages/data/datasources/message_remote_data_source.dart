@@ -81,8 +81,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   }) async {
     try {
       final url = MessageEndpoints.conversation(otherUserId);
-      print('GET Conversation URL: $url');
-      print('Params: page=$page, pageSize=$pageSize');
 
       final response = await dio.get(
         url,
@@ -96,9 +94,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
 
       final List list = data is List ? data : [];
       return list.map((e) => MessageModel.fromJson(e)).toList();
-    } on DioException catch (e) {
-      print('GetConversation Error: ${e.response?.statusCode}');
-      print('Error Data: ${e.response?.data}');
+    } on DioException {
       rethrow;
     }
   }

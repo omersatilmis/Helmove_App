@@ -73,12 +73,22 @@ import '../../features/content/jots/domain/usecases/create_jot_usecase.dart';
 import '../../features/content/jots/domain/usecases/delete_jot_usecase.dart';
 import '../../features/content/jots/domain/usecases/get_feed_usecase.dart';
 import '../../features/content/jots/domain/usecases/get_user_jots_usecase.dart';
+import '../../features/content/jots/presentation/bloc/jots_bloc.dart';
 
 final sl = GetIt.instance;
 
 /// Logout sırasında çağrılmalı - singleton önbelleklerini temizler
 /// Dio ve SharedPreferences hariç tüm singleton'ları resetler
 Future<void> resetOnLogout() async {
+  // 1. CLEAR CACHES FIRST (Before unregistering anything)
+  if (sl.isRegistered<FriendshipRepository>()) {
+    try {
+      sl<FriendshipRepository>().clearCache();
+    } catch (e) {
+      print("⚠️ Error clearing friendship cache: $e");
+    }
+  }
+
   // 1. Clear SharedPreferences (User Data)
   try {
     if (sl.isRegistered<SharedPreferences>()) {
@@ -90,10 +100,9 @@ Future<void> resetOnLogout() async {
     print("⚠️ Error clearing SharedPreferences: $e");
   }
 
-  // 1. Core & Network Resets
-  if (sl.isRegistered<Dio>()) {
-    sl.unregister<Dio>();
-  }
+  // 1.5 No need to re-register Dio or SharedPreferences as they are root singletons
+  // that don't hold user-specific state that can't be cleared.
+  // The AuthInterceptor already handles the cleared SharedPreferences.
 
   // 2. Auth Feature Resets
   if (sl.isRegistered<AuthRemoteDataSource>()) {
@@ -110,11 +119,11 @@ Future<void> resetOnLogout() async {
   }
 
   // 3. Friendship Feature Resets
-  if (sl.isRegistered<FriendshipRemoteDataSource>()) {
-    sl.unregister<FriendshipRemoteDataSource>();
-  }
   if (sl.isRegistered<FriendshipRepository>()) {
     sl.unregister<FriendshipRepository>();
+  }
+  if (sl.isRegistered<FriendshipRemoteDataSource>()) {
+    sl.unregister<FriendshipRemoteDataSource>();
   }
   if (sl.isRegistered<FriendshipApi>()) {
     sl.unregister<FriendshipApi>();
@@ -164,17 +173,7 @@ Future<void> resetOnLogout() async {
 
   // --- RE-REGISTER ---
 
-  // 1. Re-register Dio
-  // SharedPreferences'ı çek (clear'dan sonra hala instance var mı? Var, sadece içi boş.)
-  // Ancak unregister edilmediği için sl<SharedPreferences>() hala çalışır.
-  final sharedPreferences = sl<SharedPreferences>();
-
-  // Dio'yu yeniden oluştur
-  final dio = await NetworkModule.provideDio(sharedPreferences);
-  // Unregister Dio yapıldı yukarıda, şimdi register ediyoruz.
-  sl.registerLazySingleton(() => dio);
-
-  // 2. Re-register Auth Feature
+  // 1. Re-register Auth Feature
   if (!sl.isRegistered<AuthApi>()) {
     sl.registerLazySingleton(() => AuthApi(sl()));
   }
@@ -278,7 +277,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => sharedPreferences);
 
   final dio = await NetworkModule.provideDio(sharedPreferences);
-  sl.registerLazySingleton(() => dio);
+  sl.registerSingleton<Dio>(dio);
 
   //! Auth Feature
   // API
@@ -328,20 +327,20 @@ Future<void> init() async {
   );
 
   // UseCases
-  sl.registerLazySingleton(() => SendFriendRequestUseCase(sl()));
-  sl.registerLazySingleton(() => AcceptFriendRequestUseCase(sl()));
-  sl.registerLazySingleton(() => RejectFriendRequestUseCase(sl()));
-  sl.registerLazySingleton(() => RemoveFriendUseCase(sl()));
-  sl.registerLazySingleton(() => BlockUserUseCase(sl()));
-  sl.registerLazySingleton(() => UnblockUserUseCase(sl()));
-  sl.registerLazySingleton(() => GetMyFriendsUseCase(sl()));
-  sl.registerLazySingleton(() => GetPendingRequestsUseCase(sl()));
-  sl.registerLazySingleton(() => GetSentRequestsUseCase(sl()));
-  sl.registerLazySingleton(() => GetFriendshipStatsUseCase(sl()));
-  sl.registerLazySingleton(() => GetMutualFriendsUseCase(sl()));
-  sl.registerLazySingleton(() => SearchFriendsUseCase(sl()));
-  sl.registerLazySingleton(() => CheckAreFriendsUseCase(sl()));
-  sl.registerLazySingleton(() => GetFriendshipStatusUseCase(sl()));
+  sl.registerFactory(() => SendFriendRequestUseCase(sl()));
+  sl.registerFactory(() => AcceptFriendRequestUseCase(sl()));
+  sl.registerFactory(() => RejectFriendRequestUseCase(sl()));
+  sl.registerFactory(() => RemoveFriendUseCase(sl()));
+  sl.registerFactory(() => BlockUserUseCase(sl()));
+  sl.registerFactory(() => UnblockUserUseCase(sl()));
+  sl.registerFactory(() => GetMyFriendsUseCase(sl()));
+  sl.registerFactory(() => GetPendingRequestsUseCase(sl()));
+  sl.registerFactory(() => GetSentRequestsUseCase(sl()));
+  sl.registerFactory(() => GetFriendshipStatsUseCase(sl()));
+  sl.registerFactory(() => GetMutualFriendsUseCase(sl()));
+  sl.registerFactory(() => SearchFriendsUseCase(sl()));
+  sl.registerFactory(() => CheckAreFriendsUseCase(sl()));
+  sl.registerFactory(() => GetFriendshipStatusUseCase(sl()));
 
   // Blocs
   sl.registerFactory(
@@ -390,7 +389,7 @@ Future<void> init() async {
   );
 
   // UseCases
-  sl.registerLazySingleton(() => SearchUsersUseCase(sl()));
+  sl.registerFactory(() => SearchUsersUseCase(sl()));
 
   // Bloc
   sl.registerFactory(() => DiscoverBloc(searchUsers: sl()));
@@ -407,15 +406,15 @@ Future<void> init() async {
   );
 
   // UseCases
-  sl.registerLazySingleton(() => SendMessageUseCase(sl()));
-  sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
-  sl.registerLazySingleton(() => GetConversationMessagesUseCase(sl()));
-  sl.registerLazySingleton(() => MarkAsReadUseCase(sl()));
-  sl.registerLazySingleton(() => MarkConversationAsReadUseCase(sl()));
-  sl.registerLazySingleton(() => DeleteMessageUseCase(sl()));
-  sl.registerLazySingleton(() => DeleteConversationUseCase(sl()));
-  sl.registerLazySingleton(() => EditMessageUseCase(sl()));
-  sl.registerLazySingleton(() => GetUnreadCountUseCase(sl()));
+  sl.registerFactory(() => SendMessageUseCase(sl()));
+  sl.registerFactory(() => GetConversationsUseCase(sl()));
+  sl.registerFactory(() => GetConversationMessagesUseCase(sl()));
+  sl.registerFactory(() => MarkAsReadUseCase(sl()));
+  sl.registerFactory(() => MarkConversationAsReadUseCase(sl()));
+  sl.registerFactory(() => DeleteMessageUseCase(sl()));
+  sl.registerFactory(() => DeleteConversationUseCase(sl()));
+  sl.registerFactory(() => EditMessageUseCase(sl()));
+  sl.registerFactory(() => GetUnreadCountUseCase(sl()));
 
   // Blocs
   sl.registerFactory(
@@ -449,8 +448,13 @@ Future<void> init() async {
   sl.registerLazySingleton<JotsRepository>(() => JotsRepositoryImpl(sl()));
 
   // UseCases
-  sl.registerLazySingleton(() => CreateJotUseCase(sl()));
-  sl.registerLazySingleton(() => GetFeedUseCase(sl()));
-  sl.registerLazySingleton(() => GetUserJotsUseCase(sl()));
-  sl.registerLazySingleton(() => DeleteJotUseCase(sl()));
+  sl.registerFactory(() => CreateJotUseCase(sl()));
+  sl.registerFactory(() => GetFeedUseCase(sl()));
+  sl.registerFactory(() => GetUserJotsUseCase(sl()));
+  sl.registerFactory(() => DeleteJotUseCase(sl()));
+
+  // Blocs
+  sl.registerFactory(
+    () => JotsBloc(getUserJots: sl(), createJot: sl(), deleteJot: sl()),
+  );
 }

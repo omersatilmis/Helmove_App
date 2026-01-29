@@ -148,8 +148,12 @@ class FriendshipRepositoryImpl implements FriendshipRepository {
   }
 
   @override
-  Future<Either<Failure, FriendStatsEntity>> getFriendshipStats() {
-    return _getData('stats', () => remoteDataSource.getFriendshipStats());
+  Future<Either<Failure, FriendStatsEntity>> getFriendshipStats({int? userId}) {
+    final cacheKey = userId == null ? 'stats' : 'stats_$userId';
+    return _getData(
+      cacheKey,
+      () => remoteDataSource.getFriendshipStats(userId: userId),
+    );
   }
 
   @override
@@ -197,5 +201,10 @@ class FriendshipRepositoryImpl implements FriendshipRepository {
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
+  }
+
+  @override
+  void clearCache() {
+    _invalidateAllCaches();
   }
 }

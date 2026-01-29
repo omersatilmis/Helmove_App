@@ -42,74 +42,70 @@ class _FriendsListState extends State<FriendsList> {
         builder: (context, state) {
           if (state is FriendshipListLoading) {
             return const Center(child: CircularProgressIndicator());
-          } else if (state is FriendshipListFailure) {
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<FriendshipListBloc>().add(LoadMyFriendsEvent());
-              },
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                  Center(child: Text("Hata: ${state.message}")),
-                ],
-              ),
-            );
-          } else if (state is MyFriendsLoaded) {
-            final friends = state.friends;
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<FriendshipListBloc>().add(LoadMyFriendsEvent());
-              },
-              child: friends.isEmpty
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.3,
-                        ),
-                        const Center(child: Text("Henüz arkadaşın yok.")),
-                      ],
-                    )
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: friends.length,
-                      itemBuilder: (context, index) {
-                        final friend = friends[index];
-                        return FriendStatusCard(
-                          index: index,
-                          imageUrl: friend.profilePictureUrl ?? '',
-                          firstName: friend.firstName ?? '',
-                          lastName: friend.lastName ?? '',
-                          username: friend.username,
-                          statusInfo: friend.isOnline
-                              ? "Çevrimiçi"
-                              : "Çevrimdışı",
-                          type: FriendshipCardType.friends,
-                          onMessageTap: () {
-                            // Navigate to chat
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "${friend.username} ile sohbet...",
-                                ),
-                              ),
-                            );
-                          },
-                          onRemoveTap: () {
-                            context.read<FriendshipActionBloc>().add(
-                              // removeFriend expects User ID
-                              RemoveFriendEvent(friendId: friend.userId),
-                            );
-                          },
-                        );
-                      },
-                    ),
-            );
           }
-          return const SizedBox();
+
+          // We wrap the content in a RefreshIndicator
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<FriendshipListBloc>().add(LoadMyFriendsEvent());
+            },
+            child: _buildContent(context, state),
+          );
         },
       ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, FriendshipListState state) {
+    if (state is FriendshipListFailure) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+          Center(child: Text("Hata: ${state.message}")),
+        ],
+      );
+    } else if (state is MyFriendsLoaded) {
+      final friends = state.friends;
+      if (friends.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            const Center(child: Text("Henüz arkadaşın yok.")),
+          ],
+        );
+      }
+      return ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: friends.length,
+        itemBuilder: (context, index) {
+          final friend = friends[index];
+          return FriendStatusCard(
+            imageUrl: friend.profilePictureUrl ?? '',
+            firstName: friend.firstName ?? '',
+            lastName: friend.lastName ?? '',
+            username: friend.username,
+            statusInfo: friend.isOnline ? "Çevrimiçi" : "Çevrimdışı",
+            type: FriendshipCardType.friends,
+            onMessageTap: () {
+              // Navigate to chat
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("${friend.username} ile sohbet...")),
+              );
+            },
+            onOptionsTap: () {
+              context.read<FriendshipActionBloc>().add(
+                RemoveFriendEvent(friendId: friend.userId),
+              );
+            },
+          );
+        },
+      );
+    }
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: const [SizedBox()],
     );
   }
 }

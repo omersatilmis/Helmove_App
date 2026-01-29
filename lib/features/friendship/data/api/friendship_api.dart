@@ -121,9 +121,17 @@ class FriendshipApi {
   }
 
   /// GET /api/Friendship/stats
-  Future<FriendStatsModel> getFriendshipStats() async {
+  Future<FriendStatsModel> getFriendshipStats({int? userId}) async {
     try {
-      final response = await _dio.get(ApiEndpoints.friendshipStats);
+      final queryParams = <String, dynamic>{};
+      if (userId != null) {
+        queryParams['targetUserId'] = userId;
+      }
+
+      final response = await _dio.get(
+        ApiEndpoints.friendshipStats,
+        queryParameters: queryParams,
+      );
       return FriendStatsModel.fromJson(response.data);
     } catch (e) {
       throw _handleError(e, 'İstatistikler alınamadı');

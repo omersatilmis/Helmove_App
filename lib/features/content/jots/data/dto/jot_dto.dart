@@ -20,6 +20,7 @@ class CreateJotRequest {
     return {
       'type': type,
       'text': text,
+      'content': text,
       'mediaUrl': mediaUrl,
       'thumbnailUrl': thumbnailUrl,
       'visibility': visibility,
@@ -56,15 +57,19 @@ class JotModel extends JotEntity {
     super.createdAt,
     super.updatedAt,
     super.username,
+    super.firstName,
+    super.lastName,
     super.userProfilePictureUrl,
+    super.bikeModel,
   });
 
   factory JotModel.fromJson(Map<String, dynamic> json) {
     return JotModel(
       id: json['id'] ?? 0,
-      userId: json['userId'] ?? 0,
+      userId: json['userId'] ?? json['user']?['id'] ?? 0,
       type: _parseJotType(json['type']),
-      text: json['text'],
+      // Fallback keys for content visibility
+      text: json['text'] ?? json['content'] ?? json['body'] ?? json['message'],
       mediaUrl: json['mediaUrl'],
       thumbnailUrl: json['thumbnailUrl'],
       visibility: _parseVisibility(json['visibility']),
@@ -74,8 +79,15 @@ class JotModel extends JotEntity {
       updatedAt: json['updatedAt'] != null
           ? DateTime.tryParse(json['updatedAt'])
           : null,
-      username: json['username'],
-      userProfilePictureUrl: json['userProfilePictureUrl'],
+      username: json['username'] ?? json['user']?['username'],
+      firstName: json['firstName'] ?? json['user']?['firstName'],
+      lastName: json['lastName'] ?? json['user']?['lastName'],
+      userProfilePictureUrl:
+          json['userProfilePictureUrl'] ??
+          json['user']?['profilePictureUrl'] ??
+          json['profileImageUrl'] ??
+          json['avatarUrl'],
+      bikeModel: json['bikeModel'] ?? json['motorModel'],
     );
   }
 
