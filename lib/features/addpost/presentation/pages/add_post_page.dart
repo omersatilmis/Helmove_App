@@ -62,7 +62,7 @@ class _AddPostPageState extends State<AddPostPage> {
           // Çözüm: then() bloğu ile geri dönüşü yakala ve tekrar _pickImage çağır.
 
           File file = File(pickedFile.path);
-          context.push('/prepare_post', extra: file).then((_) {
+          context.push('/prepare_media', extra: file).then((_) {
             // Geri dönüldüğünde tekrar kamerayı aç
             if (mounted) _pickImage();
           });

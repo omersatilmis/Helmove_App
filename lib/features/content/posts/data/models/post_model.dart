@@ -19,16 +19,18 @@ class PostModel extends PostEntity {
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
     return PostModel(
-      id: json['id'] as int,
-      type: json['type'] as int,
-      text: json['text'] as String,
+      id: json['id'] as int? ?? 0,
+      type: json['type'] as int? ?? 0,
+      text: json['text'] as String? ?? '',
       mediaUrl: json['mediaUrl'] as String?,
       thumbnailUrl: json['thumbnailUrl'] as String?,
-      visibility: json['visibility'] as int,
-      userId: json['userId'] as int,
+      visibility: json['visibility'] as int? ?? 0,
+      userId: json['userId'] as int? ?? 0,
       username: json['username'] ?? '',
       userProfileImage: json['userProfileImage'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
       likeCount: json['likeCount'] as int? ?? 0,
       commentCount: json['commentCount'] as int? ?? 0,
       isLiked: json['isLiked'] as bool? ?? false,

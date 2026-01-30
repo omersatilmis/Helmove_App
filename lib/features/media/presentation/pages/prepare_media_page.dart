@@ -8,16 +8,16 @@ import '../../../../../core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/create_post_cubit.dart';
 import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/create_post_state.dart';
 
-class PreparePostPage extends StatefulWidget {
+class PrepareMediaPage extends StatefulWidget {
   final File imageFile;
 
-  const PreparePostPage({super.key, required this.imageFile});
+  const PrepareMediaPage({super.key, required this.imageFile});
 
   @override
-  State<PreparePostPage> createState() => _PreparePostPageState();
+  State<PrepareMediaPage> createState() => _PrepareMediaPageState();
 }
 
-class _PreparePostPageState extends State<PreparePostPage> {
+class _PrepareMediaPageState extends State<PrepareMediaPage> {
   final TextEditingController _captionController = TextEditingController();
 
   @override
@@ -70,12 +70,12 @@ class _PreparePostPageState extends State<PreparePostPage> {
                         ? null
                         : () {
                             // Gönderiyi paylaş
+                            // Not: CreatePostCubit içindeki uploadImage parametresi
+                            // local dosya yolunu alıp upload eder, sonra post oluşturur.
                             context.read<CreatePostCubit>().submitPost(
                               text: _captionController.text,
                               visibility: 0, // Public
-                              mediaUrl: widget
-                                  .imageFile
-                                  .path, // Şimdilik path gönderiyoruz, backend upload lazım
+                              mediaUrl: widget.imageFile.path,
                             );
                           },
                     child: state.status == CreatePostStatus.submitting
@@ -139,26 +139,6 @@ class _PreparePostPageState extends State<PreparePostPage> {
                 const Divider(
                   color: AppColors.darkSurfaceContainer,
                   height: 32,
-                ),
-
-                // Ekstralar (Konum vb. eklenebilir - Şimdilik sadece placeholder)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.location_on_outlined,
-                    color: AppColors.darkTextSecondary,
-                  ),
-                  title: Text(
-                    'Konum Ekle',
-                    style: AppTextStyles.medium.copyWith(
-                      color: AppColors.darkTextPrimary,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.darkTextSecondary,
-                  ),
-                  onTap: () {},
                 ),
               ],
             ),

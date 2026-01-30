@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart'; // 🔥 ŞART
-import '/../../core/theme/app_colors.dart';
-import '/../../core/theme/text_styles.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/text_styles.dart';
 import '../../domain/entities/post_entity.dart';
 
 class PostCardModern extends StatefulWidget {
@@ -140,7 +140,7 @@ class _PostCardModernState extends State<PostCardModern>
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 200, // Alt kısmı karart
+                  height: 300, // Alt kısmı karart
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -148,8 +148,8 @@ class _PostCardModernState extends State<PostCardModern>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.4),
-                          Colors.black.withOpacity(0.9),
+                          Colors.black.withValues(alpha: 0.4),
+                          Colors.black.withValues(alpha: 0.9),
                         ],
                       ),
                     ),
@@ -243,7 +243,10 @@ class _PostCardModernState extends State<PostCardModern>
                               backgroundColor: AppColors.primary,
                               child: widget.post.userProfileImage == null
                                   ? Text(
-                                      widget.post.username[0].toUpperCase(),
+                                      widget.post.username.isNotEmpty
+                                          ? widget.post.username[0]
+                                                .toUpperCase()
+                                          : "?",
                                       style: const TextStyle(
                                         color: Colors.white,
                                       ),
@@ -306,28 +309,101 @@ class _PostCardModernState extends State<PostCardModern>
               // --------------------------
               // KATMAN 5: SİLME MENÜSÜ (Opsiyonel)
               // --------------------------
-              if (widget.isCurrentUser && !_hideUI)
+              if (!_hideUI)
                 Positioned(
                   top: 16,
                   right: 16,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: widget.onDelete,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.4),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.more_horiz,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                  child: PopupMenuButton<String>(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.more_horiz,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
+                    color: AppColors.darkSurface,
+                    offset: const Offset(0, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onSelected: (value) {
+                      if (value == 'share') {
+                        widget.onShare?.call();
+                      } else if (value == 'delete') {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: AppColors.darkSurface,
+                            title: const Text(
+                              'Postu Sil',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            content: const Text(
+                              'Bu gönderiyi silmek istediğine emin misin?',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('İptal'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context); // Close dialog
+                                  widget.onDelete?.call();
+                                },
+                                child: const Text(
+                                  'Sil',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'share',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.send_rounded,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Paylaş',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (widget.isCurrentUser)
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline,
+                                size: 20,
+                                color: AppColors.error,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'Sil',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
             ],

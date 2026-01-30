@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
@@ -115,14 +117,18 @@ class _ChatViewState extends State<ChatView> {
     final isDark = theme.brightness == Brightness.dark;
 
     // Refined Tones
-    final Color appBarBg = isDark ? const Color(0xFF1C1917) : Colors.white;
+    final Color appBarBg = isDark
+        ? AppColors.darkSurface
+        : AppColors.lightBackground;
     final Color scaffoldBg = isDark
-        ? const Color(0xFF12100E)
-        : const Color(0xFFF7F7F7);
-    final Color inputAreaBg = isDark ? const Color(0xFF1C1917) : Colors.white;
+        ? AppColors.darkBackground
+        : AppColors.lightSurface;
+    final Color inputAreaBg = isDark
+        ? AppColors.darkSurface
+        : AppColors.lightBackground;
     final Color inputFieldBg = isDark
-        ? const Color(0xFF25221F)
-        : const Color(0xFFF0F0F0);
+        ? AppColors.darkSurfaceContainer
+        : AppColors.lightSurfaceContainer;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -233,7 +239,7 @@ class _ChatViewState extends State<ChatView> {
             radius: 18,
             backgroundColor: colorScheme.primary.withOpacity(0.1),
             backgroundImage: widget.profileImageUrl != null
-                ? NetworkImage(widget.profileImageUrl!)
+                ? CachedNetworkImageProvider(widget.profileImageUrl!)
                 : null,
             child: widget.profileImageUrl == null
                 ? Text(
@@ -597,7 +603,7 @@ class _BubblePainter extends CustomPainter {
     }
 
     if (!isDark && !isMe) {
-      canvas.drawShadow(path, Colors.black.withOpacity(0.2), 2, false);
+      canvas.drawShadow(path, Colors.black.withValues(alpha: 0.2), 2, false);
     }
 
     canvas.drawPath(path, paint);

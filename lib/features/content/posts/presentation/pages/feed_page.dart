@@ -1,152 +1,157 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../../core/di/injection_container.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
-import '../../../../../core/widgets/app_button_frosted.dart';
 import '../bloc/posts_bloc.dart';
 import '../bloc/posts_event.dart';
 import '../bloc/posts_state.dart';
 import '../widgets/post_card.dart';
-import 'create_post_page.dart';
+import 'package:provider/provider.dart';
+import '../../../../profile/presentation/providers/profile_provider.dart';
+import '../../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../../core/di/injection_container.dart';
 
-class FeedPage extends StatelessWidget {
-  const FeedPage({super.key});
+class FeedView extends StatefulWidget {
+  const FeedView({super.key});
+
+  @override
+  State<FeedView> createState() => _FeedViewState();
+}
+
+class _FeedViewState extends State<FeedView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isBottom) {
+      context.read<PostsBloc>().add(const GetFeedEvent());
+    }
+  }
+
+  bool get _isBottom {
+    if (!_scrollController.hasClients) return false;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    return currentScroll >= (maxScroll * 0.9);
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Use ProfileProvider to get the current user's ID (more reliable on app startup)
+    final profileProvider = context.watch<ProfileProvider>();
+    final currentUserIdInt = profileProvider.profile?.id;
+
     return BlocProvider(
       create: (context) => sl<PostsBloc>()..add(const GetFeedEvent()),
-      child: Scaffold(
-        backgroundColor: AppColors.darkBackground,
-        appBar: AppBar(
-          title: Text('Akış', style: AppTextStyles.h3),
-          centerTitle: false,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: AppFrostedButton(
-                icon: Icons.add,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CreatePostPage(),
-                    ),
-                  ).then((result) {
-                    if (result == true) {
-                      // Refresh feed if post created
+      child: BlocBuilder<PostsBloc, PostsState>(
+        builder: (context, state) {
+          // Need to set up listeners for refresh here if we want to support result from CreatePostPage
+          // But for now let's focus on the crash/loop.
+
+          if (state.status == PostsStatus.loading && state.posts.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state.status == PostsStatus.failure && state.posts.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.error,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    state.errorMessage ?? 'Bir hata oluştu',
+                    style: AppTextStyles.medium,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
                       context.read<PostsBloc>().add(
                         const GetFeedEvent(isRefresh: true),
                       );
-                    }
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        body: BlocBuilder<PostsBloc, PostsState>(
-          builder: (context, state) {
-            if (state.status == PostsStatus.loading && state.posts.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (state.status == PostsStatus.failure && state.posts.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: AppColors.error,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      state.errorMessage ?? 'Bir hata oluştu',
-                      style: AppTextStyles.medium,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        context.read<PostsBloc>().add(
-                          const GetFeedEvent(isRefresh: true),
-                        );
-                      },
-                      child: const Text('Tekrar Dene'),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            if (state.posts.isEmpty) {
-              return Center(
-                child: Text(
-                  'Henüz gönderi yok.',
-                  style: AppTextStyles.medium.copyWith(
-                    color: AppColors.darkTextSecondary,
+                    },
+                    child: const Text('Tekrar Dene'),
                   ),
-                ),
-              );
-            }
-
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<PostsBloc>().add(
-                  const GetFeedEvent(isRefresh: true),
-                );
-              },
-              child: ListView.builder(
-                padding: const EdgeInsets.only(
-                  top: 16,
-                ), // Sadece üstten boşluk, yanlar post_card içinde
-                itemCount: state.hasReachedMax
-                    ? state.posts.length
-                    : state.posts.length + 1,
-                itemBuilder: (context, index) {
-                  if (index >= state.posts.length) {
-                    // Bottom Loader
-                    context.read<PostsBloc>().add(
-                      GetFeedEvent(page: state.page + 1),
-                    );
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
-                  }
-
-                  final post = state.posts[index];
-                  // TODO: Get current user ID roughly for simplicity or pass it
-                  // For now assuming we can't delete unless we know ID match
-                  return PostCardModern(
-                    post: post,
-                    isCurrentUser:
-                        false, // Update logic when we have User ID access easily
-                    onDelete: () {
-                      context.read<PostsBloc>().add(DeletePostEvent(post.id));
-                    },
-                    onLike: () {
-                      // TODO: Implement like logic
-                    },
-                    onComment: () {
-                      // TODO: Implement comment logic
-                    },
-                    onShare: () {
-                      // TODO: Implement share logic
-                    },
-                    onSave: () {
-                      // TODO: Implement save logic
-                    },
-                  );
-                },
+                ],
               ),
             );
-          },
-        ),
+          }
+
+          if (state.posts.isEmpty) {
+            return Center(
+              child: Text(
+                'Henüz gönderi yok.',
+                style: AppTextStyles.medium.copyWith(
+                  color: AppColors.darkTextSecondary,
+                ),
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<PostsBloc>().add(
+                const GetFeedEvent(isRefresh: true),
+              );
+            },
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.only(top: 16),
+              itemCount: state.hasReachedMax
+                  ? state.posts.length
+                  : state.posts.length + 1,
+              itemBuilder: (context, index) {
+                if (index >= state.posts.length) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
+                final post = state.posts[index];
+                final isOwner =
+                    currentUserIdInt != null && post.userId == currentUserIdInt;
+
+                return PostCardModern(
+                  post: post,
+                  isCurrentUser: isOwner,
+                  onDelete: () {
+                    context.read<PostsBloc>().add(DeletePostEvent(post.id));
+                  },
+                  onLike: () {
+                    context.read<PostsBloc>().add(LikePostEvent(post.id));
+                  },
+                  onComment: () {
+                    // TODO: Implement comment logic
+                  },
+                  onShare: () {
+                    // TODO: Implement share logic
+                  },
+                  onSave: () {
+                    // TODO: Implement save logic
+                  },
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }

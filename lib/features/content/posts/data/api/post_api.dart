@@ -44,4 +44,8 @@ class PostApi {
   Future<void> deletePost(int id) async {
     await _dio.delete(ApiEndpoints.deletePost(id));
   }
+
+  Future<void> likePost(int id) async {
+    await _dio.post(ApiEndpoints.likePost(id));
+  }
 }

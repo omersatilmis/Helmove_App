@@ -40,3 +40,12 @@ class DeletePostEvent extends PostsEvent {
   @override
   List<Object?> get props => [postId];
 }
+
+class LikePostEvent extends PostsEvent {
+  final int postId;
+
+  const LikePostEvent(this.postId);
+
+  @override
+  List<Object?> get props => [postId];
+}

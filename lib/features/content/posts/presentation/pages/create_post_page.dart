@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/di/injection_container.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
@@ -156,35 +157,37 @@ class _CreatePostPageState extends State<CreatePostPage> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(20),
-                                child: Image.network(
-                                  value.text,
+                                child: CachedNetworkImage(
+                                  imageUrl: value.text,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: AppColors.darkSurfaceContainer,
-                                      alignment: Alignment.center,
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(
-                                            Icons.broken_image_outlined,
-                                            color: AppColors.error,
-                                            size: 40,
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            'Resim yüklenemedi',
-                                            style: AppTextStyles.medium
-                                                .copyWith(
-                                                  color: AppColors
-                                                      .darkTextSecondary,
-                                                ),
-                                          ),
-                                        ],
+                                  placeholder: (context, url) => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                        color: AppColors.darkSurfaceContainer,
+                                        alignment: Alignment.center,
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.broken_image_outlined,
+                                              color: AppColors.error,
+                                              size: 40,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'Resim yüklenemedi',
+                                              style: AppTextStyles.medium
+                                                  .copyWith(
+                                                    color: AppColors
+                                                        .darkTextSecondary,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    );
-                                  },
                                 ),
                               ),
                             ),

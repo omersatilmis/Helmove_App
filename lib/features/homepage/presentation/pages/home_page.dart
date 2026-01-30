@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 // 🔥 DİKKAT: Drawer'ı dışarıdan kontrol etmek için bu import şart!
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
+import 'package:moto_comm_app_1/features/content/posts/presentation/pages/feed_page.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 
@@ -156,7 +157,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
         ),
       ),
 
-      body: const Center(child: Text("Akış (Feed) İçeriği Gelecek")),
+      body: const FeedView(),
     );
   }
 

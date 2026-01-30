@@ -19,4 +19,6 @@ abstract class PostRepository {
   });
 
   Future<Either<Failure, void>> deletePost(int id);
+
+  Future<Either<Failure, void>> likePost(int id);
 }

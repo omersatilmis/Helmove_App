@@ -85,6 +85,7 @@ import '../../features/content/posts/domain/usecases/delete_post_usecase.dart';
 import '../../features/content/posts/domain/usecases/get_feed_usecase.dart'
     as PostFeed;
 import '../../features/content/posts/domain/usecases/get_user_posts_usecase.dart';
+import '../../features/content/posts/domain/usecases/like_post_usecase.dart';
 import '../../features/content/posts/presentation/bloc/create_post_cubit.dart';
 import '../../features/content/posts/presentation/bloc/posts_bloc.dart';
 
@@ -188,17 +189,6 @@ Future<void> resetOnLogout() async {
   }
   if (sl.isRegistered<JotsApi>()) {
     sl.unregister<JotsApi>();
-  }
-
-  // 8. Posts Feature Resets
-  if (sl.isRegistered<PostRemoteDataSource>()) {
-    sl.unregister<PostRemoteDataSource>();
-  }
-  if (sl.isRegistered<PostRepository>()) {
-    sl.unregister<PostRepository>();
-  }
-  if (sl.isRegistered<PostApi>()) {
-    sl.unregister<PostApi>();
   }
 
   // 8. Posts Feature Resets
@@ -510,10 +500,16 @@ Future<void> init() async {
   sl.registerFactory(() => PostFeed.GetFeedUseCase(sl()));
   sl.registerFactory(() => GetUserPostsUseCase(sl()));
   sl.registerFactory(() => DeletePostUseCase(sl()));
+  sl.registerFactory(() => LikePostUseCase(sl()));
 
   // Blocs
   sl.registerFactory(
-    () => PostsBloc(getFeed: sl(), getUserPosts: sl(), deletePost: sl()),
+    () => PostsBloc(
+      getFeed: sl(),
+      getUserPosts: sl(),
+      deletePost: sl(),
+      likePost: sl(),
+    ),
   );
   sl.registerFactory(
     () => CreatePostCubit(createPost: sl(), uploadImage: sl()),
