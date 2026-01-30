@@ -9,6 +9,7 @@ import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provid
 import 'package:moto_comm_app_1/features/homepage/presentation/pages/home_page.dart';
 import 'package:moto_comm_app_1/features/discover/presentation/pages/discover_page.dart';
 import 'package:moto_comm_app_1/features/addpost/presentation/pages/add_post_page.dart';
+import 'package:moto_comm_app_1/features/addpost/presentation/pages/prepare_post_page.dart';
 import 'package:moto_comm_app_1/features/map/presentation/pages/map_page.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/communication_page.dart';
 
@@ -142,6 +143,22 @@ GoRouter createRouter(AuthProvider authProvider) {
         builder: (context, state) => const FriendsPage(),
       ),
 
+      // Top level add post (Fullscreen)
+      GoRoute(
+        path: '/add_post',
+        builder: (context, state) => const AddPostPage(),
+      ),
+
+      GoRoute(
+        path: '/prepare_post',
+        builder: (context, state) {
+          final file = state.extra as dynamic; // File object
+          // File tipini burada import etmeden dynamic ile geçiyoruz veya dart:io import'u eklememiz lazım.
+          // Dosya yapısı gereği AppRouter'a dart:io eklemek istemeyebiliriz ama basitlik için ekleyelim.
+          return PreparePostPage(imageFile: file);
+        },
+      ),
+
       // --- 2. BOTTOM BARLI SAYFALAR ---
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -166,16 +183,7 @@ GoRouter createRouter(AuthProvider authProvider) {
               ),
             ],
           ),
-          // Şube 3: Paylaş (YENİLENDİ)
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/add_post',
-                builder: (context, state) => const AddPostPage(),
-              ),
-            ],
-          ),
-          // Şube 4: Harita (YENİLENDİ)
+          // Şube 3: Harita (YENİLENDİ)
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -184,7 +192,7 @@ GoRouter createRouter(AuthProvider authProvider) {
               ),
             ],
           ),
-          // Şube 5: İletişim (YENİLENDİ)
+          // Şube 4: İletişim (YENİLENDİ)
           StatefulShellBranch(
             routes: [
               GoRoute(

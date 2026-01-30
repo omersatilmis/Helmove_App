@@ -75,18 +75,18 @@ class _ProfilePageState extends State<ProfilePage> {
     if (isMe) {
       // 🔥 Kendi profilimizse arkadaşlık istatistiklerini yükle
       _friendshipBloc = sl<FriendshipListBloc>()
-        ..add(LoadFriendshipStatsEvent());
+        ..add(const LoadFriendshipStatsEvent());
     } else {
       // Başkasının profili, ID'yi int'e çevirip yükle
       final userIdInt = int.tryParse(widget.userId!);
       if (userIdInt != null) {
+        // 🔥 Stats Bloc da başlat (Arkadaş sayısı için)
+        _friendshipBloc = sl<FriendshipListBloc>()
+          ..add(LoadFriendshipStatsEvent(userId: userIdInt));
+
         // 🔥 Status Bloc Başlat
         _statusBloc = sl<FriendshipStatusBloc>()
           ..add(CheckFriendshipStatusEvent(targetUserId: userIdInt));
-
-        // 🔥 NEW: Load stats for visited profile too
-        _friendshipBloc = sl<FriendshipListBloc>()
-          ..add(LoadFriendshipStatsEvent(userId: userIdInt));
       }
     }
 
@@ -169,30 +169,17 @@ class _ProfilePageState extends State<ProfilePage> {
           }
         : null;
 
-    // 🔥 Safety Check: Eğer bloc null ise (hata durumu veya geçersiz ID) düz ProfileInfo döndür
-    if (_friendshipBloc == null) {
-      return ProfileInfo(
-        firstName: firstName,
-        lastName: lastName,
-        username: username,
-        bio: bio,
-        profileImageUrl: profileImageUrl,
-        isOwnProfile: isOwnProfile,
-        friendCount: "0",
-        onMessageTap: onMessageTap,
-      );
-    }
-
     // Ortak BlocBuilder: Hem kendi hem başkasının profili için istatistikleri dinle
     // Eğer _friendshipBloc yoksa (bir hata durumu vs.) statik "0" gösteririz.
 
     // Arkadaşlık DURUMU (Status) için Listener/Builder (Sadece başkasının profilinde)
     Widget profileInfo = BlocBuilder<FriendshipListBloc, FriendshipListState>(
-      bloc: _friendshipBloc,
       builder: (context, statsState) {
         String friendCount = "0";
         if (statsState is FriendshipStatsLoaded) {
           friendCount = statsState.stats.totalFriends.toString();
+        } else if (statsState is FriendshipListFailure) {
+          debugPrint("❌ Friendship stats load failed: ${statsState.message}");
         }
 
         // Eğer kendi profilimizse direkt ProfileInfo döndür
@@ -204,26 +191,9 @@ class _ProfilePageState extends State<ProfilePage> {
             bio: bio,
             profileImageUrl: profileImageUrl,
             isOwnProfile: true,
-            friendCount: friendCount, // 🔥 Dinamik Arkadaş Sayısı
+            friendCount: friendCount,
             onFriendsTap: () => context.push('/friends'),
             onMessageTap: onMessageTap,
-            onRatingTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Rating sayfası yakında...")),
-              );
-            },
-            onFollowersTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Takipçiler sayfası yakında...")),
-              );
-            },
-            onFollowingTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Takip edilenler sayfası yakında..."),
-                ),
-              );
-            },
           );
         }
 
@@ -232,7 +202,7 @@ class _ProfilePageState extends State<ProfilePage> {
           listener: (context, actionState) {
             if (actionState is FriendshipActionSuccess) {
               if (otherUserId != null) {
-                _statusBloc?.add(
+                context.read<FriendshipStatusBloc>().add(
                   CheckFriendshipStatusEvent(targetUserId: otherUserId),
                 );
               }
@@ -240,6 +210,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 context,
               ).showSnackBar(SnackBar(content: Text(actionState.message)));
             } else if (actionState is FriendshipActionFailure) {
+              // 🔥 SYNC FIX: If backend says "already sent", refresh status immediately
+              if (actionState.error.contains("zaten") ||
+                  actionState.error.contains("already")) {
+                if (otherUserId != null) {
+                  context.read<FriendshipStatusBloc>().add(
+                    CheckFriendshipStatusEvent(targetUserId: otherUserId),
+                  );
+                }
+              }
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(actionState.error),
@@ -249,7 +229,6 @@ class _ProfilePageState extends State<ProfilePage> {
             }
           },
           child: BlocBuilder<FriendshipStatusBloc, FriendshipStatusState>(
-            bloc: _statusBloc,
             builder: (context, statusState) {
               FriendshipStatus? status;
               FriendRequestType? requestType;
@@ -259,7 +238,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 status = statusState.status;
                 requestType = statusState.requestType;
                 friendshipId = statusState.friendshipId;
+              } else if (statusState is FriendshipStatusFailure) {
+                // Hata durumunda log atalım veya debug için gösterelim
+                debugPrint("FriendshipStatusFailure: ${statusState.message}");
               }
+
+              debugPrint(
+                "👤 ProfilePage UI Status: $status | RequestType: $requestType | ID: $friendshipId",
+              );
 
               return ProfileInfo(
                 firstName: firstName,
@@ -268,9 +254,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 bio: bio,
                 profileImageUrl: profileImageUrl,
                 isOwnProfile: false,
-                friendCount: friendCount, // 🔥 Dinamik Arkadaş Sayısı (Visited)
+                friendCount: friendCount,
                 friendshipStatus: status,
                 friendRequestType: requestType,
+                isLoadingStatus: statusState is FriendshipStatusLoading,
                 onMessageTap: onMessageTap,
                 onSendRequest: () {
                   if (otherUserId != null) {
@@ -280,10 +267,19 @@ class _ProfilePageState extends State<ProfilePage> {
                         message: "Merhaba!",
                       ),
                     );
+                    // 🔥 OPTIMISTIC: Status'u hemen "loading" yapalım ki buton dönsün
+                    // (Hızlı bir refresh tetiklemek için CheckFriendshipStatusEvent de atılabilir)
+                    context.read<FriendshipStatusBloc>().add(
+                      CheckFriendshipStatusEvent(targetUserId: otherUserId),
+                    );
                   }
                 },
                 onCancelRequest: () {
-                  // Backend endpoint yok
+                  if (otherUserId != null) {
+                    context.read<FriendshipActionBloc>().add(
+                      RemoveFriendEvent(friendId: otherUserId),
+                    );
+                  }
                 },
                 onAcceptRequest: () {
                   if (friendshipId != null) {

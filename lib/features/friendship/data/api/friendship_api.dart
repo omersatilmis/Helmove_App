@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'friendship_endpoints.dart';
 import '../../domain/entities/friendship_status.dart';
 import '../dto/friend_request_dto.dart';
@@ -132,7 +133,17 @@ class FriendshipApi {
         ApiEndpoints.friendshipStats,
         queryParameters: queryParams,
       );
-      return FriendStatsModel.fromJson(response.data);
+
+      dynamic data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('data')) {
+          data = data['data'];
+        } else if (data.containsKey('result')) {
+          data = data['result'];
+        }
+      }
+
+      return FriendStatsModel.fromJson(data);
     } catch (e) {
       throw _handleError(e, 'İstatistikler alınamadı');
     }
@@ -183,7 +194,42 @@ class FriendshipApi {
       final response = await _dio.get(
         ApiEndpoints.friendshipStatus(targetUserId),
       );
-      return friendshipStatusFromString(response.data.toString());
+
+      dynamic data = response.data;
+
+      // 1. Unwrap common wrappers like "data", "result", "value"
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('data')) {
+          data = data['data'];
+        } else if (data.containsKey('result')) {
+          data = data['result'];
+        } else if (data.containsKey('value')) {
+          data = data['value'];
+        }
+      }
+
+      // 2. Extract Status from Object or Primitive
+      String statusStr = "";
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('status')) {
+          statusStr = data['status'].toString();
+        } else if (data.containsKey('friendshipStatus')) {
+          statusStr = data['friendshipStatus'].toString();
+        } else {
+          // Fallback: try to see if the map itself has an enum string
+          statusStr = data.toString();
+        }
+      } else {
+        // Primitive (int, string, etc.)
+        statusStr = data?.toString() ?? "";
+      }
+
+      debugPrint(
+        "🔍 Friendship Status RAW [User: $targetUserId]: $data | Parsed: $statusStr",
+      );
+
+      return friendshipStatusFromString(statusStr);
     } catch (e) {
       throw _handleError(e, 'Arkadaşlık durumu alınamadı');
     }

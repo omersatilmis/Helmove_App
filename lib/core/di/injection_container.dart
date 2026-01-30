@@ -75,6 +75,25 @@ import '../../features/content/jots/domain/usecases/get_feed_usecase.dart';
 import '../../features/content/jots/domain/usecases/get_user_jots_usecase.dart';
 import '../../features/content/jots/presentation/bloc/jots_bloc.dart';
 
+// Posts Feature
+import '../../features/content/posts/data/api/post_api.dart';
+import '../../features/content/posts/data/datasources/post_remote_datasource.dart';
+import '../../features/content/posts/data/repositories/post_repository_impl.dart';
+import '../../features/content/posts/domain/repositories/post_repository.dart';
+import '../../features/content/posts/domain/usecases/create_post_usecase.dart';
+import '../../features/content/posts/domain/usecases/delete_post_usecase.dart';
+import '../../features/content/posts/domain/usecases/get_feed_usecase.dart'
+    as PostFeed;
+import '../../features/content/posts/domain/usecases/get_user_posts_usecase.dart';
+import '../../features/content/posts/presentation/bloc/create_post_cubit.dart';
+import '../../features/content/posts/presentation/bloc/posts_bloc.dart';
+
+// Media Feature
+import '../../features/media/data/api/media_api.dart';
+import '../../features/media/data/repositories/media_repository_impl.dart';
+import '../../features/media/domain/repositories/media_repository.dart';
+import '../../features/media/domain/usecases/upload_image_usecase.dart';
+
 final sl = GetIt.instance;
 
 /// Logout sırasında çağrılmalı - singleton önbelleklerini temizler
@@ -169,6 +188,28 @@ Future<void> resetOnLogout() async {
   }
   if (sl.isRegistered<JotsApi>()) {
     sl.unregister<JotsApi>();
+  }
+
+  // 8. Posts Feature Resets
+  if (sl.isRegistered<PostRemoteDataSource>()) {
+    sl.unregister<PostRemoteDataSource>();
+  }
+  if (sl.isRegistered<PostRepository>()) {
+    sl.unregister<PostRepository>();
+  }
+  if (sl.isRegistered<PostApi>()) {
+    sl.unregister<PostApi>();
+  }
+
+  // 8. Posts Feature Resets
+  if (sl.isRegistered<PostRemoteDataSource>()) {
+    sl.unregister<PostRemoteDataSource>();
+  }
+  if (sl.isRegistered<PostRepository>()) {
+    sl.unregister<PostRepository>();
+  }
+  if (sl.isRegistered<PostApi>()) {
+    sl.unregister<PostApi>();
   }
 
   // --- RE-REGISTER ---
@@ -365,14 +406,7 @@ Future<void> init() async {
     ),
   );
 
-  sl.registerFactory(
-    () => FriendshipStatusBloc(
-      getFriendshipStatus: sl(),
-      getSentRequests: sl(),
-      getPendingRequests: sl(),
-      getMyFriends: sl(),
-    ),
-  );
+  sl.registerFactory(() => FriendshipStatusBloc(getFriendshipStatus: sl()));
 
   //! Discover Feature
   // API
@@ -432,6 +466,7 @@ Future<void> init() async {
       sendMessage: sl(),
       editMessage: sl(),
       deleteMessage: sl(),
+      markConversationAsRead: sl(),
     ),
   );
 
@@ -457,4 +492,40 @@ Future<void> init() async {
   sl.registerFactory(
     () => JotsBloc(getUserJots: sl(), createJot: sl(), deleteJot: sl()),
   );
+
+  //! Posts Feature
+  // API
+  sl.registerLazySingleton(() => PostApi(sl()));
+
+  // Data Sources
+  sl.registerLazySingleton<PostRemoteDataSource>(
+    () => PostRemoteDataSourceImpl(sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<PostRepository>(() => PostRepositoryImpl(sl()));
+
+  // UseCases
+  sl.registerFactory(() => CreatePostUseCase(sl()));
+  sl.registerFactory(() => PostFeed.GetFeedUseCase(sl()));
+  sl.registerFactory(() => GetUserPostsUseCase(sl()));
+  sl.registerFactory(() => DeletePostUseCase(sl()));
+
+  // Blocs
+  sl.registerFactory(
+    () => PostsBloc(getFeed: sl(), getUserPosts: sl(), deletePost: sl()),
+  );
+  sl.registerFactory(
+    () => CreatePostCubit(createPost: sl(), uploadImage: sl()),
+  );
+
+  //! Media Feature
+  // API
+  sl.registerLazySingleton(() => MediaApi(sl()));
+
+  // Repository
+  sl.registerLazySingleton<MediaRepository>(() => MediaRepositoryImpl(sl()));
+
+  // UseCases
+  sl.registerFactory(() => UploadImageUseCase(sl()));
 }

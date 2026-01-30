@@ -10,6 +10,7 @@ enum AppInputType {
   lastName,
   discover,
   phone,
+  url,
 }
 
 enum AppInputVariant { filled, outlined }
@@ -220,6 +221,8 @@ class _AppInputFieldState extends State<AppInputField> {
         return TextInputType.visiblePassword;
       case AppInputType.discover:
         return TextInputType.text;
+      case AppInputType.url:
+        return TextInputType.url;
       case AppInputType.firstName:
       case AppInputType.lastName:
         return TextInputType.name; // İsim klavyesi açar

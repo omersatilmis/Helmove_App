@@ -3,6 +3,7 @@ import '../../../domain/usecases/delete_message_usecase.dart';
 import '../../../domain/usecases/edit_message_usecase.dart';
 import '../../../domain/usecases/get_conversation_messages_usecase.dart';
 import '../../../domain/usecases/send_message_usecase.dart';
+import '../../../domain/usecases/mark_conversation_as_read_usecase.dart';
 import 'chat_event.dart';
 import 'chat_state.dart';
 
@@ -11,17 +12,28 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final SendMessageUseCase sendMessage;
   final EditMessageUseCase editMessage;
   final DeleteMessageUseCase deleteMessage;
+  final MarkConversationAsReadUseCase markConversationAsRead;
 
   ChatBloc({
     required this.getMessages,
     required this.sendMessage,
     required this.editMessage,
     required this.deleteMessage,
+    required this.markConversationAsRead,
   }) : super(ChatInitial()) {
     on<LoadMessages>(_onLoadMessages);
     on<SendMessageEvent>(_onSendMessage);
     on<EditMessageEvent>(_onEditMessage);
     on<DeleteMessageEvent>(_onDeleteMessage);
+    on<MarkAsRead>(_onMarkAsRead);
+  }
+
+  Future<void> _onMarkAsRead(MarkAsRead event, Emitter<ChatState> emit) async {
+    try {
+      await markConversationAsRead(event.otherUserId);
+    } catch (e) {
+      // Silent error
+    }
   }
 
   Future<void> _onLoadMessages(

@@ -44,3 +44,12 @@ class DeleteMessageEvent extends ChatEvent {
   @override
   List<Object> get props => [messageId];
 }
+
+class MarkAsRead extends ChatEvent {
+  final int otherUserId;
+
+  const MarkAsRead(this.otherUserId);
+
+  @override
+  List<Object> get props => [otherUserId];
+}

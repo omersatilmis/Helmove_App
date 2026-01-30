@@ -28,7 +28,9 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ChatBloc>()..add(LoadMessages(otherUserId)),
+      create: (_) => sl<ChatBloc>()
+        ..add(LoadMessages(otherUserId))
+        ..add(MarkAsRead(otherUserId)),
       child: ChatView(
         otherUserId: otherUserId,
         firstName: firstName,
@@ -451,13 +453,15 @@ class _MessageBubble extends StatelessWidget {
 
     final bubbleColor = isMe
         ? colorScheme.primary
-        : (isDark ? colorScheme.surfaceContainerHigh : Colors.white);
+        : (isDark ? const Color(0xFF383838) : Colors.white);
 
-    final textColor = isMe ? colorScheme.onPrimary : colorScheme.onSurface;
+    final textColor = isMe
+        ? colorScheme.onPrimary
+        : (isDark ? Colors.white : colorScheme.onSurface);
 
     final timeColor = isMe
         ? colorScheme.onPrimary.withOpacity(0.7)
-        : colorScheme.onSurfaceVariant;
+        : (isDark ? Colors.white70 : colorScheme.onSurfaceVariant);
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,

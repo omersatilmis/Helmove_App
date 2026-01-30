@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/theme/text_styles.dart';
 import '../bloc/conversations/conversations_bloc.dart';
 import '../bloc/conversations/conversations_event.dart';
 import '../bloc/conversations/conversations_state.dart';
@@ -40,9 +39,17 @@ class ConversationsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Refined Tones
+    final Color scaffoldBg = isDark
+        ? const Color(0xFF12100E)
+        : const Color(0xFFF7F7F7);
+    final Color itemTileColor = isDark ? const Color(0xFF1C1917) : Colors.white;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: scaffoldBg,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // Yeni sohbet başlatma sayfası (Kişi Seçimi)
@@ -56,9 +63,10 @@ class ConversationsView extends StatelessWidget {
             }
           });
         },
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-        child: const Icon(Icons.message_rounded),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        elevation: 4,
+        child: const Icon(Icons.add_comment_rounded),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -72,35 +80,35 @@ class ConversationsView extends StatelessWidget {
               floating: true,
               pinned: true,
               expandedHeight: 60.0,
-              backgroundColor: theme.colorScheme.surface,
-              surfaceTintColor: theme.colorScheme.surfaceTint,
-              scrolledUnderElevation: 2,
+              backgroundColor: isDark ? const Color(0xFF1C1917) : Colors.white,
+              surfaceTintColor: Colors.transparent,
               elevation: 0,
               centerTitle: false,
               title: Text(
                 'Sohbetler',
-                style: AppTextStyles.h2.copyWith(
-                  color: theme.colorScheme.primary,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: colorScheme.primary,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
                 ),
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  onPressed: () {},
-                  tooltip: 'Camera',
-                ),
-                IconButton(
                   icon: const Icon(Icons.search_rounded),
                   onPressed: () {},
-                  tooltip: 'Search',
                 ),
                 IconButton(
                   icon: const Icon(Icons.more_vert_rounded),
                   onPressed: () {},
-                  tooltip: 'Options',
                 ),
               ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(1.0),
+                child: Container(
+                  color: theme.dividerColor.withOpacity(0.05),
+                  height: 1.0,
+                ),
+              ),
             ),
 
             // 2. CONVERSATION LIST
@@ -110,17 +118,9 @@ class ConversationsView extends StatelessWidget {
                   return SliverToBoxAdapter(
                     child: SizedBox(
                       height: MediaQuery.sizeOf(context).height * 0.7,
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                  );
-                } else if (state is ConversationsError) {
-                  return SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: MediaQuery.sizeOf(context).height * 0.7,
                       child: Center(
-                        child: Text(
-                          'Hata: ${state.message}',
-                          style: TextStyle(color: theme.colorScheme.error),
+                        child: CircularProgressIndicator(
+                          color: colorScheme.primary,
                         ),
                       ),
                     ),
@@ -137,28 +137,27 @@ class ConversationsView extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: theme.colorScheme.primaryContainer
-                                      .withOpacity(0.3),
+                                  color: colorScheme.primary.withOpacity(0.05),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   Icons.chat_bubble_outline_rounded,
                                   size: 48,
-                                  color: theme.colorScheme.primary,
+                                  color: colorScheme.primary.withOpacity(0.5),
                                 ),
                               ),
                               const SizedBox(height: 24),
                               Text(
-                                'No messages yet',
-                                style: AppTextStyles.h3.copyWith(
-                                  color: theme.colorScheme.onSurface,
+                                'Henüz mesaj yok',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Start chatting with your moto friends!',
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
+                                'Arkadaşlarınla sohbet etmeye başla!',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -174,10 +173,26 @@ class ConversationsView extends StatelessWidget {
                       final bool isUnread = conversation.unreadCount > 0;
                       final lastMessageTime = conversation.lastMessage?.sentAt;
 
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
+                      return Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: itemTileColor,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.02),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -187,6 +202,8 @@ class ConversationsView extends StatelessWidget {
                                     firstName: conversation.firstName ?? '',
                                     lastName: conversation.lastName ?? '',
                                     username: conversation.username,
+                                    profileImageUrl:
+                                        conversation.profilePictureUrl,
                                   ),
                                 ),
                               ).then((_) {
@@ -199,38 +216,62 @@ class ConversationsView extends StatelessWidget {
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
+                                horizontal: 12,
+                                vertical: 12,
                               ),
                               child: Row(
                                 children: [
                                   // AVATAR
-                                  CircleAvatar(
-                                    radius: 28,
-                                    backgroundColor: theme
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                    backgroundImage:
-                                        conversation.profilePictureUrl != null
-                                        ? NetworkImage(
-                                            conversation.profilePictureUrl!,
-                                          )
-                                        : null,
-                                    child:
-                                        conversation.profilePictureUrl == null
-                                        ? Text(
-                                            (conversation.username.isNotEmpty
-                                                    ? conversation.username[0]
-                                                    : "?")
-                                                .toUpperCase(),
-                                            style: AppTextStyles.h3.copyWith(
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
-                                              fontWeight: FontWeight.w600,
+                                  Stack(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 30,
+                                        backgroundColor: colorScheme.primary
+                                            .withOpacity(0.1),
+                                        backgroundImage:
+                                            conversation.profilePictureUrl !=
+                                                null
+                                            ? NetworkImage(
+                                                conversation.profilePictureUrl!,
+                                              )
+                                            : null,
+                                        child:
+                                            conversation.profilePictureUrl ==
+                                                null
+                                            ? Text(
+                                                (conversation
+                                                            .username
+                                                            .isNotEmpty
+                                                        ? conversation
+                                                              .username[0]
+                                                        : "?")
+                                                    .toUpperCase(),
+                                                style: TextStyle(
+                                                  color: colorScheme.primary,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 20,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      if (conversation.isOnline)
+                                        Positioned(
+                                          right: 2,
+                                          bottom: 2,
+                                          child: Container(
+                                            width: 14,
+                                            height: 14,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF22C55E),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: itemTileColor,
+                                                width: 2,
+                                              ),
                                             ),
-                                          )
-                                        : null,
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                   const SizedBox(width: 14),
 
@@ -253,41 +294,41 @@ class ConversationsView extends StatelessWidget {
                                                             null
                                                     ? '${conversation.firstName} ${conversation.lastName}'
                                                     : conversation.username,
-                                                style: AppTextStyles.bodyLarge
-                                                    .copyWith(
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontSize: 16,
-                                                      color: theme
-                                                          .colorScheme
-                                                          .onSurface,
+                                                style: theme
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(
+                                                      fontWeight: isUnread
+                                                          ? FontWeight.bold
+                                                          : FontWeight.w600,
+                                                      color: isUnread
+                                                          ? colorScheme
+                                                                .onSurface
+                                                          : colorScheme
+                                                                .onSurface
+                                                                .withOpacity(
+                                                                  0.9,
+                                                                ),
                                                     ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                             if (lastMessageTime != null)
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                  left: 8.0,
-                                                ),
-                                                child: Text(
-                                                  _formatDate(lastMessageTime),
-                                                  style: AppTextStyles.bodySmall
-                                                      .copyWith(
-                                                        color: isUnread
-                                                            ? theme
-                                                                  .colorScheme
-                                                                  .primary
-                                                            : theme
-                                                                  .colorScheme
-                                                                  .onSurfaceVariant,
-                                                        fontWeight: isUnread
-                                                            ? FontWeight.w600
-                                                            : FontWeight.normal,
-                                                        fontSize: 12,
-                                                      ),
-                                                ),
+                                              Text(
+                                                _formatDate(lastMessageTime),
+                                                style: theme
+                                                    .textTheme
+                                                    .labelSmall
+                                                    ?.copyWith(
+                                                      color: isUnread
+                                                          ? colorScheme.primary
+                                                          : colorScheme
+                                                                .onSurfaceVariant,
+                                                      fontWeight: isUnread
+                                                          ? FontWeight.bold
+                                                          : FontWeight.normal,
+                                                    ),
                                               ),
                                           ],
                                         ),
@@ -304,18 +345,17 @@ class ConversationsView extends StatelessWidget {
                                                     '',
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: AppTextStyles.bodyMedium
-                                                    .copyWith(
-                                                      fontSize: 14,
+                                                style: theme
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
                                                       fontWeight: isUnread
-                                                          ? FontWeight.w500
+                                                          ? FontWeight.w600
                                                           : FontWeight.normal,
                                                       color: isUnread
-                                                          ? theme
-                                                                .colorScheme
+                                                          ? colorScheme
                                                                 .onSurface
-                                                          : theme
-                                                                .colorScheme
+                                                          : colorScheme
                                                                 .onSurfaceVariant,
                                                     ),
                                               ),
@@ -325,18 +365,30 @@ class ConversationsView extends StatelessWidget {
                                                 margin: const EdgeInsets.only(
                                                   left: 8,
                                                 ),
-                                                padding: const EdgeInsets.all(
-                                                  6,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color:
-                                                      theme.colorScheme.primary,
-                                                  shape: BoxShape.circle,
+                                                  color: colorScheme.primary,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: colorScheme.primary
+                                                          .withOpacity(0.3),
+                                                      blurRadius: 4,
+                                                      offset: const Offset(
+                                                        0,
+                                                        2,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                                 constraints:
                                                     const BoxConstraints(
-                                                      minWidth: 22,
-                                                      minHeight: 22,
+                                                      minWidth: 20,
                                                     ),
                                                 child: Center(
                                                   child: Text(
@@ -363,20 +415,21 @@ class ConversationsView extends StatelessWidget {
                               ),
                             ),
                           ),
-                          // SEPARATOR
-                          Divider(
-                            height: 1,
-                            indent:
-                                72 +
-                                16, // Avatar (56) + Gap (16) + Padding (Left 16) approx
-                            endIndent: 0,
-                            color: theme.colorScheme.outlineVariant.withOpacity(
-                              0.3,
-                            ),
-                          ),
-                        ],
+                        ),
                       );
                     }, childCount: state.conversations.length),
+                  );
+                } else if (state is ConversationsError) {
+                  return SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.7,
+                      child: Center(
+                        child: Text(
+                          'Hata: ${state.message}',
+                          style: TextStyle(color: colorScheme.error),
+                        ),
+                      ),
+                    ),
                   );
                 }
                 return const SliverToBoxAdapter(child: SizedBox.shrink());
