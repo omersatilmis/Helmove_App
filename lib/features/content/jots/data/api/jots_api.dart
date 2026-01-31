@@ -90,6 +90,16 @@ class JotsApi {
     }
   }
 
+  /// DELETE /api/likes/{id} (Unified)
+  Future<void> unlikeJot(int id) async {
+    try {
+      // Using unified endpoint
+      await _dio.delete('/api/likes/$id');
+    } catch (e) {
+      throw _handleError(e, 'Beğeni kaldırma işlemi başarısız');
+    }
+  }
+
   // --- Helpers ---
 
   List<T> _parseList<T>(

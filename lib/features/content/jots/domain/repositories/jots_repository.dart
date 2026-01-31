@@ -26,4 +26,7 @@ abstract class JotsRepository {
 
   /// Likes a jot by ID
   Future<Either<Failure, void>> likeJot(int id);
+
+  /// Unlikes a jot by ID
+  Future<Either<Failure, void>> unlikeJot(int id);
 }

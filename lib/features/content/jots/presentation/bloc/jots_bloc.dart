@@ -183,9 +183,14 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
   }
 
   Future<void> _onLikeJot(LikeJotEvent event, Emitter<JotsState> emit) async {
-    // Optimistic UI Update can be added here if we track liked state in JotEntity
-    // For now, fire and forget
-    final result = await likeJot(event.jotId);
+    // Current state of the jot
+    final jot = state.jots.firstWhere((j) => j.id == event.jotId);
+
+    // Optimistic UI Update can be added here
+    final result = await likeJot(
+      LikeJotParams(id: event.jotId, isLiked: jot.isLiked),
+    );
+
     result.fold((failure) {
       // Handle failure if needed
     }, (_) {});

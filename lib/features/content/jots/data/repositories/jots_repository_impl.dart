@@ -75,4 +75,14 @@ class JotsRepositoryImpl implements JotsRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> unlikeJot(int id) async {
+    try {
+      await remoteDataSource.unlikeJot(id);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

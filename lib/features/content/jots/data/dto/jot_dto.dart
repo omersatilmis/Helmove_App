@@ -91,9 +91,14 @@ class JotModel extends JotEntity {
           json['profileImageUrl'] ??
           json['avatarUrl'],
       bikeModel: json['bikeModel'] ?? json['motorModel'],
-      likeCount: json['likeCount'] ?? 0,
-      commentCount: json['commentCount'] ?? 0,
-      isLiked: json['isLiked'] ?? false,
+      likeCount: json['likeCount'] ?? json['LikeCount'] ?? 0,
+      commentCount: json['commentCount'] ?? json['CommentCount'] ?? 0,
+      isLiked:
+          json['isLiked'] ??
+          json['IsLiked'] ??
+          json['isLikedByMe'] ??
+          json['IsLikedByMe'] ??
+          false,
     );
   }
 
