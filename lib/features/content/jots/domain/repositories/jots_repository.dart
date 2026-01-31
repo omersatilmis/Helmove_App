@@ -23,4 +23,7 @@ abstract class JotsRepository {
 
   /// Deletes a jot by ID
   Future<Either<Failure, void>> deleteJot(int id);
+
+  /// Likes a jot by ID
+  Future<Either<Failure, void>> likeJot(int id);
 }

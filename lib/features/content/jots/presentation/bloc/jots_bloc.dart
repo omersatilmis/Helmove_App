@@ -3,23 +3,30 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/create_jot_usecase.dart';
 import '../../domain/usecases/delete_jot_usecase.dart';
 import '../../domain/usecases/get_user_jots_usecase.dart';
+import '../../domain/usecases/like_jot_usecase.dart';
+import '../../domain/usecases/get_feed_usecase.dart';
 import 'jots_event.dart';
 import 'jots_state.dart';
 
 class JotsBloc extends Bloc<JotsEvent, JotsState> {
   final GetUserJotsUseCase getUserJots;
+  final GetJotsFeedUseCase getFeed;
   final CreateJotUseCase createJot;
   final DeleteJotUseCase deleteJot;
+  final LikeJotUseCase likeJot;
 
   JotsBloc({
     required this.getUserJots,
+    required this.getFeed,
     required this.createJot,
     required this.deleteJot,
+    required this.likeJot,
   }) : super(const JotsState()) {
     on<FetchUserJotsEvent>(_onFetchUserJots);
     on<FetchMoreUserJotsEvent>(_onFetchMoreUserJots);
     on<CreateJotEvent>(_onCreateJot);
     on<DeleteJotEvent>(_onDeleteJot);
+    on<LikeJotEvent>(_onLikeJot);
   }
 
   Future<void> _onFetchUserJots(
@@ -173,5 +180,14 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
         // Başarılı, zaten sildik
       },
     );
+  }
+
+  Future<void> _onLikeJot(LikeJotEvent event, Emitter<JotsState> emit) async {
+    // Optimistic UI Update can be added here if we track liked state in JotEntity
+    // For now, fire and forget
+    final result = await likeJot(event.jotId);
+    result.fold((failure) {
+      // Handle failure if needed
+    }, (_) {});
   }
 }

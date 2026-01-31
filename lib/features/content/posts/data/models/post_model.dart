@@ -33,8 +33,14 @@ class PostModel extends PostEntity {
           : DateTime.now(),
       likeCount: json['likeCount'] as int? ?? 0,
       commentCount: json['commentCount'] as int? ?? 0,
-      isLiked: json['isLiked'] as bool? ?? false,
+      isLiked: parseBool(json['isLiked'] ?? json['isLikedByMe']),
     );
+  }
+
+  static bool parseBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    return false;
   }
 
   Map<String, dynamic> toJson() {

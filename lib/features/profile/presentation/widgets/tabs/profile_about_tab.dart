@@ -13,9 +13,14 @@ class ProfileAboutTab extends StatefulWidget {
   State<ProfileAboutTab> createState() => _ProfileAboutTabState();
 }
 
-class _ProfileAboutTabState extends State<ProfileAboutTab> {
+class _ProfileAboutTabState extends State<ProfileAboutTab>
+    with AutomaticKeepAliveClientMixin {
+  // 🔥 MIXIN EKLENDİ
   // Yeni motor ekleniyor mu? (Boş kart göstermek için)
   bool _isAddingNew = false;
+
+  @override
+  bool get wantKeepAlive => true; // 🔥 SAYFAYI CANLI TUT
 
   @override
   void initState() {
@@ -42,6 +47,7 @@ class _ProfileAboutTabState extends State<ProfileAboutTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // 🔥 ŞART!
     final theme = Theme.of(context);
 
     return CustomScrollView(

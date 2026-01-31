@@ -80,6 +80,16 @@ class JotsApi {
     }
   }
 
+  /// POST /api/likes/{id} (Unified)
+  Future<void> likeJot(int id) async {
+    try {
+      // Using unified endpoint
+      await _dio.post('/api/likes/$id');
+    } catch (e) {
+      throw _handleError(e, 'Beğeni işlemi başarısız');
+    }
+  }
+
   // --- Helpers ---
 
   List<T> _parseList<T>(

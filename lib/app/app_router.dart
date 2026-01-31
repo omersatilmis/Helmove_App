@@ -4,11 +4,6 @@ import 'package:moto_comm_app_1/app/bottom_bar.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/login_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_bloc.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_event.dart';
-
 // 🔥 YENİ SAYFALARIN IMPORTLARI
 import 'package:moto_comm_app_1/features/homepage/presentation/pages/home_page.dart';
 import 'package:moto_comm_app_1/features/discover/presentation/pages/discover_page.dart';
@@ -172,11 +167,7 @@ GoRouter createRouter(AuthProvider authProvider) {
             routes: [
               GoRoute(
                 path: '/homepage',
-                builder: (context, state) => BlocProvider(
-                  create: (context) =>
-                      sl<PostsBloc>()..add(const GetFeedEvent()),
-                  child: const HomePageWithDrawer(),
-                ),
+                builder: (context, state) => const HomePageWithDrawer(),
               ),
             ],
           ),

@@ -38,7 +38,8 @@ class AppInputField extends StatefulWidget {
   final String? Function(String?)? validator;
 
   final bool enabled;
-  final int maxLines;
+  final int? minLines; // default 1 if null
+  final int? maxLines;
 
   final IconData? leadingIcon;
   final IconData? trailingIcon;
@@ -58,6 +59,7 @@ class AppInputField extends StatefulWidget {
     this.helperText,
     this.validator,
     this.enabled = true,
+    this.minLines,
     this.maxLines = 1,
     this.leadingIcon,
     this.trailingIcon,
@@ -90,6 +92,9 @@ class _AppInputFieldState extends State<AppInputField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isPassword =
+        widget.type == AppInputType.password ||
+        widget.type == AppInputType.newPassword;
 
     return TextFormField(
       controller: widget.controller,
@@ -106,11 +111,8 @@ class _AppInputFieldState extends State<AppInputField> {
       obscureText: _obscureText,
       keyboardType: _keyboardType,
       textCapitalization: _capitalization,
-      maxLines:
-          (widget.type == AppInputType.password ||
-              widget.type == AppInputType.newPassword)
-          ? 1
-          : widget.maxLines,
+      minLines: isPassword ? 1 : widget.minLines,
+      maxLines: isPassword ? 1 : widget.maxLines,
 
       style: TextStyle(fontSize: _fontSize, color: theme.colorScheme.onSurface),
 

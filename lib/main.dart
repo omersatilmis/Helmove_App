@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
-import 'core/di/injection_container.dart' as di; // DI dosyamızı import ettik
-import 'core/di/injection_container.dart'; // sl'e erişim için
+import 'package:moto_comm_app_1/core/di/injection_container.dart' as di;
+import 'package:moto_comm_app_1/core/di/injection_container.dart';
 
 import 'package:moto_comm_app_1/app/app_router.dart';
 import 'package:moto_comm_app_1/core/theme/app_theme.dart';
@@ -66,18 +67,21 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    // Router'ı bir kez oluşturuyoruz. authProvider refreshListenable olduğu için
+    // yönlendirme kararları içerde otomatik yönetilecek.
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _router = createRouter(authProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Provider'ı dinliyoruz
     final themeProvider = Provider.of<ThemeProvider>(context);
-    // AuthProvider'ı dinlemiyoruz (listen: false), sadece router oluşturmak için alıyoruz.
-    // Router zaten refreshListenable ile dinliyor.
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    // Her build'de router'ı yeniden oluşturmak yerine, authProvider değişmediği sürece
-    // aynı instance'ı kullanmak isteyebiliriz ama GoRouter config'i basit bir obje.
-    // En temizi:
-    final router = createRouter(authProvider);
 
     return MaterialApp.router(
       title: 'Rider App',
@@ -89,7 +93,7 @@ class _MyAppState extends State<MyApp> {
       // 🔥 Büyü burada: Provider'dan gelen moda göre tema değişiyor
       themeMode: themeProvider.themeMode,
 
-      routerConfig: router,
+      routerConfig: _router,
       debugShowCheckedModeBanner: false,
     );
   }

@@ -8,6 +8,7 @@ import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_blo
 import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_event.dart';
 import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_state.dart';
 import 'package:moto_comm_app_1/features/content/jots/presentation/widgets/jot_card_widget.dart';
+import 'package:moto_comm_app_1/features/interaction/presentation/widgets/comments_sheet.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 
 class ProfileJotsTab extends StatefulWidget {
@@ -241,16 +242,22 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
 
                         final jot = state.jots[index];
                         return JotCardWidget(
-                          firstName:
-                              jot.firstName ?? jot.username ?? "Kullanıcı",
-                          lastName: jot.lastName ?? "",
-                          userName: jot.username ?? "user",
-                          content: jot.text ?? "",
-                          timeAgo: _formatDate(jot.createdAt),
-                          profileImage:
-                              jot.userProfilePictureUrl ??
-                              'assets/icons/ic_profile.png',
-                          bikeModel: jot.bikeModel,
+                          jot: jot,
+                          onLike: () {
+                            context.read<JotsBloc>().add(
+                              LikeJotEvent(jotId: jot.id),
+                            );
+                          },
+                          onComment: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) =>
+                                  CommentsSheet(contentId: jot.id),
+                            );
+                          },
+                          isCurrentUser: false, // Or calculate based on ID
                         );
                       },
                       childCount: state.hasReachedMax
@@ -266,14 +273,5 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return "Şimdi";
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return "Şimdi";
-    if (diff.inMinutes < 60) return "${diff.inMinutes}dk";
-    if (diff.inHours < 24) return "${diff.inHours}sa";
-    return "${diff.inDays}g";
   }
 }

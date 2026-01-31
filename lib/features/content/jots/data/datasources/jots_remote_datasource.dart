@@ -6,6 +6,7 @@ abstract class JotsRemoteDataSource {
   Future<List<JotModel>> getFeed({int page = 1});
   Future<List<JotModel>> getUserJots(int userId, {int page = 1});
   Future<void> deleteJot(int id);
+  Future<void> likeJot(int id);
 }
 
 class JotsRemoteDataSourceImpl implements JotsRemoteDataSource {
@@ -31,5 +32,10 @@ class JotsRemoteDataSourceImpl implements JotsRemoteDataSource {
   @override
   Future<void> deleteJot(int id) {
     return api.deleteJot(id);
+  }
+
+  @override
+  Future<void> likeJot(int id) {
+    return api.likeJot(id);
   }
 }

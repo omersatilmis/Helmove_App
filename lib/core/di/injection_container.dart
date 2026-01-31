@@ -61,8 +61,15 @@ import '../../features/discover/data/datasources/discover_remote_datasource.dart
 import '../../features/discover/data/repositories/discover_repository_impl.dart';
 import '../../features/discover/domain/repositories/discover_repository.dart';
 import '../../features/discover/domain/usecases/search_users_usecase.dart';
-
 import '../../features/discover/presentation/bloc/discover_bloc.dart';
+
+import 'package:moto_comm_app_1/features/interaction/data/datasources/comment_remote_datasource.dart';
+import 'package:moto_comm_app_1/features/interaction/data/repositories/comment_repository_impl.dart';
+import 'package:moto_comm_app_1/features/interaction/domain/repositories/comment_repository.dart';
+import 'package:moto_comm_app_1/features/interaction/domain/usecases/add_comment_usecase.dart';
+import 'package:moto_comm_app_1/features/interaction/domain/usecases/delete_comment_usecase.dart';
+import 'package:moto_comm_app_1/features/interaction/domain/usecases/get_comments_usecase.dart';
+import 'package:moto_comm_app_1/features/interaction/presentation/bloc/comments_bloc.dart';
 
 // Jots Feature
 import '../../features/content/jots/data/api/jots_api.dart';
@@ -73,6 +80,7 @@ import '../../features/content/jots/domain/usecases/create_jot_usecase.dart';
 import '../../features/content/jots/domain/usecases/delete_jot_usecase.dart';
 import '../../features/content/jots/domain/usecases/get_feed_usecase.dart';
 import '../../features/content/jots/domain/usecases/get_user_jots_usecase.dart';
+import '../../features/content/jots/domain/usecases/like_jot_usecase.dart';
 import '../../features/content/jots/presentation/bloc/jots_bloc.dart';
 
 // Posts Feature
@@ -82,8 +90,7 @@ import '../../features/content/posts/data/repositories/post_repository_impl.dart
 import '../../features/content/posts/domain/repositories/post_repository.dart';
 import '../../features/content/posts/domain/usecases/create_post_usecase.dart';
 import '../../features/content/posts/domain/usecases/delete_post_usecase.dart';
-import '../../features/content/posts/domain/usecases/get_feed_usecase.dart'
-    as PostFeed;
+import '../../features/content/posts/domain/usecases/get_feed_usecase.dart';
 import '../../features/content/posts/domain/usecases/get_user_posts_usecase.dart';
 import '../../features/content/posts/domain/usecases/like_post_usecase.dart';
 import '../../features/content/posts/presentation/bloc/create_post_cubit.dart';
@@ -96,6 +103,10 @@ import '../../features/media/domain/repositories/media_repository.dart';
 import '../../features/media/domain/usecases/upload_image_usecase.dart';
 
 final sl = GetIt.instance;
+
+void setup() {
+  sl.allowReassignment = true;
+}
 
 /// Logout sırasında çağrılmalı - singleton önbelleklerini temizler
 /// Dio ve SharedPreferences hariç tüm singleton'ları resetler
@@ -300,9 +311,61 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<JotsRepository>()) {
     sl.registerLazySingleton<JotsRepository>(() => JotsRepositoryImpl(sl()));
   }
+  // UseCases
+  sl.registerLazySingleton(() => CreateJotUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteJotUseCase(sl()));
+  sl.registerLazySingleton(() => GetUserJotsUseCase(sl()));
+  sl.registerLazySingleton(() => LikeJotUseCase(sl()));
+
+  // Bloc
+  sl.registerFactory(
+    () => JotsBloc(
+      getUserJots: sl<GetUserJotsUseCase>(),
+      getFeed: sl<GetJotsFeedUseCase>(),
+      createJot: sl<CreateJotUseCase>(),
+      deleteJot: sl<DeleteJotUseCase>(),
+      likeJot: sl<LikeJotUseCase>(),
+    ),
+  );
+
+  // Posts Feature
+  if (!sl.isRegistered<PostApi>()) {
+    sl.registerLazySingleton(() => PostApi(sl()));
+  }
+  if (!sl.isRegistered<PostRemoteDataSource>()) {
+    sl.registerLazySingleton<PostRemoteDataSource>(
+      () => PostRemoteDataSourceImpl(sl<PostApi>()),
+    );
+  }
+  if (!sl.isRegistered<PostRepository>()) {
+    sl.registerLazySingleton<PostRepository>(
+      () => PostRepositoryImpl(sl<PostRemoteDataSource>()),
+    );
+  }
+
+  // Media Feature
+  if (!sl.isRegistered<MediaApi>()) {
+    sl.registerLazySingleton(() => MediaApi(sl()));
+  }
+  if (!sl.isRegistered<MediaRepository>()) {
+    sl.registerLazySingleton<MediaRepository>(() => MediaRepositoryImpl(sl()));
+  }
+
+  // Interaction Feature (Comments)
+  if (!sl.isRegistered<CommentRemoteDataSource>()) {
+    sl.registerLazySingleton<CommentRemoteDataSource>(
+      () => CommentRemoteDataSourceImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<CommentRepository>()) {
+    sl.registerLazySingleton<CommentRepository>(
+      () => CommentRepositoryImpl(sl<CommentRemoteDataSource>()),
+    );
+  }
 }
 
 Future<void> init() async {
+  setup();
   //! External
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
@@ -473,31 +536,44 @@ Future<void> init() async {
   sl.registerLazySingleton<JotsRepository>(() => JotsRepositoryImpl(sl()));
 
   // UseCases
-  sl.registerFactory(() => CreateJotUseCase(sl()));
-  sl.registerFactory(() => GetFeedUseCase(sl()));
-  sl.registerFactory(() => GetUserJotsUseCase(sl()));
-  sl.registerFactory(() => DeleteJotUseCase(sl()));
+  sl.registerFactory(() => CreateJotUseCase(sl<JotsRepository>()));
+  sl.registerFactory(() => GetJotsFeedUseCase(sl<JotsRepository>()));
+  sl.registerFactory(() => GetUserJotsUseCase(sl<JotsRepository>()));
+  sl.registerFactory(() => DeleteJotUseCase(sl<JotsRepository>()));
+  sl.registerFactory(() => LikeJotUseCase(sl<JotsRepository>()));
 
   // Blocs
   sl.registerFactory(
-    () => JotsBloc(getUserJots: sl(), createJot: sl(), deleteJot: sl()),
+    () => JotsBloc(
+      getUserJots: sl<GetUserJotsUseCase>(),
+      getFeed: sl<GetJotsFeedUseCase>(),
+      createJot: sl<CreateJotUseCase>(),
+      deleteJot: sl<DeleteJotUseCase>(),
+      likeJot: sl<LikeJotUseCase>(),
+    ),
   );
 
-  //! Posts Feature
+  // Posts Feature
   // API
-  sl.registerLazySingleton(() => PostApi(sl()));
+  if (!sl.isRegistered<PostApi>()) {
+    sl.registerLazySingleton(() => PostApi(sl()));
+  }
 
   // Data Sources
-  sl.registerLazySingleton<PostRemoteDataSource>(
-    () => PostRemoteDataSourceImpl(sl()),
-  );
+  if (!sl.isRegistered<PostRemoteDataSource>()) {
+    sl.registerLazySingleton<PostRemoteDataSource>(
+      () => PostRemoteDataSourceImpl(sl()),
+    );
+  }
 
   // Repository
-  sl.registerLazySingleton<PostRepository>(() => PostRepositoryImpl(sl()));
+  if (!sl.isRegistered<PostRepository>()) {
+    sl.registerLazySingleton<PostRepository>(() => PostRepositoryImpl(sl()));
+  }
 
   // UseCases
   sl.registerFactory(() => CreatePostUseCase(sl()));
-  sl.registerFactory(() => PostFeed.GetFeedUseCase(sl()));
+  sl.registerFactory(() => GetPostsFeedUseCase(sl()));
   sl.registerFactory(() => GetUserPostsUseCase(sl()));
   sl.registerFactory(() => DeletePostUseCase(sl()));
   sl.registerFactory(() => LikePostUseCase(sl()));
@@ -512,7 +588,35 @@ Future<void> init() async {
     ),
   );
   sl.registerFactory(
-    () => CreatePostCubit(createPost: sl(), uploadImage: sl()),
+    () => CreatePostCubit(
+      createPost: sl<CreatePostUseCase>(),
+      uploadImage: sl<UploadImageUseCase>(),
+    ),
+  );
+
+  //! Interaction Feature
+  // Data Sources
+  sl.registerLazySingleton<CommentRemoteDataSource>(
+    () => CommentRemoteDataSourceImpl(sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<CommentRepository>(
+    () => CommentRepositoryImpl(sl<CommentRemoteDataSource>()),
+  );
+
+  // UseCases
+  sl.registerFactory(() => GetCommentsUseCase(sl<CommentRepository>()));
+  sl.registerFactory(() => AddCommentUseCase(sl<CommentRepository>()));
+  sl.registerFactory(() => DeleteCommentUseCase(sl<CommentRepository>()));
+
+  // Bloc
+  sl.registerFactory(
+    () => CommentsBloc(
+      getComments: sl<GetCommentsUseCase>(),
+      addComment: sl<AddCommentUseCase>(),
+      deleteComment: sl<DeleteCommentUseCase>(),
+    ),
   );
 
   //! Media Feature

@@ -5,10 +5,10 @@ import '../../../../../core/usecases/usecase.dart';
 import '../entities/post_entity.dart';
 import '../repositories/post_repository.dart';
 
-class GetFeedUseCase implements UseCase<List<PostEntity>, GetFeedParams> {
+class GetPostsFeedUseCase implements UseCase<List<PostEntity>, GetFeedParams> {
   final PostRepository repository;
 
-  GetFeedUseCase(this.repository);
+  GetPostsFeedUseCase(this.repository);
 
   @override
   Future<Either<Failure, List<PostEntity>>> call(GetFeedParams params) {

@@ -61,6 +61,9 @@ class JotModel extends JotEntity {
     super.lastName,
     super.userProfilePictureUrl,
     super.bikeModel,
+    super.likeCount,
+    super.commentCount,
+    super.isLiked,
   });
 
   factory JotModel.fromJson(Map<String, dynamic> json) {
@@ -88,6 +91,9 @@ class JotModel extends JotEntity {
           json['profileImageUrl'] ??
           json['avatarUrl'],
       bikeModel: json['bikeModel'] ?? json['motorModel'],
+      likeCount: json['likeCount'] ?? 0,
+      commentCount: json['commentCount'] ?? 0,
+      isLiked: json['isLiked'] ?? false,
     );
   }
 
@@ -104,6 +110,9 @@ class JotModel extends JotEntity {
       'updatedAt': updatedAt?.toIso8601String(),
       'username': username,
       'userProfilePictureUrl': userProfilePictureUrl,
+      'likeCount': likeCount,
+      'commentCount': commentCount,
+      'isLiked': isLiked,
     };
   }
 

@@ -78,4 +78,14 @@ class PostRepositoryImpl implements PostRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> unlikePost(int id) async {
+    try {
+      await remoteDataSource.unlikePost(id);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

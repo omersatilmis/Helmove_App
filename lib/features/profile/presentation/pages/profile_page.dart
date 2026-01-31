@@ -192,6 +192,7 @@ class _ProfilePageState extends State<ProfilePage> {
             profileImageUrl: profileImageUrl,
             isOwnProfile: true,
             friendCount: friendCount,
+            key: _profileInfoKey, // 🔥 KEY BURADA
             onFriendsTap: () => context.push('/friends'),
             onMessageTap: onMessageTap,
           );
@@ -302,6 +303,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     );
                   }
                 },
+                key: _profileInfoKey, // 🔥 KEY BURADA
               );
             },
           ),
@@ -435,7 +437,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                     physics:
                                         const NeverScrollableScrollPhysics(),
                                     child: Container(
-                                      key: _profileInfoKey,
                                       padding: const EdgeInsets.only(
                                         bottom: 12,
                                       ),

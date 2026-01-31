@@ -16,8 +16,13 @@ class ProfilePostsTab extends StatefulWidget {
   State<ProfilePostsTab> createState() => _ProfilePostsTabState();
 }
 
-class _ProfilePostsTabState extends State<ProfilePostsTab> {
+class _ProfilePostsTabState extends State<ProfilePostsTab>
+    with AutomaticKeepAliveClientMixin {
+  // 🔥 MIXIN EKLENDİ
   late PostsBloc _postsBloc;
+
+  @override
+  bool get wantKeepAlive => true; // 🔥 SAYFAYI CANLI TUT
 
   @override
   void initState() {
@@ -42,6 +47,7 @@ class _ProfilePostsTabState extends State<ProfilePostsTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // 🔥 ŞART!
     final profileProvider = context.watch<ProfileProvider>();
     final user = profileProvider.visitedProfile ?? profileProvider.profile;
 

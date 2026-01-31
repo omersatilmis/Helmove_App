@@ -10,10 +10,10 @@ class GetFeedParams {
   const GetFeedParams({this.page = 1});
 }
 
-class GetFeedUseCase implements UseCase<List<JotEntity>, GetFeedParams> {
+class GetJotsFeedUseCase implements UseCase<List<JotEntity>, GetFeedParams> {
   final JotsRepository repository;
 
-  GetFeedUseCase(this.repository);
+  GetJotsFeedUseCase(this.repository);
 
   @override
   Future<Either<Failure, List<JotEntity>>> call(GetFeedParams params) async {

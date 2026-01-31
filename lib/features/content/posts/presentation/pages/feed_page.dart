@@ -6,10 +6,9 @@ import '../bloc/posts_bloc.dart';
 import '../bloc/posts_event.dart';
 import '../bloc/posts_state.dart';
 import '../widgets/post_card.dart';
-import 'package:provider/provider.dart';
 import '../../../../profile/presentation/providers/profile_provider.dart';
-import '../../../../auth/presentation/providers/auth_provider.dart';
-import '../../../../../core/di/injection_container.dart';
+import '../../../../interaction/presentation/widgets/comments_sheet.dart';
+import 'package:moto_comm_app_1/core/di/injection_container.dart';
 
 class FeedView extends StatefulWidget {
   const FeedView({super.key});
@@ -20,22 +19,25 @@ class FeedView extends StatefulWidget {
 
 class _FeedViewState extends State<FeedView> {
   final ScrollController _scrollController = ScrollController();
+  late final PostsBloc _postsBloc;
 
   @override
   void initState() {
     super.initState();
+    _postsBloc = sl<PostsBloc>()..add(const GetFeedEvent());
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _postsBloc.close();
     super.dispose();
   }
 
   void _onScroll() {
     if (_isBottom) {
-      context.read<PostsBloc>().add(const GetFeedEvent());
+      _postsBloc.add(GetFeedEvent(page: _postsBloc.state.page + 1));
     }
   }
 
@@ -48,17 +50,14 @@ class _FeedViewState extends State<FeedView> {
 
   @override
   Widget build(BuildContext context) {
-    // Use ProfileProvider to get the current user's ID (more reliable on app startup)
+    // Use ProfileProvider to get the current user's ID
     final profileProvider = context.watch<ProfileProvider>();
     final currentUserIdInt = profileProvider.profile?.id;
 
-    return BlocProvider(
-      create: (context) => sl<PostsBloc>()..add(const GetFeedEvent()),
+    return BlocProvider.value(
+      value: _postsBloc,
       child: BlocBuilder<PostsBloc, PostsState>(
         builder: (context, state) {
-          // Need to set up listeners for refresh here if we want to support result from CreatePostPage
-          // But for now let's focus on the crash/loop.
-
           if (state.status == PostsStatus.loading && state.posts.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -81,9 +80,7 @@ class _FeedViewState extends State<FeedView> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<PostsBloc>().add(
-                        const GetFeedEvent(isRefresh: true),
-                      );
+                      _postsBloc.add(const GetFeedEvent(isRefresh: true));
                     },
                     child: const Text('Tekrar Dene'),
                   ),
@@ -105,9 +102,7 @@ class _FeedViewState extends State<FeedView> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              context.read<PostsBloc>().add(
-                const GetFeedEvent(isRefresh: true),
-              );
+              _postsBloc.add(const GetFeedEvent(isRefresh: true));
             },
             child: ListView.builder(
               controller: _scrollController,
@@ -133,13 +128,18 @@ class _FeedViewState extends State<FeedView> {
                   post: post,
                   isCurrentUser: isOwner,
                   onDelete: () {
-                    context.read<PostsBloc>().add(DeletePostEvent(post.id));
+                    _postsBloc.add(DeletePostEvent(post.id));
                   },
                   onLike: () {
-                    context.read<PostsBloc>().add(LikePostEvent(post.id));
+                    _postsBloc.add(LikePostEvent(post.id));
                   },
                   onComment: () {
-                    // TODO: Implement comment logic
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => CommentsSheet(contentId: post.id),
+                    );
                   },
                   onShare: () {
                     // TODO: Implement share logic

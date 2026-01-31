@@ -62,9 +62,11 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      if (success) {
-        context.go('/homepage');
-      } else if (authProvider.errorMessage != null) {
+      // 🔥 FIX: Explicit navigation removed.
+      // GoRouter listens to AuthProvider and will redirect to /homepage automatically via 'redirect' logic.
+      // context.go('/homepage'); <--- REMOVED
+
+      if (!success && authProvider.errorMessage != null) {
         ProfessionalErrorBottomSheet.show(
           context,
           message: authProvider.errorMessage!,

@@ -52,3 +52,12 @@ class DeleteJotEvent extends JotsEvent {
   @override
   List<Object?> get props => [jotId];
 }
+
+class LikeJotEvent extends JotsEvent {
+  final int jotId;
+
+  const LikeJotEvent({required this.jotId});
+
+  @override
+  List<Object?> get props => [jotId];
+}

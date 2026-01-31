@@ -8,6 +8,7 @@ abstract class PostRemoteDataSource {
   Future<List<PostModel>> getUserPosts({required int userId, int page = 1});
   Future<void> deletePost(int id);
   Future<void> likePost(int id);
+  Future<void> unlikePost(int id);
 }
 
 class PostRemoteDataSourceImpl implements PostRemoteDataSource {
@@ -38,5 +39,10 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   @override
   Future<void> likePost(int id) {
     return api.likePost(id);
+  }
+
+  @override
+  Future<void> unlikePost(int id) {
+    return api.unlikePost(id);
   }
 }

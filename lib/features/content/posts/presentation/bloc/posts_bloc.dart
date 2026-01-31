@@ -8,7 +8,7 @@ import 'posts_event.dart';
 import 'posts_state.dart';
 
 class PostsBloc extends Bloc<PostsEvent, PostsState> {
-  final GetFeedUseCase getFeed;
+  final GetPostsFeedUseCase getFeed;
   final GetUserPostsUseCase getUserPosts;
   final DeletePostUseCase deletePost;
   final LikePostUseCase likePost;
@@ -27,16 +27,16 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
 
   Future<void> _onGetFeed(GetFeedEvent event, Emitter<PostsState> emit) async {
     try {
+      // Prevent duplicate requests if already loading or reached max
+      if (state.status == PostsStatus.loading) return;
       if (state.hasReachedMax && !event.isRefresh && event.page != 1) return;
 
-      if (state.status == PostsStatus.initial || event.isRefresh) {
-        emit(
-          state.copyWith(
-            status: PostsStatus.loading,
-            posts: event.isRefresh ? [] : state.posts,
-          ),
-        );
-      }
+      emit(
+        state.copyWith(
+          status: PostsStatus.loading,
+          posts: event.isRefresh ? [] : state.posts,
+        ),
+      );
 
       final result = await getFeed(GetFeedParams(page: event.page));
 
@@ -186,7 +186,12 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
       emit(state.copyWith(posts: updatedPosts));
 
       // Call UseCase
-      final result = await likePost(event.postId);
+      final isLiked = updatedPosts
+          .firstWhere((p) => p.id == event.postId)
+          .isLiked;
+      final result = await likePost(
+        LikePostParams(postId: event.postId, isLiked: isLiked),
+      );
 
       result.fold(
         (failure) {

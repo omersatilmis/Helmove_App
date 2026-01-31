@@ -21,6 +21,9 @@ class JotEntity {
   final String? lastName;
   final String? userProfilePictureUrl;
   final String? bikeModel;
+  final int likeCount;
+  final int commentCount;
+  final bool isLiked;
 
   const JotEntity({
     required this.id,
@@ -37,5 +40,8 @@ class JotEntity {
     this.lastName,
     this.userProfilePictureUrl,
     this.bikeModel,
+    this.likeCount = 0,
+    this.commentCount = 0,
+    this.isLiked = false,
   });
 }
