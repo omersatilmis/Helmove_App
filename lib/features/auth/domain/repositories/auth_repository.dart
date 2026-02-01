@@ -19,6 +19,12 @@ abstract class AuthRepository {
 
   Future<bool> isLoggedIn();
 
+  /// Yerel bellekte saklanan kullanıcı verilerini getirir
+  Future<AuthEntity?> getPersistedUser();
+
+  /// Saklanan token'ı getirir
+  Future<String?> getAuthToken();
+
   /// Şifremi unuttum - Email'e sıfırlama linki gönderir
   Future<void> forgotPassword(String email);
 

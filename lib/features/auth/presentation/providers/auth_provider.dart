@@ -1,13 +1,18 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/auth_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../../profile/domain/repositories/profile_repository.dart'; // Import added
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/di/injection_container.dart' as di;
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
+  final ProfileRepository _profileRepository; // Dependency added
 
-  AuthProvider(this._authRepository);
+  AuthProvider(
+    this._authRepository,
+    this._profileRepository,
+  ); // Constructor updated
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -124,7 +129,37 @@ class AuthProvider extends ChangeNotifier {
 
   // Auth check
   Future<bool> checkAuthStatus() async {
-    return await _authRepository.isLoggedIn();
+    final isLoggedIn = await _authRepository.isLoggedIn();
+
+    if (isLoggedIn) {
+      if (_currentUser == null) {
+        // 1. Try to get from local storage
+        final persistedUser = await _authRepository.getPersistedUser();
+
+        if (persistedUser != null) {
+          _currentUser = persistedUser;
+          notifyListeners();
+        } else {
+          // 2. If local storage is empty (old session), fetch from API
+          try {
+            final profile = await _profileRepository.getMyProfile();
+            _currentUser = AuthEntity(
+              id: profile.id.toString(),
+              username: profile.username,
+              email: profile.email,
+              token: await _authRepository.getAuthToken() ?? '',
+              firstName: profile.firstName,
+              lastName: profile.lastName,
+              profileImageUrl: profile.profileImageUrl,
+            );
+            notifyListeners();
+          } catch (e) {
+            AppLogger.error("Failed to fetch profile on auth check: $e");
+          }
+        }
+      }
+    }
+    return isLoggedIn;
   }
 
   // Yardımcı Metodlar

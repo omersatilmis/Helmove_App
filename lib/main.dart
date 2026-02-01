@@ -39,7 +39,8 @@ void main() async {
 
         // --- ViewModels / Providers ---
         ChangeNotifierProvider(
-          create: (_) => AuthProvider(sl<AuthRepository>()),
+          create: (_) =>
+              AuthProvider(sl<AuthRepository>(), sl<ProfileRepository>()),
         ),
 
         // --- Profile Provider ---

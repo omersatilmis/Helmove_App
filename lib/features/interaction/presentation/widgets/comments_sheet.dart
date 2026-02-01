@@ -7,6 +7,9 @@ import '../bloc/comments_bloc.dart';
 import '../bloc/comments_event.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../bloc/comments_state.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import 'package:provider/provider.dart';
+import '../../domain/entities/comment_entity.dart';
 
 class CommentsSheet extends StatelessWidget {
   final int contentId;
@@ -253,10 +256,8 @@ class _CommentItem extends StatelessWidget {
             ],
           ),
         ),
-        // Like butonu eklenebilir (Opsiyonel)
-        /*
-        Icon(Icons.favorite_border, size: 16, color: Colors.grey[400]),
-        */
+        // More button (Delete option)
+        _CommentMoreButton(comment: comment),
       ],
     );
   }
@@ -275,6 +276,103 @@ class _CommentItem extends StatelessWidget {
     } else {
       return "Az önce";
     }
+  }
+}
+
+class _CommentMoreButton extends StatelessWidget {
+  final CommentEntity comment;
+
+  const _CommentMoreButton({required this.comment});
+
+  @override
+  Widget build(BuildContext context) {
+    // Listen to AuthProvider changes (e.g. when user is restored)
+    final authProvider = Provider.of<AuthProvider>(context, listen: true);
+    final currentUser = authProvider.currentUser;
+
+    // --- BU KISMI EKLE ---
+    // Giriş yapan kullanıcının ID'si
+    final currentUserId = authProvider.currentUser?.id;
+
+    // Yorumu atan kullanıcının ID'si
+    final commentUserId = comment.userId;
+
+    // --- KONSOLA YAZDIRIYORUZ ---
+    print("######################################");
+    print(
+      "BENİM ID (Auth): '$currentUserId' (Tipi: ${currentUserId.runtimeType})",
+    );
+    print(
+      "YORUM SAHİBİ ID: '$commentUserId' (Tipi: ${commentUserId.runtimeType})",
+    );
+
+    // Eşleşme kontrolü (Her ikisini de string yapıp karşılaştırıyoruz)
+    final bool isOwner = currentUserId.toString() == commentUserId.toString();
+    print("EŞLEŞİYOR MU? : $isOwner");
+    print("######################################");
+    // ------------------------------------------
+
+    // Eğer eşleşme yoksa buton boş döner
+    if (!isOwner) {
+      // Test amaçlı buraya 'false' olsa bile görünmesi için geçici bir ikon koyabilirsin
+      // return const Icon(Icons.lock, color: Colors.grey);
+      return const SizedBox();
+    }
+
+    // Kullanıcı sahibiyse Sil butonunu göster
+    return PopupMenuButton<String>(
+      icon: Icon(
+        Icons.more_vert_rounded,
+        size: 20,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      padding: EdgeInsets.zero,
+      onSelected: (value) {
+        if (value == 'delete') {
+          _showDeleteConfirmation(context);
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+              SizedBox(width: 8),
+              Text('Sil', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context) {
+    // Capture the BLoC *before* showing the dialog, as the dialog's context is different.
+    final commentsBloc = context.read<CommentsBloc>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Yorumu Sil'),
+        content: const Text('Bu yorumu silmek istediğinizden emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () {
+              commentsBloc.add(
+                DeleteCommentEvent(commentId: comment.id, contentId: 0),
+              );
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Sil', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 }
 

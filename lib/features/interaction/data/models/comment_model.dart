@@ -11,26 +11,31 @@ class CommentModel extends CommentEntity {
   });
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
-    var user = json['user'];
-    if (user == null && json['User'] != null) {
-      user = json['User'];
+    // JSON logunda "user" objesi var, onu alıyoruz.
+    final userObj = json['user'];
+
+    // Güvenli Map dönüşümü
+    final userData = userObj is Map<String, dynamic>
+        ? userObj
+        : <String, dynamic>{};
+
+    // Helper: Gelen sayı int mi String mi dert etmeden int'e çevirir
+    int toInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      return int.tryParse(value.toString()) ?? 0;
     }
 
-    // cast details
-    final userData = user is Map<String, dynamic> ? user : <String, dynamic>{};
-
     return CommentModel(
-      id: json['id'] as int? ?? 0,
+      id: toInt(json['id']), // Ana id (Örn: 13)
       text: json['text'] as String? ?? '',
-      userId: userData['id'] as int? ?? userData['Id'] as int? ?? 0,
-      username:
-          userData['username'] as String? ??
-          userData['Username'] as String? ??
-          'Unknown User',
-      userAvatar:
-          userData['profilePictureUrl'] as String? ??
-          userData['ProfilePictureUrl'] as String? ??
-          userData['userProfileImage'] as String?,
+
+      // --- KRİTİK NOKTA BURASI ---
+      // Logda id: 2 olarak user'ın içinde geliyor.
+      userId: toInt(userData['id']),
+
+      username: userData['username'] as String? ?? 'Misafir',
+      userAvatar: userData['profilePictureUrl'] as String?, // Logda null gelmiş
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),

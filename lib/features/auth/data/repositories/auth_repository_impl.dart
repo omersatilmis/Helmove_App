@@ -29,10 +29,15 @@ class AuthRepositoryImpl implements AuthRepository {
         throw Exception(responseDto.message ?? "Giriş başarısız");
       }
 
-      await _localDataSource.saveToken(responseDto.data!.token);
-      return AuthMapper.toEntity(responseDto);
+      final entity = AuthMapper.toEntity(responseDto);
+
+      // Token ve kullanıcı bilgilerini kaydet
+      await _localDataSource.saveToken(entity.token);
+      await _localDataSource.saveUserId(entity.id);
+      await _localDataSource.saveUsername(entity.username);
+
+      return entity;
     } catch (e) {
-      // ErrorHandler.getErrorMessage ile detaylı hata mesajı al
       throw Exception(ErrorHandler.getErrorMessage(e));
     }
   }
@@ -62,7 +67,6 @@ class AuthRepositoryImpl implements AuthRepository {
         throw Exception(responseDto.message ?? "Kayıt başarısız");
       }
     } catch (e) {
-      // ErrorHandler.getErrorMessage zaten okunabilir bir string döner
       throw Exception(ErrorHandler.getErrorMessage(e));
     }
   }
@@ -74,7 +78,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (e) {
       AppLogger.warning("Logout API error: $e");
     } finally {
-      await _localDataSource.deleteToken();
+      await _localDataSource.clearAuthData();
     }
   }
 
@@ -82,6 +86,23 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> isLoggedIn() async {
     final token = await _localDataSource.getToken();
     return token != null && token.isNotEmpty;
+  }
+
+  @override
+  Future<AuthEntity?> getPersistedUser() async {
+    final token = await _localDataSource.getToken();
+    final id = await _localDataSource.getUserId();
+    final username = await _localDataSource.getUsername();
+
+    if (token != null && id != null && username != null) {
+      return AuthEntity(id: id, username: username, email: '', token: token);
+    }
+    return null;
+  }
+
+  @override
+  Future<String?> getAuthToken() async {
+    return _localDataSource.getToken();
   }
 
   @override
