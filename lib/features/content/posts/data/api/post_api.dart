@@ -16,10 +16,10 @@ class PostApi {
     return PostModel.fromJson(response.data);
   }
 
-  Future<List<PostModel>> getFeed({int page = 1}) async {
+  Future<List<PostModel>> getFeed({int page = 1, int limit = 10}) async {
     final response = await _dio.get(
       ApiEndpoints.feed,
-      queryParameters: {'page': page},
+      queryParameters: {'page': page, 'limit': limit},
     );
     final List<dynamic> data = response.data is List
         ? response.data
@@ -30,10 +30,11 @@ class PostApi {
   Future<List<PostModel>> getUserPosts({
     required int userId,
     int page = 1,
+    int limit = 10,
   }) async {
     final response = await _dio.get(
       ApiEndpoints.userPosts(userId),
-      queryParameters: {'page': page},
+      queryParameters: {'page': page, 'limit': limit},
     );
     final List<dynamic> data = response.data is List
         ? response.data

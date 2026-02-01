@@ -34,9 +34,12 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
-  Future<Either<Failure, List<PostEntity>>> getFeed({int page = 1}) async {
+  Future<Either<Failure, List<PostEntity>>> getFeed({
+    int page = 1,
+    int limit = 10,
+  }) async {
     try {
-      final result = await remoteDataSource.getFeed(page: page);
+      final result = await remoteDataSource.getFeed(page: page, limit: limit);
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -47,11 +50,13 @@ class PostRepositoryImpl implements PostRepository {
   Future<Either<Failure, List<PostEntity>>> getUserPosts({
     required int userId,
     int page = 1,
+    int limit = 10,
   }) async {
     try {
       final result = await remoteDataSource.getUserPosts(
         userId: userId,
         page: page,
+        limit: limit,
       );
       return Right(result);
     } catch (e) {

@@ -24,14 +24,24 @@ class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
     LoadCommentsEvent event,
     Emitter<CommentsState> emit,
   ) async {
-    if (event.isRefresh) {
-      emit(state.copyWith(status: CommentsStatus.loading, comments: []));
-    } else if (state.status == CommentsStatus.initial) {
-      emit(state.copyWith(status: CommentsStatus.loading));
+    // Has already reached max and not refreshing/first page
+    if (state.hasReachedMax && !event.isRefresh && event.page > 1) return;
+
+    if (event.isRefresh || event.page == 1) {
+      emit(
+        state.copyWith(
+          status: CommentsStatus.loading,
+          comments: [],
+          hasReachedMax: false,
+          currentPage: 1,
+        ),
+      );
+    } else {
+      // Don't emit loading for pagination, just fetch
     }
 
     final result = await getComments(
-      GetCommentsParams(contentId: event.contentId),
+      GetCommentsParams(contentId: event.contentId, page: event.page),
     );
 
     result.fold(
@@ -41,9 +51,27 @@ class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
           errorMessage: failure.message,
         ),
       ),
-      (comments) => emit(
-        state.copyWith(status: CommentsStatus.success, comments: comments),
-      ),
+      (comments) {
+        if (event.page == 1) {
+          emit(
+            state.copyWith(
+              status: CommentsStatus.success,
+              comments: comments,
+              hasReachedMax: comments.length < 10,
+              currentPage: 1,
+            ),
+          );
+        } else {
+          emit(
+            state.copyWith(
+              status: CommentsStatus.success,
+              comments: List.of(state.comments)..addAll(comments),
+              hasReachedMax: comments.length < 10,
+              currentPage: event.page,
+            ),
+          );
+        }
+      },
     );
   }
 

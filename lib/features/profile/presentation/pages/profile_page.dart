@@ -62,13 +62,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
     // 🔥 INITIALIZE BLOCS IMMEDIATELY to avoid null crash in first build
     final authProvider = context.read<AuthProvider>();
-    final myIdStr = authProvider.currentUser?.id;
+    final myId = authProvider.currentUser?.id;
 
     // Kendi profilim mi diye kontrol et
     bool isMe = false;
     if (widget.userId == null) {
       isMe = true;
-    } else if (myIdStr != null && widget.userId == myIdStr) {
+    } else if (myId != null && widget.userId == myId.toString()) {
       isMe = true;
     }
 
@@ -329,8 +329,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     // 🔥 1. AuthProvider'dan BENİM ID'mi al
     final authProvider = context.watch<AuthProvider>();
-    final myIdStr = authProvider.currentUser?.id;
-    final myId = myIdStr != null ? int.tryParse(myIdStr) : null;
+    final myId = authProvider.currentUser?.id;
 
     // 🔥 4. Kendi profilim mi kontrolü (Logic taşıdık)
     bool isOwnProfile = false;

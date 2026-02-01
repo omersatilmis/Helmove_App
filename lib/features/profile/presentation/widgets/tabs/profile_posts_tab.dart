@@ -52,10 +52,7 @@ class _ProfilePostsTabState extends State<ProfilePostsTab>
     final user = profileProvider.visitedProfile ?? profileProvider.profile;
 
     final authProvider = context.watch<AuthProvider>();
-    final currentUserIdStr = authProvider.currentUser?.id;
-    final currentUserId = currentUserIdStr != null
-        ? int.tryParse(currentUserIdStr)
-        : null;
+    final currentUserId = authProvider.currentUser?.id;
 
     final bool isMe = user?.id == currentUserId;
 

@@ -46,7 +46,10 @@ class CommentsSheet extends StatelessWidget {
 
                   // Liste Alanı
                   Expanded(
-                    child: _CommentsList(scrollController: scrollController),
+                    child: _CommentsList(
+                      scrollController: scrollController,
+                      contentId: contentId,
+                    ),
                   ),
 
                   // Input Alanı
@@ -103,18 +106,22 @@ class _SheetHeader extends StatelessWidget {
 // -----------------------------------------------------------------------------
 class _CommentsList extends StatelessWidget {
   final ScrollController scrollController;
+  final int contentId;
 
-  const _CommentsList({required this.scrollController});
+  const _CommentsList({
+    required this.scrollController,
+    required this.contentId,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<CommentsBloc, CommentsState>(
       builder: (context, state) {
-        if (state.status == CommentsStatus.loading) {
+        if (state.status == CommentsStatus.loading && state.comments.isEmpty) {
           return const Center(child: CircularProgressIndicator.adaptive());
         }
 
-        if (state.status == CommentsStatus.failure) {
+        if (state.status == CommentsStatus.failure && state.comments.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -161,15 +168,41 @@ class _CommentsList extends StatelessWidget {
           );
         }
 
-        return ListView.separated(
-          controller: scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          itemCount: state.comments.length,
-          separatorBuilder: (c, i) => const SizedBox(height: 16),
-          itemBuilder: (context, index) {
-            final comment = state.comments[index];
-            return _CommentItem(comment: comment);
+        return NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification scrollInfo) {
+            if (!state.hasReachedMax &&
+                state.status != CommentsStatus.loading &&
+                scrollInfo.metrics.pixels >=
+                    scrollInfo.metrics.maxScrollExtent * 0.9) {
+              context.read<CommentsBloc>().add(
+                LoadCommentsEvent(
+                  contentId: contentId,
+                  page: state.currentPage + 1,
+                ),
+              );
+            }
+            return true;
           },
+          child: ListView.separated(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: state.hasReachedMax
+                ? state.comments.length
+                : state.comments.length + 1,
+            separatorBuilder: (c, i) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              if (index >= state.comments.length) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: CircularProgressIndicator.adaptive(),
+                  ),
+                );
+              }
+              final comment = state.comments[index];
+              return _CommentItem(comment: comment);
+            },
+          ),
         );
       },
     );
@@ -180,8 +213,7 @@ class _CommentsList extends StatelessWidget {
 // 3. COMMENT ITEM (Tekil Yorum Görünümü)
 // -----------------------------------------------------------------------------
 class _CommentItem extends StatelessWidget {
-  // Buradaki 'dynamic' yerine kendi Entity tipini yazmalısın (örn: CommentEntity)
-  final dynamic comment;
+  final CommentEntity comment;
 
   const _CommentItem({required this.comment});
 
@@ -290,11 +322,7 @@ class _CommentMoreButton extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context, listen: true);
     final currentUser = authProvider.currentUser;
 
-    // --- BU KISMI EKLE ---
-    // Giriş yapan kullanıcının ID'si
-    final currentUserId = authProvider.currentUser?.id;
-
-    // Yorumu atan kullanıcının ID'si
+    final currentUserId = currentUser?.id;
     final commentUserId = comment.userId;
 
     // --- KONSOLA YAZDIRIYORUZ ---
@@ -306,20 +334,12 @@ class _CommentMoreButton extends StatelessWidget {
       "YORUM SAHİBİ ID: '$commentUserId' (Tipi: ${commentUserId.runtimeType})",
     );
 
-    // Eşleşme kontrolü (Her ikisini de string yapıp karşılaştırıyoruz)
-    final bool isOwner = currentUserId.toString() == commentUserId.toString();
+    // Eşleşme kontrolü (Artık her ikisi de int)
+    final bool isOwner =
+        currentUserId != null && currentUserId == commentUserId;
     print("EŞLEŞİYOR MU? : $isOwner");
     print("######################################");
-    // ------------------------------------------
 
-    // Eğer eşleşme yoksa buton boş döner
-    if (!isOwner) {
-      // Test amaçlı buraya 'false' olsa bile görünmesi için geçici bir ikon koyabilirsin
-      // return const Icon(Icons.lock, color: Colors.grey);
-      return const SizedBox();
-    }
-
-    // Kullanıcı sahibiyse Sil butonunu göster
     return PopupMenuButton<String>(
       icon: Icon(
         Icons.more_vert_rounded,
@@ -330,19 +350,35 @@ class _CommentMoreButton extends StatelessWidget {
       onSelected: (value) {
         if (value == 'delete') {
           _showDeleteConfirmation(context);
+        } else if (value == 'report') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Şikayetiniz iletildi.')),
+          );
         }
       },
       itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
-              SizedBox(width: 8),
-              Text('Sil', style: TextStyle(color: Colors.red)),
-            ],
+        if (isOwner)
+          const PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                SizedBox(width: 8),
+                Text('Sil', style: TextStyle(color: Colors.red)),
+              ],
+            ),
           ),
-        ),
+        if (!isOwner)
+          const PopupMenuItem(
+            value: 'report',
+            child: Row(
+              children: [
+                Icon(Icons.report_gmailerrorred_rounded, size: 20),
+                SizedBox(width: 8),
+                Text('Şikayet Et'),
+              ],
+            ),
+          ),
       ],
     );
   }

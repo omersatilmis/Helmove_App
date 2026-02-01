@@ -24,7 +24,8 @@ class _FeedViewState extends State<FeedView> {
   @override
   void initState() {
     super.initState();
-    _postsBloc = sl<PostsBloc>()..add(const GetFeedEvent());
+    // 🔥 Step 3: Initial fetch - 10 items, Page 1
+    _postsBloc = sl<PostsBloc>()..add(const GetFeedEvent(page: 1, limit: 10));
     _scrollController.addListener(_onScroll);
   }
 
@@ -106,18 +107,14 @@ class _FeedViewState extends State<FeedView> {
             },
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.only(top: 16),
+              padding: EdgeInsets.zero, // Clean edge-to-edge look
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: state.hasReachedMax
                   ? state.posts.length
                   : state.posts.length + 1,
               itemBuilder: (context, index) {
                 if (index >= state.posts.length) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
+                  return const _BottomLoader();
                 }
 
                 final post = state.posts[index];
@@ -141,17 +138,30 @@ class _FeedViewState extends State<FeedView> {
                       builder: (context) => CommentsSheet(contentId: post.id),
                     );
                   },
-                  onShare: () {
-                    // TODO: Implement share logic
-                  },
-                  onSave: () {
-                    // TODO: Implement save logic
-                  },
+                  onShare: () {},
+                  onSave: () {},
                 );
               },
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _BottomLoader extends StatelessWidget {
+  const _BottomLoader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
       ),
     );
   }

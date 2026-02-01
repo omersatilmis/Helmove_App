@@ -8,7 +8,7 @@ class AuthMapper {
     }
     final data = dto.data!;
     return AuthEntity(
-      id: data.id ?? '',
+      id: data.id ?? 0,
       username: data.username ?? '',
       email: data.email ?? '',
       token: data.token,

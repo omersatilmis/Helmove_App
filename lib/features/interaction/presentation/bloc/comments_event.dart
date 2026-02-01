@@ -10,11 +10,16 @@ abstract class CommentsEvent extends Equatable {
 class LoadCommentsEvent extends CommentsEvent {
   final int contentId;
   final bool isRefresh;
+  final int page;
 
-  const LoadCommentsEvent({required this.contentId, this.isRefresh = false});
+  const LoadCommentsEvent({
+    required this.contentId,
+    this.isRefresh = false,
+    this.page = 1,
+  });
 
   @override
-  List<Object> get props => [contentId, isRefresh];
+  List<Object> get props => [contentId, isRefresh, page];
 }
 
 class AddCommentEvent extends CommentsEvent {

@@ -50,7 +50,7 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
       targetUserId = profileProvider.profile!.id;
       source = "Self-Profile";
     } else {
-      targetUserId = int.tryParse(authProvider.currentUser?.id ?? "");
+      targetUserId = authProvider.currentUser?.id;
       source = "Auth-Session";
     }
 
@@ -82,8 +82,7 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
       final profileProvider = context.read<ProfileProvider>();
       final authProvider = context.read<AuthProvider>();
       int? targetUserId =
-          profileProvider.visitedProfile?.id ??
-          int.tryParse(authProvider.currentUser?.id ?? "");
+          profileProvider.visitedProfile?.id ?? authProvider.currentUser?.id;
 
       if (targetUserId != null) {
         _jotsBloc.add(FetchMoreUserJotsEvent(userId: targetUserId));
@@ -204,7 +203,7 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
                 final authProvider = context.read<AuthProvider>();
                 int? targetUserId =
                     profileProvider.visitedProfile?.id ??
-                    int.tryParse(authProvider.currentUser?.id ?? "");
+                    authProvider.currentUser?.id;
                 if (targetUserId != null) {
                   _jotsBloc.add(
                     FetchUserJotsEvent(userId: targetUserId, isRefresh: true),

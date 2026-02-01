@@ -38,7 +38,9 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
         ),
       );
 
-      final result = await getFeed(GetFeedParams(page: event.page));
+      final result = await getFeed(
+        GetFeedParams(page: event.page, limit: event.limit),
+      );
 
       result.fold(
         (failure) => emit(
@@ -58,7 +60,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
             state.copyWith(
               status: PostsStatus.success,
               posts: allPosts,
-              hasReachedMax: newPosts.length < 10,
+              hasReachedMax: newPosts.length < event.limit,
               page: event.page,
             ),
           );
@@ -91,7 +93,11 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
       }
 
       final result = await getUserPosts(
-        GetUserPostsParams(userId: event.userId, page: event.page),
+        GetUserPostsParams(
+          userId: event.userId,
+          page: event.page,
+          limit: event.limit,
+        ),
       );
 
       result.fold(
@@ -108,7 +114,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
             state.copyWith(
               status: PostsStatus.success,
               posts: allPosts,
-              hasReachedMax: posts.length < 10,
+              hasReachedMax: posts.length < event.limit,
               page: event.page,
             ),
           );

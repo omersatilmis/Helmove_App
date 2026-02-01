@@ -94,7 +94,11 @@ class AuthRepositoryImpl implements AuthRepository {
     final id = await _localDataSource.getUserId();
     final username = await _localDataSource.getUsername();
 
-    if (token != null && id != null && username != null) {
+    if (token != null &&
+        token.isNotEmpty &&
+        id != null &&
+        username != null &&
+        username.isNotEmpty) {
       return AuthEntity(id: id, username: username, email: '', token: token);
     }
     return null;
@@ -103,6 +107,12 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<String?> getAuthToken() async {
     return _localDataSource.getToken();
+  }
+
+  @override
+  Future<void> savePersistedUser(int id, String username) async {
+    await _localDataSource.saveUserId(id);
+    await _localDataSource.saveUsername(username);
   }
 
   @override

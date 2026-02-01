@@ -5,8 +5,8 @@ abstract class AuthLocalDataSource {
   Future<String?> getToken();
   Future<void> deleteToken();
 
-  Future<void> saveUserId(String userId);
-  Future<String?> getUserId();
+  Future<void> saveUserId(int userId);
+  Future<int?> getUserId();
 
   Future<void> saveUsername(String username);
   Future<String?> getUsername();
@@ -39,13 +39,15 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
-  Future<void> saveUserId(String userId) async {
-    await sharedPreferences.setString(_userIdKey, userId);
+  Future<void> saveUserId(int userId) async {
+    await sharedPreferences.setString(_userIdKey, userId.toString());
   }
 
   @override
-  Future<String?> getUserId() async {
-    return sharedPreferences.getString(_userIdKey);
+  Future<int?> getUserId() async {
+    final idStr = sharedPreferences.getString(_userIdKey);
+    if (idStr == null) return null;
+    return int.tryParse(idStr);
   }
 
   @override

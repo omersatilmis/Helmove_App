@@ -13,16 +13,25 @@ class GetUserPostsUseCase
 
   @override
   Future<Either<Failure, List<PostEntity>>> call(GetUserPostsParams params) {
-    return repository.getUserPosts(userId: params.userId, page: params.page);
+    return repository.getUserPosts(
+      userId: params.userId,
+      page: params.page,
+      limit: params.limit,
+    );
   }
 }
 
 class GetUserPostsParams extends Equatable {
   final int userId;
   final int page;
+  final int limit;
 
-  const GetUserPostsParams({required this.userId, this.page = 1});
+  const GetUserPostsParams({
+    required this.userId,
+    this.page = 1,
+    this.limit = 10,
+  });
 
   @override
-  List<Object> get props => [userId, page];
+  List<Object> get props => [userId, page, limit];
 }

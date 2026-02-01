@@ -4,8 +4,12 @@ import '../models/post_model.dart';
 
 abstract class PostRemoteDataSource {
   Future<PostModel> createPost(CreatePostRequest request);
-  Future<List<PostModel>> getFeed({int page = 1});
-  Future<List<PostModel>> getUserPosts({required int userId, int page = 1});
+  Future<List<PostModel>> getFeed({int page = 1, int limit = 10});
+  Future<List<PostModel>> getUserPosts({
+    required int userId,
+    int page = 1,
+    int limit = 10,
+  });
   Future<void> deletePost(int id);
   Future<void> likePost(int id);
   Future<void> unlikePost(int id);
@@ -22,13 +26,17 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   }
 
   @override
-  Future<List<PostModel>> getFeed({int page = 1}) {
-    return api.getFeed(page: page);
+  Future<List<PostModel>> getFeed({int page = 1, int limit = 10}) {
+    return api.getFeed(page: page, limit: limit);
   }
 
   @override
-  Future<List<PostModel>> getUserPosts({required int userId, int page = 1}) {
-    return api.getUserPosts(userId: userId, page: page);
+  Future<List<PostModel>> getUserPosts({
+    required int userId,
+    int page = 1,
+    int limit = 10,
+  }) {
+    return api.getUserPosts(userId: userId, page: page, limit: limit);
   }
 
   @override

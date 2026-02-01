@@ -17,7 +17,7 @@ class LoginResponseDto {
 
 class LoginDataDto {
   final String token;
-  final String? id;
+  final int? id;
   final String? username;
   final String? email;
   final String? firstName;
@@ -35,13 +35,20 @@ class LoginDataDto {
   });
 
   factory LoginDataDto.fromJson(Map<String, dynamic> json) {
+    // Helper: Gelen sayı int mi String mi dert etmeden int'e çevirir
+    int? toInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      return int.tryParse(value.toString());
+    }
+
     return LoginDataDto(
       token:
           json['accessToken'] ??
           json['token'] ??
           '', // accessToken veya token olarak gelebilir
-      id: json['id']?.toString(),
-      username: json['username'],
+      id: toInt(json['userId'] ?? json['id'] ?? json['Id']),
+      username: json['username'] ?? json['Username'],
       email: json['email'],
       firstName: json['firstName'],
       lastName: json['lastName'],

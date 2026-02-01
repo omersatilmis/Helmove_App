@@ -144,13 +144,18 @@ class AuthProvider extends ChangeNotifier {
           try {
             final profile = await _profileRepository.getMyProfile();
             _currentUser = AuthEntity(
-              id: profile.id.toString(),
+              id: profile.id, // Changed from profile.id.toString()
               username: profile.username,
               email: profile.email,
               token: await _authRepository.getAuthToken() ?? '',
               firstName: profile.firstName,
               lastName: profile.lastName,
               profileImageUrl: profile.profileImageUrl,
+            );
+            // 3. Save to local storage for next time
+            await _authRepository.savePersistedUser(
+              _currentUser!.id,
+              _currentUser!.username,
             );
             notifyListeners();
           } catch (e) {

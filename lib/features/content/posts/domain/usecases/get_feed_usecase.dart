@@ -12,15 +12,16 @@ class GetPostsFeedUseCase implements UseCase<List<PostEntity>, GetFeedParams> {
 
   @override
   Future<Either<Failure, List<PostEntity>>> call(GetFeedParams params) {
-    return repository.getFeed(page: params.page);
+    return repository.getFeed(page: params.page, limit: params.limit);
   }
 }
 
 class GetFeedParams extends Equatable {
   final int page;
+  final int limit;
 
-  const GetFeedParams({this.page = 1});
+  const GetFeedParams({this.page = 1, this.limit = 10});
 
   @override
-  List<Object> get props => [page];
+  List<Object> get props => [page, limit];
 }

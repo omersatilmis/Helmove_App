@@ -1,5 +1,5 @@
 class AuthEntity {
-  final String id;
+  final int id;
   final String username;
   final String email;
   final String token; // API isteklerinde kullanacağımız anahtar

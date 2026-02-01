@@ -11,11 +11,15 @@ abstract class PostRepository {
     required int visibility,
   });
 
-  Future<Either<Failure, List<PostEntity>>> getFeed({int page = 1});
+  Future<Either<Failure, List<PostEntity>>> getFeed({
+    int page = 1,
+    int limit = 10,
+  });
 
   Future<Either<Failure, List<PostEntity>>> getUserPosts({
     required int userId,
     int page = 1,
+    int limit = 10,
   });
 
   Future<Either<Failure, void>> deletePost(int id);
