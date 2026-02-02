@@ -1,11 +1,12 @@
 import '../api/post_api.dart';
 import '../models/create_post_request.dart';
 import '../models/post_model.dart';
+import '../../../../../core/models/paged_result.dart';
 
 abstract class PostRemoteDataSource {
   Future<PostModel> createPost(CreatePostRequest request);
-  Future<List<PostModel>> getFeed({int page = 1, int limit = 10});
-  Future<List<PostModel>> getUserPosts({
+  Future<PagedResult<PostModel>> getFeed({int page = 1, int limit = 10});
+  Future<PagedResult<PostModel>> getUserPosts({
     required int userId,
     int page = 1,
     int limit = 10,
@@ -26,12 +27,12 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   }
 
   @override
-  Future<List<PostModel>> getFeed({int page = 1, int limit = 10}) {
+  Future<PagedResult<PostModel>> getFeed({int page = 1, int limit = 10}) {
     return api.getFeed(page: page, limit: limit);
   }
 
   @override
-  Future<List<PostModel>> getUserPosts({
+  Future<PagedResult<PostModel>> getUserPosts({
     required int userId,
     int page = 1,
     int limit = 10,

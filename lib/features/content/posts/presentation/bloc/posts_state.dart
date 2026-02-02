@@ -6,7 +6,8 @@ enum PostsStatus { initial, loading, success, failure }
 class PostsState extends Equatable {
   final PostsStatus status;
   final List<PostEntity> posts;
-  final bool hasReachedMax;
+  final bool hasReachedMax; // Keep for backward compatibility or UI checks
+  final bool hasNextPage;
   final String? errorMessage;
   final int page;
 
@@ -14,6 +15,7 @@ class PostsState extends Equatable {
     this.status = PostsStatus.initial,
     this.posts = const [],
     this.hasReachedMax = false,
+    this.hasNextPage = true,
     this.errorMessage,
     this.page = 1,
   });
@@ -22,6 +24,7 @@ class PostsState extends Equatable {
     PostsStatus? status,
     List<PostEntity>? posts,
     bool? hasReachedMax,
+    bool? hasNextPage,
     String? errorMessage,
     int? page,
   }) {
@@ -29,11 +32,19 @@ class PostsState extends Equatable {
       status: status ?? this.status,
       posts: posts ?? this.posts,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+      hasNextPage: hasNextPage ?? this.hasNextPage,
       errorMessage: errorMessage ?? this.errorMessage,
       page: page ?? this.page,
     );
   }
 
   @override
-  List<Object?> get props => [status, posts, hasReachedMax, errorMessage, page];
+  List<Object?> get props => [
+    status,
+    posts,
+    hasReachedMax,
+    hasNextPage,
+    errorMessage,
+    page,
+  ];
 }

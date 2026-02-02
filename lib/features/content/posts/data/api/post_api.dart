@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'post_endpoints.dart';
 import '../models/create_post_request.dart';
 import '../models/post_model.dart';
+import '../../../../../core/models/paged_result.dart';
+import '../../../../../core/models/pagination_metadata.dart';
 
 class PostApi {
   final Dio _dio;
@@ -16,18 +18,24 @@ class PostApi {
     return PostModel.fromJson(response.data);
   }
 
-  Future<List<PostModel>> getFeed({int page = 1, int limit = 10}) async {
+  Future<PagedResult<PostModel>> getFeed({int page = 1, int limit = 10}) async {
     final response = await _dio.get(
       ApiEndpoints.feed,
       queryParameters: {'page': page, 'limit': limit},
     );
-    final List<dynamic> data = response.data is List
-        ? response.data
-        : (response.data['data'] ?? []);
-    return data.map((e) => PostModel.fromJson(e)).toList();
+
+    final List<dynamic> itemsData = response.data['data'] ?? [];
+    final items = itemsData.map((e) => PostModel.fromJson(e)).toList();
+
+    final metaData = response.data['meta'];
+    final meta = metaData != null
+        ? PaginationMetadata.fromJson(metaData)
+        : PaginationMetadata.initial();
+
+    return PagedResult(items: items, metadata: meta);
   }
 
-  Future<List<PostModel>> getUserPosts({
+  Future<PagedResult<PostModel>> getUserPosts({
     required int userId,
     int page = 1,
     int limit = 10,
@@ -36,10 +44,16 @@ class PostApi {
       ApiEndpoints.userPosts(userId),
       queryParameters: {'page': page, 'limit': limit},
     );
-    final List<dynamic> data = response.data is List
-        ? response.data
-        : (response.data['data'] ?? []);
-    return data.map((e) => PostModel.fromJson(e)).toList();
+
+    final List<dynamic> itemsData = response.data['data'] ?? [];
+    final items = itemsData.map((e) => PostModel.fromJson(e)).toList();
+
+    final metaData = response.data['meta'];
+    final meta = metaData != null
+        ? PaginationMetadata.fromJson(metaData)
+        : PaginationMetadata.initial();
+
+    return PagedResult(items: items, metadata: meta);
   }
 
   Future<void> deletePost(int id) async {

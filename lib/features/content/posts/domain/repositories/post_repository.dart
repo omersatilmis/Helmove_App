@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../../core/error/failures.dart';
+import '../../../../../core/models/paged_result.dart';
 import '../entities/post_entity.dart';
 
 abstract class PostRepository {
@@ -11,12 +12,12 @@ abstract class PostRepository {
     required int visibility,
   });
 
-  Future<Either<Failure, List<PostEntity>>> getFeed({
+  Future<Either<Failure, PagedResult<PostEntity>>> getFeed({
     int page = 1,
     int limit = 10,
   });
 
-  Future<Either<Failure, List<PostEntity>>> getUserPosts({
+  Future<Either<Failure, PagedResult<PostEntity>>> getUserPosts({
     required int userId,
     int page = 1,
     int limit = 10,

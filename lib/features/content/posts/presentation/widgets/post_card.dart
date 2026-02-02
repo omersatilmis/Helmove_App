@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // 🔥 ŞART
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
+import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/post_entity.dart';
 
 class PostCardModern extends StatefulWidget {
@@ -11,7 +13,7 @@ class PostCardModern extends StatefulWidget {
   final VoidCallback? onComment;
   final VoidCallback? onShare;
   final VoidCallback? onSave;
-  final bool isCurrentUser;
+  final VoidCallback? onReport;
 
   const PostCardModern({
     super.key,
@@ -21,7 +23,7 @@ class PostCardModern extends StatefulWidget {
     this.onComment,
     this.onShare,
     this.onSave,
-    this.isCurrentUser = false,
+    this.onReport,
   });
 
   @override
@@ -30,14 +32,13 @@ class PostCardModern extends StatefulWidget {
 
 class _PostCardModernState extends State<PostCardModern>
     with SingleTickerProviderStateMixin {
-  bool _hideUI = false; // UI Gizleme durumu
-  late AnimationController _likeController; // Like animasyonu için
+  bool _hideUI = false;
+  late AnimationController _likeController;
   late Animation<double> _likeAnimation;
 
   @override
   void initState() {
     super.initState();
-    // Kalp animasyonu ayarları (Ufak bir büyüme/küçülme efekti)
     _likeController = AnimationController(
       duration: const Duration(milliseconds: 150),
       vsync: this,
@@ -53,7 +54,6 @@ class _PostCardModernState extends State<PostCardModern>
     super.dispose();
   }
 
-  // Like butonuna basılınca çalışacak efekt
   void _animateLike() {
     _likeController.forward().then((_) => _likeController.reverse());
     widget.onLike?.call();
@@ -61,25 +61,29 @@ class _PostCardModernState extends State<PostCardModern>
 
   @override
   Widget build(BuildContext context) {
-    // Eğer resim yoksa postun yüksekliği daha az olsun
+    // 1. ADIM: AuthProvider'dan mevcut kullanıcıyı al
+    final authProvider = context.watch<AuthProvider>();
+    final currentUser = authProvider.currentUser;
+
+    // 2. ADIM: Kesin sahiplik kontrolü (Zırhlı Mantık)
+    final bool isOwner =
+        currentUser != null &&
+        currentUser.id != 0 &&
+        currentUser.id.toString() == widget.post.userId.toString();
+
     final bool hasMedia =
         widget.post.mediaUrl != null && widget.post.mediaUrl!.isNotEmpty;
 
     return GestureDetector(
-      // Ekrana basılı tutunca UI gizlenir, bırakınca gelir
+      // Basılı tutunca UI gizleme
       onLongPressStart: (_) => setState(() => _hideUI = true),
       onLongPressEnd: (_) => setState(() => _hideUI = false),
-      onTap: () {
-        // Tek tıklamada gizlilik açıksa kapat, yoksa detay açılabilir (ileride)
-        if (_hideUI) setState(() => _hideUI = false);
-      },
       child: Container(
-        margin: const EdgeInsets.fromLTRB(10, 0, 10, 24), // Kenar boşlukları
-        // Kareye yakın bir oran (4:5 instagram oranı veya 1:1)
+        margin: const EdgeInsets.fromLTRB(10, 0, 10, 24),
         height: hasMedia ? 450 : 250,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24), // Modern yuvarlak köşeler
-          color: AppColors.darkSurface, // Resim yoksa zemin rengi
+          borderRadius: BorderRadius.circular(24),
+          color: AppColors.darkSurface,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
@@ -92,9 +96,7 @@ class _PostCardModernState extends State<PostCardModern>
           borderRadius: BorderRadius.circular(24),
           child: Stack(
             children: [
-              // --------------------------
               // KATMAN 1: ARKA PLAN (MEDYA)
-              // --------------------------
               Positioned.fill(
                 child: hasMedia
                     ? CachedNetworkImage(
@@ -103,22 +105,13 @@ class _PostCardModernState extends State<PostCardModern>
                         placeholder: (context, url) => Container(
                           color: AppColors.darkSurfaceContainer,
                           child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.grey,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
-                        errorWidget: (context, url, error) => Container(
-                          color: AppColors.darkSurface,
-                          child: const Icon(
-                            Icons.broken_image,
-                            color: Colors.grey,
-                          ),
-                        ),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.broken_image, color: Colors.grey),
                       )
                     : Container(
-                        // Resim yoksa gradient arka plan
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
@@ -132,15 +125,13 @@ class _PostCardModernState extends State<PostCardModern>
                       ),
               ),
 
-              // --------------------------
-              // KATMAN 2: KARARTMA (GRADIENT)
-              // --------------------------
+              // KATMAN 2: SİYAH KARARTMA (GRADIENT)
               if (!_hideUI)
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 300, // Alt kısmı karart
+                  height: 300, // Okunurluk için 300px derinlik
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -148,17 +139,15 @@ class _PostCardModernState extends State<PostCardModern>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withValues(alpha: 0.4),
-                          Colors.black.withValues(alpha: 0.9),
+                          Colors.black.withOpacity(0.5),
+                          Colors.black.withOpacity(0.9),
                         ],
                       ),
                     ),
                   ),
                 ),
 
-              // --------------------------
-              // KATMAN 3: SAĞ BUTONLAR
-              // --------------------------
+              // KATMAN 3: SAĞ AKSİYON BUTONLARI
               if (!_hideUI)
                 Positioned(
                   right: 12,
@@ -166,7 +155,7 @@ class _PostCardModernState extends State<PostCardModern>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Like Butonu
+                      // Like
                       ScaleTransition(
                         scale: _likeAnimation,
                         child: _SideActionButton(
@@ -181,25 +170,21 @@ class _PostCardModernState extends State<PostCardModern>
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Yorum Butonu
+                      // Yorum
                       _SideActionButton(
                         icon: Icons.chat_bubble_outline_rounded,
                         label: _formatCount(widget.post.commentCount),
                         onTap: widget.onComment,
                       ),
                       const SizedBox(height: 20),
-
-                      // Paylaş Butonu
+                      // Paylaş
                       _SideActionButton(
-                        icon: Icons.send_rounded, // Telegram/DM tarzı ikon
+                        icon: Icons.send_rounded,
                         label: "Paylaş",
-                        iconSize: 26,
                         onTap: widget.onShare,
                       ),
                       const SizedBox(height: 20),
-
-                      // Kaydet Butonu
+                      // Kaydet
                       _SideActionButton(
                         icon: Icons.bookmark_border_rounded,
                         label: "Kaydet",
@@ -209,198 +194,103 @@ class _PostCardModernState extends State<PostCardModern>
                   ),
                 ),
 
-              // --------------------------
-              // KATMAN 4: ALT BİLGİ (PROFIL & TEXT)
-              // --------------------------
+              // KATMAN 5: OPTIONS MENU (Top Right)
               if (!_hideUI)
                 Positioned(
-                  bottom: 20,
-                  left: 16,
-                  right: 80, // Sağ butonlara çarpmaması için boşluk
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Profil Satırı
-                      Row(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: CircleAvatar(
-                              radius: 18,
-                              backgroundImage:
-                                  widget.post.userProfileImage != null
-                                  ? CachedNetworkImageProvider(
-                                      widget.post.userProfileImage!,
-                                    )
-                                  : null,
-                              backgroundColor: AppColors.primary,
-                              child: widget.post.userProfileImage == null
-                                  ? Text(
-                                      widget.post.username.isNotEmpty
-                                          ? widget.post.username[0]
-                                                .toUpperCase()
-                                          : "?",
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.post.username,
-                                  style: AppTextStyles.h3.copyWith(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    shadows: [
-                                      const Shadow(
-                                        blurRadius: 4,
-                                        color: Colors.black,
-                                        offset: Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Tarih bilgisi eklenebilir
-                                // Text("2s önce", style: TextStyle(color: Colors.white70, fontSize: 10)),
-                              ],
-                            ),
-                          ),
-                        ],
+                  top: 12,
+                  right: 12,
+                  child: PopupMenuButton<String>(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.black26,
+                        shape: BoxShape.circle,
                       ),
-
-                      const SizedBox(height: 12),
-
-                      // Post Yazısı
-                      if (widget.post.text.isNotEmpty)
-                        Text(
-                          widget.post.text,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.regular.copyWith(
-                            color: Colors.white.withOpacity(0.95),
-                            fontSize: 14,
-                            height: 1.3,
-                            shadows: [
-                              const Shadow(
-                                blurRadius: 2,
-                                color: Colors.black,
-                                offset: Offset(0, 1),
-                              ),
-                            ],
-                          ),
+                      child: const Icon(
+                        Icons.more_vert,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    color: const Color(0xFF252525),
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    offset: const Offset(0, 45),
+                    onSelected: (value) {
+                      if (value == 'delete') _showDeleteConfirmDialog(context);
+                      if (value == 'share') widget.onShare?.call();
+                      if (value == 'report') widget.onReport?.call();
+                    },
+                    itemBuilder: (context) => [
+                      _buildPopupItem('share', Icons.share_outlined, 'Paylaş'),
+                      _buildPopupItem(
+                        'report',
+                        Icons.report_gmailerrorred_rounded,
+                        'Şikayet Et',
+                      ),
+                      if (isOwner)
+                        _buildPopupItem(
+                          'delete',
+                          Icons.delete_outline,
+                          'Sil',
+                          color: Colors.redAccent,
                         ),
                     ],
                   ),
                 ),
 
-              // --------------------------
-              // KATMAN 5: SİLME MENÜSÜ (Opsiyonel)
-              // --------------------------
+              // KATMAN 4: ALT BİLGİ (PROFİL & TEXT)
               if (!_hideUI)
                 Positioned(
-                  top: 16,
-                  right: 16,
-                  child: PopupMenuButton<String>(
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.more_horiz,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    color: AppColors.darkSurface,
-                    offset: const Offset(0, 40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'share') {
-                        widget.onShare?.call();
-                      } else if (value == 'delete') {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            backgroundColor: AppColors.darkSurface,
-                            title: const Text(
-                              'Postu Sil',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            content: const Text(
-                              'Bu gönderiyi silmek istediğine emin misin?',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('İptal'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context); // Close dialog
-                                  widget.onDelete?.call();
-                                },
-                                child: const Text(
-                                  'Sil',
-                                  style: TextStyle(color: AppColors.error),
-                                ),
-                              ),
-                            ],
+                  bottom: 20,
+                  left: 16,
+                  right: 80,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundImage:
+                                widget.post.userProfileImage != null
+                                ? CachedNetworkImageProvider(
+                                    widget.post.userProfileImage!,
+                                  )
+                                : null,
+                            child: widget.post.userProfileImage == null
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 16,
+                                    color: Colors.white,
+                                  )
+                                : null,
                           ),
-                        );
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'share',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.send_rounded,
-                              size: 20,
-                              color: Colors.white,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.post.username,
+                              style: AppTextStyles.h3.copyWith(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
-                            SizedBox(width: 10),
-                            Text(
-                              'Paylaş',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      if (widget.isCurrentUser)
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.delete_outline,
-                                size: 20,
-                                color: AppColors.error,
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                'Sil',
-                                style: TextStyle(color: AppColors.error),
-                              ),
-                            ],
+                      const SizedBox(height: 8),
+                      if (widget.post.text.isNotEmpty)
+                        Text(
+                          widget.post.text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            height: 1.3,
                           ),
                         ),
                     ],
@@ -413,31 +303,96 @@ class _PostCardModernState extends State<PostCardModern>
     );
   }
 
-  // Sayıları kısaltmak için yardımcı metod (1200 -> 1.2K)
+  // Samsung Style Delete Dialog
+  void _showDeleteConfirmDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          'Silinsin mi?',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          'Bu gönderi kalıcı olarak silinecek.',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              widget.onDelete?.call();
+            },
+            child: const Text(
+              'Sil',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatCount(int count) {
-    if (count >= 1000000) {
-      return '${(count / 1000000).toStringAsFixed(1)}M';
-    } else if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}K';
-    }
+    if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
     return count.toString();
+  }
+
+  PopupMenuItem<String> _buildPopupItem(
+    String value,
+    IconData icon,
+    String text, {
+    Color? color,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, color: color ?? Colors.white70, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            text,
+            style: TextStyle(color: color ?? Colors.white, fontSize: 14),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-// Yardımcı Yan Buton Widget'ı
+// Yan Buton Bileşeni
 class _SideActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
   final Color color;
-  final double iconSize;
 
   const _SideActionButton({
     required this.icon,
     required this.label,
     this.onTap,
     this.color = Colors.white,
-    this.iconSize = 30,
   });
 
   @override
@@ -445,37 +400,15 @@ class _SideActionButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          // İkonun arkasına hafif bir gölge atıyoruz ki karışık resimlerde de görünsün
-          Container(
-            padding: const EdgeInsets.all(0),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Icon(icon, color: color, size: iconSize),
-          ),
+          Icon(icon, color: color, size: 28),
           const SizedBox(height: 4),
           Text(
             label,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              shadows: [
-                Shadow(
-                  blurRadius: 3,
-                  color: Colors.black,
-                  offset: Offset(0, 1),
-                ),
-              ],
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],

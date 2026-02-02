@@ -7,6 +7,8 @@ import '../../domain/entities/post_entity.dart';
 import 'posts_event.dart';
 import 'posts_state.dart';
 
+import '../../../../../core/models/paged_result.dart';
+
 class PostsBloc extends Bloc<PostsEvent, PostsState> {
   final GetPostsFeedUseCase getFeed;
   final GetUserPostsUseCase getUserPosts;
@@ -27,7 +29,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
 
   Future<void> _onGetFeed(GetFeedEvent event, Emitter<PostsState> emit) async {
     try {
-      // Prevent duplicate requests if already loading or reached max
+      // Prevent duplicate requests if already loading or reached max/has no more pages
       if (state.status == PostsStatus.loading) return;
       if (state.hasReachedMax && !event.isRefresh && event.page != 1) return;
 
@@ -49,18 +51,21 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
             errorMessage: failure.message,
           ),
         ),
-        (newPosts) {
+        (PagedResult<PostEntity> pagedResult) {
           final List<PostEntity> allPosts = event.isRefresh
               ? []
               : List<PostEntity>.from(state.posts);
 
-          allPosts.addAll(newPosts);
+          allPosts.addAll(pagedResult.items);
 
           emit(
             state.copyWith(
               status: PostsStatus.success,
               posts: allPosts,
-              hasReachedMax: newPosts.length < event.limit,
+              hasNextPage: pagedResult.metadata.hasNextPage,
+              hasReachedMax:
+                  pagedResult.items.length < event.limit ||
+                  !pagedResult.metadata.hasNextPage,
               page: event.page,
             ),
           );
@@ -81,16 +86,15 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     Emitter<PostsState> emit,
   ) async {
     try {
-      if (state.hasReachedMax && !event.isRefresh && event.page != 1) return;
+      if (state.status == PostsStatus.loading) return;
+      if (!state.hasNextPage && !event.isRefresh && event.page != 1) return;
 
-      if (state.status == PostsStatus.initial || event.isRefresh) {
-        emit(
-          state.copyWith(
-            status: PostsStatus.loading,
-            posts: event.isRefresh ? [] : state.posts,
-          ),
-        );
-      }
+      emit(
+        state.copyWith(
+          status: PostsStatus.loading,
+          posts: event.isRefresh ? [] : state.posts,
+        ),
+      );
 
       final result = await getUserPosts(
         GetUserPostsParams(
@@ -107,14 +111,21 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
             errorMessage: failure.message,
           ),
         ),
-        (posts) {
-          final allPosts = event.isRefresh ? posts : List.of(state.posts)
-            ..addAll(posts);
+        (PagedResult<PostEntity> pagedResult) {
+          final List<PostEntity> allPosts = event.isRefresh
+              ? []
+              : List<PostEntity>.from(state.posts);
+
+          allPosts.addAll(pagedResult.items);
+
           emit(
             state.copyWith(
               status: PostsStatus.success,
               posts: allPosts,
-              hasReachedMax: posts.length < event.limit,
+              hasNextPage: pagedResult.metadata.hasNextPage,
+              hasReachedMax:
+                  pagedResult.items.length < event.limit ||
+                  !pagedResult.metadata.hasNextPage,
               page: event.page,
             ),
           );

@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../../core/error/failures.dart';
+import '../../../../../core/models/paged_result.dart';
 import '../../domain/entities/post_entity.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../datasources/post_remote_datasource.dart';
@@ -34,7 +35,7 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
-  Future<Either<Failure, List<PostEntity>>> getFeed({
+  Future<Either<Failure, PagedResult<PostEntity>>> getFeed({
     int page = 1,
     int limit = 10,
   }) async {
@@ -47,7 +48,7 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
-  Future<Either<Failure, List<PostEntity>>> getUserPosts({
+  Future<Either<Failure, PagedResult<PostEntity>>> getUserPosts({
     required int userId,
     int page = 1,
     int limit = 10,

@@ -102,6 +102,34 @@ import '../../features/media/data/repositories/media_repository_impl.dart';
 import '../../features/media/domain/repositories/media_repository.dart';
 import '../../features/media/domain/usecases/upload_image_usecase.dart';
 
+// Notification Feature
+import '../../features/notification/data/datasources/notification_remote_data_source.dart';
+import '../../features/notification/data/repositories/notification_repository_impl.dart';
+import '../../features/notification/domain/repositories/notification_repository.dart';
+import '../../features/notification/domain/usecases/get_notifications_usecase.dart';
+import '../../features/notification/domain/usecases/get_unread_count_usecase.dart'
+    as notif;
+import '../../features/notification/domain/usecases/mark_all_notifications_read_usecase.dart';
+import '../../features/notification/domain/usecases/mark_notification_read_usecase.dart';
+import '../../features/notification/presentation/bloc/notifications_bloc.dart';
+
+// Settings Feature
+import '../../features/settings/data/datasources/settings_remote_data_source.dart';
+import '../../features/settings/data/repositories/settings_repository_impl.dart';
+import '../../features/settings/domain/repositories/settings_repository.dart';
+import '../../features/settings/domain/usecases/update_audio_usecase.dart';
+import '../../features/settings/domain/usecases/update_map_usecase.dart';
+import '../../features/settings/domain/usecases/update_privacy_usecase.dart';
+import '../../features/settings/presentation/bloc/settings_bloc.dart';
+import '../../features/settings/domain/usecases/update_units_usecase.dart';
+
+import '../../features/plan/data/datasources/subscription_remote_data_source.dart';
+import '../../features/plan/data/repositories/subscription_repository_impl.dart';
+import '../../features/plan/domain/repositories/subscription_repository.dart';
+import '../../features/plan/domain/usecases/get_plans_usecase.dart';
+import '../../features/plan/domain/usecases/subscribe_usecase.dart';
+import '../../features/plan/presentation/bloc/subscription_bloc.dart';
+
 final sl = GetIt.instance;
 
 void setup() {
@@ -628,4 +656,76 @@ Future<void> init() async {
 
   // UseCases
   sl.registerFactory(() => UploadImageUseCase(sl()));
+
+  //! Notification Feature
+  // Data Sources
+  sl.registerLazySingleton<NotificationRemoteDataSource>(
+    () => NotificationRemoteDataSourceImpl(client: sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // UseCases
+  sl.registerFactory(() => GetNotificationsUseCase(sl()));
+  sl.registerFactory(() => notif.GetUnreadCountUseCase(sl()));
+  sl.registerFactory(() => MarkNotificationReadUseCase(sl()));
+  sl.registerFactory(() => MarkAllNotificationsReadUseCase(sl()));
+
+  // Bloc
+  sl.registerFactory(
+    () => NotificationsBloc(
+      getNotifications: sl(),
+      getUnreadCount: sl(),
+      markNotificationRead: sl(),
+      markAllNotificationsRead: sl(),
+    ),
+  );
+
+  //! Settings Feature
+  // Data Sources
+  sl.registerLazySingleton<SettingsRemoteDataSource>(
+    () => SettingsRemoteDataSourceImpl(client: sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<SettingsRepository>(
+    () => SettingsRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // UseCases
+  sl.registerFactory(() => UpdatePrivacyUseCase(sl()));
+  sl.registerFactory(() => UpdateUnitsUseCase(sl()));
+  sl.registerFactory(() => UpdateMapUseCase(sl()));
+  sl.registerFactory(() => UpdateAudioUseCase(sl()));
+
+  // Bloc
+  sl.registerFactory(
+    () => SettingsBloc(
+      updatePrivacy: sl(),
+      updateUnits: sl(),
+      updateMap: sl(),
+      updateAudio: sl(),
+    ),
+  );
+
+  // ! Subscription Feature
+  // Data Sources
+  sl.registerLazySingleton<SubscriptionRemoteDataSource>(
+    () => SubscriptionRemoteDataSourceImpl(client: sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<SubscriptionRepository>(
+    () => SubscriptionRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // UseCases
+  sl.registerFactory(() => GetPlansUseCase(sl()));
+  sl.registerFactory(() => SubscribeUseCase(sl()));
+
+  // Bloc
+  sl.registerFactory(() => SubscriptionBloc(getPlans: sl(), subscribe: sl()));
 }

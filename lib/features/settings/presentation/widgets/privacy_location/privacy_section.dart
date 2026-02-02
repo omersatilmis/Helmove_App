@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:moto_comm_app_1/features/settings/domain/entities/privacy_settings_entity.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_event.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_tile.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/helper_widgets.dart'; // 🔥 Helper'ı dahil ettik
@@ -36,7 +40,20 @@ class _PrivacySectionState extends State<PrivacySection> {
           ],
           onSelect: (val) {
             setState(() => _ghostMode = val);
-            // Burada backend'e istek atılıp konum ayarı güncellenecek
+
+            // Backend Mapping (Örnek)
+            int locationPrivacyValue = 1; // Sadece Arkadaşlar (Varsayılan)
+            if (val == "Herkes") locationPrivacyValue = 0;
+            if (val == "Gizli (Kimse Göremez)") locationPrivacyValue = 2;
+
+            context.read<SettingsBloc>().add(
+              UpdatePrivacyEvent(
+                PrivacySettingsEntity(
+                  locationPrivacy: locationPrivacyValue,
+                  ghostMode: val == "Gizli (Kimse Göremez)",
+                ),
+              ),
+            );
           },
         ),
 
@@ -46,7 +63,16 @@ class _PrivacySectionState extends State<PrivacySection> {
           title: "Mesaj İstekleri",
           currentValue: _messagePrivacy,
           options: const ["Herkes", "Sadece Takip Ettiklerim"],
-          onSelect: (val) => setState(() => _messagePrivacy = val),
+          onSelect: (val) {
+            setState(() => _messagePrivacy = val);
+            context.read<SettingsBloc>().add(
+              const UpdatePrivacyEvent(
+                PrivacySettingsEntity(
+                  // showProfileToOthers örneği olarak kullanabiliriz
+                ),
+              ),
+            );
+          },
         ),
 
         // 🏷️ ETİKETLEME (MENTIONS)

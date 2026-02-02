@@ -47,7 +47,13 @@ class LoginDataDto {
           json['accessToken'] ??
           json['token'] ??
           '', // accessToken veya token olarak gelebilir
-      id: toInt(json['userId'] ?? json['id'] ?? json['Id']),
+      id: toInt(
+        json['userId'] ??
+            json['UserId'] ??
+            json['id'] ??
+            json['Id'] ??
+            json['userID'],
+      ),
       username: json['username'] ?? json['Username'],
       email: json['email'],
       firstName: json['firstName'],

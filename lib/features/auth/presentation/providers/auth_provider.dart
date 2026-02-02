@@ -136,13 +136,23 @@ class AuthProvider extends ChangeNotifier {
         // 1. Try to get from local storage
         final persistedUser = await _authRepository.getPersistedUser();
 
-        if (persistedUser != null) {
+        if (persistedUser != null && persistedUser.id != 0) {
           _currentUser = persistedUser;
           notifyListeners();
         } else {
-          // 2. If local storage is empty (old session), fetch from API
+          // 2. If local storage is empty (old session) or invalid ID (0), fetch from API
           try {
+            AppLogger.info(
+              "Persisted user invalid or empty, fetching profile...",
+            );
             final profile = await _profileRepository.getMyProfile();
+
+            if (profile.id == 0) {
+              AppLogger.warning(
+                "Fetched profile has ID 0, auth status may be invalid",
+              );
+            }
+
             _currentUser = AuthEntity(
               id: profile.id, // Changed from profile.id.toString()
               username: profile.username,
@@ -152,11 +162,14 @@ class AuthProvider extends ChangeNotifier {
               lastName: profile.lastName,
               profileImageUrl: profile.profileImageUrl,
             );
-            // 3. Save to local storage for next time
-            await _authRepository.savePersistedUser(
-              _currentUser!.id,
-              _currentUser!.username,
-            );
+
+            // 3. Save to local storage for next time if ID is valid
+            if (_currentUser!.id != 0) {
+              await _authRepository.savePersistedUser(
+                _currentUser!.id,
+                _currentUser!.username,
+              );
+            }
             notifyListeners();
           } catch (e) {
             AppLogger.error("Failed to fetch profile on auth check: $e");

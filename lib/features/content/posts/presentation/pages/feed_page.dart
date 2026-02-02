@@ -6,7 +6,6 @@ import '../bloc/posts_bloc.dart';
 import '../bloc/posts_event.dart';
 import '../bloc/posts_state.dart';
 import '../widgets/post_card.dart';
-import '../../../../profile/presentation/providers/profile_provider.dart';
 import '../../../../interaction/presentation/widgets/comments_sheet.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
 
@@ -38,7 +37,10 @@ class _FeedViewState extends State<FeedView> {
 
   void _onScroll() {
     if (_isBottom) {
-      _postsBloc.add(GetFeedEvent(page: _postsBloc.state.page + 1));
+      final state = _postsBloc.state;
+      if (!state.hasReachedMax && state.status != PostsStatus.loading) {
+        _postsBloc.add(GetFeedEvent(page: state.page + 1));
+      }
     }
   }
 
@@ -51,10 +53,6 @@ class _FeedViewState extends State<FeedView> {
 
   @override
   Widget build(BuildContext context) {
-    // Use ProfileProvider to get the current user's ID
-    final profileProvider = context.watch<ProfileProvider>();
-    final currentUserIdInt = profileProvider.profile?.id;
-
     return BlocProvider.value(
       value: _postsBloc,
       child: BlocBuilder<PostsBloc, PostsState>(
@@ -118,12 +116,9 @@ class _FeedViewState extends State<FeedView> {
                 }
 
                 final post = state.posts[index];
-                final isOwner =
-                    currentUserIdInt != null && post.userId == currentUserIdInt;
 
                 return PostCardModern(
                   post: post,
-                  isCurrentUser: isOwner,
                   onDelete: () {
                     _postsBloc.add(DeletePostEvent(post.id));
                   },
@@ -140,6 +135,11 @@ class _FeedViewState extends State<FeedView> {
                   },
                   onShare: () {},
                   onSave: () {},
+                  onReport: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Şikayetiniz alındı.')),
+                    );
+                  },
                 );
               },
             ),

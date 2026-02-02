@@ -55,8 +55,17 @@ class ProfileDataDto {
   });
 
   factory ProfileDataDto.fromJson(Map<String, dynamic> json) {
+    // Helper: Gelen sayı int mi String mi dert etmeden int'e çevirir
+    int? toInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      return int.tryParse(value.toString());
+    }
+
     return ProfileDataDto(
-      id: json['id'] ?? 0,
+      id:
+          toInt(json['userId'] ?? json['UserId'] ?? json['id'] ?? json['Id']) ??
+          0,
       username: json['username'] ?? '',
       email: json['email'] ?? '',
       firstName: json['firstName'],

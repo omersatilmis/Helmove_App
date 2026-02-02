@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_event.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
 
 // 🔥 YENİ OLUŞTURDUĞUMUZ HELPER DOSYASINI IMPORT ET
@@ -39,19 +42,29 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
               title: "Mesafe",
               value: _distanceUnit,
               icon: Icons.directions_car_rounded,
-              onTap: () => showSettingsBottomSheet(context, "Mesafe Birimi", [
-                "Kilometre (km)",
-                "Mil (mi)",
-              ], (val) => setState(() => _distanceUnit = val)),
+              onTap: () => showSettingsBottomSheet(
+                context,
+                "Mesafe Birimi",
+                ["Kilometre (km)", "Mil (mi)"],
+                (val) {
+                  setState(() => _distanceUnit = val);
+                  context.read<SettingsBloc>().add(const UpdateUnitsEvent());
+                },
+              ),
             ),
             SettingsActionTile(
               title: "Sıcaklık",
               value: _tempUnit,
               icon: Icons.thermostat_rounded,
-              onTap: () => showSettingsBottomSheet(context, "Sıcaklık Birimi", [
-                "Celsius (°C)",
-                "Fahrenheit (°F)",
-              ], (val) => setState(() => _tempUnit = val)),
+              onTap: () => showSettingsBottomSheet(
+                context,
+                "Sıcaklık Birimi",
+                ["Celsius (°C)", "Fahrenheit (°F)"],
+                (val) {
+                  setState(() => _tempUnit = val);
+                  context.read<SettingsBloc>().add(const UpdateUnitsEvent());
+                },
+              ),
             ),
           ],
         ),
@@ -65,18 +78,24 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
               title: "Harita Tipi",
               value: _mapType,
               icon: Icons.layers_outlined,
-              onTap: () => showSettingsBottomSheet(context, "Harita Tipi", [
-                "Normal",
-                "Uydu",
-                "Arazi",
-                "Hibrit",
-              ], (val) => setState(() => _mapType = val)),
+              onTap: () => showSettingsBottomSheet(
+                context,
+                "Harita Tipi",
+                ["Normal", "Uydu", "Arazi", "Hibrit"],
+                (val) {
+                  setState(() => _mapType = val);
+                  context.read<SettingsBloc>().add(const UpdateMapEvent());
+                },
+              ),
             ),
             SettingsSwitchTile(
               title: "Trafik Bilgisi",
               subtitle: "Yoğunluk durumunu göster",
               value: _trafficEnabled,
-              onChanged: (val) => setState(() => _trafficEnabled = val),
+              onChanged: (val) {
+                setState(() => _trafficEnabled = val);
+                context.read<SettingsBloc>().add(const UpdateMapEvent());
+              },
             ),
           ],
         ),
@@ -90,13 +109,19 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
               title: "Gürültü Engelleme",
               subtitle: "Rüzgar sesini azaltır",
               value: _noiseCancellation,
-              onChanged: (val) => setState(() => _noiseCancellation = val),
+              onChanged: (val) {
+                setState(() => _noiseCancellation = val);
+                context.read<SettingsBloc>().add(const UpdateAudioEvent());
+              },
             ),
             SettingsSwitchTile(
               title: "Sesli Navigasyon",
               subtitle: "Rota talimatlarını sesli al",
               value: _voiceNavigation,
-              onChanged: (val) => setState(() => _voiceNavigation = val),
+              onChanged: (val) {
+                setState(() => _voiceNavigation = val);
+                context.read<SettingsBloc>().add(const UpdateAudioEvent());
+              },
             ),
           ],
         ),
