@@ -6,7 +6,7 @@ import 'package:timeago/timeago.dart' as timeago;
 // Proje importların (Yolların doğru olduğundan emin ol)
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/text_styles.dart'; // AppTextStyles olduğunu varsayıyorum
+// AppTextStyles olduğunu varsayıyorum
 import '../bloc/notifications_bloc.dart';
 import '../bloc/notifications_event.dart';
 import '../bloc/notifications_state.dart';

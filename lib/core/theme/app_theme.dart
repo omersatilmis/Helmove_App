@@ -12,6 +12,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      fontFamily: 'Urbanist',
 
       // Renk Şeması
       colorScheme: const ColorScheme.light(
@@ -38,6 +39,7 @@ class AppTheme {
         elevation: 0,
         iconTheme: IconThemeData(color: AppColors.lightTextPrimary),
         titleTextStyle: TextStyle(
+          fontFamily: 'Urbanist',
           color: AppColors.lightTextPrimary,
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -54,7 +56,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          textStyle: const TextStyle(
+            fontFamily: 'Urbanist',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
       ),
@@ -67,7 +73,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          textStyle: const TextStyle(
+            fontFamily: 'Urbanist',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
       ),
@@ -123,6 +133,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: 'Urbanist',
 
       // Renk Şeması
       colorScheme: const ColorScheme.dark(
@@ -149,6 +160,7 @@ class AppTheme {
         elevation: 0,
         iconTheme: IconThemeData(color: AppColors.darkTextPrimary),
         titleTextStyle: TextStyle(
+          fontFamily: 'Urbanist',
           color: AppColors.darkTextPrimary,
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -165,7 +177,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          textStyle: const TextStyle(
+            fontFamily: 'Urbanist',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
       ),
@@ -178,7 +194,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          textStyle: const TextStyle(
+            fontFamily: 'Urbanist',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         ),
       ),

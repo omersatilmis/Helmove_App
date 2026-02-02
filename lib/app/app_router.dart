@@ -10,6 +10,8 @@ import 'package:moto_comm_app_1/features/discover/presentation/pages/discover_pa
 import 'package:moto_comm_app_1/features/addpost/presentation/pages/add_post_page.dart';
 import 'package:moto_comm_app_1/features/map/presentation/pages/map_page.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/communication_page.dart';
+import 'package:moto_comm_app_1/features/communication/presentation/pages/group_page.dart';
+import 'package:moto_comm_app_1/features/communication/domain/entities/group_ride_data.dart';
 import 'package:moto_comm_app_1/features/media/presentation/pages/prepare_media_page.dart';
 
 // Drawer Sayfalarının Importları
@@ -140,6 +142,25 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/friends',
         builder: (context, state) => const FriendsPage(),
+      ),
+
+      // Grup sayfası
+      GoRoute(
+        path: '/group-page',
+        builder: (context, state) {
+          final data =
+              state.extra as GroupRideData? ??
+              GroupRideData(
+                groupName: "Weekend Riders",
+                maxParticipants: 8,
+                currentParticipants: 4,
+                sessionDuration: "01:19",
+                privacy: "Public",
+                destination: "Abant Gölü",
+                ridingStyle: "Sakin Sürüş",
+              );
+          return GroupPage(data: data);
+        },
       ),
 
       // Top level add post (Fullscreen)

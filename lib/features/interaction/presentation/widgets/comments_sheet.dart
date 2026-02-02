@@ -301,8 +301,9 @@ class _CommentItem extends StatelessWidget {
 
   String _formatTimeAgo(DateTime dateTime) {
     final difference = DateTime.now().difference(dateTime);
-    if (difference.inDays > 7)
+    if (difference.inDays > 7) {
       return "${dateTime.day}/${dateTime.month}/${dateTime.year}";
+    }
     if (difference.inDays >= 1) return "${difference.inDays}g";
     if (difference.inHours >= 1) return "${difference.inHours}sa";
     if (difference.inMinutes >= 1) return "${difference.inMinutes}dk";
