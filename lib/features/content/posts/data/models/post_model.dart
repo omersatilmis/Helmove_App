@@ -18,6 +18,8 @@ class PostModel extends PostEntity {
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
+    final userJson = json['user'] as Map<String, dynamic>?;
+
     return PostModel(
       id: json['id'] as int? ?? 0,
       type: json['type'] as int? ?? 0,
@@ -25,9 +27,9 @@ class PostModel extends PostEntity {
       mediaUrl: json['mediaUrl'] as String?,
       thumbnailUrl: json['thumbnailUrl'] as String?,
       visibility: json['visibility'] as int? ?? 0,
-      userId: json['userId'] as int? ?? 0,
-      username: json['username'] ?? '',
-      userProfileImage: json['userProfileImage'] as String?,
+      userId: userJson?['id'] as int? ?? 0,
+      username: userJson?['username'] as String? ?? '',
+      userProfileImage: userJson?['profilePictureUrl'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),

@@ -71,6 +71,13 @@ class _PostCardModernState extends State<PostCardModern>
         currentUser.id != 0 &&
         currentUser.id.toString() == widget.post.userId.toString();
 
+    debugPrint('--- Post Ownership Debug ---');
+    debugPrint('Post ID: ${widget.post.id}');
+    debugPrint('Current User ID: ${currentUser?.id}');
+    debugPrint('Post User ID: ${widget.post.userId}');
+    debugPrint('Is Owner: $isOwner');
+    debugPrint('---------------------------');
+
     final bool hasMedia =
         widget.post.mediaUrl != null && widget.post.mediaUrl!.isNotEmpty;
 
@@ -139,104 +146,106 @@ class _PostCardModernState extends State<PostCardModern>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.5),
-                          Colors.black.withOpacity(0.9),
+                          Colors.black.withValues(alpha: 0.5),
+                          Colors.black.withValues(alpha: 1.0),
                         ],
                       ),
                     ),
                   ),
                 ),
 
-              // KATMAN 3: SAĞ AKSİYON BUTONLARI
+              // KATMAN 3: SAĞ AKSİYON PANELİ (Dikey Hizalama)
               if (!_hideUI)
                 Positioned(
                   right: 12,
+                  top: 12,
                   bottom: 20,
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Like
-                      ScaleTransition(
-                        scale: _likeAnimation,
-                        child: _SideActionButton(
-                          icon: widget.post.isLiked
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          label: _formatCount(widget.post.likeCount),
-                          color: widget.post.isLiked
-                              ? const Color(0xFFFF3040)
-                              : Colors.white,
-                          onTap: _animateLike,
+                      // Seçenekler (Üst)
+                      PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(
+                          Icons.more_vert,
+                          color: Colors.white,
+                          size: 28,
                         ),
+                        color: const Color(0xFF252525),
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        offset: const Offset(0, 45),
+                        onSelected: (value) {
+                          if (value == 'delete') {
+                            _showDeleteConfirmDialog(context);
+                          }
+                          if (value == 'share') widget.onShare?.call();
+                          if (value == 'report') widget.onReport?.call();
+                        },
+                        itemBuilder: (context) => [
+                          _buildPopupItem(
+                            'share',
+                            Icons.share_outlined,
+                            'Paylaş',
+                          ),
+                          _buildPopupItem(
+                            'report',
+                            Icons.report_gmailerrorred_rounded,
+                            'Şikayet Et',
+                          ),
+                          if (isOwner)
+                            _buildPopupItem(
+                              'delete',
+                              Icons.delete_outline,
+                              'Sil',
+                              color: Colors.redAccent,
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                      // Yorum
-                      _SideActionButton(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        label: _formatCount(widget.post.commentCount),
-                        onTap: widget.onComment,
-                      ),
-                      const SizedBox(height: 20),
-                      // Paylaş
-                      _SideActionButton(
-                        icon: Icons.send_rounded,
-                        label: "Paylaş",
-                        onTap: widget.onShare,
-                      ),
-                      const SizedBox(height: 20),
-                      // Kaydet
-                      _SideActionButton(
-                        icon: Icons.bookmark_border_rounded,
-                        label: "Kaydet",
-                        onTap: widget.onSave,
-                      ),
-                    ],
-                  ),
-                ),
 
-              // KATMAN 5: OPTIONS MENU (Top Right)
-              if (!_hideUI)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: PopupMenuButton<String>(
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.black26,
-                        shape: BoxShape.circle,
+                      // Aksiyon Butonları (Alt)
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Like
+                          ScaleTransition(
+                            scale: _likeAnimation,
+                            child: _SideActionButton(
+                              icon: widget.post.isLiked
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              label: _formatCount(widget.post.likeCount),
+                              color: widget.post.isLiked
+                                  ? const Color(0xFFFF3040)
+                                  : Colors.white,
+                              onTap: _animateLike,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // Yorum
+                          _SideActionButton(
+                            icon: Icons.chat_bubble_outline_rounded,
+                            label: _formatCount(widget.post.commentCount),
+                            onTap: widget.onComment,
+                          ),
+                          const SizedBox(height: 20),
+                          // Gönder
+                          _SideActionButton(
+                            icon: Icons.send_rounded,
+                            label: "Gönder",
+                            onTap: widget.onShare,
+                          ),
+                          const SizedBox(height: 20),
+                          // Kaydet
+                          _SideActionButton(
+                            icon: Icons.bookmark_border_rounded,
+                            label: "Kaydet",
+                            onTap: widget.onSave,
+                          ),
+                        ],
                       ),
-                      child: const Icon(
-                        Icons.more_vert,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    color: const Color(0xFF252525),
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    offset: const Offset(0, 45),
-                    onSelected: (value) {
-                      if (value == 'delete') _showDeleteConfirmDialog(context);
-                      if (value == 'share') widget.onShare?.call();
-                      if (value == 'report') widget.onReport?.call();
-                    },
-                    itemBuilder: (context) => [
-                      _buildPopupItem('share', Icons.share_outlined, 'Paylaş'),
-                      _buildPopupItem(
-                        'report',
-                        Icons.report_gmailerrorred_rounded,
-                        'Şikayet Et',
-                      ),
-                      if (isOwner)
-                        _buildPopupItem(
-                          'delete',
-                          Icons.delete_outline,
-                          'Sil',
-                          color: Colors.redAccent,
-                        ),
                     ],
                   ),
                 ),
