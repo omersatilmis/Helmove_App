@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
 
@@ -24,81 +25,90 @@ class ActiveGroupCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          // Grup Üst Bilgisi
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            // Arka plan rengi ve opaklığı (Cam efekti için düşük tutuldu)
+            color: colorScheme.surfaceContainerLow.withValues(alpha: 0.15),
+            // Köşe yuvarlaklığı duruyor
+            borderRadius: BorderRadius.circular(24),
+            // İnce şık bir çerçeve (Camı belli eder)
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              // Grup Üst Bilgisi
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      groupName,
-                      style: AppTextStyles.h3.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          groupName,
+                          style: AppTextStyles.h3.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "$currentParticipants / $maxParticipants Participants",
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "$currentParticipants / $maxParticipants Participants",
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                    ElevatedButton(
+                      onPressed: onOpenPressed,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: Text(
+                        "Open",
+                        style: AppTextStyles.button.copyWith(
+                          fontSize: 14,
+                          color: colorScheme.onPrimary,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                ElevatedButton(
-                  onPressed: onOpenPressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: Text(
-                    "Open",
-                    style: AppTextStyles.button.copyWith(
-                      fontSize: 14,
-                      color: colorScheme.onPrimary,
-                    ),
+              ),
+
+              // Sürücü Kartları Listesi
+              if (riderCards.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 2),
+                  child: Column(
+                    children: riderCards.map((card) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: card,
+                      );
+                    }).toList(),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
-
-          // Sürücü Kartları Listesi
-          if (riderCards.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Column(
-                children: riderCards.map((card) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: card,
-                  );
-                }).toList(),
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }

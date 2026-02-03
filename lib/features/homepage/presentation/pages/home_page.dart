@@ -16,14 +16,13 @@ class HomePageWithDrawer extends StatefulWidget {
 }
 
 class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
-  late String _visorMessage; // Sayfa açıldığında seçilecek mesaj
+  late String _visorMessage;
 
   @override
   void initState() {
     super.initState();
-    _visorMessage = _getRandomMotoMessage(); // İlk mesajı belirle
+    _visorMessage = _getRandomMotoMessage();
 
-    // Sayfa açıldığında profil verilerini yükle
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProfileProvider>().loadProfile();
     });
@@ -38,130 +37,163 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
         profileProvider.profileImageUrl ?? 'https://i.pravatar.cc/150?img=11';
 
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      // --- APP BAR ---
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leadingWidth: 300, // Selamlama alanı için genişlik
-        leading: GestureDetector(
-          onTap: () {
-            // MainWrapper'daki Drawer'ı açar
-            mainScaffoldKey.currentState?.openDrawer();
-          },
-          child: Container(
-            color: Colors.transparent,
-            padding: const EdgeInsets.only(left: 16.0),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: NetworkImage(profileImage),
-                ),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _getGreeting(),
-                        style: AppTextStyles.regular.copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w300,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.7,
+    // Dinamik arka plan gradyanı
+    final backgroundGradient = isDark
+        ? const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF2A100A), // Koyu modda hafif kırmızımsı üst
+              Color(0xFF12100E),
+            ],
+            stops: [0.0, 0.4],
+          )
+        : LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primary.withOpacity(0.08),
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          );
+
+    return Container(
+      decoration: BoxDecoration(gradient: backgroundGradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          leadingWidth: 300,
+          leading: GestureDetector(
+            onTap: () {
+              mainScaffoldKey.currentState?.openDrawer();
+            },
+            child: Container(
+              color: Colors.transparent,
+              padding: const EdgeInsets.only(left: 16.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundImage: NetworkImage(profileImage),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getGreeting(),
+                          style: AppTextStyles.regular.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w300,
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
-                      ),
-                      Text(
-                        "$firstName $lastName",
-                        style: AppTextStyles.bold.copyWith(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
+                        Text(
+                          "$firstName $lastName",
+                          style: AppTextStyles.bold.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          // MESAJLAR
-          IconButton(
-            icon: Image.asset(
-              'assets/icons/ic_message.png',
-              width: 30, // Boyutu buradan ayarla
-              height: 30,
-              color: theme
-                  .colorScheme
-                  .onSurface, // Temaya göre ikon rengini belirle
-            ),
-            onPressed: () => context.push('/messages'),
-          ),
-
-          // BİLDİRİMLER
-          IconButton(
-            icon: Image.asset(
-              'assets/icons/ic_bell.png',
-              width: 30,
-              height: 30,
-              color: theme.colorScheme.onSurface, // Işık/Karanlık mod uyumu
-            ),
-            onPressed: () => context.push('/notifications'),
-          ),
-          const SizedBox(width: 8),
-        ],
-
-        // --- VİZÖR MESAJI ALANI (AppBar Bottom) ---
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(40),
-          child: Container(
-            width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              // Hafif transparan marka rengi
-              color: theme.colorScheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.auto_awesome_outlined,
-                  size: 14,
-                  color: theme.colorScheme.primary,
+          ),
+          actions: [
+            IconButton(
+              icon: Image.asset(
+                'assets/icons/ic_message.png',
+                width: 26,
+                height: 26,
+                color: theme.colorScheme.onSurface,
+              ),
+              onPressed: () => context.push('/messages'),
+            ),
+            IconButton(
+              icon: Image.asset(
+                'assets/icons/ic_bell.png',
+                width: 26,
+                height: 26,
+                color: theme.colorScheme.onSurface,
+              ),
+              onPressed: () => context.push('/notifications'),
+            ),
+            const SizedBox(width: 8),
+          ],
+
+          // --- VİZÖR MESAJI ALANI (Glow Efekti Buraya Eklendi) ---
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(50),
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                // Glow (Parlama) Efekti: BoxShadow ile neon bir hava veriyoruz
+                color: isDark
+                    ? colorScheme.primary.withOpacity(0.08)
+                    : colorScheme.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: colorScheme.primary.withOpacity(0.15),
+                  width: 1,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _visorMessage,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 12,
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.primary.withOpacity(
+                      isDark ? 0.08 : 0.03,
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    blurRadius: 15,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 2),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome_outlined,
+                    size: 16,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _visorMessage,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: colorScheme.onSurfaceVariant.withOpacity(0.9),
+                        fontSize: 12,
+                        letterSpacing: 0.3,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+        body: const FeedView(),
       ),
-
-      body: const FeedView(),
     );
   }
 
-  /// Günün vaktine göre selamlama ve emoji döndürür
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour >= 5 && hour < 11) return "🌅 Günaydın";
@@ -171,7 +203,6 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     return "🌌 Dikkatli sür";
   }
 
-  /// Rastgele bir motorcu mesajı döndürür
   String _getRandomMotoMessage() {
     final List<String> messages = [
       "Depon dolu, virajın bol olsun! 🏍️",
@@ -196,20 +227,6 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
       "Yine hangi rotanın hayalini kuruyorsun? 🤔",
       "Motorcu selamını vermeyi unutma!",
       "Hava yağmurlu diye motoru çıkarmadın mı? Şeker misin sen? 🍭",
-
-      //Premium için şimdilik yorum satırı olarak kaslın.
-      /*
-      "Standart üyelik mi? Bu hızla viraja girilmez, vizyonu büyüt. 📈",
-      "Kaskın güzel ama altındaki motor 'Premium' diye bağırıyor... Şaka şaka. 🤡",
-      "Ekipmanlar pırıl pırıl ama profilinde neden 'Gold' rozeti yok? ✨",
-      "Buralar hep standart kullanıcı dolu, elit bir hava lazım... 🧐",
-      "Senin motorun sesi güzel ama Premium üyenin sesi bir başka çıkıyor. 🔊",
-      "Yollar senin ama ayrıcalıklar sadece seçkin sürücülerin. 😉",
-      "Yollar seni yoruyorsa, belki de Premium konforuna geçme vaktindir? ⛽",
-      "Herkes sürer ama sadece bazıları 'iz' bırakır. Rozetin nerede? 🛡️",
-      "Bu mesajı görüyorsan hala kalabalıktasın. Zirveye çıkmak ister misin? 🏔️",
-      "Sıradan bir sürücü mü, yoksa topluluğun lideri mi? Karar senin. 👑",
-      */
     ];
     return (messages..shuffle()).first;
   }

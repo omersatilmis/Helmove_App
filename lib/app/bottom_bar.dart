@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moto_comm_app_1/features/drawer/app_drawer.dart';
@@ -14,8 +15,6 @@ class BottomBarWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final backgroundColor = theme.colorScheme.surface;
-
     // 🔥 MERKEZİ KONTROL: Boyutları buradan ayarlıyoruz
     const double iconSizeUnselected = 26.0; // Seçili olmayan boyutu
     const double iconSizeSelected = 28.0; // Seçili olan boyutu
@@ -30,6 +29,8 @@ class BottomBarWrapper extends StatelessWidget {
 
     return Scaffold(
       key: mainScaffoldKey,
+      extendBody:
+          true, // Arkadaki içeriğin bottom barın altına girmesini sağlar
       drawer: const AppDrawer(),
       body: navigationShell,
 
@@ -46,8 +47,8 @@ class BottomBarWrapper extends StatelessWidget {
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
               return AppTextStyles.bold.copyWith(
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
+                fontSize: 11,
+                fontStyle: FontStyle.normal,
                 color: theme.colorScheme.primary,
               );
             }
@@ -58,108 +59,115 @@ class BottomBarWrapper extends StatelessWidget {
             );
           }),
         ),
-        child: NavigationBar(
-          height: 80,
-          elevation: 2,
-          shadowColor: const Color.fromARGB(255, 80, 56, 12),
-          backgroundColor: backgroundColor,
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: NavigationBar(
+              height: 80,
+              elevation:
+                  0, // Gölge efektini cam üzerinde kapattık (Shadow camda garip durabilir)
+              backgroundColor: theme.colorScheme.surface.withAlpha(
+                180,
+              ), // Şeffaf cam tonu
 
-          selectedIndex: currentIndex,
+              selectedIndex: currentIndex,
 
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
 
-          onDestinationSelected: (index) {
-            if (index == 2) {
-              // Add Post Clicked -> Push Fullscreen Route
-              context.push('/add_post');
-            } else {
-              // Map UI index back to Shell index
-              // UI: 0, 1, 2(Skip), 3, 4
-              // Shell: 0, 1,      2, 3
-              int shellIndex = index;
-              if (index > 2) {
-                shellIndex--;
-              }
+              onDestinationSelected: (index) {
+                if (index == 2) {
+                  // Add Post Clicked -> Push Fullscreen Route
+                  context.push('/add_post');
+                } else {
+                  // Map UI index back to Shell index
+                  // UI: 0, 1, 2(Skip), 3, 4
+                  // Shell: 0, 1,      2, 3
+                  int shellIndex = index;
+                  if (index > 2) {
+                    shellIndex--;
+                  }
 
-              navigationShell.goBranch(
-                shellIndex,
-                initialLocation: shellIndex == navigationShell.currentIndex,
-              );
-            }
-          },
+                  navigationShell.goBranch(
+                    shellIndex,
+                    initialLocation: shellIndex == navigationShell.currentIndex,
+                  );
+                }
+              },
 
-          // 🔥 BOYUTLAR DEĞİŞKENLERDEN GELİYOR
-          destinations: [
-            // 1. ANA SAYFA
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/ic_home1.png',
-                width: iconSizeUnselected,
-                height: iconSizeUnselected,
-              ),
-              selectedIcon: Image.asset(
-                'assets/icons/ic_home2.png',
-                width: iconSizeSelected,
-                height: iconSizeSelected,
-              ),
-              label: 'Ana Sayfa',
+              // 🔥 BOYUTLAR DEĞİŞKENLERDEN GELİYOR
+              destinations: [
+                // 1. ANA SAYFA
+                NavigationDestination(
+                  icon: Image.asset(
+                    'assets/icons/ic_home1.png',
+                    width: iconSizeUnselected,
+                    height: iconSizeUnselected,
+                  ),
+                  selectedIcon: Image.asset(
+                    'assets/icons/ic_home2.png',
+                    width: iconSizeSelected,
+                    height: iconSizeSelected,
+                  ),
+                  label: 'Ana Sayfa',
+                ),
+
+                // 2. KEŞFET
+                NavigationDestination(
+                  icon: Image.asset(
+                    'assets/icons/ic_discover1.png',
+                    width: iconSizeUnselected,
+                    height: iconSizeUnselected,
+                  ),
+                  selectedIcon: Image.asset(
+                    'assets/icons/ic_discover2.png',
+                    width: iconSizeSelected,
+                    height: iconSizeSelected,
+                  ),
+                  label: 'Keşfet',
+                ),
+
+                // 3. PAYLAŞ (ORTA BUTON)
+                NavigationDestination(
+                  icon: Image.asset(
+                    'assets/icons/ic_add2.png',
+                    width: 48,
+                    height: 48,
+                  ),
+                  label: 'Gönderi Ekle',
+                ),
+
+                // 4. HARİTA
+                NavigationDestination(
+                  icon: Image.asset(
+                    'assets/icons/ic_map1.png',
+                    width: iconSizeUnselected,
+                    height: iconSizeUnselected,
+                  ),
+                  selectedIcon: Image.asset(
+                    'assets/icons/ic_map2.png',
+                    width: iconSizeSelected,
+                    height: iconSizeSelected,
+                  ),
+                  label: 'Harita',
+                ),
+
+                // 5. İLETİŞİM
+                NavigationDestination(
+                  icon: Image.asset(
+                    'assets/icons/ic_comm1.png',
+                    width: iconSizeUnselected,
+                    height: iconSizeUnselected,
+                  ),
+                  selectedIcon: Image.asset(
+                    'assets/icons/ic_comm2.png',
+                    width: iconSizeSelected,
+                    height: iconSizeSelected,
+                  ),
+                  label: 'İletişim',
+                ),
+              ],
             ),
-
-            // 2. KEŞFET
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/ic_discover1.png',
-                width: iconSizeUnselected,
-                height: iconSizeUnselected,
-              ),
-              selectedIcon: Image.asset(
-                'assets/icons/ic_discover2.png',
-                width: iconSizeSelected,
-                height: iconSizeSelected,
-              ),
-              label: 'Keşfet',
-            ),
-
-            // 3. PAYLAŞ (ORTA BUTON)
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/ic_add2.png',
-                width: 48,
-                height: 48,
-              ),
-              label: 'Gönderi Ekle',
-            ),
-
-            // 4. HARİTA
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/ic_map1.png',
-                width: iconSizeUnselected,
-                height: iconSizeUnselected,
-              ),
-              selectedIcon: Image.asset(
-                'assets/icons/ic_map2.png',
-                width: iconSizeSelected,
-                height: iconSizeSelected,
-              ),
-              label: 'Harita',
-            ),
-
-            // 5. İLETİŞİM
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/ic_comm1.png',
-                width: iconSizeUnselected,
-                height: iconSizeUnselected,
-              ),
-              selectedIcon: Image.asset(
-                'assets/icons/ic_comm2.png',
-                width: iconSizeSelected,
-                height: iconSizeSelected,
-              ),
-              label: 'İletişim',
-            ),
-          ],
+          ),
         ),
       ),
     );

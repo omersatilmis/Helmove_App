@@ -40,107 +40,101 @@ class RiderCard extends StatelessWidget {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLow.withValues(alpha: 0.6),
+          color: colorScheme.surfaceContainerLow.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: colorScheme.outline.withValues(alpha: 0.08),
+            color: colorScheme.outline.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Padding(
-            // KENAR BOŞLUKLARI AZALTILDI (16 -> 8)
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8.0,
-              vertical: 12.0,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // 1. SOL: Avatar (En sola yaslı)
-                _buildAvatarSection(colorScheme),
+        child: Padding(
+          // KENAR BOŞLUKLARI AZALTILDI (16 -> 8)
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 1. SOL: Avatar (En sola yaslı)
+              _buildAvatarSection(colorScheme),
 
-                // Avatar ile yazı arası boşluk (biraz daha sıkı)
-                const SizedBox(width: 10),
+              // Avatar ile yazı arası boşluk (biraz daha sıkı)
+              const SizedBox(width: 10),
 
-                // 2. ORTA: İsim ve İstatistikler (Aradaki tüm boşluğu kaplar)
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "$firstName $lastName",
-                        style: AppTextStyles.medium.copyWith(
-                          color: colorScheme.onSurface,
-                          //fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          letterSpacing: 0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4), // Dikey boşluk azaltıldı
-                      Row(
-                        children: [
-                          _buildMinimalInfo(
-                            Icons.signal_cellular_alt,
-                            "$signalLevel%",
-                            Colors.greenAccent,
-                            theme,
-                          ),
-                          const SizedBox(width: 10), // Yatay boşluk azaltıldı
-                          _buildMinimalInfo(
-                            Icons.battery_std,
-                            "$batteryLevel%",
-                            colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                            theme,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // BURADAKİ SIZEDBOX KALDIRILDI, Expanded direkt itecek.
-
-                // 3. SAĞ: Aksiyonlar (En sağa yaslı)
-                Row(
+              // 2. ORTA: İsim ve İstatistikler (Aradaki tüm boşluğu kaplar)
+              Expanded(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildActionButton(
-                      icon: isMicOn ? Icons.mic : Icons.mic_off,
-                      color: isMicOn
-                          ? Colors.greenAccent
-                          : colorScheme.error.withValues(alpha: 0.8),
-                      onTap: onMicPressed,
-                      tooltip: "Mikrofon",
+                    Text(
+                      "$firstName $lastName",
+                      style: AppTextStyles.medium.copyWith(
+                        color: colorScheme.onSurface,
+                        //fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        letterSpacing: 0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-
-                    const SizedBox(width: 8),
-
-                    _buildActionButton(
-                      icon: isFriend ? Icons.check_circle : Icons.person_add,
-                      color: isFriend
-                          ? Colors.greenAccent
-                          : colorScheme.onSurfaceVariant,
-                      onTap: onFriendshipPressed,
-                      tooltip: "Arkadaşlık",
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    _buildActionButton(
-                      icon: Icons.more_vert,
-                      color: colorScheme.onSurfaceVariant,
-                      onTap: onMenuPressed,
-                      tooltip: "Menü",
+                    const SizedBox(height: 4), // Dikey boşluk azaltıldı
+                    Row(
+                      children: [
+                        _buildMinimalInfo(
+                          Icons.signal_cellular_alt,
+                          "$signalLevel%",
+                          Colors.greenAccent,
+                          theme,
+                        ),
+                        const SizedBox(width: 10), // Yatay boşluk azaltıldı
+                        _buildMinimalInfo(
+                          Icons.battery_std,
+                          "$batteryLevel%",
+                          colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          theme,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+
+              // BURADAKİ SIZEDBOX KALDIRILDI, Expanded direkt itecek.
+
+              // 3. SAĞ: Aksiyonlar (En sağa yaslı)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildActionButton(
+                    icon: isMicOn ? Icons.mic : Icons.mic_off,
+                    color: isMicOn
+                        ? Colors.greenAccent
+                        : colorScheme.error.withValues(alpha: 0.8),
+                    onTap: onMicPressed,
+                    tooltip: "Mikrofon",
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  _buildActionButton(
+                    icon: isFriend ? Icons.check_circle : Icons.person_add,
+                    color: isFriend
+                        ? Colors.greenAccent
+                        : colorScheme.onSurfaceVariant,
+                    onTap: onFriendshipPressed,
+                    tooltip: "Arkadaşlık",
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  _buildActionButton(
+                    icon: Icons.more_vert,
+                    color: colorScheme.onSurfaceVariant,
+                    onTap: onMenuPressed,
+                    tooltip: "Menü",
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

@@ -10,6 +10,7 @@ import 'package:moto_comm_app_1/features/discover/presentation/pages/discover_pa
 import 'package:moto_comm_app_1/features/addpost/presentation/pages/add_post_page.dart';
 import 'package:moto_comm_app_1/features/map/presentation/pages/map_page.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/communication_page.dart';
+import 'package:moto_comm_app_1/features/communication/presentation/pages/create_group_ride.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/group_page.dart';
 import 'package:moto_comm_app_1/features/communication/domain/entities/group_ride_data.dart';
 import 'package:moto_comm_app_1/features/media/presentation/pages/prepare_media_page.dart';
@@ -32,6 +33,9 @@ import 'package:moto_comm_app_1/features/content/jots/presentation/pages/create_
 
 // Arkadaşlık sayfası
 import 'package:moto_comm_app_1/features/friendship/presentation/pages/friends_page.dart';
+
+//Deneme sayfası
+import 'package:moto_comm_app_1/features/communication/presentation/pages/deneme.dart';
 
 // --- Placeholder (Hala yapmadığımız yan sayfalar için kalsın) ---
 class PlaceholderScreen extends StatelessWidget {
@@ -144,25 +148,6 @@ GoRouter createRouter(AuthProvider authProvider) {
         builder: (context, state) => const FriendsPage(),
       ),
 
-      // Grup sayfası
-      GoRoute(
-        path: '/group-page',
-        builder: (context, state) {
-          final data =
-              state.extra as GroupRideData? ??
-              GroupRideData(
-                groupName: "Weekend Riders",
-                maxParticipants: 8,
-                currentParticipants: 4,
-                sessionDuration: "01:19",
-                privacy: "Public",
-                destination: "Abant Gölü",
-                ridingStyle: "Sakin Sürüş",
-              );
-          return GroupPage(data: data);
-        },
-      ),
-
       // Top level add post (Fullscreen)
       GoRoute(
         path: '/add_post',
@@ -216,6 +201,30 @@ GoRouter createRouter(AuthProvider authProvider) {
               GoRoute(
                 path: '/communication',
                 builder: (context, state) => const CommunicationPage(),
+                routes: [
+                  GoRoute(
+                    path: 'create-group-ride',
+                    builder: (context, state) => const CreateGroupRide(),
+                  ),
+                  // GroupPage'i buraya 'child' (alt rota) olarak ekle
+                  GoRoute(
+                    path: 'group-page', // başında / yok dikkat
+                    builder: (context, state) {
+                      final data =
+                          state.extra as GroupRideData? ??
+                          GroupRideData(
+                            groupName: "Weekend Riders",
+                            maxParticipants: 8,
+                            currentParticipants: 4,
+                            sessionDuration: "01:19",
+                            privacy: "Public",
+                            destination: "Abant Gölü",
+                            ridingStyle: "Sakin Sürüş",
+                          );
+                      return GroupPage(data: data);
+                    },
+                  ),
+                ],
               ),
             ],
           ),

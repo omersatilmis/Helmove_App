@@ -1,10 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../widgets/rider_card.dart';
 import '../widgets/active_group.dart';
 import '../widgets/nearby_group.dart';
-import 'create_group_ride.dart';
 
 class CommunicationPage extends StatelessWidget {
   const CommunicationPage({super.key});
@@ -27,19 +27,22 @@ class CommunicationPage extends StatelessWidget {
             stops: [0.0, 0.4],
           )
         : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [colorScheme.primary.withOpacity(0.1), colorScheme.surface],
-            stops: const [0.0, 0.4],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primary.withOpacity(0.08),
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
+            stops: const [0.0, 0.5, 1.0],
           );
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          gradient: backgroundGradient,
-        ),
-        child: SafeArea(
+    return Container(
+      decoration: BoxDecoration(gradient: backgroundGradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          bottom: false,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
             child: Column(
@@ -48,33 +51,40 @@ class CommunicationPage extends StatelessWidget {
                 // --- 1. ÜST BUTONLAR (Saved Sessions & Create Ride) ---
                 Row(
                   children: [
+                    // --- SAVED SESSIONS (Nötr Cam) ---
                     Expanded(
                       child: _buildTopButton(
                         context,
                         title: "Saved\nSessions",
                         icon: Icons.bookmark_border,
-                        color: colorScheme.surfaceContainerLow,
+                        // Camın tonu: Beyaz/Gri (Temaya göre)
+                        glassTint: colorScheme.onSurface,
+                        // İkon ve Yazı Rengi
                         iconColor: colorScheme.primary,
                         textColor: colorScheme.onSurface,
                         onTap: () {},
                       ),
                     ),
+
                     const SizedBox(width: 16),
+
+                    // --- CREATE RIDE GROUP (Renkli Cam) ---
                     Expanded(
                       child: _buildTopButton(
                         context,
                         title: "Create Ride\nGroup",
                         icon: Icons.add,
-                        color: colorScheme.primary,
-                        iconColor: colorScheme.onPrimary,
-                        textColor: colorScheme.onPrimary,
+                        // Camın tonu: Turuncu (Primary)
+                        glassTint: colorScheme.primary,
+                        // İkon ve Yazı Rengi
+                        iconColor: isDark
+                            ? colorScheme.primary
+                            : colorScheme.onPrimary,
+                        textColor: isDark
+                            ? colorScheme.onSurface
+                            : colorScheme.onPrimary,
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const CreateGroupRide(),
-                            ),
-                          );
+                          context.push('/communication/create-group-ride');
                         },
                       ),
                     ),
@@ -114,7 +124,7 @@ class CommunicationPage extends StatelessWidget {
                         width: 60,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: colorScheme.error.withValues(alpha: 0.15),
+                          color: colorScheme.error.withOpacity(0.15),
                           // Yuvarlatılmış dikdörtgen formu (borderRadius)
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
@@ -123,7 +133,7 @@ class CommunicationPage extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: colorScheme.error.withValues(alpha: 0.3),
+                              color: colorScheme.error.withOpacity(0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -155,7 +165,8 @@ class CommunicationPage extends StatelessWidget {
                   maxParticipants: 8,
                   isActive: true,
                   onOpenPressed: () {
-                    context.push('/group-page');
+                    context.push('/communication/group-page');
+                    //context.push('/deneme'); // gradient koyulaşıyor
                   },
                   riderCards: [
                     RiderCard(
@@ -238,7 +249,8 @@ class CommunicationPage extends StatelessWidget {
                   signalStatus: "Strong",
                   onJoinPressed: () {},
                 ),
-                const SizedBox(height: 40),
+                // --- 6. BOTTOM PADDING (for extendBody: true) ---
+                const SizedBox(height: 100),
               ],
             ),
           ),
@@ -252,50 +264,55 @@ class CommunicationPage extends StatelessWidget {
     BuildContext context, {
     required String title,
     required IconData icon,
-    required Color color,
+    required Color
+    glassTint, // Artık 'color' değil 'glassTint' (Cam tonu) diyoruz
     required Color iconColor,
     required Color textColor,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 85,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(
-              context,
-            ).colorScheme.outlineVariant.withOpacity(0.1),
-            width: 1,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20), // Köşeleri biraz daha yumuşattım
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Buzlu cam efekti
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            height: 85,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              // Camın rengi (Tint) - Opaklığı düşük tutuyoruz ki arkası görünsün
+              color: glassTint.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              // İnce, şık bir çerçeve
+              border: Border.all(color: glassTint.withOpacity(0.3), width: 1),
+              // Hafif bir gölge (Depth)
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: iconColor, size: 28),
+                const SizedBox(height: 6),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: iconColor, size: 26),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                height: 1.1,
-              ),
-            ),
-          ],
         ),
       ),
     );

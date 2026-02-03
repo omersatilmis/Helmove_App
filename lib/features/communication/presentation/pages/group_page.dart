@@ -4,6 +4,66 @@ import '../../../../core/theme/text_styles.dart';
 import '../../domain/entities/group_ride_data.dart';
 import '../widgets/rider_card.dart';
 
+// --- BACKEND-READY MODELS & MOCK DATA ---
+class RiderData {
+  final String firstName;
+  final String lastName;
+  final String profileImageUrl;
+  final int batteryLevel;
+  final int signalLevel;
+  final bool isMicOn;
+  final bool isSpeaking;
+
+  RiderData({
+    required this.firstName,
+    required this.lastName,
+    required this.profileImageUrl,
+    required this.batteryLevel,
+    required this.signalLevel,
+    this.isMicOn = false,
+    this.isSpeaking = false,
+  });
+}
+
+final List<RiderData> mockRiders = [
+  RiderData(
+    firstName: "You (Alex)",
+    lastName: "",
+    profileImageUrl: "https://i.pravatar.cc/150?img=12",
+    batteryLevel: 87,
+    signalLevel: 100,
+    isMicOn: true,
+    isSpeaking: false,
+  ),
+  RiderData(
+    firstName: "Ahmet",
+    lastName: "Manyas",
+    profileImageUrl: "https://i.pravatar.cc/150?img=11",
+    batteryLevel: 76,
+    signalLevel: 95,
+    isMicOn: true,
+    isSpeaking: false,
+  ),
+  RiderData(
+    firstName: "Salih",
+    lastName: "Öztürk",
+    profileImageUrl: "https://i.pravatar.cc/150?img=3",
+    batteryLevel: 92,
+    signalLevel: 88,
+    isMicOn: true,
+    isSpeaking: true,
+  ),
+  RiderData(
+    firstName: "Harun",
+    lastName: "Karabacak",
+    profileImageUrl: "https://i.pravatar.cc/150?img=59",
+    batteryLevel: 65,
+    signalLevel: 72,
+    isMicOn: false,
+    isSpeaking: false,
+  ),
+];
+
 class GroupPage extends StatelessWidget {
   final GroupRideData data;
 
@@ -27,24 +87,22 @@ class GroupPage extends StatelessWidget {
             stops: [0.0, 0.4],
           )
         : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withValues(
-                alpha: 0.1,
-              ), // Açık modda hafif turuncu
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.surface,
               colorScheme.surface,
             ],
-            stops: const [0.0, 0.4],
+            stops: const [0.0, 0.5, 1.0],
           );
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          gradient: backgroundGradient,
-        ),
-        child: SafeArea(
+    return Container(
+      decoration: BoxDecoration(gradient: backgroundGradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          //bottom: false,
           child: Column(
             children: [
               // --- SCROLLABLE CONTENT ---
@@ -127,6 +185,7 @@ class GroupPage extends StatelessWidget {
 
                       // 2. METADATA (Rota, Stil, Gizlilik)
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           _buildMetaItem(
                             context,
@@ -218,60 +277,25 @@ class GroupPage extends StatelessWidget {
 
                       const SizedBox(height: 16),
 
-                      // 5. RIDER LIST
+                      // 5. RIDER LIST (Dinamik render edildi)
                       Column(
-                        children: const [
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 12),
+                        children: mockRiders.map((rider) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
                             child: RiderCard(
-                              firstName: "You (Alex)",
-                              lastName: "",
-                              profileImageUrl:
-                                  "https://i.pravatar.cc/150?img=12",
-                              batteryLevel: 87,
-                              signalLevel: 100,
-                              isMicOn: true,
+                              firstName: rider.firstName,
+                              lastName: rider.lastName,
+                              profileImageUrl: rider.profileImageUrl,
+                              batteryLevel: rider.batteryLevel,
+                              signalLevel: rider.signalLevel,
+                              isMicOn: rider.isMicOn,
+                              isSpeaking: rider.isSpeaking,
                             ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 12),
-                            child: RiderCard(
-                              firstName: "Ahmet",
-                              lastName: "Manyas",
-                              profileImageUrl:
-                                  "https://i.pravatar.cc/150?img=11",
-                              batteryLevel: 76,
-                              signalLevel: 95,
-                              isMicOn: true,
-                            ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 12),
-                            child: RiderCard(
-                              firstName: "Salih",
-                              lastName: "Öztürk",
-                              profileImageUrl:
-                                  "https://i.pravatar.cc/150?img=3",
-                              batteryLevel: 92,
-                              signalLevel: 88,
-                              isMicOn: true,
-                              isSpeaking: true,
-                            ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 12),
-                            child: RiderCard(
-                              firstName: "Harun",
-                              lastName: "Karabacak",
-                              profileImageUrl:
-                                  "https://i.pravatar.cc/150?img=59",
-                              batteryLevel: 65,
-                              signalLevel: 72,
-                              isMicOn: false,
-                            ),
-                          ),
-                        ],
+                          );
+                        }).toList(),
                       ),
+                      // --- BOTTOM PADDING (for extendBody: true) ---
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),

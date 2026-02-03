@@ -55,24 +55,22 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
             stops: [0.0, 0.4],
           )
         : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withValues(
-                alpha: 0.1,
-              ), // Açık modda hafif turuncu
+              colorScheme.primary.withOpacity(0.08),
+              colorScheme.surface,
               colorScheme.surface,
             ],
-            stops: const [0.0, 0.4],
+            stops: const [0.0, 0.5, 1.0],
           );
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          gradient: backgroundGradient,
-        ),
-        child: SafeArea(
+    return Container(
+      decoration: BoxDecoration(gradient: backgroundGradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          bottom: false,
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
@@ -110,7 +108,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                     ],
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
                   // 1. Group Name
                   GlassInputField(
@@ -249,7 +247,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                               ? _ridingStyleController.text
                               : "data.ridingStyle",
                         );
-                        context.push('/group-page', extra: data);
+                        context.push('/communication/group-page', extra: data);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colorScheme.primary,
