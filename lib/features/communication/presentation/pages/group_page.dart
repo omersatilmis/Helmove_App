@@ -54,21 +54,45 @@ class GroupPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. HEADER (Grup İsmi ve Çıkış Butonu)
+                      // 1. HEADER (Geri Dönüş ve Grup Bilgileri)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          // Geri Dönüş Butonu
+                          Container(
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerLow.withValues(
+                                alpha: 0.5,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: colorScheme.outline.withValues(
+                                  alpha: 0.1,
+                                ),
+                              ),
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.arrow_back,
+                                color: colorScheme.onSurface,
+                              ),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ),
+                          // Grup Bilgileri (Sağ tarafa yaslanmış)
                           Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
                                 data.groupName,
                                 style: AppTextStyles.h2.copyWith(
                                   color: colorScheme.onSurface,
                                 ),
+                                textAlign: TextAlign.right,
                               ),
                               const SizedBox(height: 4),
                               Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     data.sessionDuration,
@@ -82,7 +106,7 @@ class GroupPage extends StatelessWidget {
                                     Icons.circle,
                                     size: 4,
                                     color: colorScheme.onSurfaceVariant
-                                        .withOpacity(0.4),
+                                        .withValues(alpha: 0.4),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
@@ -95,24 +119,6 @@ class GroupPage extends StatelessWidget {
                                 ],
                               ),
                             ],
-                          ),
-                          // Çıkış Butonu
-                          Container(
-                            decoration: BoxDecoration(
-                              color: colorScheme.error.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: colorScheme.error.withOpacity(0.3),
-                              ),
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(
-                                Icons.logout,
-                                color: colorScheme.error,
-                              ),
-                              tooltip: "Leave Ride",
-                            ),
                           ),
                         ],
                       ),
@@ -271,23 +277,53 @@ class GroupPage extends StatelessWidget {
                 ),
               ),
 
-              // 6. FOOTER (WARNING)
+              // 6. LEAVE RIDE BUTTON & WARNING
               Padding(
                 padding: const EdgeInsets.all(20.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
                   children: [
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.amber,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Keep your eyes on the road. Ride safe!",
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.error.withValues(
+                            alpha: 0.1,
+                          ),
+                          foregroundColor: colorScheme.error,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: colorScheme.error.withValues(alpha: 0.3),
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.logout),
+                        label: const Text(
+                          "Leave Ride",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.amber,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Keep your eyes on the road. Ride safe!",
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
