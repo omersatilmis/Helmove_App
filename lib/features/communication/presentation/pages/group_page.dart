@@ -108,7 +108,7 @@ class GroupPage extends StatelessWidget {
               // --- SCROLLABLE CONTENT ---
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -295,7 +295,7 @@ class GroupPage extends StatelessWidget {
                         }).toList(),
                       ),
                       // --- BOTTOM PADDING (for extendBody: true) ---
-                      const SizedBox(height: 100),
+                      const SizedBox(height: 10),
                     ],
                   ),
                 ),
@@ -303,12 +303,12 @@ class GroupPage extends StatelessWidget {
 
               // 6. LEAVE RIDE BUTTON & WARNING
               Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
                 child: Column(
                   children: [
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
+                      height: 50,
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
@@ -331,7 +331,7 @@ class GroupPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
