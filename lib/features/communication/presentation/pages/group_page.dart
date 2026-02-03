@@ -105,178 +105,178 @@ class GroupPage extends StatelessWidget {
           //bottom: false,
           child: Column(
             children: [
-              // --- SCROLLABLE CONTENT ---
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 1. HEADER (Geri Dönüş ve Grup Bilgileri)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Geri Dönüş Butonu
-                          Container(
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerLow.withValues(
-                                alpha: 0.5,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: colorScheme.outline.withValues(
-                                  alpha: 0.1,
-                                ),
-                              ),
+              // --- FIXED HEADER CONTENT ---
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. HEADER (Geri Dönüş ve Grup Bilgileri)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Geri Dönüş Butonu
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerLow.withValues(
+                              alpha: 0.5,
                             ),
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.arrow_back,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colorScheme.outline.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.arrow_back,
+                              color: colorScheme.onSurface,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                        // Grup Bilgileri (Sağ tarafa yaslanmış)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              data.groupName,
+                              style: AppTextStyles.h2.copyWith(
                                 color: colorScheme.onSurface,
                               ),
-                              onPressed: () => Navigator.pop(context),
+                              textAlign: TextAlign.right,
                             ),
-                          ),
-                          // Grup Bilgileri (Sağ tarafa yaslanmış)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                data.groupName,
-                                style: AppTextStyles.h2.copyWith(
-                                  color: colorScheme.onSurface,
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  data.sessionDuration,
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                                textAlign: TextAlign.right,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    data.sessionDuration,
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.circle,
+                                  size: 4,
+                                  color: colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.4),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "${data.currentParticipants} / ${data.maxParticipants}",
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.circle,
-                                    size: 4,
-                                    color: colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.4),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "${data.currentParticipants} / ${data.maxParticipants}",
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // 2. METADATA (Rota, Stil, Gizlilik)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _buildMetaItem(
-                            context,
-                            Icons.map,
-                            "Rota: ${data.destination}",
-                          ),
-                          _buildDivider(context),
-                          _buildMetaItem(context, Icons.bolt, data.ridingStyle),
-                          _buildDivider(context),
-                          _buildMetaItem(
-                            context,
-                            data.privacy == "Public"
-                                ? Icons.language
-                                : Icons.lock,
-                            data.privacy,
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // 3. INTERCOM ACTIVE BANNER
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 20,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(
-                            0xFF15803D,
-                          ).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: const Color(
-                              0xFF15803D,
-                            ).withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.wifi_tethering,
-                              color: Color(0xFF22C55E),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              "Intercom Active",
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                color: const Color(0xFF22C55E),
-                                fontWeight: FontWeight.bold,
-                              ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // 2. METADATA (Rota, Stil, Gizlilik)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _buildMetaItem(
+                          context,
+                          Icons.map,
+                          "Rota: ${data.destination}",
+                        ),
+                        _buildDivider(context),
+                        _buildMetaItem(context, Icons.bolt, data.ridingStyle),
+                        _buildDivider(context),
+                        _buildMetaItem(
+                          context,
+                          data.privacy == "Public"
+                              ? Icons.language
+                              : Icons.lock,
+                          data.privacy,
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // 3. INTERCOM ACTIVE BANNER
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 20,
                       ),
-
-                      const SizedBox(height: 30),
-
-                      // 4. LIST HEADER & ACTIONS
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF15803D).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF15803D).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            "CONNECTED RIDERS",
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
+                          const Icon(
+                            Icons.wifi_tethering,
+                            color: Color(0xFF22C55E),
                           ),
-                          Row(
-                            children: [
-                              _buildGlassButton(
-                                context,
-                                Icons.person_add,
-                                "Invite",
-                              ),
-                              const SizedBox(width: 8),
-                              _buildGlassButton(
-                                context,
-                                Icons.settings,
-                                "Settings",
-                              ),
-                            ],
+                          const SizedBox(width: 12),
+                          Text(
+                            "Intercom Active",
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: const Color(0xFF22C55E),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
+                    ),
 
-                      const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
+                    // 4. LIST HEADER & ACTIONS
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "CONNECTED RIDERS",
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            _buildGlassButton(
+                              context,
+                              Icons.person_add,
+                              "Invite",
+                            ),
+                            const SizedBox(width: 8),
+                            _buildGlassButton(
+                              context,
+                              Icons.settings,
+                              "Settings",
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // --- SCROLLABLE RIDER LIST ---
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    children: [
                       // 5. RIDER LIST (Dinamik render edildi)
                       Column(
                         children: mockRiders.map((rider) {
@@ -294,8 +294,8 @@ class GroupPage extends StatelessWidget {
                           );
                         }).toList(),
                       ),
-                      // --- BOTTOM PADDING (for extendBody: true) ---
-                      const SizedBox(height: 10),
+                      // --- BOTTOM PADDING (for better aesthetics) ---
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
@@ -331,7 +331,7 @@ class GroupPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -340,7 +340,7 @@ class GroupPage extends StatelessWidget {
                           color: Colors.amber,
                           size: 18,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Text(
                           "Keep your eyes on the road. Ride safe!",
                           style: AppTextStyles.bodySmall.copyWith(
