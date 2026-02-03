@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
-// Aşağıdaki importların kendi proje yapına göre doğru olduğundan emin ol
 import '../widgets/rider_card.dart';
 import '../widgets/active_group.dart';
 import '../widgets/nearby_group.dart';
@@ -12,7 +11,6 @@ class CommunicationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Tema verilerine erişim
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -24,19 +22,14 @@ class CommunicationPage extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               Color(0xFF2A100A), // Koyu modda hafif kırmızımsı üst
-              Color(0xFF12100E), // darkBackground
+              Color(0xFF12100E),
             ],
             stops: [0.0, 0.4],
           )
         : LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.primary.withValues(
-                alpha: 0.1,
-              ), // Açık modda hafif turuncu
-              colorScheme.surface,
-            ],
+            colors: [colorScheme.primary.withOpacity(0.1), colorScheme.surface],
             stops: const [0.0, 0.4],
           );
 
@@ -55,7 +48,6 @@ class CommunicationPage extends StatelessWidget {
                 // --- 1. ÜST BUTONLAR (Saved Sessions & Create Ride) ---
                 Row(
                   children: [
-                    // Saved Sessions Butonu
                     Expanded(
                       child: _buildTopButton(
                         context,
@@ -68,7 +60,6 @@ class CommunicationPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // Create Ride Group Butonu
                     Expanded(
                       child: _buildTopButton(
                         context,
@@ -92,7 +83,7 @@ class CommunicationPage extends StatelessWidget {
 
                 const SizedBox(height: 30),
 
-                // --- 2. YOUR ACTIVE GROUP BAŞLIĞI ---
+                // --- 2. YOUR ACTIVE GROUP BAŞLIĞI & SOS ---
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -113,19 +104,43 @@ class CommunicationPage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    // Kırmızı Ünlem Uyarısı
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: colorScheme.error.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: colorScheme.error, width: 1),
-                      ),
-                      child: Icon(
-                        Icons.priority_high,
-                        color: colorScheme.error,
-                        size: 20,
+                    // --- SOS / Acil Durum Butonu ---
+                    // SOS / Acil Durum Butonu (Rounded Dikdörtgen Versiyon)
+                    GestureDetector(
+                      onTap: () {
+                        print("SOS Gönderildi!");
+                      },
+                      child: Container(
+                        width: 60,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: colorScheme.error.withValues(alpha: 0.15),
+                          // Yuvarlatılmış dikdörtgen formu (borderRadius)
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: colorScheme.error,
+                            width: 2.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.error.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            "!SOS",
+                            style: TextStyle(
+                              color: colorScheme.error,
+                              fontSize:
+                                  16, // Form değiştiği için puntoyu biraz büyüttüm
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -214,9 +229,7 @@ class CommunicationPage extends StatelessWidget {
                   signalStatus: "Strong",
                   onJoinPressed: () {},
                 ),
-
                 const SizedBox(height: 12),
-
                 NearbyGroupCard(
                   groupName: "City Cruisers",
                   distance: "2.8 km",
@@ -225,7 +238,6 @@ class CommunicationPage extends StatelessWidget {
                   signalStatus: "Strong",
                   onJoinPressed: () {},
                 ),
-
                 const SizedBox(height: 40),
               ],
             ),
@@ -235,7 +247,7 @@ class CommunicationPage extends StatelessWidget {
     );
   }
 
-  // --- Üst Butonları Oluşturan Yardımcı Fonksiyon (Küçültülmüş Versiyon) ---
+  // --- Üst Buton Yardımcı Fonksiyon ---
   Widget _buildTopButton(
     BuildContext context, {
     required String title,
@@ -247,26 +259,23 @@ class CommunicationPage extends StatelessWidget {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16), // Köşe yuvarlaklığı 16
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 85, // Yükseklik 85'e düşürüldü (Kompakt)
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 10,
-        ), // İç boşluklar azaltıldı
+        height: 85,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: Theme.of(
               context,
-            ).colorScheme.outlineVariant.withValues(alpha: 0.1),
+            ).colorScheme.outlineVariant.withOpacity(0.1),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 6, // Gölge yumuşatıldı
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 6,
               offset: const Offset(0, 3),
             ),
           ],
@@ -274,16 +283,16 @@ class CommunicationPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: iconColor, size: 26), // İkon boyutu 26
-            const SizedBox(height: 6), // Aradaki boşluk 6
+            Icon(icon, color: iconColor, size: 26),
+            const SizedBox(height: 6),
             Text(
               title,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySmall.copyWith(
                 color: textColor,
                 fontWeight: FontWeight.bold,
-                fontSize: 13, // Yazı boyutu 13
-                height: 1.1, // Satır aralığı daraltıldı
+                fontSize: 13,
+                height: 1.1,
               ),
             ),
           ],
