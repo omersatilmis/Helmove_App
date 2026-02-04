@@ -4,6 +4,7 @@ import 'package:moto_comm_app_1/app/bottom_bar.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/login_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
+import 'package:moto_comm_app_1/features/communication/presentation/pages/invite_page.dart';
 // 🔥 YENİ SAYFALARIN IMPORTLARI
 import 'package:moto_comm_app_1/features/homepage/presentation/pages/home_page.dart';
 import 'package:moto_comm_app_1/features/discover/presentation/pages/discover_page.dart';
@@ -223,6 +224,10 @@ GoRouter createRouter(AuthProvider authProvider) {
                           );
                       return GroupPage(data: data);
                     },
+                  ),
+                  GoRoute(
+                    path: 'invite',
+                    builder: (context, state) => const InvitePage(),
                   ),
                 ],
               ),

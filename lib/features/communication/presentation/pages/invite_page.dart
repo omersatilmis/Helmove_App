@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
 
 class InvitePage extends StatefulWidget {
@@ -66,13 +67,13 @@ class _InvitePageState extends State<InvitePage> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
         ),
         actions: [
           TextButton(
             onPressed: () {
               // Seçilenleri geri döndür veya backend'e gönder
-              Navigator.pop(context, _selectedRiders);
+              context.pop(_selectedRiders);
             },
             child: Text(
               "Bitti",

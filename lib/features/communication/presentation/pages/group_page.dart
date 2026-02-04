@@ -260,14 +260,6 @@ class GroupPage extends StatelessWidget {
                               "Invite",
                               onTap: () {
                                 context.push('/communication/invite');
-
-                                // Veya Navigator kullanmaya devam edeceksen:
-                                /*
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const InvitePage()),
-        );
-        */
                               },
                             ),
                             const SizedBox(width: 8),
