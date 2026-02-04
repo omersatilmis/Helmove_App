@@ -8,9 +8,11 @@ class LoginResponseDto {
   // Backend'den gelen JSON'ı okuyoruz
   factory LoginResponseDto.fromJson(Map<String, dynamic> json) {
     return LoginResponseDto(
-      success: json['success'] ?? false,
-      message: json['message'],
-      data: json['data'] != null ? LoginDataDto.fromJson(json['data']) : null,
+      success: json['success'] ?? json['Success'] ?? false,
+      message: json['message'] ?? json['Message'],
+      data: (json['data'] ?? json['Data']) != null
+          ? LoginDataDto.fromJson(json['data'] ?? json['Data'])
+          : null,
     );
   }
 }
@@ -45,8 +47,10 @@ class LoginDataDto {
     return LoginDataDto(
       token:
           json['accessToken'] ??
+          json['AccessToken'] ??
           json['token'] ??
-          '', // accessToken veya token olarak gelebilir
+          json['Token'] ??
+          '',
       id: toInt(
         json['userId'] ??
             json['UserId'] ??
@@ -55,10 +59,10 @@ class LoginDataDto {
             json['userID'],
       ),
       username: json['username'] ?? json['Username'],
-      email: json['email'],
-      firstName: json['firstName'],
-      lastName: json['lastName'],
-      profileImageUrl: json['profileImageUrl'],
+      email: json['email'] ?? json['Email'],
+      firstName: json['firstName'] ?? json['FirstName'],
+      lastName: json['lastName'] ?? json['LastName'],
+      profileImageUrl: json['profileImageUrl'] ?? json['ProfileImageUrl'],
     );
   }
 }

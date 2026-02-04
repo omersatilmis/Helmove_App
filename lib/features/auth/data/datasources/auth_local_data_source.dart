@@ -30,6 +30,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<String?> getToken() async {
+    await sharedPreferences.reload();
     return sharedPreferences.getString(_tokenKey);
   }
 
@@ -45,6 +46,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<int?> getUserId() async {
+    await sharedPreferences.reload();
     final idStr = sharedPreferences.getString(_userIdKey);
     if (idStr == null) return null;
     return int.tryParse(idStr);
@@ -57,6 +59,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<String?> getUsername() async {
+    await sharedPreferences.reload();
     return sharedPreferences.getString(_usernameKey);
   }
 

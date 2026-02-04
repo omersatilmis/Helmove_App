@@ -21,6 +21,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   AuthEntity? get currentUser => _currentUser;
+  bool get isAuthenticated => _currentUser != null;
 
   // Login
   Future<bool> login(String email, String password) async {
@@ -138,23 +139,17 @@ class AuthProvider extends ChangeNotifier {
 
         if (persistedUser != null && persistedUser.id != 0) {
           _currentUser = persistedUser;
-          notifyListeners();
+          // IMPORTANT: notifyListeners() skipped here because this is often called during build or navigation
         } else {
-          // 2. If local storage is empty (old session) or invalid ID (0), fetch from API
+          // 2. If local storage is empty or invalid, fetch from API
           try {
             AppLogger.info(
               "Persisted user invalid or empty, fetching profile...",
             );
             final profile = await _profileRepository.getMyProfile();
 
-            if (profile.id == 0) {
-              AppLogger.warning(
-                "Fetched profile has ID 0, auth status may be invalid",
-              );
-            }
-
             _currentUser = AuthEntity(
-              id: profile.id, // Changed from profile.id.toString()
+              id: profile.id,
               username: profile.username,
               email: profile.email,
               token: await _authRepository.getAuthToken() ?? '',
@@ -170,11 +165,20 @@ class AuthProvider extends ChangeNotifier {
                 _currentUser!.username,
               );
             }
-            notifyListeners();
           } catch (e) {
             AppLogger.error("Failed to fetch profile on auth check: $e");
+            // If API call fails, we might still be logged in (token exists),
+            // but we don't have user details.
           }
         }
+        if (_currentUser != null) {
+          notifyListeners();
+        }
+      }
+    } else {
+      if (_currentUser != null) {
+        _currentUser = null;
+        notifyListeners();
       }
     }
     return isLoggedIn;

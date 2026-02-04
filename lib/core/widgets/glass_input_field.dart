@@ -3,19 +3,21 @@ import 'package:flutter/material.dart';
 import '../theme/text_styles.dart';
 
 class GlassInputField extends StatefulWidget {
-  final String label;
+  final String? label;
   final String hintText;
   final IconData? prefixIcon;
   final TextEditingController? controller;
+  final ValueChanged<String>? onChanged;
   final bool obscureText;
   final TextInputType? keyboardType;
 
   const GlassInputField({
     super.key,
-    required this.label,
+    this.label,
     required this.hintText,
     this.prefixIcon,
     this.controller,
+    this.onChanged,
     this.obscureText = false,
     this.keyboardType,
   });
@@ -53,14 +55,16 @@ class _GlassInputFieldState extends State<GlassInputField> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Label
-        Text(
-          widget.label,
-          style: AppTextStyles.inputLabel.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w500,
+        if (widget.label != null) ...[
+          Text(
+            widget.label!,
+            style: AppTextStyles.inputLabel.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
 
         // Input Container
         // ClipRRect tüm Stack'i sarmalı ki köşeler hem blur hem container için yuvarlak olsun
@@ -94,6 +98,7 @@ class _GlassInputFieldState extends State<GlassInputField> {
                 ),
                 child: TextField(
                   controller: widget.controller,
+                  onChanged: widget.onChanged,
                   focusNode: _focusNode,
                   obscureText: widget.obscureText,
                   keyboardType: widget.keyboardType,

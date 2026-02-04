@@ -35,9 +35,6 @@ import 'package:moto_comm_app_1/features/content/jots/presentation/pages/create_
 // Arkadaşlık sayfası
 import 'package:moto_comm_app_1/features/friendship/presentation/pages/friends_page.dart';
 
-//Deneme sayfası
-import 'package:moto_comm_app_1/features/communication/presentation/pages/deneme.dart';
-
 // --- Placeholder (Hala yapmadığımız yan sayfalar için kalsın) ---
 class PlaceholderScreen extends StatelessWidget {
   final String title;
@@ -65,27 +62,28 @@ GoRouter createRouter(AuthProvider authProvider) {
 
     redirect: (context, state) async {
       // 1. Kullanıcı giriş yapmış mı?
-      // AuthProvider'da isLoggedIn bool olarak tutulmalı veya buradan kontrol edilmeli.
-      // En sağlıklısı AuthProvider içinde bir getter veya method olması.
-      final isLoggedIn = await authProvider.checkAuthStatus();
+      // Senkron kontrol (UI için hızlı)
+      bool isLoggedIn = authProvider.isAuthenticated;
 
-      // Sadece kontrol amaçlı (döngüye girmesin diye)
+      // Eğer senkron kontrolde giriş yoksa, asenkron (local token) kontrol et
+      if (!isLoggedIn) {
+        isLoggedIn = await authProvider.checkAuthStatus();
+      }
+
       final isLoggingIn = state.uri.toString() == '/login';
       final isRegistering = state.uri.toString() == '/register';
 
       if (!isLoggedIn) {
-        // Giriş yapmamışsa ve zaten login/register sayfasında değilse -> Login'e git
         if (!isLoggingIn && !isRegistering) {
           return '/login';
         }
       } else {
-        // Giriş yapmışsa ve login/register sayfasındaysa -> HomePage'e git
         if (isLoggingIn || isRegistering) {
           return '/homepage';
         }
       }
 
-      return null; // Değişiklik yok
+      return null;
     },
 
     routes: [

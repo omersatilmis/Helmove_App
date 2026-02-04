@@ -1,7 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/widgets/glass_input_field.dart';
+import '../widgets/invite_rider_card.dart';
 
 class InvitePage extends StatefulWidget {
   const InvitePage({super.key});
@@ -43,12 +46,11 @@ class _InvitePageState extends State<InvitePage> {
   String _searchQuery = "";
 
   void _toggleRider(Map<String, String> rider) {
+    HapticFeedback.lightImpact();
     setState(() {
-      if (_selectedRiders.contains(rider)) {
-        _selectedRiders.remove(rider);
-      } else {
-        _selectedRiders.add(rider);
-      }
+      _selectedRiders.contains(rider)
+          ? _selectedRiders.remove(rider)
+          : _selectedRiders.add(rider);
     });
   }
 
@@ -71,10 +73,7 @@ class _InvitePageState extends State<InvitePage> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              // Seçilenleri geri döndür veya backend'e gönder
-              context.pop(_selectedRiders);
-            },
+            onPressed: () => context.pop(_selectedRiders),
             child: Text(
               "Bitti",
               style: TextStyle(
@@ -87,10 +86,9 @@ class _InvitePageState extends State<InvitePage> {
       ),
       body: Stack(
         children: [
-          // Arka Plan Gradyanı (Diğer sayfalarla aynı)
+          /// 🌈 ARKA PLAN
           Container(
             decoration: BoxDecoration(
-              color: colorScheme.surface,
               gradient: isDark
                   ? const LinearGradient(
                       begin: Alignment.topCenter,
@@ -102,52 +100,90 @@ class _InvitePageState extends State<InvitePage> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        colorScheme.primary.withOpacity(0.05),
+                        colorScheme.surfaceContainerLowest,
                         colorScheme.surface,
                       ],
-                      stops: const [0.0, 0.4],
                     ),
             ),
           ),
+
           SafeArea(
             child: Column(
               children: [
-                // 1. SEÇİLEN KİŞİLER (Yatay Pit Stop Alanı)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  height: _selectedRiders.isEmpty ? 0 : 100,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _selectedRiders.length,
-                    itemBuilder: (context, index) {
-                      final rider = _selectedRiders[index];
-                      return _buildSelectedAvatar(rider, colorScheme);
-                    },
+                /// 🔥 SEÇİLENLER ALANI (BUGSIZ)
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, anim) =>
+                      SizeTransition(sizeFactor: anim, child: child),
+                  child: _selectedRiders.isEmpty
+                      ? const SizedBox.shrink()
+                      : Padding(
+                          key: const ValueKey("selected"),
+                          padding: const EdgeInsets.only(
+                            left: 20,
+                            right: 20,
+                            top: 4,
+                          ),
+                          child: SizedBox(
+                            height: 80,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              clipBehavior: Clip.none,
+                              padding:
+                                  const EdgeInsets.only(), // Üstten pay bıraktık
+                              itemCount: _selectedRiders.length,
+                              itemBuilder: (context, index) {
+                                return _buildSelectedAvatar(
+                                  _selectedRiders[index],
+                                  colorScheme,
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                ),
+
+                /// 🔍 ARAMA
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: GlassInputField(
+                    hintText: "Kullanıcı Ara...",
+                    prefixIcon: Icons.search,
+                    onChanged: (val) => setState(() => _searchQuery = val),
                   ),
                 ),
 
-                // 2. ARAMA INPUT ALANI (Buzlu Cam)
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: _buildGlassSearchField(colorScheme),
-                ),
-
-                // 3. ARKADAŞ / ARAMA LİSTESİ
+                /// 📋 LİSTE
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: _allFriends.length,
                     itemBuilder: (context, index) {
                       final rider = _allFriends[index];
-                      // Basit arama filtresi
                       if (_searchQuery.isNotEmpty &&
                           !rider['name']!.toLowerCase().contains(
                             _searchQuery.toLowerCase(),
                           )) {
                         return const SizedBox.shrink();
                       }
-                      return _buildRiderCard(rider, colorScheme);
+
+                      final nameParts = rider['name']!.split(' ');
+                      final firstName = nameParts.first;
+                      final lastName = nameParts.length > 1
+                          ? nameParts.skip(1).join(' ')
+                          : "";
+
+                      return InviteRiderCard(
+                        firstName: firstName,
+                        lastName: lastName,
+                        username: rider['username']!,
+                        profileImageUrl: rider['img']!,
+                        isFriend: true,
+                        isSelected: _selectedRiders.contains(rider),
+                        onInviteTap: () => _toggleRider(rider),
+                        onFriendshipTap: () {},
+                      );
                     },
                   ),
                 ),
@@ -159,35 +195,37 @@ class _InvitePageState extends State<InvitePage> {
     );
   }
 
-  // Üstteki seçili PP'ler
+  /// 👤 SEÇİLEN AVATAR
   Widget _buildSelectedAvatar(
     Map<String, String> rider,
     ColorScheme colorScheme,
   ) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 16.0),
+    return Container(
+      margin: const EdgeInsets.only(right: 14),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Stack(
+            clipBehavior: Clip.none,
             children: [
               CircleAvatar(
-                radius: 28,
+                radius: 26,
                 backgroundImage: NetworkImage(rider['img']!),
               ),
               Positioned(
-                right: 0,
-                top: 0,
+                right: -2,
+                top: -2,
                 child: GestureDetector(
                   onTap: () => _toggleRider(rider),
                   child: Container(
-                    padding: const EdgeInsets.all(2),
+                    padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       color: colorScheme.error,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.close,
-                      size: 14,
+                      size: 12,
                       color: Colors.white,
                     ),
                   ),
@@ -199,92 +237,6 @@ class _InvitePageState extends State<InvitePage> {
           Text(
             rider['username']!,
             style: AppTextStyles.bodySmall.copyWith(fontSize: 10),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Buzlu Cam Arama Alanı
-  Widget _buildGlassSearchField(ColorScheme colorScheme) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.onSurface.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colorScheme.onSurface.withOpacity(0.1)),
-          ),
-          child: TextField(
-            onChanged: (val) => setState(() => _searchQuery = val),
-            style: TextStyle(color: colorScheme.onSurface),
-            decoration: InputDecoration(
-              hintText: "Kullanıcı Ara...",
-              hintStyle: TextStyle(
-                color: colorScheme.onSurface.withOpacity(0.4),
-              ),
-              prefixIcon: Icon(Icons.search, color: colorScheme.primary),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 15),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Alt Liste Kartları
-  Widget _buildRiderCard(Map<String, String> rider, ColorScheme colorScheme) {
-    bool isSelected = _selectedRiders.contains(rider);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundImage: NetworkImage(rider['img']!),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  rider['name']!,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text("@${rider['username']}", style: AppTextStyles.bodySmall),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => _toggleRider(rider),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isSelected
-                  ? colorScheme.surface
-                  : colorScheme.primary,
-              foregroundColor: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.onPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: isSelected
-                    ? BorderSide(color: colorScheme.primary)
-                    : BorderSide.none,
-              ),
-            ),
-            child: Text(isSelected ? "Çıkar" : "Ekle"),
           ),
         ],
       ),
