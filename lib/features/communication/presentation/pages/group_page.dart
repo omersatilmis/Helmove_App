@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../domain/entities/group_ride_data.dart';
 import '../widgets/rider_card.dart';
@@ -252,16 +253,33 @@ class GroupPage extends StatelessWidget {
                         ),
                         Row(
                           children: [
+                            // --- INVITE BUTTON ---
                             _buildGlassButton(
                               context,
                               Icons.person_add,
                               "Invite",
+                              onTap: () {
+                                context.push('/communication/invite');
+
+                                // Veya Navigator kullanmaya devam edeceksen:
+                                /*
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const InvitePage()),
+        );
+        */
+                              },
                             ),
                             const SizedBox(width: 8),
+                            // --- SETTINGS BUTTON ---
                             _buildGlassButton(
                               context,
                               Icons.settings,
                               "Settings",
+                              onTap: () {
+                                // Ayarlar sayfası için aksiyon
+                                print("Settings tıklandı");
+                              },
                             ),
                           ],
                         ),
@@ -389,36 +407,44 @@ class GroupPage extends StatelessWidget {
     );
   }
 
-  Widget _buildGlassButton(BuildContext context, IconData icon, String label) {
+  Widget _buildGlassButton(
+    BuildContext context,
+    IconData icon,
+    String label, {
+    VoidCallback? onTap,
+  }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.onSurface.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: colorScheme.onSurface.withValues(alpha: 0.1),
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.onSurface.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: colorScheme.onSurface.withValues(alpha: 0.1),
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                Icon(icon, size: 14, color: colorScheme.onSurface),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(icon, size: 14, color: colorScheme.onSurface),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
