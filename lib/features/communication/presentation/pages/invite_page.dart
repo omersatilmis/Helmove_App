@@ -13,6 +13,7 @@ import '../../../../core/theme/text_styles.dart';
 // --- DOMAIN & ENTITIES ---
 import '../../../friendship/domain/entities/friend_user_entity.dart';
 import '../../domain/entities/group_ride_data.dart';
+import '../../../voice_session/data/dto/create_voice_session_request_dto.dart';
 import '../../../voice_session/data/dto/invite_users_request_dto.dart';
 
 // --- BLOCS ---
@@ -304,10 +305,7 @@ class _InviteViewState extends State<_InviteView> {
                         text: widget.isFromCreateGroup
                             ? "Grubu Kur"
                             : "Kişileri Davet Et",
-                        isLoading:
-                            state is VoiceSessionLoading ||
-                            context.watch<GroupRideBloc>().state
-                                is GroupRideLoading,
+                        isLoading: state is VoiceSessionLoading,
                         height: 52,
                         // 🔥 Turuncu (Primary) Renk
                         backgroundColor: colorScheme.primary.withValues(
@@ -318,31 +316,19 @@ class _InviteViewState extends State<_InviteView> {
                           if (widget.isFromCreateGroup &&
                               widget.groupData != null) {
                             debugPrint(
-                              "🚀 [GroupRide] Grubu Kur başlatılıyor...",
+                              "🚀 [VoiceSession] Grubu Kur başlatılıyor...",
                             );
 
-                            final rideDataMap = {
-                              'title': widget.groupData!.groupName,
-                              'description':
-                                  widget.groupData!.destination.isNotEmpty
-                                  ? "Destination: ${widget.groupData!.destination}"
-                                  : "Riding to ${widget.groupData!.destination}",
-                              'maxParticipants':
-                                  widget.groupData!.maxParticipants,
-                              'status': 'Planning',
-                              'difficulty':
-                                  'Medium', // Default or map from ridingStyle
-                              'startLocation':
-                                  'Current Location', // Placeholder
-                              'startLatitude': 0.0,
-                              'startLongitude': 0.0,
-                              'endLocation': widget.groupData!.destination,
-                              'startDateTime': DateTime.now().toIso8601String(),
-                              'requirements': widget.groupData!.ridingStyle,
-                            };
+                            final request = CreateVoiceSessionRequestDto(
+                              title: widget.groupData!.groupName,
+                              roomName: widget.groupData!.groupName,
+                              inviteUserIds: _selectedRiders
+                                  .map((e) => e.userId)
+                                  .toList(),
+                            );
 
-                            context.read<GroupRideBloc>().add(
-                              CreateGroupRide(rideDataMap),
+                            context.read<VoiceSessionBloc>().add(
+                              CreateVoiceSessionEvent(request),
                             );
                           } else if (widget.sessionId != null &&
                               _selectedRiders.isNotEmpty) {
