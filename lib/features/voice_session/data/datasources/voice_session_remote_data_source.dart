@@ -13,6 +13,9 @@ abstract class VoiceSessionRemoteDataSource {
   Future<void> joinSession(int id);
   Future<void> leaveSession(int id);
   Future<void> endSession(int id);
+  Future<void> kickUser(int sessionId, int targetUserId);
+  Future<void> muteUser(int sessionId, int targetUserId);
+  Future<void> transferHost(int sessionId, int newHostId);
 }
 
 class VoiceSessionRemoteDataSourceImpl implements VoiceSessionRemoteDataSource {
@@ -65,5 +68,20 @@ class VoiceSessionRemoteDataSourceImpl implements VoiceSessionRemoteDataSource {
   @override
   Future<void> endSession(int id) async {
     return await api.endSession(id);
+  }
+
+  @override
+  Future<void> kickUser(int sessionId, int targetUserId) async {
+    return await api.kickUser(sessionId, targetUserId);
+  }
+
+  @override
+  Future<void> muteUser(int sessionId, int targetUserId) async {
+    return await api.muteUser(sessionId, targetUserId);
+  }
+
+  @override
+  Future<void> transferHost(int sessionId, int newHostId) async {
+    return await api.transferHost(sessionId, newHostId);
   }
 }

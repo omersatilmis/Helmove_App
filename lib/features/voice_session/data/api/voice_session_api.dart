@@ -110,6 +110,30 @@ class VoiceSessionApi {
     }
   }
 
+  Future<void> kickUser(int sessionId, int targetUserId) async {
+    try {
+      await _dio.post('/api/voice-sessions/$sessionId/kick/$targetUserId');
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e.response?.data));
+    }
+  }
+
+  Future<void> muteUser(int sessionId, int targetUserId) async {
+    try {
+      await _dio.post('/api/voice-sessions/$sessionId/mute/$targetUserId');
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e.response?.data));
+    }
+  }
+
+  Future<void> transferHost(int sessionId, int newHostId) async {
+    try {
+      await _dio.post('/api/voice-sessions/$sessionId/transfer/$newHostId');
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e.response?.data));
+    }
+  }
+
   String _parseErrorMessage(dynamic data) {
     if (data == null) return 'Bir hata oluştu';
     if (data is Map<String, dynamic>) {

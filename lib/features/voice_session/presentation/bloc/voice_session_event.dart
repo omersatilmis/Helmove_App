@@ -86,3 +86,27 @@ class VoiceSessionParticipantLeftEvent extends VoiceSessionEvent {
   @override
   List<Object?> get props => [userId, roomId];
 }
+
+class KickUserEvent extends VoiceSessionEvent {
+  final int sessionId;
+  final int targetUserId;
+  const KickUserEvent(this.sessionId, this.targetUserId);
+  @override
+  List<Object?> get props => [sessionId, targetUserId];
+}
+
+class MuteUserEvent extends VoiceSessionEvent {
+  final int sessionId;
+  final int targetUserId;
+  const MuteUserEvent(this.sessionId, this.targetUserId);
+  @override
+  List<Object?> get props => [sessionId, targetUserId];
+}
+
+class TransferHostEvent extends VoiceSessionEvent {
+  final int sessionId;
+  final int newHostId;
+  const TransferHostEvent(this.sessionId, this.newHostId);
+  @override
+  List<Object?> get props => [sessionId, newHostId];
+}

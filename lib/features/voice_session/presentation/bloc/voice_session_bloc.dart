@@ -7,9 +7,12 @@ import '../../domain/usecases/get_voice_session_details_usecase.dart';
 import '../../domain/usecases/get_my_voice_sessions_usecase.dart';
 import '../../domain/usecases/accept_voice_session_invitation_usecase.dart';
 import '../../../../core/services/signalr_service.dart';
-import '../../../../core/di/injection_container.dart'; // For accessing token if needed, or better, pass token to init
 import 'voice_session_event.dart';
 import 'voice_session_state.dart';
+
+import '../../domain/usecases/kick_user_usecase.dart';
+import '../../domain/usecases/mute_user_usecase.dart';
+import '../../domain/usecases/transfer_host_usecase.dart';
 
 class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final CreateVoiceSessionUseCase createVoiceSessionUseCase;
@@ -20,6 +23,9 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final GetMyVoiceSessionsUseCase getMyVoiceSessionsUseCase;
   final AcceptVoiceSessionInvitationUseCase acceptVoiceSessionInvitationUseCase;
   final SignalRService signalRService;
+  final KickUserUseCase kickUserUseCase;
+  final MuteUserUseCase muteUserUseCase;
+  final TransferHostUseCase transferHostUseCase;
 
   VoiceSessionBloc({
     required this.createVoiceSessionUseCase,
@@ -30,6 +36,9 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.getMyVoiceSessionsUseCase,
     required this.acceptVoiceSessionInvitationUseCase,
     required this.signalRService,
+    required this.kickUserUseCase,
+    required this.muteUserUseCase,
+    required this.transferHostUseCase,
   }) : super(VoiceSessionInitial()) {
     // Listen to SignalR events
     signalRService.setOnUserJoinedRide((userId, rideId) {
@@ -54,6 +63,12 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     on<GetVoiceSessionDetailsEvent>(_onGetVoiceSessionDetails);
     on<GetMyVoiceSessionsEvent>(_onGetMyVoiceSessions);
     on<AcceptVoiceSessionInviteEvent>(_onAcceptVoiceSessionInvite);
+
+    // New Handlers
+    on<KickUserEvent>(_onKickUser);
+    on<MuteUserEvent>(_onMuteUser);
+    on<TransferHostEvent>(_onTransferHost);
+
     on<VoiceSessionParticipantJoinedEvent>((event, emit) {
       // Refresh session details to get updated list
       if (state is VoiceSessionDetailsLoaded) {
@@ -187,6 +202,46 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       emit(VoiceSessionInviteAccepted(event.sessionId));
     } catch (e) {
       emit(VoiceSessionError(e.toString()));
+    }
+  }
+
+  Future<void> _onKickUser(
+    KickUserEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    try {
+      await kickUserUseCase(event.sessionId, event.targetUserId);
+      // Refresh details to reflect change
+      add(GetVoiceSessionDetailsEvent(event.sessionId));
+      emit(const VoiceSessionActionSuccess("Kullanıcı atıldı"));
+    } catch (e) {
+      emit(VoiceSessionError("Kullanıcı atılamadı: $e"));
+    }
+  }
+
+  Future<void> _onMuteUser(
+    MuteUserEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    try {
+      await muteUserUseCase(event.sessionId, event.targetUserId);
+      emit(const VoiceSessionActionSuccess("Kullanıcı susturuldu"));
+    } catch (e) {
+      emit(VoiceSessionError("Kullanıcı susturulamadı: $e"));
+    }
+  }
+
+  Future<void> _onTransferHost(
+    TransferHostEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    try {
+      await transferHostUseCase(event.sessionId, event.newHostId);
+      // Refresh details to reflect new host
+      add(GetVoiceSessionDetailsEvent(event.sessionId));
+      emit(const VoiceSessionActionSuccess("Host yetkisi devredildi"));
+    } catch (e) {
+      emit(VoiceSessionError("Host devredilemedi: $e"));
     }
   }
 }

@@ -14,7 +14,10 @@ class RiderCard extends StatelessWidget {
   final bool isConnected; // Intercom ses bağlantısını temsil eder
   final VoidCallback? onMicPressed;
   final VoidCallback? onFriendshipPressed;
-  final VoidCallback? onMenuPressed;
+  // Menü Aksiyonları (Sadece Host İse Dolu Gelecek)
+  final VoidCallback? onKickUser;
+  final VoidCallback? onMuteUser;
+  final VoidCallback? onTransferHost;
 
   const RiderCard({
     super.key,
@@ -29,7 +32,9 @@ class RiderCard extends StatelessWidget {
     this.isConnected = true, // Varsayılan bağlı kabul edelim
     this.onMicPressed,
     this.onFriendshipPressed,
-    this.onMenuPressed,
+    this.onKickUser,
+    this.onMuteUser,
+    this.onTransferHost,
   });
 
   @override
@@ -132,12 +137,84 @@ class RiderCard extends StatelessWidget {
 
                     const SizedBox(width: 8),
 
-                    _buildActionButton(
-                      icon: Icons.more_vert,
-                      color: colorScheme.onSurfaceVariant,
-                      onTap: onMenuPressed,
-                      tooltip: "Menü",
-                    ),
+                    // 3 nokta menüsü - Sadece yetki varsa (callbackler doluysa) gösterilir veya pasif olur
+                    if (onKickUser != null ||
+                        onMuteUser != null ||
+                        onTransferHost != null)
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.more_vert,
+                          color: colorScheme.onSurfaceVariant,
+                          size: 22,
+                        ),
+                        tooltip: "Yönetim",
+                        padding: EdgeInsets.zero,
+                        color: colorScheme.surfaceContainerHigh,
+                        onSelected: (value) {
+                          if (value == 'kick') onKickUser?.call();
+                          if (value == 'mute') onMuteUser?.call();
+                          if (value == 'transfer') onTransferHost?.call();
+                        },
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<String>>[
+                              if (onMuteUser != null)
+                                PopupMenuItem<String>(
+                                  value: 'mute',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.mic_off,
+                                        color: colorScheme.onSurface,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "Sustur",
+                                        style: AppTextStyles.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (onKickUser != null)
+                                PopupMenuItem<String>(
+                                  value: 'kick',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.person_remove,
+                                        color: colorScheme.error,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "Oturumdan At",
+                                        style: AppTextStyles.bodySmall.copyWith(
+                                          color: colorScheme.error,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (onTransferHost != null)
+                                PopupMenuItem<String>(
+                                  value: 'transfer',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.admin_panel_settings,
+                                        color: Colors.amber,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "Host Devret",
+                                        style: AppTextStyles.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                      ),
                   ],
                 ),
               ],

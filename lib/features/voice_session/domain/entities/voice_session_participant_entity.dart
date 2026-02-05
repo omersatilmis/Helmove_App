@@ -34,6 +34,12 @@ class VoiceSessionParticipantEntity extends Equatable {
   /// Daveti kabul etmiş mi?
   bool get hasAccepted => status == 'Accepted' || status == 'Joined';
 
+  /// Bağlantısı kopmuş mu? (Ama hâlâ odada)
+  bool get isDisconnected => status == 'Disconnected';
+
+  /// Odada mı? (Joined veya Disconnected)
+  bool get isInRoom => status == 'Joined' || status == 'Disconnected';
+
   @override
   List<Object?> get props => [userId, username, status, joinedAt];
 }

@@ -37,9 +37,17 @@ class VoiceSessionEntity extends Equatable {
     return hostUsername ?? 'Bilinmeyen';
   }
 
-  /// Aktif katılımcı sayısı (Joined status)
+  /// Aktif katılımcı sayısı (Joined, Accepted veya Disconnected status)
+  /// Disconnected: Odada ama bağlantısı kopmuş olanlar da sayılır.
   int get activeParticipantCount {
-    return participants.where((p) => p.status == 'Joined').length;
+    return participants
+        .where(
+          (p) =>
+              p.status == 'Joined' ||
+              p.status == 'Accepted' ||
+              p.status == 'Disconnected',
+        )
+        .length;
   }
 
   @override

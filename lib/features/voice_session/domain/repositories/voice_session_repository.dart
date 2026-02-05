@@ -12,4 +12,7 @@ abstract class VoiceSessionRepository {
   Future<void> joinSession(int id);
   Future<void> leaveSession(int id);
   Future<void> endSession(int id);
+  Future<void> kickUser(int sessionId, int targetUserId);
+  Future<void> muteUser(int sessionId, int targetUserId);
+  Future<void> transferHost(int sessionId, int newHostId);
 }

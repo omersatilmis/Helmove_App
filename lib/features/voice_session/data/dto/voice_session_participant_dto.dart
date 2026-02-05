@@ -30,13 +30,14 @@ class VoiceSessionParticipantDto {
     String statusString;
     final rawStatus = json['status'];
     if (rawStatus is int) {
-      // Map enum values: 0=Invited, 1=Accepted, 2=Rejected, 3=Joined, 4=Left
+      // Map enum values: 0=Invited, 1=Accepted, 2=Rejected, 3=Joined, 4=Left, 5=Disconnected
       const statusMap = {
         0: 'Invited',
         1: 'Accepted',
         2: 'Rejected',
         3: 'Joined',
         4: 'Left',
+        5: 'Disconnected',
       };
       statusString = statusMap[rawStatus] ?? 'Unknown';
     } else {

@@ -55,4 +55,19 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
   Future<void> endSession(int id) async {
     return await remoteDataSource.endSession(id);
   }
+
+  @override
+  Future<void> kickUser(int sessionId, int targetUserId) async {
+    return await remoteDataSource.kickUser(sessionId, targetUserId);
+  }
+
+  @override
+  Future<void> muteUser(int sessionId, int targetUserId) async {
+    return await remoteDataSource.muteUser(sessionId, targetUserId);
+  }
+
+  @override
+  Future<void> transferHost(int sessionId, int newHostId) async {
+    return await remoteDataSource.transferHost(sessionId, newHostId);
+  }
 }

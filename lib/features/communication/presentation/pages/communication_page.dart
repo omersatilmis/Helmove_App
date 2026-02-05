@@ -68,7 +68,11 @@ class _CommunicationPageState extends State<CommunicationPage> {
       listener: (context, state) {
         if (state is MyVoiceSessionsLoaded) {
           setState(() {
-            _mySessions = state.sessions.cast<VoiceSessionEntity>();
+            // Sadece aktif oturumları göster (isActive = true)
+            _mySessions = state.sessions
+                .cast<VoiceSessionEntity>()
+                .where((s) => s.isActive)
+                .toList();
             _isLoadingSessions = false;
           });
         } else if (state is VoiceSessionError) {
@@ -125,8 +129,11 @@ class _CommunicationPageState extends State<CommunicationPage> {
                             textColor: isDark
                                 ? colorScheme.onSurface
                                 : colorScheme.onPrimary,
-                            onTap: () {
-                              context.push('/communication/create-group-ride');
+                            onTap: () async {
+                              await context.push(
+                                '/communication/create-group-ride',
+                              );
+                              if (mounted) _loadMySessions();
                             },
                           ),
                         ),
@@ -339,7 +346,12 @@ class _CommunicationPageState extends State<CommunicationPage> {
     // Aktif session varsa göster
     final activeSession = _mySessions.first;
     final participants = activeSession.participants
-        .where((p) => p.status == 'Joined' || p.status == 'Accepted')
+        .where(
+          (p) =>
+              p.status == 'Joined' ||
+              p.status == 'Accepted' ||
+              p.status == 'Disconnected',
+        )
         .toList();
 
     return ActiveGroupCard(
@@ -368,6 +380,8 @@ class _CommunicationPageState extends State<CommunicationPage> {
           batteryLevel: 100,
           signalLevel: 100,
           isSpeaking: p.status == 'Joined',
+          isConnected:
+              p.status == 'Joined', // Only Joined = connected for voice
         );
       }).toList(),
     );

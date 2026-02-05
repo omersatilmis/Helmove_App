@@ -157,6 +157,9 @@ import '../../features/voice_session/domain/usecases/leave_voice_session_usecase
 import '../../features/voice_session/domain/usecases/end_voice_session_usecase.dart';
 import '../../features/voice_session/domain/usecases/get_voice_session_details_usecase.dart';
 import '../../features/voice_session/domain/usecases/get_my_voice_sessions_usecase.dart';
+import '../../features/voice_session/domain/usecases/kick_user_usecase.dart';
+import '../../features/voice_session/domain/usecases/mute_user_usecase.dart';
+import '../../features/voice_session/domain/usecases/transfer_host_usecase.dart';
 import '../../features/voice_session/presentation/bloc/voice_session_bloc.dart';
 
 // GroupRide Feature (Communication)
@@ -876,6 +879,9 @@ Future<void> init() async {
   sl.registerFactory(() => EndVoiceSessionUseCase(sl()));
   sl.registerFactory(() => GetVoiceSessionDetailsUseCase(sl()));
   sl.registerFactory(() => GetMyVoiceSessionsUseCase(sl()));
+  sl.registerFactory(() => KickUserUseCase(sl()));
+  sl.registerFactory(() => MuteUserUseCase(sl()));
+  sl.registerFactory(() => TransferHostUseCase(sl()));
 
   // Bloc
   sl.registerFactory(
@@ -888,6 +894,9 @@ Future<void> init() async {
       getMyVoiceSessionsUseCase: sl(),
       acceptVoiceSessionInvitationUseCase: sl(),
       signalRService: sl(),
+      kickUserUseCase: sl(),
+      muteUserUseCase: sl(),
+      transferHostUseCase: sl(),
     ),
   );
 

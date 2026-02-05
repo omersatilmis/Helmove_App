@@ -8,7 +8,6 @@ import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 
 import '../../domain/entities/group_ride_data.dart';
-import '../../domain/entities/group_ride_participant_entity.dart';
 import '../widgets/rider_card.dart';
 
 // --- BACKEND BLOC & ENTITY İMPORTLARI ---
@@ -17,7 +16,10 @@ import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
 import '../bloc/group_ride_bloc.dart';
-import '../bloc/group_ride_state.dart';
+import '../bloc/group_ride_event.dart';
+
+import '../../../../core/di/injection_container.dart';
+import '../../../../features/auth/data/datasources/auth_local_data_source.dart';
 
 class GroupPage extends StatefulWidget {
   final GroupRideData data;
@@ -32,10 +34,12 @@ class _GroupPageState extends State<GroupPage> {
   // --- BACKEND STATE ---
   VoiceSessionEntity? _sessionDetails;
   bool _isLoadingSession = false;
+  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUser();
     if (widget.data.id != null && widget.data.id! > 0) {
       _loadSessionDetails();
     } else {
@@ -48,14 +52,105 @@ class _GroupPageState extends State<GroupPage> {
     }
   }
 
+  Future<void> _loadCurrentUser() async {
+    final authLocal = sl<AuthLocalDataSource>();
+    final userId = await authLocal.getUserId();
+    if (mounted) {
+      setState(() {
+        _currentUserId = userId;
+      });
+    }
+  }
+
   void _loadSessionDetails() {
     setState(() => _isLoadingSession = true);
     context.read<VoiceSessionBloc>().add(
       GetVoiceSessionDetailsEvent(widget.data.id!),
     );
+    // Grup turlarının üyelerini (DB'deki herkes) yükle
+    context.read<GroupRideBloc>().add(
+      LoadGroupRideParticipants(widget.data.id!),
+    );
   }
 
   // --- UI ACTIONS ---
+  void _kickUser(int targetUserId, String userName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kullanıcıyı At'),
+        content: Text('$userName adlı kullanıcıyı atmak istiyor musunuz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<VoiceSessionBloc>().add(
+                KickUserEvent(widget.data.id!, targetUserId),
+              );
+            },
+            child: const Text('At', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _muteUser(int targetUserId, String userName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kullanıcıyı Sustur'),
+        content: Text('$userName adlı kullanıcıyı susturmak istiyor musunuz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<VoiceSessionBloc>().add(
+                MuteUserEvent(widget.data.id!, targetUserId),
+              );
+            },
+            child: const Text('Sustur'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _transferHost(int targetUserId, String userName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Host Yetkisini Devret'),
+        content: Text(
+          'Host yetkisini $userName adlı kullanıcıya devretmek istiyor musunuz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<VoiceSessionBloc>().add(
+                TransferHostEvent(widget.data.id!, targetUserId),
+              );
+            },
+            child: const Text('Devret'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLeaveDialog() {
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
@@ -76,8 +171,13 @@ class _GroupPageState extends State<GroupPage> {
             onPressed: () {
               Navigator.pop(ctx);
               if (widget.data.id != null) {
+                // Konuşmadan ayrılarak Grup turundan da ayrıl
                 context.read<VoiceSessionBloc>().add(
                   LeaveVoiceSessionEvent(widget.data.id!),
+                );
+                // Backend attendance için ayrılma isteği
+                context.read<GroupRideBloc>().add(
+                  LeaveGroupRide(widget.data.id!),
                 );
               } else {
                 context.pop();
@@ -137,6 +237,14 @@ class _GroupPageState extends State<GroupPage> {
           setState(() => _isLoadingSession = false);
         } else if (state is VoiceSessionLeft) {
           context.pop();
+        } else if (state is VoiceSessionActionSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.green,
+            ),
+          );
+          setState(() => _isLoadingSession = false);
         }
       },
       child: Container(
@@ -302,7 +410,7 @@ class _GroupPageState extends State<GroupPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  "${_sessionDetails?.participants.length ?? widget.data.currentParticipants} / ${widget.data.maxParticipants}",
+                  "${_sessionDetails?.activeParticipantCount ?? widget.data.currentParticipants} / ${widget.data.maxParticipants}",
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -342,66 +450,55 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   Widget _buildParticipantList() {
-    return BlocBuilder<GroupRideBloc, GroupRideState>(
-      builder: (context, rideState) {
-        // 1. Veritabanı (Tüm Üyeler) Listesi
-        List<GroupRideParticipantEntity> allMembers = [];
-        if (rideState is GroupRideParticipantsLoaded) {
-          allMembers = rideState.participants;
-        }
+    // Doğrudan VoiceSession katılımcılarını kullan
+    // Bu, odada olan herkesi gösterir (Joined, Accepted, Disconnected)
+    final participants =
+        _sessionDetails?.participants
+            .where(
+              (p) =>
+                  p.status == 'Joined' ||
+                  p.status == 'Accepted' ||
+                  p.status == 'Disconnected',
+            )
+            .toList() ??
+        [];
 
-        // 2. Aktif (Canlı) Konuşmacılar
-        // _sessionDetails'den gelenler.
-        final participants =
-            _sessionDetails?.participants
-                .where((p) => p.isJoined || p.hasAccepted)
-                .toList() ??
-            [];
+    if (participants.isEmpty) return _buildEmptyState();
 
-        // 3. Ayrıştırma Mantığı
-        // Aktif listede olanların ID'lerini bir Set'e alalım
-        final activeUserIds = participants.map((p) => p.userId).toSet();
+    // Check if I am host
+    final isMeHost = _sessionDetails?.hostUserId == _currentUserId;
 
-        // Tek Liste Modeli: DB'deki herkesi göster, ama aktif olanları işaretle.
-        // Sıralama: Önce Aktifler, Sonra Çevrimdışılar
-        final combinedList = [...allMembers];
-        combinedList.sort((a, b) {
-          final isAOnline = activeUserIds.contains(a.userId);
-          final isBOnline = activeUserIds.contains(b.userId);
-          if (isAOnline && !isBOnline) return -1;
-          if (!isAOnline && isBOnline) return 1;
-          return 0; // İkisi de aynı durumdaysa değiştirme
-        });
+    return Column(
+      children: participants.map((p) {
+        // isConnected: Sadece Joined olanlar bağlı sayılır
+        final isConnected = p.status == 'Joined';
+        final isMe = p.userId == _currentUserId;
 
-        if (combinedList.isEmpty) return _buildEmptyState();
-
-        return Column(
-          children: combinedList.map((m) {
-            final isOnline = activeUserIds.contains(m.userId);
-            // Eğer online ise session'dan gelen veriyi (mic durumu vs) bulalım
-            final sessionData = isOnline
-                ? participants.firstWhere((p) => p.userId == m.userId)
-                : null;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: RiderCard(
-                firstName: m.firstName,
-                lastName: m.lastName,
-                profileImageUrl:
-                    m.profilePictureUrl ??
-                    'https://i.pravatar.cc/150?u=${m.userId}',
-                // Online ise onun datası, değilse varsayılan
-                batteryLevel: isOnline ? 90 : 0,
-                signalLevel: isOnline ? 100 : 0,
-                isMicOn: sessionData?.isJoined ?? false,
-                isSpeaking: sessionData?.isJoined ?? false,
-                isConnected: isOnline,
-              ),
-            );
-          }).toList(),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: RiderCard(
+            firstName: p.firstName ?? '',
+            lastName: p.lastName ?? '',
+            profileImageUrl:
+                p.profileImage ?? 'https://i.pravatar.cc/150?u=${p.userId}',
+            batteryLevel: isConnected ? 90 : 0,
+            signalLevel: isConnected ? 100 : 0,
+            isMicOn: isConnected,
+            isSpeaking: isConnected,
+            isConnected: isConnected,
+            // Host Controls (Only if I am host AND target is not me)
+            onKickUser: (isMeHost && !isMe)
+                ? () => _kickUser(p.userId, p.firstName ?? 'Kullanıcı')
+                : null,
+            onMuteUser: (isMeHost && !isMe)
+                ? () => _muteUser(p.userId, p.firstName ?? 'Kullanıcı')
+                : null,
+            onTransferHost: (isMeHost && !isMe)
+                ? () => _transferHost(p.userId, p.firstName ?? 'Kullanıcı')
+                : null,
+          ),
         );
-      },
+      }).toList(),
     );
   }
 
