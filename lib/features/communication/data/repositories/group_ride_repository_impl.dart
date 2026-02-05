@@ -24,6 +24,19 @@ class GroupRideRepositoryImpl implements GroupRideRepository {
   }
 
   @override
+  Future<Either<Failure, GroupRideEntity>> updateGroupRide(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final model = await _dataSource.updateGroupRide(id, data);
+      return Right(model.toEntity());
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, GroupRideEntity>> getGroupRideById(int id) async {
     try {
       final model = await _dataSource.getGroupRideById(id);

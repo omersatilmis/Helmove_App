@@ -175,6 +175,10 @@ import '../../features/communication/domain/usecases/join_group_ride_usecase.dar
     as comm;
 import '../../features/communication/domain/usecases/leave_group_ride_usecase.dart'
     as comm;
+import '../../features/communication/domain/usecases/update_group_ride_usecase.dart';
+import '../../features/communication/domain/usecases/delete_group_ride_usecase.dart';
+import '../../features/communication/domain/usecases/get_group_ride_by_id_usecase.dart';
+import '../../features/communication/domain/usecases/get_active_group_rides_usecase.dart';
 import '../../features/communication/presentation/bloc/group_ride_bloc.dart';
 import '../services/signalr_service.dart';
 import '../services/message_signalr_service.dart';
@@ -921,6 +925,10 @@ Future<void> init() async {
   sl.registerFactory(() => CreateGroupRideUseCase(sl()));
   sl.registerFactory(() => comm.JoinGroupRideUseCase(sl()));
   sl.registerFactory(() => comm.LeaveGroupRideUseCase(sl()));
+  sl.registerFactory(() => UpdateGroupRideUseCase(sl()));
+  sl.registerFactory(() => DeleteGroupRideUseCase(sl()));
+  sl.registerFactory(() => GetGroupRideByIdUseCase(sl()));
+  sl.registerFactory(() => GetActiveGroupRidesUseCase(sl()));
 
   // Bloc
   sl.registerFactory(
@@ -931,6 +939,10 @@ Future<void> init() async {
       createGroupRideUseCase: sl(),
       joinGroupRideUseCase: sl(),
       leaveGroupRideUseCase: sl(),
+      updateGroupRideUseCase: sl(),
+      deleteGroupRideUseCase: sl(),
+      getGroupRideByIdUseCase: sl(),
+      getActiveGroupRidesUseCase: sl(),
     ),
   );
 }

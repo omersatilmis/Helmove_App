@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 // --- PROJE İMPORTLARI ---
+import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 
@@ -17,8 +18,11 @@ import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
 import '../bloc/group_ride_bloc.dart';
 import '../bloc/group_ride_event.dart';
+import '../bloc/group_ride_state.dart';
 
-import '../../../../core/di/injection_container.dart';
+// ... existing imports ...
+
+// ... existing imports ...
 import '../../../../features/auth/data/datasources/auth_local_data_source.dart';
 
 class GroupPage extends StatefulWidget {
@@ -220,33 +224,68 @@ class _GroupPageState extends State<GroupPage> {
             stops: const [0.0, 0.3],
           );
 
-    return BlocListener<VoiceSessionBloc, VoiceSessionState>(
-      listener: (context, state) {
-        if (state is VoiceSessionDetailsLoaded) {
-          setState(() {
-            _sessionDetails = state.session;
-            _isLoadingSession = false;
-          });
-        } else if (state is VoiceSessionError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Hata: ${state.message}'),
-              backgroundColor: colorScheme.error,
-            ),
-          );
-          setState(() => _isLoadingSession = false);
-        } else if (state is VoiceSessionLeft) {
-          context.pop();
-        } else if (state is VoiceSessionActionSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
-            ),
-          );
-          setState(() => _isLoadingSession = false);
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<VoiceSessionBloc, VoiceSessionState>(
+          listener: (context, state) {
+            if (state is VoiceSessionDetailsLoaded) {
+              setState(() {
+                _sessionDetails = state.session;
+                _isLoadingSession = false;
+              });
+            } else if (state is VoiceSessionError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Hata: ${state.message}'),
+                  backgroundColor: colorScheme.error,
+                ),
+              );
+              setState(() => _isLoadingSession = false);
+            } else if (state is VoiceSessionLeft) {
+              context.pop();
+            } else if (state is VoiceSessionActionSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              setState(() => _isLoadingSession = false);
+            }
+          },
+        ),
+        BlocListener<GroupRideBloc, GroupRideState>(
+          listener: (context, state) {
+            if (state is GroupRideDeleted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Grup turu başarıyla silindi.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Navigator.of(context).pop(); // Sayfadan çık
+            } else if (state is GroupRideUpdated) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Grup turu güncellendi.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              // Detayları yenile
+              if (widget.data.id != null) {
+                _loadSessionDetails();
+              }
+            } else if (state is GroupRideError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Hata: ${state.message}'),
+                  backgroundColor: colorScheme.error,
+                ),
+              );
+            }
+          },
+        ),
+      ],
       child: Container(
         decoration: BoxDecoration(
           color: colorScheme.surface,
@@ -339,6 +378,18 @@ class _GroupPageState extends State<GroupPage> {
                                     }
                                   },
                                 ),
+                                // --- SETTINGS BUTTON (Only for Organizer) ---
+                                if (_currentUserId != null &&
+                                    _sessionDetails?.hostUserId ==
+                                        _currentUserId) ...[
+                                  const SizedBox(width: 12),
+                                  AppFrostedButton(
+                                    icon: Icons.settings,
+                                    size: 40,
+                                    iconSize: 20,
+                                    onTap: _showEditDialog,
+                                  ),
+                                ],
                               ],
                             ),
                           ],
@@ -367,6 +418,17 @@ class _GroupPageState extends State<GroupPage> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showEditDialog() {
+    // Mevcut Bloc'u yakala
+    final groupRideBloc = context.read<GroupRideBloc>();
+
+    // Yeni sayfaya git
+    context.push(
+      '/communication/group-settings',
+      extra: {'data': widget.data, 'bloc': groupRideBloc},
     );
   }
 

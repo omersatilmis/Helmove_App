@@ -5,6 +5,7 @@ import '../models/group_ride_participant_model.dart';
 /// GroupRide Data Source arayüzü
 abstract class GroupRideDataSource {
   Future<GroupRideModel> createGroupRide(Map<String, dynamic> data);
+  Future<GroupRideModel> updateGroupRide(int id, Map<String, dynamic> data);
   Future<GroupRideModel> getGroupRideById(int id);
   Future<List<GroupRideModel>> getActiveGroupRides();
   Future<List<GroupRideModel>> getMyRides();
@@ -30,6 +31,11 @@ class GroupRideDataSourceImpl implements GroupRideDataSource {
   @override
   Future<GroupRideModel> createGroupRide(Map<String, dynamic> data) {
     return _api.createGroupRide(data);
+  }
+
+  @override
+  Future<GroupRideModel> updateGroupRide(int id, Map<String, dynamic> data) {
+    return _api.updateGroupRide(id, data);
   }
 
   @override

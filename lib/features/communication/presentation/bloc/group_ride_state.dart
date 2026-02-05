@@ -84,6 +84,46 @@ class GroupRideLeft extends GroupRideState {
   List<Object?> get props => [rideId];
 }
 
+/// Grup turu güncellendi
+class GroupRideUpdated extends GroupRideState {
+  final GroupRideEntity ride;
+
+  const GroupRideUpdated(this.ride);
+
+  @override
+  List<Object?> get props => [ride];
+}
+
+/// Grup turu silindi
+class GroupRideDeleted extends GroupRideState {
+  final int rideId;
+
+  const GroupRideDeleted(this.rideId);
+
+  @override
+  List<Object?> get props => [rideId];
+}
+
+/// Grup turu detayları yüklendi
+class GroupRideDetailsLoaded extends GroupRideState {
+  final GroupRideEntity ride;
+
+  const GroupRideDetailsLoaded(this.ride);
+
+  @override
+  List<Object?> get props => [ride];
+}
+
+/// Aktif grup turları yüklendi
+class ActiveGroupRidesLoaded extends GroupRideState {
+  final List<GroupRideEntity> rides;
+
+  const ActiveGroupRidesLoaded(this.rides);
+
+  @override
+  List<Object?> get props => [rides];
+}
+
 /// Hata durumu
 class GroupRideError extends GroupRideState {
   final String message;

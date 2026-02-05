@@ -5,6 +5,10 @@ import '../../domain/usecases/get_my_group_rides_usecase.dart';
 import '../../domain/usecases/get_nearby_group_rides_usecase.dart';
 import '../../domain/usecases/join_group_ride_usecase.dart';
 import '../../domain/usecases/leave_group_ride_usecase.dart';
+import '../../domain/usecases/update_group_ride_usecase.dart';
+import '../../domain/usecases/delete_group_ride_usecase.dart';
+import '../../domain/usecases/get_group_ride_by_id_usecase.dart';
+import '../../domain/usecases/get_active_group_rides_usecase.dart';
 import 'group_ride_event.dart';
 import 'group_ride_state.dart';
 
@@ -16,6 +20,10 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
   final CreateGroupRideUseCase createGroupRideUseCase;
   final JoinGroupRideUseCase joinGroupRideUseCase;
   final LeaveGroupRideUseCase leaveGroupRideUseCase;
+  final UpdateGroupRideUseCase updateGroupRideUseCase;
+  final DeleteGroupRideUseCase deleteGroupRideUseCase;
+  final GetGroupRideByIdUseCase getGroupRideByIdUseCase;
+  final GetActiveGroupRidesUseCase getActiveGroupRidesUseCase;
 
   GroupRideBloc({
     required this.getMyGroupRidesUseCase,
@@ -24,6 +32,10 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     required this.createGroupRideUseCase,
     required this.joinGroupRideUseCase,
     required this.leaveGroupRideUseCase,
+    required this.updateGroupRideUseCase,
+    required this.deleteGroupRideUseCase,
+    required this.getGroupRideByIdUseCase,
+    required this.getActiveGroupRidesUseCase,
   }) : super(const GroupRideInitial()) {
     on<LoadMyGroupRides>(_onLoadMyGroupRides);
     on<LoadNearbyGroupRides>(_onLoadNearbyGroupRides);
@@ -31,6 +43,10 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     on<CreateGroupRide>(_onCreateGroupRide);
     on<JoinGroupRide>(_onJoinGroupRide);
     on<LeaveGroupRide>(_onLeaveGroupRide);
+    on<UpdateGroupRide>(_onUpdateGroupRide);
+    on<DeleteGroupRide>(_onDeleteGroupRide);
+    on<LoadGroupRideDetails>(_onLoadGroupRideDetails);
+    on<LoadActiveGroupRides>(_onLoadActiveGroupRides);
   }
 
   Future<void> _onLoadMyGroupRides(
@@ -114,6 +130,54 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     result.fold(
       (failure) => emit(GroupRideError(failure.message)),
       (_) => emit(GroupRideLeft(event.rideId)),
+    );
+  }
+
+  Future<void> _onUpdateGroupRide(
+    UpdateGroupRide event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    emit(const GroupRideLoading());
+    final result = await updateGroupRideUseCase(event.id, event.data);
+    result.fold(
+      (failure) => emit(GroupRideError(failure.message)),
+      (ride) => emit(GroupRideUpdated(ride)),
+    );
+  }
+
+  Future<void> _onDeleteGroupRide(
+    DeleteGroupRide event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    emit(const GroupRideLoading());
+    final result = await deleteGroupRideUseCase(event.id);
+    result.fold(
+      (failure) => emit(GroupRideError(failure.message)),
+      (_) => emit(GroupRideDeleted(event.id)),
+    );
+  }
+
+  Future<void> _onLoadGroupRideDetails(
+    LoadGroupRideDetails event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    emit(const GroupRideLoading());
+    final result = await getGroupRideByIdUseCase(event.id);
+    result.fold(
+      (failure) => emit(GroupRideError(failure.message)),
+      (ride) => emit(GroupRideDetailsLoaded(ride)),
+    );
+  }
+
+  Future<void> _onLoadActiveGroupRides(
+    LoadActiveGroupRides event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    emit(const GroupRideLoading());
+    final result = await getActiveGroupRidesUseCase();
+    result.fold(
+      (failure) => emit(GroupRideError(failure.message)),
+      (rides) => emit(ActiveGroupRidesLoaded(rides)),
     );
   }
 }

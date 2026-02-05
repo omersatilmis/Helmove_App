@@ -13,7 +13,6 @@ import '../../../../core/theme/text_styles.dart';
 // --- DOMAIN & ENTITIES ---
 import '../../../friendship/domain/entities/friend_user_entity.dart';
 import '../../domain/entities/group_ride_data.dart';
-import '../../../voice_session/data/dto/create_voice_session_request_dto.dart';
 import '../../../voice_session/data/dto/invite_users_request_dto.dart';
 
 // --- BLOCS ---
@@ -26,6 +25,9 @@ import '../../../discover/presentation/bloc/discover_state.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
+import '../bloc/group_ride_bloc.dart';
+import '../bloc/group_ride_event.dart';
+import '../bloc/group_ride_state.dart';
 
 // --- LOCAL WIDGETS ---
 import '../widgets/invite_rider_card.dart';
@@ -51,6 +53,7 @@ class InvitePage extends StatelessWidget {
         ),
         BlocProvider(create: (_) => sl<DiscoverBloc>()),
         BlocProvider(create: (_) => sl<VoiceSessionBloc>()),
+        BlocProvider(create: (_) => sl<GroupRideBloc>()),
       ],
       child: _InviteView(
         isFromCreateGroup: isFromCreateGroup,
@@ -115,26 +118,58 @@ class _InviteViewState extends State<_InviteView> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return BlocListener<VoiceSessionBloc, VoiceSessionState>(
-      listener: (context, state) {
-        if (state is VoiceSessionCreated) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Sesli oturum oluşturuldu!")),
-          );
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<VoiceSessionBloc, VoiceSessionState>(
+          listener: (context, state) {
+            if (state is VoiceSessionCreated) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Sesli oturum oluşturuldu!")),
+              );
+              // VoiceSession başarılı olunca belki bir şey yaparız ama
+              // asıl yönlendirmeyi GroupRideBloc yapacak.
+            } else if (state is VoiceSessionError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Ses Hatası: ${state.message}"),
+                  backgroundColor: colorScheme.error,
+                ),
+              );
+            }
+          },
+        ),
+        BlocListener<GroupRideBloc, GroupRideState>(
+          listener: (context, state) {
+            if (state is GroupRideCreated) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Grup Turu başarıyla oluşturuldu!"),
+                ),
+              );
 
-          if (widget.groupData != null) {
-            final updatedData = widget.groupData!.copyWith(id: state.sessionId);
-            context.go('/communication/group-page', extra: updatedData);
-          }
-        } else if (state is VoiceSessionError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Hata: ${state.message}"),
-              backgroundColor: colorScheme.error,
-            ),
-          );
-        }
-      },
+              // Başarılı oluşturma sonrası sayfaya git
+              // Backend'den gelen ID'yi kullan
+              final createdRide = state.ride;
+              // Ride nesnesini GroupRideData'ya dönüştür veya direk kullan
+              // Ama GroupPage GroupRideData istiyor.
+              // Elimizdeki groupData'yı güncel ID ile kopyalayalım
+              if (widget.groupData != null) {
+                final updatedData = widget.groupData!.copyWith(
+                  id: createdRide.id,
+                );
+                context.go('/communication/group-page', extra: updatedData);
+              }
+            } else if (state is GroupRideError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Hata: ${state.message}"),
+                  backgroundColor: colorScheme.error,
+                ),
+              );
+            }
+          },
+        ),
+      ],
       child: Container(
         decoration: BoxDecoration(
           gradient: isDark
@@ -269,7 +304,10 @@ class _InviteViewState extends State<_InviteView> {
                         text: widget.isFromCreateGroup
                             ? "Grubu Kur"
                             : "Kişileri Davet Et",
-                        isLoading: state is VoiceSessionLoading,
+                        isLoading:
+                            state is VoiceSessionLoading ||
+                            context.watch<GroupRideBloc>().state
+                                is GroupRideLoading,
                         height: 52,
                         // 🔥 Turuncu (Primary) Renk
                         backgroundColor: colorScheme.primary.withValues(
@@ -280,19 +318,31 @@ class _InviteViewState extends State<_InviteView> {
                           if (widget.isFromCreateGroup &&
                               widget.groupData != null) {
                             debugPrint(
-                              "🚀 [VoiceSession] Grubu Kur başlatılıyor...",
+                              "🚀 [GroupRide] Grubu Kur başlatılıyor...",
                             );
 
-                            final request = CreateVoiceSessionRequestDto(
-                              title: widget.groupData!.groupName,
-                              roomName: widget.groupData!.groupName,
-                              inviteUserIds: _selectedRiders
-                                  .map((e) => e.userId)
-                                  .toList(),
-                            );
+                            final rideDataMap = {
+                              'title': widget.groupData!.groupName,
+                              'description':
+                                  widget.groupData!.destination.isNotEmpty
+                                  ? "Destination: ${widget.groupData!.destination}"
+                                  : "Riding to ${widget.groupData!.destination}",
+                              'maxParticipants':
+                                  widget.groupData!.maxParticipants,
+                              'status': 'Planning',
+                              'difficulty':
+                                  'Medium', // Default or map from ridingStyle
+                              'startLocation':
+                                  'Current Location', // Placeholder
+                              'startLatitude': 0.0,
+                              'startLongitude': 0.0,
+                              'endLocation': widget.groupData!.destination,
+                              'startDateTime': DateTime.now().toIso8601String(),
+                              'requirements': widget.groupData!.ridingStyle,
+                            };
 
-                            context.read<VoiceSessionBloc>().add(
-                              CreateVoiceSessionEvent(request),
+                            context.read<GroupRideBloc>().add(
+                              CreateGroupRide(rideDataMap),
                             );
                           } else if (widget.sessionId != null &&
                               _selectedRiders.isNotEmpty) {

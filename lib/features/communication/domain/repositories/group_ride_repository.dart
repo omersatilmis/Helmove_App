@@ -8,6 +8,10 @@ abstract class GroupRideRepository {
   Future<Either<Failure, GroupRideEntity>> createGroupRide(
     Map<String, dynamic> data,
   );
+  Future<Either<Failure, GroupRideEntity>> updateGroupRide(
+    int id,
+    Map<String, dynamic> data,
+  );
   Future<Either<Failure, GroupRideEntity>> getGroupRideById(int id);
   Future<Either<Failure, List<GroupRideEntity>>> getActiveGroupRides();
   Future<Either<Failure, List<GroupRideEntity>>> getMyRides();

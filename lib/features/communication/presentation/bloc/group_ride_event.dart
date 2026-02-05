@@ -60,7 +60,6 @@ class JoinGroupRide extends GroupRideEvent {
   List<Object?> get props => [rideId, joinMessage];
 }
 
-/// Grup turundan ayrıl
 class LeaveGroupRide extends GroupRideEvent {
   final int rideId;
 
@@ -68,4 +67,40 @@ class LeaveGroupRide extends GroupRideEvent {
 
   @override
   List<Object?> get props => [rideId];
+}
+
+/// Grup turunu güncelle
+class UpdateGroupRide extends GroupRideEvent {
+  final int id;
+  final Map<String, dynamic> data;
+
+  const UpdateGroupRide(this.id, this.data);
+
+  @override
+  List<Object?> get props => [id, data];
+}
+
+/// Grup turunu sil
+class DeleteGroupRide extends GroupRideEvent {
+  final int id;
+
+  const DeleteGroupRide(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+/// Grup turu detaylarını yükle
+class LoadGroupRideDetails extends GroupRideEvent {
+  final int id;
+
+  const LoadGroupRideDetails(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+/// Aktif grup turlarını yükle
+class LoadActiveGroupRides extends GroupRideEvent {
+  const LoadActiveGroupRides();
 }

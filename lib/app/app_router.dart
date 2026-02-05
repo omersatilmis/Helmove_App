@@ -19,6 +19,7 @@ import 'package:moto_comm_app_1/features/map/presentation/pages/map_page.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/communication_page.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/create_group_ride.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/group_page.dart';
+import 'package:moto_comm_app_1/features/communication/presentation/pages/group_settings.dart';
 import 'package:moto_comm_app_1/features/communication/domain/entities/group_ride_data.dart';
 import 'package:moto_comm_app_1/features/media/presentation/pages/prepare_media_page.dart';
 
@@ -265,6 +266,19 @@ GoRouter createRouter(AuthProvider authProvider) {
                         );
                       }
                       return const InvitePage(isFromCreateGroup: false);
+                    },
+                  ),
+                  GoRoute(
+                    path: 'group-settings',
+                    builder: (context, state) {
+                      final extras = state.extra as Map<String, dynamic>;
+                      final groupData = extras['data'] as GroupRideData;
+                      final bloc = extras['bloc'] as GroupRideBloc;
+
+                      return BlocProvider.value(
+                        value: bloc,
+                        child: GroupSettings(data: groupData),
+                      );
                     },
                   ),
                 ],

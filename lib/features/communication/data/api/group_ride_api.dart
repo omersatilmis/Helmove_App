@@ -19,6 +19,20 @@ class GroupRideApi {
     }
   }
 
+  /// Grup turunu günceller
+  Future<GroupRideModel> updateGroupRide(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.put('/api/GroupRide/$id', data: data);
+      final responseData = response.data['data'] ?? response.data;
+      return GroupRideModel.fromJson(responseData);
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e.response?.data));
+    }
+  }
+
   /// Grup turu detaylarını getirir
   Future<GroupRideModel> getGroupRideById(int id) async {
     try {
