@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
-import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart'; // 👈 Import burada
+import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart'; // 👈 Import burada
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -284,7 +284,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
+                      color: Colors.black.withOpacity(0.1),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -305,8 +305,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                                color: theme.colorScheme.primary.withValues(
-                                  alpha: 0.2,
+                                color: theme.colorScheme.primary.withOpacity(
+                                  0.1,
                                 ),
                                 child: Icon(
                                   Icons.image_outlined,
@@ -325,7 +325,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withValues(alpha: 0.4),
+                              Colors.black.withOpacity(0.4),
                             ],
                           ),
                         ),
@@ -335,7 +335,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.3),
+                            color: Colors.black.withOpacity(0.3),
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white24, width: 1),
                           ),
@@ -367,7 +367,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
+                          color: Colors.black.withOpacity(0.15),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -397,7 +397,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
+                            color: Colors.black.withOpacity(0.2),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -440,7 +440,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               height: 4,
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
+                color: Colors.grey.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -521,7 +521,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              color: theme.colorScheme.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: theme.colorScheme.primary, size: 30),

@@ -1,4 +1,4 @@
-import 'dart:ui'; // ImageFilter için
+// ImageFilter için
 import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
 
@@ -40,10 +40,10 @@ class RiderCard extends StatelessWidget {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLow.withValues(alpha: 0.9),
+          color: colorScheme.surfaceContainerLow.withOpacity(0.9),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: colorScheme.outline.withValues(alpha: 0.1),
+            color: colorScheme.outline.withOpacity(0.1),
             width: 1,
           ),
         ),
@@ -89,7 +89,7 @@ class RiderCard extends StatelessWidget {
                         _buildMinimalInfo(
                           Icons.battery_std,
                           "$batteryLevel%",
-                          colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          colorScheme.onSurfaceVariant.withOpacity(0.7),
                           theme,
                         ),
                       ],
@@ -108,7 +108,7 @@ class RiderCard extends StatelessWidget {
                     icon: isMicOn ? Icons.mic : Icons.mic_off,
                     color: isMicOn
                         ? Colors.greenAccent
-                        : colorScheme.error.withValues(alpha: 0.8),
+                        : colorScheme.error.withOpacity(0.8),
                     onTap: onMicPressed,
                     tooltip: "Mikrofon",
                   ),
@@ -177,7 +177,7 @@ class RiderCard extends StatelessWidget {
         Text(
           text,
           style: AppTextStyles.bodySmall.copyWith(
-            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),

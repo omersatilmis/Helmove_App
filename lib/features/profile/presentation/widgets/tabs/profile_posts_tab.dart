@@ -108,7 +108,7 @@ class _ProfilePostsTabState extends State<ProfilePostsTab>
                         style: TextStyle(
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ).colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ),
                     ),

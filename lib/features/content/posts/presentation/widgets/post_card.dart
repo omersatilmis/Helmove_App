@@ -146,8 +146,8 @@ class _PostCardModernState extends State<PostCardModern>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withValues(alpha: 0.5),
-                          Colors.black.withValues(alpha: 1.0),
+                          Colors.black.withOpacity(0.5),
+                          Colors.black.withOpacity(1.0),
                         ],
                       ),
                     ),

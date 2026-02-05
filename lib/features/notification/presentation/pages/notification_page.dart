@@ -11,6 +11,10 @@ import '../bloc/notifications_bloc.dart';
 import '../bloc/notifications_event.dart';
 import '../bloc/notifications_state.dart';
 import '../../domain/entities/notification_entity.dart';
+import 'dart:convert';
+import 'package:go_router/go_router.dart';
+import 'package:moto_comm_app_1/features/communication/domain/entities/group_ride_data.dart';
+import 'package:moto_comm_app_1/features/voice_session/domain/repositories/voice_session_repository.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
@@ -247,14 +251,7 @@ class _NotificationItemModern extends StatelessWidget {
         // context.read<NotificationsBloc>().add(DeleteNotificationEvent(notification.id));
       },
       child: InkWell(
-        onTap: () {
-          if (isUnread) {
-            context.read<NotificationsBloc>().add(
-              MarkNotificationReadEvent(notification.id),
-            );
-          }
-          // Navigasyon işlemleri...
-        },
+        onTap: () => _handleNotificationTap(context),
         child: Container(
           color: bgColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -319,14 +316,108 @@ class _NotificationItemModern extends StatelessWidget {
     );
   }
 
+  void _handleNotificationTap(BuildContext context) {
+    // 1. Okundu olarak işaretle
+    if (!notification.isRead) {
+      context.read<NotificationsBloc>().add(
+        MarkNotificationReadEvent(notification.id),
+      );
+    }
+
+    // 2. Navigasyon Mantığı
+    // Sesli Oturum Daveti Kontrolü
+    final msg = notification.message.toLowerCase();
+
+    // Backend'de type string olarak geliyorsa onu kontrol et, yoksa mesaja bak
+    bool isVoiceInvite =
+        (notification.type == 'VoiceSessionInvite') ||
+        (notification.type == '5') ||
+        msg.contains('davet') ||
+        msg.contains('sesli');
+
+    if (isVoiceInvite) {
+      _navigateToVoiceSession(context);
+      return;
+    }
+
+    // Diğer tipler için buraya ekeleme yapılabilir
+  }
+
+  void _navigateToVoiceSession(BuildContext context) {
+    try {
+      int? sessionId;
+
+      // 1. Durum: relatedId direkt sessionId ise
+      if (notification.relatedId != null) {
+        sessionId = notification.relatedId;
+      }
+
+      // 2. Durum: dataJson içinden sessionId çekme
+      if (sessionId == null && notification.dataJson != null) {
+        try {
+          final data = json.decode(notification.dataJson!);
+          if (data is Map && data.containsKey('sessionId')) {
+            sessionId = data['sessionId'];
+          }
+        } catch (e) {
+          debugPrint("JSON Parse hatası: $e");
+        }
+      }
+
+      if (sessionId != null) {
+        _goToGroupPage(context, sessionId);
+      } else {
+        debugPrint("⚠️ Bildirim detayında ID bulunamadı.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Oturum bilgisine ulaşılamadı. (ID Yok)"),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("❌ Navigasyon hatası: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Bir hata oluştu.")));
+    }
+  }
+
+  Future<void> _goToGroupPage(BuildContext context, int sessionId) async {
+    // Önce daveti kabul et
+    try {
+      final voiceSessionRepository = sl<VoiceSessionRepository>();
+      await voiceSessionRepository.acceptInvitation(sessionId);
+      debugPrint('✅ Davet kabul edildi: $sessionId');
+    } catch (e) {
+      debugPrint('⚠️ Davet kabul hatası (belki zaten kabul edilmiş): $e');
+      // Hata olsa bile devam et - belki zaten kabul edilmiş
+    }
+
+    // GroupRideData bekliyor sayfa. Oraya sahte bir data ile gidip ID'yi pasliyoruz.
+    // GroupPage icinde ID varsa load et mantigini kurmustuk.
+    final dummyData = GroupRideData(
+      id: sessionId,
+      groupName: "${notification.senderUsername ?? 'Arkadaş'} Daveti",
+      maxParticipants: 10,
+      privacy: "Private",
+      destination: "Bilinmiyor",
+      ridingStyle: "Bilinmiyor",
+    );
+
+    if (!context.mounted) return;
+
+    // go kullanarak tüm stack'i değiştiriyoruz
+    context.go('/communication/group-page', extra: dummyData);
+  }
+
   // Avatar ve Köşesindeki İkon
   Widget _buildAvatarWithBadge(BuildContext context) {
-    // Bildirim tipine göre ikon ve renk belirle (Dummy logic - Entity'de type varsa onu kullan)
     IconData badgeIcon = Icons.notifications;
     Color badgeColor = AppColors.primary;
 
-    // Örnek Logic: Mesaj içeriğine göre ikon (Eğer type alanın varsa onu kullan!)
     final msg = notification.message.toLowerCase();
+
+    // 🔥 GELİŞMİŞ ROZET MANTIĞI
     if (msg.contains('beğen')) {
       badgeIcon = Icons.favorite;
       badgeColor = Colors.red;
@@ -336,12 +427,17 @@ class _NotificationItemModern extends StatelessWidget {
     } else if (msg.contains('takip')) {
       badgeIcon = Icons.person_add;
       badgeColor = Colors.purple;
+    } else if (msg.contains('davet') ||
+        msg.contains('sesli') ||
+        notification.type == '5') {
+      // Sesli sohbet daveti
+      badgeIcon = Icons.headset_mic; // Veya Icons.phone_in_talk
+      badgeColor = Colors.green;
     }
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Ana Profil Resmi
         Container(
           width: 44,
           height: 44,
@@ -352,25 +448,16 @@ class _NotificationItemModern extends StatelessWidget {
               width: 1,
             ),
             image: DecorationImage(
-              image:
-                  (notification.senderProfileImage != null &&
-                      notification.senderProfileImage!.isNotEmpty)
-                  ? CachedNetworkImageProvider(notification.senderProfileImage!)
-                        as ImageProvider
-                  : const AssetImage(
-                      'assets/images/default_avatar.png',
-                    ), // Veya NetworkImage placeholder
+              image: CachedNetworkImageProvider(
+                (notification.senderProfileImage != null &&
+                        notification.senderProfileImage!.isNotEmpty)
+                    ? notification.senderProfileImage!
+                    : 'https://i.pravatar.cc/150?u=${notification.senderId ?? notification.id}',
+              ),
               fit: BoxFit.cover,
             ),
           ),
-          child:
-              (notification.senderProfileImage == null ||
-                  notification.senderProfileImage!.isEmpty)
-              ? const Icon(Icons.person, color: Colors.grey)
-              : null,
         ),
-
-        // Küçük Rozet İkonu (Instagram Style)
         Positioned(
           bottom: -2,
           right: -2,
@@ -391,26 +478,7 @@ class _NotificationItemModern extends StatelessWidget {
     );
   }
 
-  // Sağ taraftaki içerik (Post resmi vs.)
   Widget _buildTrailingWidget() {
-    // Eğer Entity'de postImageUrl varsa göster
-    /* if (notification.postImageUrl != null) {
-      return Container(
-        width: 44,
-        height: 44,
-        margin: const EdgeInsets.only(left: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          image: DecorationImage(
-             image: CachedNetworkImageProvider(notification.postImageUrl!),
-             fit: BoxFit.cover,
-          ),
-        ),
-      );
-    }
-    */
-
-    // Eğer okunmamışsa mavi nokta koy (Post resmi yoksa)
     if (!notification.isRead) {
       return Container(
         margin: const EdgeInsets.only(left: 12, top: 12),
@@ -422,7 +490,6 @@ class _NotificationItemModern extends StatelessWidget {
         ),
       );
     }
-
     return const SizedBox(width: 0);
   }
 }

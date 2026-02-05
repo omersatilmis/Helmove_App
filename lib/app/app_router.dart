@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
+import 'package:moto_comm_app_1/core/di/injection_container.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/login_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
+import 'package:moto_comm_app_1/features/communication/presentation/bloc/group_ride_bloc.dart';
+import 'package:moto_comm_app_1/features/communication/presentation/bloc/group_ride_event.dart'
+    hide CreateGroupRide;
 import 'package:moto_comm_app_1/features/communication/presentation/pages/invite_page.dart';
 // 🔥 YENİ SAYFALARIN IMPORTLARI
 import 'package:moto_comm_app_1/features/homepage/presentation/pages/home_page.dart';
+import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
 import 'package:moto_comm_app_1/features/discover/presentation/pages/discover_page.dart';
 import 'package:moto_comm_app_1/features/addpost/presentation/pages/add_post_page.dart';
 import 'package:moto_comm_app_1/features/map/presentation/pages/map_page.dart';
@@ -199,7 +205,16 @@ GoRouter createRouter(AuthProvider authProvider) {
             routes: [
               GoRoute(
                 path: '/communication',
-                builder: (context, state) => const CommunicationPage(),
+                builder: (context, state) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (context) =>
+                          sl<GroupRideBloc>()..add(const LoadMyGroupRides()),
+                    ),
+                    BlocProvider(create: (context) => sl<VoiceSessionBloc>()),
+                  ],
+                  child: const CommunicationPage(),
+                ),
                 routes: [
                   GoRoute(
                     path: 'create-group-ride',
@@ -220,12 +235,37 @@ GoRouter createRouter(AuthProvider authProvider) {
                             destination: "Abant Gölü",
                             ridingStyle: "Sakin Sürüş",
                           );
-                      return GroupPage(data: data);
+                      return MultiBlocProvider(
+                        providers: [
+                          BlocProvider(
+                            create: (context) => sl<GroupRideBloc>(),
+                          ),
+                          BlocProvider(
+                            create: (context) => sl<VoiceSessionBloc>(),
+                          ),
+                        ],
+                        child: GroupPage(data: data),
+                      );
                     },
                   ),
                   GoRoute(
                     path: 'invite',
-                    builder: (context, state) => const InvitePage(),
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      if (extra is GroupRideData) {
+                        return InvitePage(
+                          isFromCreateGroup: true,
+                          groupData: extra,
+                        );
+                      } else if (extra is int) {
+                        // SessionId geliyor, mevcut odaya davet
+                        return InvitePage(
+                          isFromCreateGroup: false,
+                          sessionId: extra,
+                        );
+                      }
+                      return const InvitePage(isFromCreateGroup: false);
+                    },
                   ),
                 ],
               ),

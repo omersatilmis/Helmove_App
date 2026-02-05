@@ -1,0 +1,146 @@
+import 'dart:ui';
+import 'package:flutter/material.dart';
+
+// --- 1. İKONLU BUZLU CAM BUTONU ---
+class AppFrostedButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final double size;
+  final double iconSize;
+
+  const AppFrostedButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.size = 44.0, // Mobilde ideal dokunma alanı min 44px'dir
+    this.iconSize = 24,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Material(
+          // InkWell çalışsın diye Material ekledik
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                // Renkleri biraz daha soft ve modern ayarladım
+                color: isDark
+                    ? const Color(0xFF28140A).withOpacity(0.5)
+                    : Colors.white.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.2)
+                      : Colors.black.withOpacity(0.1),
+                  width: 1.0,
+                ),
+              ),
+              child: Icon(
+                icon,
+                color: isDark ? Colors.white : const Color(0xFF1F1F1F),
+                size: iconSize,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- 2. YAZILI BUZLU CAM BUTONU ---
+class AppFrostedTextButton extends StatelessWidget {
+  final String text;
+  final VoidCallback? onPressed;
+  final bool isLoading;
+  final double height;
+  final double borderRadius;
+  final Color? backgroundColor;
+  final Color? textColor;
+  final double? width;
+  final double fontSize;
+  final EdgeInsetsGeometry? padding;
+
+  const AppFrostedTextButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.isLoading = false,
+    this.height = 52,
+    this.borderRadius = 16,
+    this.backgroundColor,
+    this.textColor,
+    this.width,
+    this.fontSize = 16,
+    this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveTextColor =
+        textColor ?? (isDark ? Colors.white : Colors.black);
+    final effectiveBgColor =
+        backgroundColor ??
+        (isDark
+            ? Colors.white.withOpacity(0.1)
+            : Colors.black.withOpacity(0.05));
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: SizedBox(
+          width: width ?? double.infinity,
+          height: height,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : onPressed,
+            style: ElevatedButton.styleFrom(
+              padding: padding,
+              backgroundColor: effectiveBgColor,
+              foregroundColor: effectiveTextColor,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                side: BorderSide(
+                  color: effectiveTextColor.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: isLoading
+                ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: effectiveTextColor,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Text(
+                    text,
+                    style: TextStyle(
+                      color: effectiveTextColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: fontSize,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}

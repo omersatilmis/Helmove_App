@@ -110,9 +110,7 @@ class _GlassInputFieldState extends State<GlassInputField> {
                     hintText: widget.hintText,
                     filled: false,
                     hintStyle: AppTextStyles.bodyLarge.copyWith(
-                      color: colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.4,
-                      ),
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.4),
                     ),
                     prefixIcon: widget.prefixIcon != null
                         ? Icon(

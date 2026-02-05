@@ -1,7 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+// --- PROJE İMPORTLARI ---
 import '../../../../core/theme/text_styles.dart';
-import '../../../../core/widgets/glass_input_field.dart';
+// Merkezi Input
+import '../../../../core/widgets/app_input_field.dart';
+// Merkezi Butonlar (İkon ve Text için)
+import '../../../../core/widgets/app_frosted_button.dart';
 import '../../domain/entities/group_ride_data.dart';
 
 class CreateGroupRide extends StatefulWidget {
@@ -18,8 +24,28 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   final TextEditingController _ridingStyleController = TextEditingController();
 
   // Durum değişkenleri
-  String selectedPrivacy = 'Public'; // 'Public' veya 'Private'
-  String selectedMaxParticipants = '6 riders'; // Dropdown değeri
+  String selectedPrivacy = 'Public';
+
+  // Katılımcı Seçenekleri (Map)
+  final Map<String, int> participantOptions = {
+    '4 riders': 4,
+    '6 riders': 6,
+    '8 riders': 8,
+    '10 riders': 10,
+    '12 riders': 12,
+  };
+
+  late String selectedMaxParticipantsKey;
+
+  @override
+  void initState() {
+    super.initState();
+    // Varsayılan olarak 6 riders seçili gelsin
+    selectedMaxParticipantsKey = participantOptions.keys.firstWhere(
+      (k) => k.startsWith('6'),
+      orElse: () => participantOptions.keys.first,
+    );
+  }
 
   @override
   void dispose() {
@@ -29,13 +55,24 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     super.dispose();
   }
 
-  final List<String> riderOptions = [
-    '4 riders',
-    '6 riders',
-    '8 riders',
-    '10 riders',
-    '12 riders',
-  ];
+  // İşleme Devam Et
+  void _onProceed() {
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    final groupName = _groupNameController.text.trim();
+    final finalGroupName = groupName.isNotEmpty ? groupName : "Weekend Riders";
+    final maxParticipants = participantOptions[selectedMaxParticipantsKey] ?? 6;
+
+    final data = GroupRideData(
+      groupName: finalGroupName,
+      maxParticipants: maxParticipants,
+      privacy: selectedPrivacy,
+      destination: _destinationController.text.trim(),
+      ridingStyle: _ridingStyleController.text.trim(),
+    );
+
+    context.push('/communication/invite', extra: data);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,20 +80,16 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Dinamik arka plan gradyanı
     final backgroundGradient = isDark
         ? const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF2A100A), // Koyu modda hafif kırmızımsı üst
-              Color(0xFF12100E), // darkBackground
-            ],
+            colors: [Color(0xFF2A100A), Color(0xFF12100E)],
             stops: [0.0, 0.4],
           )
         : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
               colorScheme.primary.withOpacity(0.08),
               colorScheme.surface,
@@ -65,38 +98,28 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
             stops: const [0.0, 0.5, 1.0],
           );
 
-    return Container(
-      decoration: BoxDecoration(gradient: backgroundGradient),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          bottom: false,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header (Back Button & Title)
-                  Row(
+    return GestureDetector(
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Container(
+        decoration: BoxDecoration(gradient: backgroundGradient),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          // Stack yerine Column kullanıyoruz. Böylece Header üstte, Buton altta sabit kalır.
+          body: SafeArea(
+            child: Column(
+              children: [
+                // --- 1. HEADER (SABİT) ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 16.0,
+                  ),
+                  child: Row(
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerLow.withOpacity(
-                            0.5,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: colorScheme.outline.withOpacity(0.1),
-                          ),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.arrow_back,
-                            color: colorScheme.onSurface,
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                        ),
+                      AppFrostedButton(
+                        icon: Icons.arrow_back,
+                        size: 44,
+                        onTap: () => context.pop(),
                       ),
                       const SizedBox(width: 16),
                       Text(
@@ -107,164 +130,114 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                       ),
                     ],
                   ),
+                ),
 
-                  const SizedBox(height: 20),
+                // --- 2. SCROLLABLE CONTENT (ORTA ALAN) ---
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
 
-                  // 1. Group Name
-                  GlassInputField(
-                    controller: _groupNameController,
-                    label: "Group Name",
-                    hintText: "Weekend Ride",
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // 2. Maximum Riders (Dropdown)
-                  Text(
-                    "Maximum Riders",
-                    style: AppTextStyles.inputLabel.copyWith(
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerLow.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: colorScheme.outline.withOpacity(0.1),
-                      ),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedMaxParticipants,
-                        dropdownColor: colorScheme.surfaceContainerLow,
-                        icon: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: colorScheme.onSurface,
+                        // Grup Adı
+                        AppInputField(
+                          controller: _groupNameController,
+                          hint: "Grup Adı (Örn: Hafta Sonu Turu)",
+                          label: "Grup Adı",
+                          leadingIcon: Icons.group,
                         ),
-                        isExpanded: true,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                        items: riderOptions.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        onChanged: (newValue) {
-                          setState(() {
-                            selectedMaxParticipants = newValue!;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
 
-                  const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                  // 3. Group Privacy
-                  Text(
-                    "Group Privacy",
-                    style: AppTextStyles.inputLabel.copyWith(
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildPrivacyCard(
-                          // BURADA textStyle parametresini artık kullanabiliriz
-                          textStyle: AppTextStyles.bodyLarge.copyWith(
-                            fontSize: 20, // Boyutu buradan kontrol edebilirsin
+                        // Maksimum Sürücü
+                        Text(
+                          "Maksimum Sürücü",
+                          style: AppTextStyles.inputLabel.copyWith(
+                            color: colorScheme.onSurface,
                           ),
-                          title: "Public",
-                          subtitle: "Anyone can join",
-                          icon: Icons.language,
-                          isSelected: selectedPrivacy == 'Public',
-                          onTap: () =>
-                              setState(() => selectedPrivacy = 'Public'),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildPrivacyCard(
-                          textStyle: AppTextStyles.bodyLarge.copyWith(
-                            fontSize: 20,
+                        const SizedBox(height: 8),
+                        _buildGlassDropdown(colorScheme),
+
+                        const SizedBox(height: 20),
+
+                        // Gizlilik
+                        Text(
+                          "Grup Gizliliği",
+                          style: AppTextStyles.inputLabel.copyWith(
+                            color: colorScheme.onSurface,
                           ),
-                          title: "Private",
-                          subtitle: "Invite only",
-                          icon: Icons.lock_outline,
-                          isSelected: selectedPrivacy == 'Private',
-                          onTap: () =>
-                              setState(() => selectedPrivacy = 'Private'),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // 4. Destination
-                  GlassInputField(
-                    controller: _destinationController,
-                    label: "Hedef Noktası (Opsiyonel)",
-                    hintText: "Örn: Abant Gölü, Sapanca",
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // 5. Riding Style
-                  GlassInputField(
-                    controller: _ridingStyleController,
-                    label: "Sürüş Tarzı",
-                    hintText: "Sakin Sürüş",
-                  ),
-
-                  const SizedBox(height: 40),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final data = GroupRideData(
-                          groupName: _groupNameController.text.isNotEmpty
-                              ? _groupNameController.text
-                              : "Weekend Riders",
-                          maxParticipants:
-                              int.tryParse(
-                                selectedMaxParticipants.split(' ')[0],
-                              ) ??
-                              6,
-                          privacy: selectedPrivacy,
-                          destination: _destinationController.text.isNotEmpty
-                              ? _destinationController.text
-                              : "",
-                          ridingStyle: _ridingStyleController.text.isNotEmpty
-                              ? _ridingStyleController.text
-                              : "data.ridingStyle",
-                        );
-                        context.push('/communication/group-page', extra: data);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildPrivacyCard(
+                                title: "Herkese Açık",
+                                subtitle: "Herkes katılabilir",
+                                icon: Icons.public,
+                                isSelected: selectedPrivacy == 'Public',
+                                onTap: () =>
+                                    setState(() => selectedPrivacy = 'Public'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildPrivacyCard(
+                                title: "Özel",
+                                subtitle: "Sadece davetliler",
+                                icon: Icons.lock_outline,
+                                isSelected: selectedPrivacy == 'Private',
+                                onTap: () =>
+                                    setState(() => selectedPrivacy = 'Private'),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      child: Text(
-                        "Create Ride",
-                        style: AppTextStyles.button.copyWith(
-                          color: colorScheme.onPrimary,
+
+                        const SizedBox(height: 20),
+
+                        // Hedef
+                        AppInputField(
+                          controller: _destinationController,
+                          hint: "Örn: Abant Gölü, Sapanca",
+                          label: "Rota / Hedef (Opsiyonel)",
+                          leadingIcon: Icons.map,
                         ),
-                      ),
+
+                        const SizedBox(height: 20),
+
+                        // Sürüş Tarzı
+                        AppInputField(
+                          controller: _ridingStyleController,
+                          hint: "Örn: Sakin Sürüş, Viraj",
+                          label: "Sürüş Tarzı",
+                          leadingIcon: Icons.two_wheeler,
+                        ),
+
+                        // Alt kısımda biraz boşluk bırakalım ki en son input klavye açılınca sıkışmasın
+                        const SizedBox(height: 20),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+
+                // --- 3. FOOTER (SABİT BUTON) ---
+                // GroupPage'deki "Leave Ride" butonu ile aynı padding ve yapı
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                  child: AppFrostedTextButton(
+                    text: "Kullanıcı Davet Et",
+                    height: 52,
+                    // Turuncu (Primary) Renk
+                    backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
+                    textColor: colorScheme.primary,
+                    onPressed: _onProceed,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -272,22 +245,49 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     );
   }
 
-  // --- DÜZELTİLEN YER ---
-  // textStyle parametresi eklendi ve içeride kullanıldı
+  // --- HELPER WIDGETS ---
+
+  Widget _buildGlassDropdown(ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedMaxParticipantsKey,
+          dropdownColor: colorScheme.surfaceContainerLow,
+          icon: Icon(Icons.keyboard_arrow_down, color: colorScheme.onSurface),
+          isExpanded: true,
+          style: AppTextStyles.bodyLarge.copyWith(color: colorScheme.onSurface),
+          items: participantOptions.keys.map((String key) {
+            return DropdownMenuItem<String>(value: key, child: Text(key));
+          }).toList(),
+          onChanged: (newValue) {
+            if (newValue != null) {
+              setState(() => selectedMaxParticipantsKey = newValue);
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildPrivacyCard({
     required String title,
     required String subtitle,
     required IconData icon,
     required bool isSelected,
     required VoidCallback onTap,
-    TextStyle? textStyle, // Yeni parametre
   }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
@@ -312,23 +312,13 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
               size: 28,
             ),
             const SizedBox(height: 12),
-            // Başlık Stili Düzeltildi
             Text(
               title,
-              style:
-                  textStyle?.copyWith(
-                    // Eğer dışarıdan stil geldiyse rengini duruma göre ez
-                    color: isSelected ? colorScheme.primary : textStyle.color,
-                    fontWeight: FontWeight.bold,
-                  ) ??
-                  // Dışarıdan gelmediyse varsayılan bir stil kullan (h3 yerine daha uygun bir boyut)
-                  AppTextStyles.bodyLarge.copyWith(
-                    color: isSelected
-                        ? colorScheme.primary
-                        : colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16, // Varsayılan boyut
-                  ),
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
             const SizedBox(height: 4),
             Text(

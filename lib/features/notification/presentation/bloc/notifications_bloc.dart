@@ -30,34 +30,47 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     GetNotificationsEvent event,
     Emitter<NotificationsState> emit,
   ) async {
-    if (state.hasReachedMax && event.page != 1) return;
+    try {
+      if (state.hasReachedMax && event.page != 1) return;
 
-    if (event.page == 1) {
-      emit(state.copyWith(status: NotificationsStatus.loading));
-    }
+      if (event.page == 1) {
+        emit(state.copyWith(status: NotificationsStatus.loading));
+      }
 
-    final result = await getNotifications(event.page);
+      final result = await getNotifications(event.page);
 
-    result.fold(
-      (failure) => emit(
+      result.fold(
+        (failure) => emit(
+          state.copyWith(
+            status: NotificationsStatus.failure,
+            errorMessage: 'Bildirimler yüklenemedi',
+          ),
+        ),
+        (notifications) {
+          final updatedList = event.page == 1
+              ? notifications
+              : [...state.notifications, ...notifications];
+          emit(
+            state.copyWith(
+              status: NotificationsStatus.success,
+              notifications: updatedList,
+              hasReachedMax: notifications.isEmpty,
+              currentPage: event.page,
+            ),
+          );
+        },
+      );
+    } catch (e, stackTrace) {
+      // Catch any unexpected exceptions to prevent crash
+      print('❌ NotificationsBloc Error: $e');
+      print('Stack trace: $stackTrace');
+      emit(
         state.copyWith(
           status: NotificationsStatus.failure,
-          errorMessage: 'Bildirimler yüklenemedi',
+          errorMessage: 'Beklenmeyen hata: $e',
         ),
-      ),
-      (notifications) {
-        emit(
-          state.copyWith(
-            status: NotificationsStatus.success,
-            notifications:
-                event.page == 1 ? notifications : List.of(state.notifications)
-                  ..addAll(notifications),
-            hasReachedMax: notifications.isEmpty,
-            currentPage: event.page,
-          ),
-        );
-      },
-    );
+      );
+    }
   }
 
   Future<void> _onGetUnreadCount(

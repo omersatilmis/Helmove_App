@@ -1,11 +1,12 @@
+import 'dart:ui'; // ImageFilter için gerekli
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // InputFormatter için gerekli
+import 'package:flutter/services.dart';
 
 enum AppInputType {
   standard,
   email,
   password,
-  newPassword, // Yeni kayıt ekranları için (güçlü şifre önerisi tetikler)
+  newPassword,
   firstName,
   lastName,
   discover,
@@ -28,17 +29,15 @@ class AppInputField extends StatefulWidget {
   final String? helperText;
 
   final TextInputAction? textInputAction;
-  final ValueChanged<String>?
-  onFieldSubmitted; // Klavyeden 'Enter'/'Next' yakalamak için
-  final List<TextInputFormatter>?
-  inputFormatters; // Özel formatlar (örn: sadece sayı)
-  final Iterable<String>?
-  autofillHints; // Dışarıdan manuel autofill vermek istersen
+  final ValueChanged<String>? onFieldSubmitted;
+  final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? inputFormatters;
+  final Iterable<String>? autofillHints;
 
   final String? Function(String?)? validator;
 
   final bool enabled;
-  final int? minLines; // default 1 if null
+  final int? minLines;
   final int? maxLines;
 
   final IconData? leadingIcon;
@@ -66,9 +65,10 @@ class AppInputField extends StatefulWidget {
     this.onTrailingTap,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.onChanged,
     this.inputFormatters,
     this.autofillHints,
-    this.radius = 12.0,
+    this.radius = 12.0, // Dropdown ile uyum için 12 ideal, ama 16 da olur
     this.prefixWidget,
     this.suffixWidget,
   });
@@ -83,7 +83,6 @@ class _AppInputFieldState extends State<AppInputField> {
   @override
   void initState() {
     super.initState();
-    // password veya newPassword ise gizli başla
     _obscureText =
         widget.type == AppInputType.password ||
         widget.type == AppInputType.newPassword;
@@ -96,84 +95,101 @@ class _AppInputFieldState extends State<AppInputField> {
         widget.type == AppInputType.password ||
         widget.type == AppInputType.newPassword;
 
-    return TextFormField(
-      controller: widget.controller,
-      enabled: widget.enabled,
-      validator: widget.validator,
+    // 🔥 GLASS EFFECT WRAPPER
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(widget.radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: TextFormField(
+          controller: widget.controller,
+          enabled: widget.enabled,
+          validator: widget.validator,
 
-      // --- LOGIC GÜNCELLEMELERİ ---
-      autofillHints: _getAutofillHints, // Akıllı autofill
-      onFieldSubmitted: widget.onFieldSubmitted, // Klavye aksiyonu
-      textInputAction: widget.textInputAction,
-      inputFormatters: widget.inputFormatters,
+          // Logic
+          autofillHints: _getAutofillHints,
+          onFieldSubmitted: widget.onFieldSubmitted,
+          onChanged: widget.onChanged,
+          textInputAction: widget.textInputAction,
+          inputFormatters: widget.inputFormatters,
 
-      // -----------------------------
-      obscureText: _obscureText,
-      keyboardType: _keyboardType,
-      textCapitalization: _capitalization,
-      minLines: isPassword ? 1 : widget.minLines,
-      maxLines: isPassword ? 1 : widget.maxLines,
+          // Text Config
+          obscureText: _obscureText,
+          keyboardType: _keyboardType,
+          textCapitalization: _capitalization,
+          minLines: isPassword ? 1 : widget.minLines,
+          maxLines: isPassword ? 1 : widget.maxLines,
 
-      style: TextStyle(fontSize: _fontSize, color: theme.colorScheme.onSurface),
+          // Stil (Yazı Rengi)
+          style: TextStyle(
+            fontSize: _fontSize,
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w500,
+          ),
 
-      decoration: InputDecoration(
-        labelText: widget.label ?? _defaultLabel,
-        hintText: widget.hint ?? _defaultHint,
-        helperText: widget.helperText,
+          cursorColor: theme.colorScheme.primary,
 
-        // Hata stili
-        errorStyle: TextStyle(fontSize: 12, color: theme.colorScheme.error),
+          decoration: InputDecoration(
+            labelText: widget.label ?? _defaultLabel,
+            hintText: widget.hint ?? _defaultHint,
+            helperText: widget.helperText,
 
-        filled: widget.variant == AppInputVariant.filled,
-        fillColor: _fillColor(theme),
+            labelStyle: TextStyle(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+            hintStyle: TextStyle(
+              color: theme.colorScheme.onSurface.withOpacity(0.4),
+            ),
 
-        contentPadding: _contentPadding,
+            errorStyle: TextStyle(fontSize: 12, color: theme.colorScheme.error),
 
-        prefixIcon:
-            widget.prefixWidget ??
-            (widget.leadingIcon != null
-                ? Icon(
-                    widget.leadingIcon,
-                    size: 20,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )
-                : null),
+            // 🔥 GÜNCELLENEN KISIM: Dropdown rengi ile aynı
+            filled: true,
+            fillColor: _fillColor(theme),
 
-        suffixIcon: widget.suffixWidget ?? _buildSuffixIcon(theme),
+            contentPadding: _contentPadding,
 
-        border: _border(theme),
-        enabledBorder: _border(theme),
-        focusedBorder: _focusedBorder(theme),
-        errorBorder: _errorBorder(),
-        focusedErrorBorder: _errorBorder(),
-        disabledBorder: _disabledBorder(theme),
+            prefixIcon:
+                widget.prefixWidget ??
+                (widget.leadingIcon != null
+                    ? Icon(
+                        widget.leadingIcon,
+                        size: 20,
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      )
+                    : null),
+
+            suffixIcon: widget.suffixWidget ?? _buildSuffixIcon(theme),
+
+            // 🔥 BORDER AYARLARI: Dropdown border rengi ile aynı
+            border: _border(theme),
+            enabledBorder: _border(theme),
+            focusedBorder: _focusedBorder(theme),
+            errorBorder: _errorBorder(),
+            focusedErrorBorder: _errorBorder(),
+            disabledBorder: _disabledBorder(theme),
+          ),
+        ),
       ),
     );
   }
 
-  // --- GETTERS & LOGIC ---
+  // --- LOGIC ---
 
-  // Otomatik Doldurma İpuçları
   Iterable<String>? get _getAutofillHints {
     if (widget.autofillHints != null) return widget.autofillHints;
-
     switch (widget.type) {
       case AppInputType.email:
         return const [AutofillHints.email];
       case AppInputType.password:
         return const [AutofillHints.password];
       case AppInputType.newPassword:
-        return const [AutofillHints.newPassword]; // Yeni şifre önerisi
+        return const [AutofillHints.newPassword];
       case AppInputType.firstName:
         return const [AutofillHints.givenName];
       case AppInputType.lastName:
         return const [AutofillHints.familyName];
       case AppInputType.phone:
         return const [AutofillHints.telephoneNumber];
-      case AppInputType.standard: // Kullanıcı adı genelde standarda düşer
-        // Eğer kullanıcı adıysa 'username' dönebilirsin, ama bazen karışır.
-        // Şimdilik null bırakıyorum, RegisterPage'de manuel verebilirsin.
-        return null;
       default:
         return null;
     }
@@ -187,7 +203,7 @@ class _AppInputFieldState extends State<AppInputField> {
           _obscureText
               ? Icons.visibility_outlined
               : Icons.visibility_off_outlined,
-          color: theme.colorScheme.onSurfaceVariant,
+          color: theme.colorScheme.onSurface.withOpacity(0.6),
         ),
         onPressed: () {
           setState(() {
@@ -196,18 +212,16 @@ class _AppInputFieldState extends State<AppInputField> {
         },
       );
     }
-
     if (widget.trailingIcon != null) {
       return GestureDetector(
         onTap: widget.onTrailingTap,
         child: Icon(
           widget.trailingIcon,
           size: 20,
-          color: theme.colorScheme.onSurfaceVariant,
+          color: theme.colorScheme.onSurface.withOpacity(0.6),
         ),
       );
     }
-
     return null;
   }
 
@@ -219,15 +233,12 @@ class _AppInputFieldState extends State<AppInputField> {
         return TextInputType.phone;
       case AppInputType.password:
       case AppInputType.newPassword:
-        // 'visiblePassword' klavyedeki önerileri (predictive text) kapatır. Güvenlik için şart.
         return TextInputType.visiblePassword;
-      case AppInputType.discover:
-        return TextInputType.text;
       case AppInputType.url:
         return TextInputType.url;
       case AppInputType.firstName:
       case AppInputType.lastName:
-        return TextInputType.name; // İsim klavyesi açar
+        return TextInputType.name;
       default:
         return TextInputType.text;
     }
@@ -282,51 +293,58 @@ class _AppInputFieldState extends State<AppInputField> {
     }
   }
 
-  // --- STYLES ---
+  // --- STYLES (GÜNCELLENEN KISIMLAR) ---
 
+  // 🔥 Dropdown renginin aynısı
   Color _fillColor(ThemeData theme) {
     if (!widget.enabled) {
-      return theme.colorScheme.surfaceContainerHighest.withAlpha(128);
+      return theme.colorScheme.surfaceContainerLow.withOpacity(0.2);
     }
-    return theme.colorScheme.surfaceContainerLow;
+    // Senin beğendiğin renk kodu
+    return theme.colorScheme.surfaceContainerLow.withOpacity(0.5);
   }
 
+  // 🔥 Border rengi de outline.opacity(0.1) yapıldı
   OutlineInputBorder _border(ThemeData theme) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(widget.radius),
-      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+      borderSide: BorderSide(
+        color: theme.colorScheme.outline.withOpacity(0.1),
+        width: 1,
+      ),
     );
   }
 
   OutlineInputBorder _focusedBorder(ThemeData theme) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(widget.radius),
-      borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+      borderSide: BorderSide(
+        color: theme.colorScheme.primary.withOpacity(0.8),
+        width: 1.5,
+      ),
     );
   }
 
   OutlineInputBorder _errorBorder() {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(widget.radius),
-      borderSide: BorderSide(color: Colors.red.shade600),
+      borderSide: BorderSide(color: Colors.red.shade400, width: 1),
     );
   }
 
   OutlineInputBorder _disabledBorder(ThemeData theme) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: theme.disabledColor.withAlpha(51)),
+      borderRadius: BorderRadius.circular(widget.radius),
+      borderSide: BorderSide(
+        color: theme.colorScheme.onSurface.withOpacity(0.05),
+      ),
     );
   }
 
-  double get _fontSize => widget.size == AppInputSize.small
-      ? 14
-      : 16; // Fontu bir tık büyüttüm (Okunabilirlik)
+  double get _fontSize => widget.size == AppInputSize.small ? 14 : 16;
 
   EdgeInsets get _contentPadding {
-    final double p = widget.size == AppInputSize.small
-        ? 14
-        : 18; // Paddingleri rahatlattım
+    final double p = widget.size == AppInputSize.small ? 14 : 18;
     return EdgeInsets.symmetric(horizontal: p, vertical: p);
   }
 }

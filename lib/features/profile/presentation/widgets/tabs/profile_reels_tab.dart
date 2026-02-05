@@ -47,7 +47,7 @@ class _ProfileReelsTabState extends State<ProfileReelsTab>
                   Center(
                     child: Icon(
                       Icons.play_arrow_rounded,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: theme.colorScheme.onSurface.withOpacity(0.5),
                       size: 32,
                     ),
                   ),

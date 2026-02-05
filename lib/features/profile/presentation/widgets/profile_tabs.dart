@@ -48,9 +48,7 @@ class _ProfileTabBarDelegate extends SliverPersistentHeaderDelegate {
         labelPadding: EdgeInsets.symmetric(horizontal: 0),
 
         labelColor: AppColors.primary,
-        unselectedLabelColor: theme.colorScheme.onSurface.withValues(
-          alpha: 0.6,
-        ),
+        unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
         indicatorColor: AppColors.primary,
         indicatorWeight: 3,
         // İndikatör tabın tamamını kaplasın (label değil, tab genişliği kadar)

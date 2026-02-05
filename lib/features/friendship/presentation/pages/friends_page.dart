@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
+import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
 import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_event.dart';

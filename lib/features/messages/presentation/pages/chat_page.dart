@@ -603,7 +603,7 @@ class _BubblePainter extends CustomPainter {
     }
 
     if (!isDark && !isMe) {
-      canvas.drawShadow(path, Colors.black.withValues(alpha: 0.2), 2, false);
+      canvas.drawShadow(path, Colors.black.withOpacity(0.2), 2, false);
     }
 
     canvas.drawPath(path, paint);

@@ -11,6 +11,7 @@ class NotificationEntity extends Equatable {
   final int? senderId;
   final String? senderUsername;
   final String? senderProfileImage;
+  final String? dataJson;
 
   const NotificationEntity({
     required this.id,
@@ -23,6 +24,7 @@ class NotificationEntity extends Equatable {
     this.senderId,
     this.senderUsername,
     this.senderProfileImage,
+    this.dataJson,
   });
 
   @override
@@ -37,5 +39,6 @@ class NotificationEntity extends Equatable {
     senderId,
     senderUsername,
     senderProfileImage,
+    dataJson,
   ];
 }

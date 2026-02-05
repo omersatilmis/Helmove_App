@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
+// 🔥 Merkezi butonu import ediyoruz
+import '../../../../core/widgets/app_frosted_button.dart';
 
 class ActiveGroupCard extends StatelessWidget {
   final String groupName;
@@ -31,72 +33,67 @@ class ActiveGroupCard extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            // Arka plan rengi ve opaklığı (Cam efekti için düşük tutuldu)
-            color: colorScheme.surfaceContainerLow.withValues(alpha: 0.15),
-            // Köşe yuvarlaklığı duruyor
+            // Arka plan: Dropdown ve Inputlar ile uyumlu cam efekti
+            color: colorScheme.surfaceContainerLow.withOpacity(0.15),
             borderRadius: BorderRadius.circular(24),
-            // İnce şık bir çerçeve (Camı belli eder)
             border: Border.all(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+              color: colorScheme.outline.withOpacity(0.1),
               width: 1,
             ),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Grup Üst Bilgisi
+              // --- GRUP ÜST BİLGİSİ ---
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          groupName,
-                          style: AppTextStyles.h3.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            groupName,
+                            style: AppTextStyles.h3.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "$currentParticipants / $maxParticipants Participants",
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                          const SizedBox(height: 4),
+                          Text(
+                            "$currentParticipants / $maxParticipants Participants",
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    ElevatedButton(
+
+                    AppFrostedTextButton(
+                      text: "Open",
+                      height: 36,
+                      width: 80,
+                      fontSize: 16,
+                      padding: EdgeInsets.zero,
+                      borderRadius: 12,
                       onPressed: onOpenPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                      backgroundColor: colorScheme.primary.withValues(
+                        alpha: 0.1,
                       ),
-                      child: Text(
-                        "Open",
-                        style: AppTextStyles.button.copyWith(
-                          fontSize: 14,
-                          color: colorScheme.onPrimary,
-                        ),
-                      ),
+                      textColor: colorScheme.primary,
                     ),
                   ],
                 ),
               ),
 
-              // Sürücü Kartları Listesi
+              // --- SÜRÜCÜ KARTLARI LİSTESİ ---
               if (riderCards.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 2),
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
                   child: Column(
                     children: riderCards.map((card) {
                       return Padding(

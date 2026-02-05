@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 
 // --- KENDİ PROJE IMPORTLARIN ---
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
+import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_info.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_tabs.dart';
 
@@ -417,7 +417,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     style: AppTextStyles.bodySmall.copyWith(
                                       fontSize: 12,
                                       color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
+                                          .withOpacity(0.6),
                                     ),
                                   ),
                                 ],

@@ -1,74 +1,93 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+// --- PROJE İMPORTLARI ---
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/widgets/app_frosted_button.dart';
+
 import '../../domain/entities/group_ride_data.dart';
+import '../../domain/entities/group_ride_participant_entity.dart';
 import '../widgets/rider_card.dart';
 
-// --- BACKEND-READY MODELS & MOCK DATA ---
-class RiderData {
-  final String firstName;
-  final String lastName;
-  final String profileImageUrl;
-  final int batteryLevel;
-  final int signalLevel;
-  final bool isMicOn;
-  final bool isSpeaking;
+// --- BACKEND BLOC & ENTITY İMPORTLARI ---
+import '../../../voice_session/domain/entities/voice_session_entity.dart';
+import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
+import '../../../voice_session/presentation/bloc/voice_session_event.dart';
+import '../../../voice_session/presentation/bloc/voice_session_state.dart';
+import '../bloc/group_ride_bloc.dart';
+import '../bloc/group_ride_state.dart';
 
-  RiderData({
-    required this.firstName,
-    required this.lastName,
-    required this.profileImageUrl,
-    required this.batteryLevel,
-    required this.signalLevel,
-    this.isMicOn = false,
-    this.isSpeaking = false,
-  });
-}
-
-final List<RiderData> mockRiders = [
-  RiderData(
-    firstName: "You (Alex)",
-    lastName: "",
-    profileImageUrl: "https://i.pravatar.cc/150?img=12",
-    batteryLevel: 87,
-    signalLevel: 100,
-    isMicOn: true,
-    isSpeaking: false,
-  ),
-  RiderData(
-    firstName: "Ahmet",
-    lastName: "Manyas",
-    profileImageUrl: "https://i.pravatar.cc/150?img=11",
-    batteryLevel: 76,
-    signalLevel: 95,
-    isMicOn: true,
-    isSpeaking: false,
-  ),
-  RiderData(
-    firstName: "Salih",
-    lastName: "Öztürk",
-    profileImageUrl: "https://i.pravatar.cc/150?img=3",
-    batteryLevel: 92,
-    signalLevel: 88,
-    isMicOn: true,
-    isSpeaking: true,
-  ),
-  RiderData(
-    firstName: "Harun",
-    lastName: "Karabacak",
-    profileImageUrl: "https://i.pravatar.cc/150?img=59",
-    batteryLevel: 65,
-    signalLevel: 72,
-    isMicOn: false,
-    isSpeaking: false,
-  ),
-];
-
-class GroupPage extends StatelessWidget {
+class GroupPage extends StatefulWidget {
   final GroupRideData data;
 
   const GroupPage({super.key, required this.data});
+
+  @override
+  State<GroupPage> createState() => _GroupPageState();
+}
+
+class _GroupPageState extends State<GroupPage> {
+  // --- BACKEND STATE ---
+  VoiceSessionEntity? _sessionDetails;
+  bool _isLoadingSession = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.data.id != null && widget.data.id! > 0) {
+      _loadSessionDetails();
+    }
+  }
+
+  void _loadSessionDetails() {
+    setState(() => _isLoadingSession = true);
+    context.read<VoiceSessionBloc>().add(
+      GetVoiceSessionDetailsEvent(widget.data.id!),
+    );
+  }
+
+  // --- UI ACTIONS ---
+  void _showLeaveDialog() {
+    final colorScheme = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colorScheme.surfaceContainerHigh,
+        title: Text('Odadan Ayrıl', style: AppTextStyles.h3),
+        content: Text(
+          'Bu sürüş grubundan ayrılmak istediğinize emin misiniz?',
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('İptal', style: TextStyle(color: colorScheme.primary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (widget.data.id != null) {
+                context.read<VoiceSessionBloc>().add(
+                  LeaveVoiceSessionEvent(widget.data.id!),
+                );
+              } else {
+                context.pop();
+              }
+            },
+            child: Text(
+              'Ayrıl',
+              style: TextStyle(
+                color: colorScheme.error,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,294 +95,364 @@ class GroupPage extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Dinamik arka plan gradyanı
+    // Arka Plan Gradyanı
     final backgroundGradient = isDark
         ? const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF2A100A), // Koyu modda hafif kırmızımsı üst
-              Color(0xFF12100E), // darkBackground
-            ],
+            colors: [Color(0xFF2A100A), Color(0xFF12100E)],
             stops: [0.0, 0.4],
           )
         : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              colorScheme.primary.withValues(alpha: 0.08),
-              colorScheme.surface,
+              colorScheme.primary.withOpacity(0.05),
               colorScheme.surface,
             ],
-            stops: const [0.0, 0.5, 1.0],
+            stops: const [0.0, 0.3],
           );
 
-    return Container(
-      decoration: BoxDecoration(gradient: backgroundGradient),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          //bottom: false,
-          child: Column(
-            children: [
-              // --- FIXED HEADER CONTENT ---
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. HEADER (Geri Dönüş ve Grup Bilgileri)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return BlocListener<VoiceSessionBloc, VoiceSessionState>(
+      listener: (context, state) {
+        if (state is VoiceSessionDetailsLoaded) {
+          setState(() {
+            _sessionDetails = state.session;
+            _isLoadingSession = false;
+          });
+        } else if (state is VoiceSessionError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Hata: ${state.message}'),
+              backgroundColor: colorScheme.error,
+            ),
+          );
+          setState(() => _isLoadingSession = false);
+        } else if (state is VoiceSessionLeft) {
+          context.pop();
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          gradient: backgroundGradient,
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Column(
+              children: [
+                // --- SCROLLABLE CONTENT ---
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Geri Dönüş Butonu
-                        Container(
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerLow.withValues(
-                              alpha: 0.5,
+                        // 1. HEADER (Geri Dönüş ve Grup Bilgileri)
+                        _buildHeader(context, colorScheme),
+
+                        const SizedBox(height: 16),
+
+                        // 2. METADATA (Sağa Yaslandı)
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.end, // 🔥 SAĞA YASLAMA
+                          children: [
+                            _buildMetaItem(
+                              context,
+                              Icons.map,
+                              "Rota: ${widget.data.destination}",
                             ),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: colorScheme.outline.withValues(alpha: 0.1),
+                            _buildDivider(context),
+                            _buildMetaItem(
+                              context,
+                              Icons.bolt,
+                              widget.data.ridingStyle,
                             ),
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.arrow_back,
-                              color: colorScheme.onSurface,
+                            _buildDivider(context),
+                            _buildMetaItem(
+                              context,
+                              widget.data.privacy == "Public"
+                                  ? Icons.public
+                                  : Icons.lock,
+                              widget.data.privacy,
                             ),
-                            onPressed: () => Navigator.pop(context),
-                          ),
+                          ],
                         ),
-                        // Grup Bilgileri (Sağ tarafa yaslanmış)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+
+                        const SizedBox(height: 24),
+
+                        // 3. INTERCOM ACTIVE BANNER
+                        _buildIntercomBanner(),
+
+                        const SizedBox(height: 30),
+
+                        // 4. LIST HEADER & ACTIONS
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              data.groupName,
-                              style: AppTextStyles.h2.copyWith(
-                                color: colorScheme.onSurface,
+                              "CONNECTED RIDERS",
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
                               ),
-                              textAlign: TextAlign.right,
                             ),
-                            const SizedBox(height: 4),
                             Row(
-                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  data.sessionDuration,
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                AppFrostedButton(
+                                  icon: Icons.person_add,
+                                  size: 40,
+                                  iconSize: 20,
+                                  onTap: () {
+                                    context.push(
+                                      '/communication/invite',
+                                      extra: widget.data,
+                                    );
+                                  },
                                 ),
-                                const SizedBox(width: 8),
-                                Icon(
-                                  Icons.circle,
-                                  size: 4,
-                                  color: colorScheme.onSurfaceVariant
-                                      .withValues(alpha: 0.4),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "${data.currentParticipants} / ${data.maxParticipants}",
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                const SizedBox(width: 12),
+                                AppFrostedButton(
+                                  icon: Icons.refresh,
+                                  size: 40,
+                                  iconSize: 20,
+                                  onTap: () {
+                                    if (widget.data.id != null) {
+                                      _loadSessionDetails();
+                                    }
+                                  },
                                 ),
                               ],
                             ),
                           ],
                         ),
+
+                        const SizedBox(height: 16),
+
+                        // 5. RIDER LIST
+                        _isLoadingSession
+                            ? const Padding(
+                                padding: EdgeInsets.all(20.0),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            : _buildParticipantList(),
                       ],
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // 2. METADATA (Rota, Stil, Gizlilik)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _buildMetaItem(
-                          context,
-                          Icons.map,
-                          "Rota: ${data.destination}",
-                        ),
-                        _buildDivider(context),
-                        _buildMetaItem(context, Icons.bolt, data.ridingStyle),
-                        _buildDivider(context),
-                        _buildMetaItem(
-                          context,
-                          data.privacy == "Public"
-                              ? Icons.language
-                              : Icons.lock,
-                          data.privacy,
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 3. INTERCOM ACTIVE BANNER
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 16,
-                        horizontal: 20,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF15803D).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFF15803D).withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.wifi_tethering,
-                            color: Color(0xFF22C55E),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            "Intercom Active",
-                            style: AppTextStyles.bodyLarge.copyWith(
-                              color: const Color(0xFF22C55E),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 4. LIST HEADER & ACTIONS
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "CONNECTED RIDERS",
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            // --- INVITE BUTTON ---
-                            _buildGlassButton(
-                              context,
-                              Icons.person_add,
-                              "Invite",
-                              onTap: () {
-                                context.push('/communication/invite');
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            // --- SETTINGS BUTTON ---
-                            _buildGlassButton(
-                              context,
-                              Icons.settings,
-                              "Settings",
-                              onTap: () {
-                                // Ayarlar sayfası için aksiyon
-                                print("Settings tıklandı");
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // --- SCROLLABLE RIDER LIST ---
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      // 5. RIDER LIST (Dinamik render edildi)
-                      Column(
-                        children: mockRiders.map((rider) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: RiderCard(
-                              firstName: rider.firstName,
-                              lastName: rider.lastName,
-                              profileImageUrl: rider.profileImageUrl,
-                              batteryLevel: rider.batteryLevel,
-                              signalLevel: rider.signalLevel,
-                              isMicOn: rider.isMicOn,
-                              isSpeaking: rider.isSpeaking,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      // --- BOTTOM PADDING (for better aesthetics) ---
-                      const SizedBox(height: 8),
-                    ],
                   ),
                 ),
-              ),
 
-              // 6. LEAVE RIDE BUTTON & WARNING
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colorScheme.error.withValues(
-                            alpha: 0.1,
-                          ),
-                          foregroundColor: colorScheme.error,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(
-                              color: colorScheme.error.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ),
-                        icon: const Icon(Icons.logout),
-                        label: const Text(
-                          "Leave Ride",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.amber,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          "Keep your eyes on the road. Ride safe!",
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                // 6. FOOTER (LEAVE BUTTON)
+                _buildFooter(context, colorScheme),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- WIDGET PARÇALARI ---
+
+  Widget _buildHeader(BuildContext context, ColorScheme colorScheme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        AppFrostedButton(
+          icon: Icons.arrow_back,
+          size: 44,
+          onTap: () => context.pop(),
+        ),
+
+        // Grup Bilgileri
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              _sessionDetails?.title ?? widget.data.groupName,
+              style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface),
+              textAlign: TextAlign.right,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.data.sessionDuration,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.circle,
+                  size: 4,
+                  color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "${_sessionDetails?.participants.length ?? widget.data.currentParticipants} / ${widget.data.maxParticipants}",
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIntercomBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF22C55E).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_tethering, color: Color(0xFF22C55E)),
+          const SizedBox(width: 12),
+          Text(
+            "Intercom Active",
+            style: AppTextStyles.bodyLarge.copyWith(
+              color: const Color(0xFF22C55E),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParticipantList() {
+    if (_sessionDetails != null) {
+      final participants = _sessionDetails!.participants
+          .where((p) => p.isJoined || p.hasAccepted)
+          .toList();
+
+      if (participants.isEmpty) return _buildEmptyState();
+
+      return Column(
+        children: participants
+            .map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: RiderCard(
+                  firstName: p.firstName ?? 'Rider',
+                  lastName: p.lastName ?? '',
+                  profileImageUrl:
+                      p.profileImage ??
+                      'https://i.pravatar.cc/150?u=${p.userId}',
+                  batteryLevel: 90,
+                  signalLevel: 100,
+                  isMicOn: true,
+                  isSpeaking: p.isJoined,
+                ),
+              ),
+            )
+            .toList(),
+      );
+    }
+
+    return BlocBuilder<GroupRideBloc, GroupRideState>(
+      builder: (context, state) {
+        List<GroupRideParticipantEntity> participants = [];
+        if (state is GroupRideParticipantsLoaded) {
+          participants = state.participants;
+        }
+
+        if (participants.isEmpty) return _buildEmptyState();
+
+        return Column(
+          children: participants
+              .map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: RiderCard(
+                    firstName: p.firstName,
+                    lastName: p.lastName,
+                    profileImageUrl:
+                        p.profilePictureUrl ?? 'https://i.pravatar.cc/150',
+                    batteryLevel: 100,
+                    signalLevel: 100,
+                    isMicOn: false,
+                    isSpeaking: false,
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildFooter(BuildContext context, ColorScheme colorScheme) {
+    return Padding(
+      // 🔥 GÜNCELLEME: Üstten 20px boşluk vererek listeden ayırdım,
+      // Alttan sadece 10px boşluk vererek (SafeArea da var) ekranın altına yaklaştırdım.
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      child: Column(
+        children: [
+          AppFrostedTextButton(
+            text: "Leave Ride",
+            onPressed: _showLeaveDialog,
+            height: 52,
+            backgroundColor: colorScheme.error.withOpacity(0.1),
+            textColor: colorScheme.error,
+          ),
+
+          const SizedBox(height: 12), // Boşluğu biraz açtım
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.amber,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "Keep your eyes on the road. Ride safe!",
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            Icon(
+              Icons.people_outline,
+              size: 48,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Henüz kimse katılmadı.",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -387,59 +476,13 @@ class GroupPage extends StatelessWidget {
   }
 
   Widget _buildDivider(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12),
       width: 3,
       height: 3,
       decoration: BoxDecoration(
-        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+        color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.4),
         shape: BoxShape.circle,
-      ),
-    );
-  }
-
-  Widget _buildGlassButton(
-    BuildContext context,
-    IconData icon,
-    String label, {
-    VoidCallback? onTap,
-  }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            decoration: BoxDecoration(
-              color: colorScheme.onSurface.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: colorScheme.onSurface.withValues(alpha: 0.1),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(icon, size: 14, color: colorScheme.onSurface),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

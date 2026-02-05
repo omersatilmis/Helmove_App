@@ -27,9 +27,9 @@ class NearbyGroupCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow.withValues(alpha: 0.85),
+        color: colorScheme.surfaceContainerLow.withOpacity(0.85),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -96,14 +96,12 @@ class NearbyGroupCard extends StatelessWidget {
           ElevatedButton(
             onPressed: onJoinPressed,
             style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.onSurface.withValues(alpha: 0.1),
+              backgroundColor: colorScheme.onSurface.withOpacity(0.1),
               foregroundColor: colorScheme.onSurface,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: colorScheme.onSurface.withValues(alpha: 0.1),
-                ),
+                side: BorderSide(color: colorScheme.onSurface.withOpacity(0.1)),
               ),
             ),
             child: Text(

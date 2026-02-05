@@ -1,57 +1,111 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+// --- DI & CORE WIDGETS ---
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/widgets/app_input_field.dart';
+import '../../../../core/widgets/app_frosted_button.dart';
 import '../../../../core/theme/text_styles.dart';
-import '../../../../core/widgets/glass_input_field.dart';
+
+// --- DOMAIN & ENTITIES ---
+import '../../../friendship/domain/entities/friend_user_entity.dart';
+import '../../domain/entities/group_ride_data.dart';
+import '../../../voice_session/data/dto/create_voice_session_request_dto.dart';
+
+// --- BLOCS ---
+import '../../../friendship/presentation/bloc/list/friendship_list_bloc.dart';
+import '../../../friendship/presentation/bloc/list/friendship_list_event.dart';
+import '../../../friendship/presentation/bloc/list/friendship_list_state.dart';
+import '../../../discover/presentation/bloc/discover_bloc.dart';
+import '../../../discover/presentation/bloc/discover_event.dart';
+import '../../../discover/presentation/bloc/discover_state.dart';
+import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
+import '../../../voice_session/presentation/bloc/voice_session_event.dart';
+import '../../../voice_session/presentation/bloc/voice_session_state.dart';
+
+// --- LOCAL WIDGETS ---
 import '../widgets/invite_rider_card.dart';
 
-class InvitePage extends StatefulWidget {
-  const InvitePage({super.key});
+class InvitePage extends StatelessWidget {
+  final bool isFromCreateGroup;
+  final GroupRideData? groupData;
+  final int? sessionId; // Mevcut odaya davet için
+
+  const InvitePage({
+    super.key,
+    this.isFromCreateGroup = false,
+    this.groupData,
+    this.sessionId,
+  });
 
   @override
-  State<InvitePage> createState() => _InvitePageState();
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => sl<FriendshipListBloc>()..add(LoadMyFriendsEvent()),
+        ),
+        BlocProvider(create: (_) => sl<DiscoverBloc>()),
+        BlocProvider(create: (_) => sl<VoiceSessionBloc>()),
+      ],
+      child: _InviteView(
+        isFromCreateGroup: isFromCreateGroup,
+        groupData: groupData,
+        sessionId: sessionId,
+      ),
+    );
+  }
 }
 
-class _InvitePageState extends State<InvitePage> {
-  final List<Map<String, String>> _allFriends = [
-    {
-      "name": "Ahmet Manyas",
-      "username": "ahmet_m",
-      "img": "https://i.pravatar.cc/150?img=11",
-    },
-    {
-      "name": "Salih Öztürk",
-      "username": "salih_z",
-      "img": "https://i.pravatar.cc/150?img=3",
-    },
-    {
-      "name": "Harun Karabacak",
-      "username": "harun_k",
-      "img": "https://i.pravatar.cc/150?img=59",
-    },
-    {
-      "name": "Caner Demir",
-      "username": "caner_d",
-      "img": "https://i.pravatar.cc/150?img=12",
-    },
-    {
-      "name": "Mert Yılmaz",
-      "username": "mert_y",
-      "img": "https://i.pravatar.cc/150?img=18",
-    },
-  ];
+class _InviteView extends StatefulWidget {
+  final bool isFromCreateGroup;
+  final GroupRideData? groupData;
+  final int? sessionId;
 
-  final List<Map<String, String>> _selectedRiders = [];
-  String _searchQuery = "";
+  const _InviteView({
+    required this.isFromCreateGroup,
+    this.groupData,
+    this.sessionId,
+  });
 
-  void _toggleRider(Map<String, String> rider) {
+  @override
+  State<_InviteView> createState() => _InviteViewState();
+}
+
+class _InviteViewState extends State<_InviteView> {
+  final List<FriendUserEntity> _selectedRiders = [];
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+
+  void _toggleRider(FriendUserEntity rider) {
     HapticFeedback.lightImpact();
     setState(() {
-      _selectedRiders.contains(rider)
-          ? _selectedRiders.remove(rider)
-          : _selectedRiders.add(rider);
+      final index = _selectedRiders.indexWhere((r) => r.userId == rider.userId);
+      if (index != -1) {
+        _selectedRiders.removeAt(index);
+      } else {
+        _selectedRiders.add(rider);
+        // Arama sonucundan eklediyse aramayı temizle ve klavyeyi kapat
+        if (_isSearching) {
+          _isSearching = false;
+          _searchController.clear();
+          FocusManager.instance.primaryFocus?.unfocus();
+        }
+      }
     });
+  }
+
+  void _performSearch() {
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      setState(() => _isSearching = true);
+      context.read<DiscoverBloc>().add(SearchUsersEvent(query: query));
+    } else {
+      setState(() => _isSearching = false);
+    }
   }
 
   @override
@@ -60,129 +114,192 @@ class _InvitePageState extends State<InvitePage> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text("Sürücü Davet Et", style: AppTextStyles.h3),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(_selectedRiders),
-            child: Text(
-              "Bitti",
-              style: TextStyle(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          /// 🌈 ARKA PLAN
-          Container(
-            decoration: BoxDecoration(
-              gradient: isDark
-                  ? const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF2A100A), Color(0xFF12100E)],
-                      stops: [0.0, 0.4],
-                    )
-                  : LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        colorScheme.surfaceContainerLowest,
-                        colorScheme.surface,
-                      ],
-                    ),
-            ),
-          ),
+    return BlocListener<VoiceSessionBloc, VoiceSessionState>(
+      listener: (context, state) {
+        if (state is VoiceSessionCreated) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Sesli oturum oluşturuldu!")),
+          );
 
-          SafeArea(
+          if (widget.groupData != null) {
+            final updatedData = widget.groupData!.copyWith(id: state.sessionId);
+            context.go('/communication/group-page', extra: updatedData);
+          }
+        } else if (state is VoiceSessionError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Hata: ${state.message}"),
+              backgroundColor: colorScheme.error,
+            ),
+          );
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF2A100A), Color(0xFF12100E)],
+                  stops: [0.0, 0.4],
+                )
+              : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    colorScheme.surfaceContainerLowest,
+                    colorScheme.surface,
+                  ],
+                ),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          // 🔥 Stack yerine Column yapısı (Sabit Header ve Footer için)
+          body: SafeArea(
             child: Column(
               children: [
-                /// 🔥 SEÇİLENLER ALANI (BUGSIZ)
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  transitionBuilder: (child, anim) =>
-                      SizeTransition(sizeFactor: anim, child: child),
-                  child: _selectedRiders.isEmpty
-                      ? const SizedBox.shrink()
-                      : Padding(
-                          key: const ValueKey("selected"),
-                          padding: const EdgeInsets.only(
-                            left: 20,
-                            right: 20,
-                            top: 4,
-                          ),
-                          child: SizedBox(
-                            height: 80,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              physics: const BouncingScrollPhysics(),
-                              clipBehavior: Clip.none,
-                              padding:
-                                  const EdgeInsets.only(), // Üstten pay bıraktık
-                              itemCount: _selectedRiders.length,
-                              itemBuilder: (context, index) {
-                                return _buildSelectedAvatar(
-                                  _selectedRiders[index],
-                                  colorScheme,
-                                );
-                              },
-                            ),
+                // --- 1. HEADER (SABİT) ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 16.0,
+                  ),
+                  child: Row(
+                    children: [
+                      AppFrostedButton(
+                        icon: Icons.close,
+                        size: 44,
+                        onTap: () => context.pop(),
+                      ),
+                      Expanded(
+                        child: Text(
+                          "Sürücü Davet Et",
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.h3.copyWith(
+                            color: colorScheme.onSurface,
                           ),
                         ),
-                ),
-
-                /// 🔍 ARAMA
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: GlassInputField(
-                    hintText: "Kullanıcı Ara...",
-                    prefixIcon: Icons.search,
-                    onChanged: (val) => setState(() => _searchQuery = val),
+                      ),
+                      // Sağ taraf boş kalsın ki başlık ortalansın (veya buraya başka buton eklenebilir)
+                      const SizedBox(width: 44),
+                    ],
                   ),
                 ),
 
-                /// 📋 LİSTE
+                // --- 2. İÇERİK (SCROLLABLE & EXPANDED) ---
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _allFriends.length,
-                    itemBuilder: (context, index) {
-                      final rider = _allFriends[index];
-                      if (_searchQuery.isNotEmpty &&
-                          !rider['name']!.toLowerCase().contains(
-                            _searchQuery.toLowerCase(),
-                          )) {
-                        return const SizedBox.shrink();
-                      }
+                  child: Column(
+                    children: [
+                      // SEÇİLENLER (Yatay Liste)
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        transitionBuilder: (child, anim) =>
+                            SizeTransition(sizeFactor: anim, child: child),
+                        child: _selectedRiders.isEmpty
+                            ? const SizedBox.shrink()
+                            : Padding(
+                                key: const ValueKey("selected"),
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  0,
+                                  20,
+                                  10,
+                                ),
+                                child: SizedBox(
+                                  height: 90,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    physics: const BouncingScrollPhysics(),
+                                    clipBehavior: Clip.none,
+                                    itemCount: _selectedRiders.length,
+                                    itemBuilder: (context, index) {
+                                      return _buildSelectedAvatar(
+                                        _selectedRiders[index],
+                                        colorScheme,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                      ),
 
-                      final nameParts = rider['name']!.split(' ');
-                      final firstName = nameParts.first;
-                      final lastName = nameParts.length > 1
-                          ? nameParts.skip(1).join(' ')
-                          : "";
+                      // ARAMA INPUTU
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: AppInputField(
+                          controller: _searchController,
+                          hint: "Kullanıcı Ara...",
+                          leadingIcon: Icons.search,
+                          textInputAction: TextInputAction.search,
+                          onFieldSubmitted: (_) => _performSearch(),
+                          onChanged: (val) {
+                            if (val.isEmpty && _isSearching) {
+                              setState(() => _isSearching = false);
+                            }
+                          },
+                          suffixWidget: IconButton(
+                            icon: Icon(
+                              Icons.arrow_forward,
+                              color: colorScheme.primary,
+                            ),
+                            onPressed: _performSearch,
+                          ),
+                        ),
+                      ),
 
-                      return InviteRiderCard(
-                        firstName: firstName,
-                        lastName: lastName,
-                        username: rider['username']!,
-                        profileImageUrl: rider['img']!,
-                        isFriend: true,
-                        isSelected: _selectedRiders.contains(rider),
-                        onInviteTap: () => _toggleRider(rider),
-                        onFriendshipTap: () {},
+                      const SizedBox(height: 10),
+
+                      // KULLANICI LİSTESİ (Expanded ile kalan alanı kaplar)
+                      Expanded(
+                        child: _isSearching
+                            ? _buildSearchResults()
+                            : _buildFriendsList(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // --- 3. FOOTER (SABİT BUTON) ---
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                  child: BlocBuilder<VoiceSessionBloc, VoiceSessionState>(
+                    builder: (context, state) {
+                      return AppFrostedTextButton(
+                        text: widget.isFromCreateGroup
+                            ? "Grubu Kur"
+                            : "Kişileri Davet Et",
+                        isLoading: state is VoiceSessionLoading,
+                        height: 52,
+                        // 🔥 Turuncu (Primary) Renk
+                        backgroundColor: colorScheme.primary.withValues(
+                          alpha: 0.1,
+                        ),
+                        textColor: colorScheme.primary,
+                        onPressed: () {
+                          if (widget.isFromCreateGroup &&
+                              widget.groupData != null) {
+                            debugPrint(
+                              "🚀 [VoiceSession] Grubu Kur başlatılıyor...",
+                            );
+
+                            final request = CreateVoiceSessionRequestDto(
+                              title: widget.groupData!.groupName,
+                              roomName: widget.groupData!.groupName,
+                              inviteUserIds: _selectedRiders
+                                  .map((e) => e.userId)
+                                  .toList(),
+                            );
+
+                            context.read<VoiceSessionBloc>().add(
+                              CreateVoiceSessionEvent(request),
+                            );
+                          } else {
+                            debugPrint(
+                              "🔙 [GroupRide] Geri dönülüyor: ${_selectedRiders.length} kişi",
+                            );
+                            context.pop(_selectedRiders);
+                          }
+                        },
                       );
                     },
                   ),
@@ -190,16 +307,14 @@ class _InvitePageState extends State<InvitePage> {
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  /// 👤 SEÇİLEN AVATAR
-  Widget _buildSelectedAvatar(
-    Map<String, String> rider,
-    ColorScheme colorScheme,
-  ) {
+  // --- HELPER WIDGETS ---
+
+  Widget _buildSelectedAvatar(FriendUserEntity rider, ColorScheme colorScheme) {
     return Container(
       margin: const EdgeInsets.only(right: 14),
       child: Column(
@@ -208,9 +323,27 @@ class _InvitePageState extends State<InvitePage> {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundImage: NetworkImage(rider['img']!),
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: colorScheme.primary.withOpacity(0.5),
+                    width: 1.5,
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 26,
+                  backgroundImage:
+                      (rider.profilePictureUrl != null &&
+                          rider.profilePictureUrl!.isNotEmpty)
+                      ? NetworkImage(rider.profilePictureUrl!)
+                      : null,
+                  child:
+                      (rider.profilePictureUrl == null ||
+                          rider.profilePictureUrl!.isEmpty)
+                      ? Text(rider.username[0].toUpperCase())
+                      : null,
+                ),
               ),
               Positioned(
                 right: -2,
@@ -218,14 +351,18 @@ class _InvitePageState extends State<InvitePage> {
                 child: GestureDetector(
                   onTap: () => _toggleRider(rider),
                   child: Container(
-                    padding: const EdgeInsets.all(3),
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: colorScheme.error,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colorScheme.surface,
+                        width: 1.5,
+                      ),
                     ),
                     child: const Icon(
                       Icons.close,
-                      size: 12,
+                      size: 10,
                       color: Colors.white,
                     ),
                   ),
@@ -233,13 +370,83 @@ class _InvitePageState extends State<InvitePage> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            rider['username']!,
-            style: AppTextStyles.bodySmall.copyWith(fontSize: 10),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: 60,
+            child: Text(
+              rider.username,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall.copyWith(fontSize: 10),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    return BlocBuilder<DiscoverBloc, DiscoverState>(
+      builder: (context, state) {
+        if (state is DiscoverLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is DiscoverFailure) {
+          return Center(child: Text(state.message));
+        } else if (state is DiscoverLoaded) {
+          final results = state.results;
+          if (results.isEmpty) {
+            return const Center(child: Text("Sonuç bulunamadı."));
+          }
+          return _buildRiderList(results, isFriendshipFixed: false);
+        }
+        return const Center(child: Text("Aramak için 'Ara' butonuna basın"));
+      },
+    );
+  }
+
+  Widget _buildFriendsList() {
+    return BlocBuilder<FriendshipListBloc, FriendshipListState>(
+      builder: (context, state) {
+        if (state is FriendshipListLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is FriendshipListFailure) {
+          return Center(child: Text(state.message));
+        } else if (state is MyFriendsLoaded) {
+          final friends = state.friends;
+          if (friends.isEmpty) {
+            return const Center(child: Text("Henüz arkadaşınız yok."));
+          }
+          return _buildRiderList(friends, isFriendshipFixed: true);
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildRiderList(
+    List<FriendUserEntity> riders, {
+    required bool isFriendshipFixed,
+  }) {
+    // Liste scroll edilebilir, footer sabit olduğu için bottom padding'e gerek yok (Container padding'i var)
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      physics: const BouncingScrollPhysics(),
+      itemCount: riders.length,
+      itemBuilder: (context, index) {
+        final rider = riders[index];
+        final isSelected = _selectedRiders.any((r) => r.userId == rider.userId);
+
+        return InviteRiderCard(
+          firstName: rider.firstName ?? "",
+          lastName: rider.lastName ?? "",
+          username: rider.username,
+          profileImageUrl: rider.profilePictureUrl ?? "",
+          isFriend: isFriendshipFixed,
+          isSelected: isSelected,
+          onInviteTap: () => _toggleRider(rider),
+          onFriendshipTap: () {},
+        );
+      },
     );
   }
 }

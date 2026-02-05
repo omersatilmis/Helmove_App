@@ -50,8 +50,8 @@ class AppDrawer extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(
-                    alpha: 0.8,
+                  theme.colorScheme.primary.withOpacity(
+                    0.12,
                   ), // Hafif ton farkı
                 ],
               ),
@@ -66,12 +66,12 @@ class AppDrawer extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: Colors.white.withOpacity(0.5),
                       width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withOpacity(0.2),
                         blurRadius: 10,
                         offset: const Offset(0, 5),
                       ),
@@ -104,7 +104,7 @@ class AppDrawer extends StatelessWidget {
                       Text(
                         email,
                         style: AppTextStyles.regular.copyWith(
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: Colors.white.withOpacity(0.8),
                           fontWeight: FontWeight.w500,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -141,9 +141,7 @@ class AppDrawer extends StatelessWidget {
                   title: "Premium Planlar",
                   iconColor: const Color(0xFF9C27B0),
                   textColor: const Color(0xFF9C27B0),
-                  backgroundColor: const Color(
-                    0xFF9C27B0,
-                  ).withValues(alpha: 0.1),
+                  backgroundColor: const Color(0xFF9C27B0).withOpacity(0.1),
                   onTap: () {
                     context.pop();
                     context.push('/plans');
@@ -167,9 +165,7 @@ class AppDrawer extends StatelessWidget {
                     horizontal: 16,
                   ),
                   child: Divider(
-                    color: theme.colorScheme.outlineVariant.withValues(
-                      alpha: 0.5,
-                    ),
+                    color: theme.colorScheme.outlineVariant.withOpacity(0.1),
                   ),
                 ),
 

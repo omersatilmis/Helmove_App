@@ -40,7 +40,7 @@ class SettingsExpansionTile extends StatelessWidget {
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: AppColors.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: AppColors.primary, size: 22),
@@ -58,7 +58,7 @@ class SettingsExpansionTile extends StatelessWidget {
                   subtitle!,
                   // Alt başlık rengini temaya göre şeffaflaştırdık
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
                 )
               : null,
@@ -101,7 +101,9 @@ class SettingsSelectionTile extends StatelessWidget {
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withValues(alpha: 0.05) : Colors.transparent,
+            color: isSelected
+                ? AppColors.primary.withOpacity(0.05)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: ListTile(
@@ -111,12 +113,18 @@ class SettingsSelectionTile extends StatelessWidget {
               style: AppTextStyles.bodyMedium.copyWith(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 // Seçiliyse Turuncu, değilse Temanın Yazı Rengi
-                color: isSelected ? AppColors.primary : theme.colorScheme.onSurface,
+                color: isSelected
+                    ? AppColors.primary
+                    : theme.colorScheme.onSurface,
                 fontSize: 14,
               ),
             ),
             trailing: isSelected
-                ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
+                ? const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  )
                 : null,
             onTap: () => onSelect(option),
           ),
@@ -162,7 +170,7 @@ class SettingsSwitchTile extends StatelessWidget {
         subtitle,
         // Alt başlık rengini temaya göre ayarladık
         style: AppTextStyles.bodySmall.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          color: theme.colorScheme.onSurface.withOpacity(0.6),
         ),
       ),
       value: value,
@@ -191,7 +199,7 @@ class SettingsActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
+    final secondaryColor = theme.colorScheme.onSurface.withOpacity(0.5);
 
     return ListTile(
       dense: true,
@@ -199,11 +207,11 @@ class SettingsActionTile extends StatelessWidget {
       // İkon rengini temaya bağladık
       leading: Icon(icon, size: 20, color: secondaryColor),
       title: Text(
-        title, 
+        title,
         style: AppTextStyles.medium.copyWith(
           color: theme.colorScheme.onSurface,
           fontSize: 14,
-        )
+        ),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -211,9 +219,9 @@ class SettingsActionTile extends StatelessWidget {
           Text(
             value,
             style: AppTextStyles.medium.copyWith(
-              color: AppColors.primary, 
-              fontWeight: FontWeight.bold, 
-              fontSize: 13
+              color: AppColors.primary,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
             ),
           ),
           Icon(Icons.chevron_right_rounded, size: 18, color: secondaryColor),
@@ -227,14 +235,21 @@ class SettingsActionTile extends StatelessWidget {
 // -----------------------------------------------------------------------------
 // 5. BOTTOM SHEET AÇICI
 // -----------------------------------------------------------------------------
-void showSettingsBottomSheet(BuildContext context, String title, List<String> options, Function(String) onSelect) {
+void showSettingsBottomSheet(
+  BuildContext context,
+  String title,
+  List<String> options,
+  Function(String) onSelect,
+) {
   final theme = Theme.of(context);
-  
+
   showModalBottomSheet(
     context: context,
     // Arka plan rengini scaffold rengine eşitledik (Dark mode için kritik)
     backgroundColor: theme.scaffoldBackgroundColor,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
     builder: (context) {
       return SafeArea(
         child: Column(
@@ -243,37 +258,44 @@ void showSettingsBottomSheet(BuildContext context, String title, List<String> op
             const SizedBox(height: 12),
             // Tutamaç rengini tema divider rengine bağladık
             Container(
-              width: 40, 
-              height: 4, 
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
-                color: theme.dividerColor, 
-                borderRadius: BorderRadius.circular(2)
-              )
+                color: theme.dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                title, 
+                title,
                 // Başlık rengi dinamik oldu
-                style: AppTextStyles.h3.copyWith(fontSize: 18, color: theme.colorScheme.onSurface)
+                style: AppTextStyles.h3.copyWith(
+                  fontSize: 18,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
             ),
-            ...options.map((option) => ListTile(
-                  title: Text(
-                    option,
-                    // Seçenek rengi dinamik oldu
-                    style: AppTextStyles.medium.copyWith(color: theme.colorScheme.onSurface),
+            ...options.map(
+              (option) => ListTile(
+                title: Text(
+                  option,
+                  // Seçenek rengi dinamik oldu
+                  style: AppTextStyles.medium.copyWith(
+                    color: theme.colorScheme.onSurface,
                   ),
-                  onTap: () {
-                    onSelect(option);
-                    Navigator.pop(context);
-                  },
-                  trailing: Icon(
-                    Icons.chevron_right, 
-                    size: 20, 
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5)
-                  ),
-                )),
+                ),
+                onTap: () {
+                  onSelect(option);
+                  Navigator.pop(context);
+                },
+                trailing: Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
           ],
         ),

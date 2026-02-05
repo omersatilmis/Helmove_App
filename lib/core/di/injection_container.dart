@@ -130,6 +130,50 @@ import '../../features/plan/domain/usecases/get_plans_usecase.dart';
 import '../../features/plan/domain/usecases/subscribe_usecase.dart';
 import '../../features/plan/presentation/bloc/subscription_bloc.dart';
 
+// Attendance Feature
+import '../../features/attendance_management/data/api/attendance_api.dart';
+import '../../features/attendance_management/data/datasources/attendance_remote_data_source.dart';
+import '../../features/attendance_management/data/repositories/attendance_repository_impl.dart';
+import '../../features/attendance_management/domain/repositories/attendance_repository.dart';
+import '../../features/attendance_management/domain/usecases/join_group_ride_usecase.dart';
+import '../../features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
+import '../../features/attendance_management/domain/usecases/approve_participant_usecase.dart';
+import '../../features/attendance_management/domain/usecases/reject_participant_usecase.dart';
+import '../../features/attendance_management/domain/usecases/get_ride_participants_usecase.dart';
+import '../../features/attendance_management/domain/usecases/get_participation_status_usecase.dart';
+
+// Voice Session Feature
+import '../../features/voice_session/data/api/voice_session_api.dart';
+import '../../features/voice_session/data/datasources/voice_session_remote_data_source.dart';
+import '../../features/voice_session/data/repositories/voice_session_repository_impl.dart';
+import '../../features/voice_session/domain/repositories/voice_session_repository.dart';
+import '../../features/voice_session/domain/usecases/create_voice_session_usecase.dart';
+import '../../features/voice_session/domain/usecases/get_voice_session_usecase.dart';
+import '../../features/voice_session/domain/usecases/invite_to_voice_session_usecase.dart';
+import '../../features/voice_session/domain/usecases/accept_voice_session_invitation_usecase.dart';
+import '../../features/voice_session/domain/usecases/reject_voice_session_invitation_usecase.dart';
+import '../../features/voice_session/domain/usecases/join_voice_session_usecase.dart';
+import '../../features/voice_session/domain/usecases/leave_voice_session_usecase.dart';
+import '../../features/voice_session/domain/usecases/end_voice_session_usecase.dart';
+import '../../features/voice_session/domain/usecases/get_voice_session_details_usecase.dart';
+import '../../features/voice_session/domain/usecases/get_my_voice_sessions_usecase.dart';
+import '../../features/voice_session/presentation/bloc/voice_session_bloc.dart';
+
+// GroupRide Feature (Communication)
+import '../../features/communication/data/api/group_ride_api.dart';
+import '../../features/communication/data/datasources/group_ride_data_source.dart';
+import '../../features/communication/data/repositories/group_ride_repository_impl.dart';
+import '../../features/communication/domain/repositories/group_ride_repository.dart';
+import '../../features/communication/domain/usecases/get_my_group_rides_usecase.dart';
+import '../../features/communication/domain/usecases/get_nearby_group_rides_usecase.dart';
+import '../../features/communication/domain/usecases/get_group_ride_participants_usecase.dart';
+import '../../features/communication/domain/usecases/create_group_ride_usecase.dart';
+import '../../features/communication/domain/usecases/join_group_ride_usecase.dart'
+    as comm;
+import '../../features/communication/domain/usecases/leave_group_ride_usecase.dart'
+    as comm;
+import '../../features/communication/presentation/bloc/group_ride_bloc.dart';
+
 final sl = GetIt.instance;
 
 void setup() {
@@ -241,6 +285,28 @@ Future<void> resetOnLogout() async {
     sl.unregister<PostApi>();
   }
 
+  // 9. Attendance Feature Resets
+  if (sl.isRegistered<AttendanceRemoteDataSource>()) {
+    sl.unregister<AttendanceRemoteDataSource>();
+  }
+  if (sl.isRegistered<AttendanceRepository>()) {
+    sl.unregister<AttendanceRepository>();
+  }
+  if (sl.isRegistered<AttendanceApi>()) {
+    sl.unregister<AttendanceApi>();
+  }
+
+  // 10. Voice Session Feature Resets
+  if (sl.isRegistered<VoiceSessionRemoteDataSource>()) {
+    sl.unregister<VoiceSessionRemoteDataSource>();
+  }
+  if (sl.isRegistered<VoiceSessionRepository>()) {
+    sl.unregister<VoiceSessionRepository>();
+  }
+  if (sl.isRegistered<VoiceSessionApi>()) {
+    sl.unregister<VoiceSessionApi>();
+  }
+
   // --- RE-REGISTER ---
 
   // 1. Re-register Auth Feature
@@ -294,9 +360,37 @@ void _registerFeatureSingletons() {
       () => FriendshipRemoteDataSourceImpl(sl()),
     );
   }
-  if (!sl.isRegistered<FriendshipRepository>()) {
-    sl.registerLazySingleton<FriendshipRepository>(
-      () => FriendshipRepositoryImpl(sl()),
+  sl.registerLazySingleton<FriendshipRepository>(
+    () => FriendshipRepositoryImpl(sl()),
+  );
+
+  // Attendance Feature
+  if (!sl.isRegistered<AttendanceApi>()) {
+    sl.registerLazySingleton(() => AttendanceApi(sl()));
+  }
+  if (!sl.isRegistered<AttendanceRemoteDataSource>()) {
+    sl.registerLazySingleton<AttendanceRemoteDataSource>(
+      () => AttendanceRemoteDataSourceImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<AttendanceRepository>()) {
+    sl.registerLazySingleton<AttendanceRepository>(
+      () => AttendanceRepositoryImpl(sl()),
+    );
+  }
+
+  // Voice Session Feature
+  if (!sl.isRegistered<VoiceSessionApi>()) {
+    sl.registerLazySingleton(() => VoiceSessionApi(sl()));
+  }
+  if (!sl.isRegistered<VoiceSessionRemoteDataSource>()) {
+    sl.registerLazySingleton<VoiceSessionRemoteDataSource>(
+      () => VoiceSessionRemoteDataSourceImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<VoiceSessionRepository>()) {
+    sl.registerLazySingleton<VoiceSessionRepository>(
+      () => VoiceSessionRepositoryImpl(sl()),
     );
   }
 
@@ -728,4 +822,99 @@ Future<void> init() async {
 
   // Bloc
   sl.registerFactory(() => SubscriptionBloc(getPlans: sl(), subscribe: sl()));
+
+  //! Attendance Feature
+  // API
+  sl.registerLazySingleton(() => AttendanceApi(sl()));
+
+  // Data Sources
+  sl.registerLazySingleton<AttendanceRemoteDataSource>(
+    () => AttendanceRemoteDataSourceImpl(sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<AttendanceRepository>(
+    () => AttendanceRepositoryImpl(sl()),
+  );
+
+  // UseCases
+  sl.registerFactory(() => JoinGroupRideUseCase(sl()));
+  sl.registerFactory(() => LeaveGroupRideUseCase(sl()));
+  sl.registerFactory(() => ApproveParticipantUseCase(sl()));
+  sl.registerFactory(() => RejectParticipantUseCase(sl()));
+  sl.registerFactory(() => GetRideParticipantsUseCase(sl()));
+  sl.registerFactory(() => GetParticipationStatusUseCase(sl()));
+
+  //! Voice Session Feature
+  // API
+  sl.registerLazySingleton(() => VoiceSessionApi(sl()));
+
+  // Data Sources
+  sl.registerLazySingleton<VoiceSessionRemoteDataSource>(
+    () => VoiceSessionRemoteDataSourceImpl(sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<VoiceSessionRepository>(
+    () => VoiceSessionRepositoryImpl(sl()),
+  );
+
+  // UseCases
+  sl.registerFactory(() => CreateVoiceSessionUseCase(sl()));
+  sl.registerFactory(() => GetVoiceSessionUseCase(sl()));
+  sl.registerFactory(() => InviteToVoiceSessionUseCase(sl()));
+  sl.registerFactory(() => AcceptVoiceSessionInvitationUseCase(sl()));
+  sl.registerFactory(() => RejectVoiceSessionInvitationUseCase(sl()));
+  sl.registerFactory(() => JoinVoiceSessionUseCase(sl()));
+  sl.registerFactory(() => LeaveVoiceSessionUseCase(sl()));
+  sl.registerFactory(() => EndVoiceSessionUseCase(sl()));
+  sl.registerFactory(() => GetVoiceSessionDetailsUseCase(sl()));
+  sl.registerFactory(() => GetMyVoiceSessionsUseCase(sl()));
+
+  // Bloc
+  sl.registerFactory(
+    () => VoiceSessionBloc(
+      createVoiceSessionUseCase: sl(),
+      joinVoiceSessionUseCase: sl(),
+      leaveVoiceSessionUseCase: sl(),
+      inviteToVoiceSessionUseCase: sl(),
+      getVoiceSessionDetailsUseCase: sl(),
+      getMyVoiceSessionsUseCase: sl(),
+      acceptVoiceSessionInvitationUseCase: sl(),
+    ),
+  );
+
+  //! GroupRide Feature (Communication)
+  // API
+  sl.registerLazySingleton(() => GroupRideApi(sl()));
+
+  // Data Sources
+  sl.registerLazySingleton<GroupRideDataSource>(
+    () => GroupRideDataSourceImpl(sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<GroupRideRepository>(
+    () => GroupRideRepositoryImpl(sl()),
+  );
+
+  // UseCases
+  sl.registerFactory(() => GetMyGroupRidesUseCase(sl()));
+  sl.registerFactory(() => GetNearbyGroupRidesUseCase(sl()));
+  sl.registerFactory(() => GetGroupRideParticipantsUseCase(sl()));
+  sl.registerFactory(() => CreateGroupRideUseCase(sl()));
+  sl.registerFactory(() => comm.JoinGroupRideUseCase(sl()));
+  sl.registerFactory(() => comm.LeaveGroupRideUseCase(sl()));
+
+  // Bloc
+  sl.registerFactory(
+    () => GroupRideBloc(
+      getMyGroupRidesUseCase: sl(),
+      getNearbyGroupRidesUseCase: sl(),
+      getGroupRideParticipantsUseCase: sl(),
+      createGroupRideUseCase: sl(),
+      joinGroupRideUseCase: sl(),
+      leaveGroupRideUseCase: sl(),
+    ),
+  );
 }

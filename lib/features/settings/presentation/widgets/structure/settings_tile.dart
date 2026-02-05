@@ -1,6 +1,5 @@
 // Soluna ikon koyar, ortasına yazı yazar, sağına ok işareti (>) koyar.
 
-
 import 'package:flutter/material.dart';
 import 'package:moto_comm_app_1/core/theme/app_colors.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
@@ -28,10 +27,14 @@ class SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Yıkıcı (Destructive) ise Kırmızı, değilse varsayılan renkler
-    final effectiveIconColor = isDestructive ? AppColors.error : (iconColor ?? AppColors.primary);
-    final effectiveTextColor = isDestructive ? AppColors.error : theme.colorScheme.onSurface;
+    final effectiveIconColor = isDestructive
+        ? AppColors.error
+        : (iconColor ?? AppColors.primary);
+    final effectiveTextColor = isDestructive
+        ? AppColors.error
+        : theme.colorScheme.onSurface;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -43,12 +46,14 @@ class SettingsTile extends StatelessWidget {
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        
+
         // Sol İkon (Yuvarlak kutu içinde)
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: effectiveIconColor.withValues(alpha: 0.1), // Hafif transparan zemin
+            color: effectiveIconColor.withOpacity(
+              0.1,
+            ), // Hafif transparan zemin
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: effectiveIconColor, size: 22),
@@ -65,18 +70,22 @@ class SettingsTile extends StatelessWidget {
         ),
 
         // Alt Başlık (Varsa)
-        subtitle: subtitle != null 
-          ? Text(
-              subtitle!,
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.lightTextSecondary),
-            ) 
-          : null,
+        subtitle: subtitle != null
+            ? Text(
+                subtitle!,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.lightTextSecondary,
+                ),
+              )
+            : null,
 
         // Sağ Taraf (Ok işareti veya Switch)
-        trailing: trailing ?? Icon(
-          Icons.chevron_right_rounded, 
-          color: AppColors.lightTextSecondary,
-        ),
+        trailing:
+            trailing ??
+            Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.lightTextSecondary,
+            ),
       ),
     );
   }

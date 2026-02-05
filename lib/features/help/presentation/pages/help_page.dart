@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 
 // 🔥 BUTON IMPORT
-import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
+import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -41,7 +41,7 @@ class HelpPage extends StatelessWidget {
                   ),
 
                   // SAĞ: Dengelemek için boşluk (44px)
-                  const SizedBox(width: 44), 
+                  const SizedBox(width: 44),
                 ],
               ),
             ),
@@ -55,9 +55,9 @@ class HelpPage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.help_outline, 
-                      size: 80, 
-                      color: theme.colorScheme.primary.withValues(alpha: 0.5)
+                      Icons.help_outline,
+                      size: 80,
+                      color: theme.colorScheme.primary.withOpacity(0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(

@@ -5,7 +5,7 @@ import 'package:moto_comm_app_1/core/di/injection_container.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 
 // 🔥 BUTON IMPORT (Core'dan çekiyoruz)
-import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
+import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
 
 // Parçaları import ediyoruz
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/account/account_section.dart';

@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 
 // 🔥 BUTON IMPORT
-import 'package:moto_comm_app_1/core/widgets/app_button_frosted.dart';
+import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
 
 class CommunitiesPage extends StatelessWidget {
   const CommunitiesPage({super.key});
@@ -41,7 +41,7 @@ class CommunitiesPage extends StatelessWidget {
                   ),
 
                   // SAĞ: Dengelemek için boşluk (44px)
-                  const SizedBox(width: 44), 
+                  const SizedBox(width: 44),
                 ],
               ),
             ),
@@ -56,16 +56,16 @@ class CommunitiesPage extends StatelessWidget {
                   children: [
                     // İkonu "Ayarlar" yerine "Topluluk/Grup" ikonu yaptım
                     Icon(
-                      Icons.groups_rounded, 
-                      size: 80, 
-                      color: theme.colorScheme.primary.withValues(alpha: 0.5)
+                      Icons.groups_rounded,
+                      size: 80,
+                      color: theme.colorScheme.primary.withOpacity(0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       "Topluluklar Sayfası Hazırlanıyor...",
                       style: AppTextStyles.h3.copyWith(
-                        fontSize: 18, 
-                        color: theme.colorScheme.onSurface
+                        fontSize: 18,
+                        color: theme.colorScheme.onSurface,
                       ),
                       textAlign: TextAlign.center,
                     ),
