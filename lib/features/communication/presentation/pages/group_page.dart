@@ -38,6 +38,13 @@ class _GroupPageState extends State<GroupPage> {
     super.initState();
     if (widget.data.id != null && widget.data.id! > 0) {
       _loadSessionDetails();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Hata: Geçersiz Grup ID')));
+        context.pop();
+      });
     }
   }
 
@@ -209,7 +216,7 @@ class _GroupPageState extends State<GroupPage> {
                                   onTap: () {
                                     context.push(
                                       '/communication/invite',
-                                      extra: widget.data,
+                                      extra: widget.data.id,
                                     );
                                   },
                                 ),
@@ -335,62 +342,64 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   Widget _buildParticipantList() {
-    if (_sessionDetails != null) {
-      final participants = _sessionDetails!.participants
-          .where((p) => p.isJoined || p.hasAccepted)
-          .toList();
-
-      if (participants.isEmpty) return _buildEmptyState();
-
-      return Column(
-        children: participants
-            .map(
-              (p) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: RiderCard(
-                  firstName: p.firstName ?? 'Rider',
-                  lastName: p.lastName ?? '',
-                  profileImageUrl:
-                      p.profileImage ??
-                      'https://i.pravatar.cc/150?u=${p.userId}',
-                  batteryLevel: 90,
-                  signalLevel: 100,
-                  isMicOn: true,
-                  isSpeaking: p.isJoined,
-                ),
-              ),
-            )
-            .toList(),
-      );
-    }
-
     return BlocBuilder<GroupRideBloc, GroupRideState>(
-      builder: (context, state) {
-        List<GroupRideParticipantEntity> participants = [];
-        if (state is GroupRideParticipantsLoaded) {
-          participants = state.participants;
+      builder: (context, rideState) {
+        // 1. Veritabanı (Tüm Üyeler) Listesi
+        List<GroupRideParticipantEntity> allMembers = [];
+        if (rideState is GroupRideParticipantsLoaded) {
+          allMembers = rideState.participants;
         }
 
-        if (participants.isEmpty) return _buildEmptyState();
+        // 2. Aktif (Canlı) Konuşmacılar
+        // _sessionDetails'den gelenler.
+        final participants =
+            _sessionDetails?.participants
+                .where((p) => p.isJoined || p.hasAccepted)
+                .toList() ??
+            [];
+
+        // 3. Ayrıştırma Mantığı
+        // Aktif listede olanların ID'lerini bir Set'e alalım
+        final activeUserIds = participants.map((p) => p.userId).toSet();
+
+        // Tek Liste Modeli: DB'deki herkesi göster, ama aktif olanları işaretle.
+        // Sıralama: Önce Aktifler, Sonra Çevrimdışılar
+        final combinedList = [...allMembers];
+        combinedList.sort((a, b) {
+          final isAOnline = activeUserIds.contains(a.userId);
+          final isBOnline = activeUserIds.contains(b.userId);
+          if (isAOnline && !isBOnline) return -1;
+          if (!isAOnline && isBOnline) return 1;
+          return 0; // İkisi de aynı durumdaysa değiştirme
+        });
+
+        if (combinedList.isEmpty) return _buildEmptyState();
 
         return Column(
-          children: participants
-              .map(
-                (p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: RiderCard(
-                    firstName: p.firstName,
-                    lastName: p.lastName,
-                    profileImageUrl:
-                        p.profilePictureUrl ?? 'https://i.pravatar.cc/150',
-                    batteryLevel: 100,
-                    signalLevel: 100,
-                    isMicOn: false,
-                    isSpeaking: false,
-                  ),
-                ),
-              )
-              .toList(),
+          children: combinedList.map((m) {
+            final isOnline = activeUserIds.contains(m.userId);
+            // Eğer online ise session'dan gelen veriyi (mic durumu vs) bulalım
+            final sessionData = isOnline
+                ? participants.firstWhere((p) => p.userId == m.userId)
+                : null;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: RiderCard(
+                firstName: m.firstName,
+                lastName: m.lastName,
+                profileImageUrl:
+                    m.profilePictureUrl ??
+                    'https://i.pravatar.cc/150?u=${m.userId}',
+                // Online ise onun datası, değilse varsayılan
+                batteryLevel: isOnline ? 90 : 0,
+                signalLevel: isOnline ? 100 : 0,
+                isMicOn: sessionData?.isJoined ?? false,
+                isSpeaking: sessionData?.isJoined ?? false,
+                isConnected: isOnline,
+              ),
+            );
+          }).toList(),
         );
       },
     );

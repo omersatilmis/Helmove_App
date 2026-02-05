@@ -173,6 +173,8 @@ import '../../features/communication/domain/usecases/join_group_ride_usecase.dar
 import '../../features/communication/domain/usecases/leave_group_ride_usecase.dart'
     as comm;
 import '../../features/communication/presentation/bloc/group_ride_bloc.dart';
+import '../services/signalr_service.dart';
+import '../services/message_signalr_service.dart';
 
 final sl = GetIt.instance;
 
@@ -495,6 +497,9 @@ Future<void> init() async {
   final dio = await NetworkModule.provideDio(sharedPreferences);
   sl.registerSingleton<Dio>(dio);
 
+  sl.registerLazySingleton(() => SignalRService(sl()));
+  sl.registerLazySingleton(() => MessageSignalRService(sl()));
+
   //! Auth Feature
   // API
   sl.registerLazySingleton(() => AuthApi(sl()));
@@ -642,6 +647,7 @@ Future<void> init() async {
       editMessage: sl(),
       deleteMessage: sl(),
       markConversationAsRead: sl(),
+      messageSignalRService: sl(),
     ),
   );
 
@@ -881,6 +887,7 @@ Future<void> init() async {
       getVoiceSessionDetailsUseCase: sl(),
       getMyVoiceSessionsUseCase: sl(),
       acceptVoiceSessionInvitationUseCase: sl(),
+      signalRService: sl(),
     ),
   );
 

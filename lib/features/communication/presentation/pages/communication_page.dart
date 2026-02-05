@@ -347,7 +347,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
       currentParticipants: activeSession.activeParticipantCount,
       maxParticipants: 10, // Varsayılan
       isActive: activeSession.isActive,
-      onOpenPressed: () {
+      onOpenPressed: () async {
         final data = GroupRideData(
           id: activeSession.id,
           groupName: activeSession.title,
@@ -356,7 +356,8 @@ class _CommunicationPageState extends State<CommunicationPage> {
           destination: "Bilinmiyor",
           ridingStyle: "Bilinmiyor",
         );
-        context.push('/communication/group-page', extra: data);
+        await context.push('/communication/group-page', extra: data);
+        _loadMySessions();
       },
       riderCards: participants.take(3).map((p) {
         return RiderCard(

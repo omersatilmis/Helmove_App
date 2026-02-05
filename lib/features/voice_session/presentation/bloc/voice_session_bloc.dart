@@ -6,6 +6,8 @@ import '../../domain/usecases/invite_to_voice_session_usecase.dart';
 import '../../domain/usecases/get_voice_session_details_usecase.dart';
 import '../../domain/usecases/get_my_voice_sessions_usecase.dart';
 import '../../domain/usecases/accept_voice_session_invitation_usecase.dart';
+import '../../../../core/services/signalr_service.dart';
+import '../../../../core/di/injection_container.dart'; // For accessing token if needed, or better, pass token to init
 import 'voice_session_event.dart';
 import 'voice_session_state.dart';
 
@@ -17,6 +19,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final GetVoiceSessionDetailsUseCase getVoiceSessionDetailsUseCase;
   final GetMyVoiceSessionsUseCase getMyVoiceSessionsUseCase;
   final AcceptVoiceSessionInvitationUseCase acceptVoiceSessionInvitationUseCase;
+  final SignalRService signalRService;
 
   VoiceSessionBloc({
     required this.createVoiceSessionUseCase,
@@ -26,7 +29,24 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.getVoiceSessionDetailsUseCase,
     required this.getMyVoiceSessionsUseCase,
     required this.acceptVoiceSessionInvitationUseCase,
+    required this.signalRService,
   }) : super(VoiceSessionInitial()) {
+    // Listen to SignalR events
+    signalRService.setOnUserJoinedRide((userId, rideId) {
+      if (!isClosed) {
+        add(VoiceSessionParticipantJoinedEvent(userId, roomId: rideId));
+      }
+    });
+
+    signalRService.setOnUserLeftRide((userId, rideId) {
+      if (!isClosed) {
+        add(VoiceSessionParticipantLeftEvent(userId, roomId: rideId));
+      }
+    });
+
+    // Initialize SignalR
+    signalRService.init();
+
     on<CreateVoiceSessionEvent>(_onCreateVoiceSession);
     on<JoinVoiceSessionEvent>(_onJoinVoiceSession);
     on<LeaveVoiceSessionEvent>(_onLeaveVoiceSession);
@@ -34,6 +54,38 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     on<GetVoiceSessionDetailsEvent>(_onGetVoiceSessionDetails);
     on<GetMyVoiceSessionsEvent>(_onGetMyVoiceSessions);
     on<AcceptVoiceSessionInviteEvent>(_onAcceptVoiceSessionInvite);
+    on<VoiceSessionParticipantJoinedEvent>((event, emit) {
+      // Refresh session details to get updated list
+      if (state is VoiceSessionDetailsLoaded) {
+        final currentSessionId =
+            (state as VoiceSessionDetailsLoaded).session.id;
+
+        // If we have roomId (from SignalR active context), check if it matches
+        if (event.roomId != null) {
+          if (event.roomId == currentSessionId.toString()) {
+            add(GetVoiceSessionDetailsEvent(currentSessionId));
+          }
+        } else {
+          // Fallback if no roomId provided (backward compatibility or error)
+          add(GetVoiceSessionDetailsEvent(currentSessionId));
+        }
+      }
+    });
+    on<VoiceSessionParticipantLeftEvent>((event, emit) {
+      if (state is VoiceSessionDetailsLoaded) {
+        final currentSessionId =
+            (state as VoiceSessionDetailsLoaded).session.id;
+
+        // If we have roomId (from SignalR active context), check if it matches
+        if (event.roomId != null) {
+          if (event.roomId == currentSessionId.toString()) {
+            add(GetVoiceSessionDetailsEvent(currentSessionId));
+          }
+        } else {
+          add(GetVoiceSessionDetailsEvent(currentSessionId));
+        }
+      }
+    });
   }
 
   Future<void> _onCreateVoiceSession(
@@ -43,6 +95,10 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     emit(VoiceSessionLoading());
     try {
       final sessionId = await createVoiceSessionUseCase(event.request);
+
+      // Join SignalR Group
+      await signalRService.joinRideGroup(sessionId.toString());
+
       emit(VoiceSessionCreated(sessionId));
     } catch (e) {
       emit(VoiceSessionError(e.toString()));
@@ -56,6 +112,10 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     emit(VoiceSessionLoading());
     try {
       await joinVoiceSessionUseCase(event.sessionId);
+
+      // Join SignalR Group
+      await signalRService.joinRideGroup(event.sessionId.toString());
+
       emit(const VoiceSessionActionSuccess("Odaya başarıyla katılındı"));
     } catch (e) {
       emit(VoiceSessionError(e.toString()));
@@ -69,6 +129,10 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     emit(VoiceSessionLoading());
     try {
       await leaveVoiceSessionUseCase(event.sessionId);
+
+      // Leave SignalR Group
+      await signalRService.leaveRideGroup(event.sessionId.toString());
+
       emit(VoiceSessionLeft(event.sessionId));
     } catch (e) {
       emit(VoiceSessionError(e.toString()));

@@ -70,3 +70,19 @@ class AcceptVoiceSessionInviteEvent extends VoiceSessionEvent {
   @override
   List<Object?> get props => [sessionId];
 }
+
+class VoiceSessionParticipantJoinedEvent extends VoiceSessionEvent {
+  final String userId;
+  final String? roomId;
+  const VoiceSessionParticipantJoinedEvent(this.userId, {this.roomId});
+  @override
+  List<Object?> get props => [userId, roomId];
+}
+
+class VoiceSessionParticipantLeftEvent extends VoiceSessionEvent {
+  final String userId;
+  final String? roomId;
+  const VoiceSessionParticipantLeftEvent(this.userId, {this.roomId});
+  @override
+  List<Object?> get props => [userId, roomId];
+}

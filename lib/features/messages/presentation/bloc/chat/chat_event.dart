@@ -53,3 +53,12 @@ class MarkAsRead extends ChatEvent {
   @override
   List<Object> get props => [otherUserId];
 }
+
+class ReceiveMessageEvent extends ChatEvent {
+  final dynamic messageData;
+
+  const ReceiveMessageEvent(this.messageData);
+
+  @override
+  List<Object> get props => [messageData];
+}

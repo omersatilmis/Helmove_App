@@ -14,6 +14,7 @@ import '../../../../core/theme/text_styles.dart';
 import '../../../friendship/domain/entities/friend_user_entity.dart';
 import '../../domain/entities/group_ride_data.dart';
 import '../../../voice_session/data/dto/create_voice_session_request_dto.dart';
+import '../../../voice_session/data/dto/invite_users_request_dto.dart';
 
 // --- BLOCS ---
 import '../../../friendship/presentation/bloc/list/friendship_list_bloc.dart';
@@ -293,6 +294,26 @@ class _InviteViewState extends State<_InviteView> {
                             context.read<VoiceSessionBloc>().add(
                               CreateVoiceSessionEvent(request),
                             );
+                          } else if (widget.sessionId != null &&
+                              _selectedRiders.isNotEmpty) {
+                            debugPrint(
+                              "📨 [VoiceSession] Davet event'i gönderiliyor. SessionID: ${widget.sessionId}",
+                            );
+                            final request = InviteUsersRequestDto(
+                              userIds: _selectedRiders
+                                  .map((e) => e.userId)
+                                  .toList(),
+                            );
+                            context.read<VoiceSessionBloc>().add(
+                              InviteUsersEvent(widget.sessionId!, request),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Davetler gönderildi!"),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                            context.pop();
                           } else {
                             debugPrint(
                               "🔙 [GroupRide] Geri dönülüyor: ${_selectedRiders.length} kişi",

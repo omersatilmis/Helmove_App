@@ -11,6 +11,7 @@ class RiderCard extends StatelessWidget {
   final bool isMicOn;
   final bool isSpeaking;
   final bool isFriend;
+  final bool isConnected; // Intercom ses bağlantısını temsil eder
   final VoidCallback? onMicPressed;
   final VoidCallback? onFriendshipPressed;
   final VoidCallback? onMenuPressed;
@@ -25,6 +26,7 @@ class RiderCard extends StatelessWidget {
     this.isMicOn = false,
     this.isSpeaking = false,
     this.isFriend = false,
+    this.isConnected = true, // Varsayılan bağlı kabul edelim
     this.onMicPressed,
     this.onFriendshipPressed,
     this.onMenuPressed,
@@ -50,91 +52,96 @@ class RiderCard extends StatelessWidget {
         child: Padding(
           // KENAR BOŞLUKLARI AZALTILDI (16 -> 8)
           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // 1. SOL: Avatar (En sola yaslı)
-              _buildAvatarSection(colorScheme),
+          child: Opacity(
+            opacity: isConnected ? 1.0 : 0.5,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 1. SOL: Avatar (En sola yaslı)
+                _buildAvatarSection(colorScheme),
 
-              // Avatar ile yazı arası boşluk (biraz daha sıkı)
-              const SizedBox(width: 10),
+                // Avatar ile yazı arası boşluk (biraz daha sıkı)
+                const SizedBox(width: 10),
 
-              // 2. ORTA: İsim ve İstatistikler (Aradaki tüm boşluğu kaplar)
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "$firstName $lastName",
-                      style: AppTextStyles.medium.copyWith(
-                        color: colorScheme.onSurface,
-                        //fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        letterSpacing: 0.3,
+                // 2. ORTA: İsim ve İstatistikler (Aradaki tüm boşluğu kaplar)
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "$firstName $lastName",
+                        style: AppTextStyles.medium.copyWith(
+                          color: colorScheme.onSurface,
+                          //fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          letterSpacing: 0.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 4), // Dikey boşluk azaltıldı
+                      Row(
+                        children: [
+                          _buildMinimalInfo(
+                            Icons.signal_cellular_alt,
+                            isConnected ? "$signalLevel%" : "Bağlantı Yok",
+                            isConnected
+                                ? Colors.greenAccent
+                                : colorScheme.error,
+                            theme,
+                          ),
+                          const SizedBox(width: 10), // Yatay boşluk azaltıldı
+                          _buildMinimalInfo(
+                            Icons.battery_std,
+                            "$batteryLevel%",
+                            colorScheme.onSurfaceVariant.withOpacity(0.7),
+                            theme,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // BURADAKİ SIZEDBOX KALDIRILDI, Expanded direkt itecek.
+
+                // 3. SAĞ: Aksiyonlar (En sağa yaslı)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildActionButton(
+                      icon: isMicOn ? Icons.mic : Icons.mic_off,
+                      color: isMicOn
+                          ? Colors.greenAccent
+                          : colorScheme.error.withOpacity(0.8),
+                      onTap: onMicPressed,
+                      tooltip: "Mikrofon",
                     ),
-                    const SizedBox(height: 4), // Dikey boşluk azaltıldı
-                    Row(
-                      children: [
-                        _buildMinimalInfo(
-                          Icons.signal_cellular_alt,
-                          "$signalLevel%",
-                          Colors.greenAccent,
-                          theme,
-                        ),
-                        const SizedBox(width: 10), // Yatay boşluk azaltıldı
-                        _buildMinimalInfo(
-                          Icons.battery_std,
-                          "$batteryLevel%",
-                          colorScheme.onSurfaceVariant.withOpacity(0.7),
-                          theme,
-                        ),
-                      ],
+
+                    const SizedBox(width: 8),
+
+                    _buildActionButton(
+                      icon: isFriend ? Icons.check_circle : Icons.person_add,
+                      color: isFriend
+                          ? Colors.greenAccent
+                          : colorScheme.onSurfaceVariant,
+                      onTap: onFriendshipPressed,
+                      tooltip: "Arkadaşlık",
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    _buildActionButton(
+                      icon: Icons.more_vert,
+                      color: colorScheme.onSurfaceVariant,
+                      onTap: onMenuPressed,
+                      tooltip: "Menü",
                     ),
                   ],
                 ),
-              ),
-
-              // BURADAKİ SIZEDBOX KALDIRILDI, Expanded direkt itecek.
-
-              // 3. SAĞ: Aksiyonlar (En sağa yaslı)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildActionButton(
-                    icon: isMicOn ? Icons.mic : Icons.mic_off,
-                    color: isMicOn
-                        ? Colors.greenAccent
-                        : colorScheme.error.withOpacity(0.8),
-                    onTap: onMicPressed,
-                    tooltip: "Mikrofon",
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  _buildActionButton(
-                    icon: isFriend ? Icons.check_circle : Icons.person_add,
-                    color: isFriend
-                        ? Colors.greenAccent
-                        : colorScheme.onSurfaceVariant,
-                    onTap: onFriendshipPressed,
-                    tooltip: "Arkadaşlık",
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  _buildActionButton(
-                    icon: Icons.more_vert,
-                    color: colorScheme.onSurfaceVariant,
-                    onTap: onMenuPressed,
-                    tooltip: "Menü",
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
