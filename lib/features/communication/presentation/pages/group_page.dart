@@ -7,7 +7,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 
-import '../../domain/entities/group_ride_data.dart';
+// import '../../domain/entities/group_ride_data.dart';
 import '../widgets/rider_card.dart';
 
 // --- BACKEND BLOC & ENTITY İMPORTLARI ---
@@ -15,9 +15,9 @@ import '../../../voice_session/domain/entities/voice_session_entity.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
-import '../bloc/group_ride_bloc.dart';
-import '../bloc/group_ride_event.dart';
-import '../bloc/group_ride_state.dart';
+// import '../bloc/group_ride_bloc.dart';
+// import '../bloc/group_ride_event.dart';
+// import '../bloc/group_ride_state.dart';
 
 // ... existing imports ...
 
@@ -25,7 +25,7 @@ import '../bloc/group_ride_state.dart';
 import '../../../../features/auth/data/datasources/auth_local_data_source.dart';
 
 class GroupPage extends StatefulWidget {
-  final GroupRideData data;
+  final dynamic data;
 
   const GroupPage({super.key, required this.data});
 
@@ -43,7 +43,8 @@ class _GroupPageState extends State<GroupPage> {
   void initState() {
     super.initState();
     _loadCurrentUser();
-    if (widget.data.id != null && widget.data.id! > 0) {
+    final id = widget.data is Map ? widget.data["id"] : widget.data.id;
+    if (id != null && id > 0) {
       _loadSessionDetails();
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -66,14 +67,10 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   void _loadSessionDetails() {
+    final id = widget.data is Map ? widget.data["id"] : widget.data.id;
     setState(() => _isLoadingSession = true);
-    context.read<VoiceSessionBloc>().add(
-      GetVoiceSessionDetailsEvent(widget.data.id!),
-    );
-    // Grup turlarının üyelerini (DB'deki herkes) yükle
-    context.read<GroupRideBloc>().add(
-      LoadGroupRideParticipants(widget.data.id!),
-    );
+    context.read<VoiceSessionBloc>().add(GetVoiceSessionDetailsEvent(id));
+    // GroupRideBloc call removed
   }
 
   // --- UI ACTIONS ---
@@ -173,15 +170,15 @@ class _GroupPageState extends State<GroupPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              if (widget.data.id != null) {
+              final id = widget.data is Map
+                  ? widget.data["id"]
+                  : widget.data.id;
+              if (id != null) {
                 // Konuşmadan ayrılarak Grup turundan da ayrıl
                 context.read<VoiceSessionBloc>().add(
-                  LeaveVoiceSessionEvent(widget.data.id!),
+                  LeaveVoiceSessionEvent(id),
                 );
-                // Backend attendance için ayrılma isteği
-                context.read<GroupRideBloc>().add(
-                  LeaveGroupRide(widget.data.id!),
-                );
+                // GroupRideBloc call removed
               } else {
                 context.pop();
               }
@@ -253,37 +250,7 @@ class _GroupPageState extends State<GroupPage> {
             }
           },
         ),
-        BlocListener<GroupRideBloc, GroupRideState>(
-          listener: (context, state) {
-            if (state is GroupRideDeleted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Grup turu başarıyla silindi.'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              Navigator.of(context).pop(); // Sayfadan çık
-            } else if (state is GroupRideUpdated) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Grup turu güncellendi.'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              // Detayları yenile
-              if (widget.data.id != null) {
-                _loadSessionDetails();
-              }
-            } else if (state is GroupRideError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Hata: ${state.message}'),
-                  backgroundColor: colorScheme.error,
-                ),
-              );
-            }
-          },
-        ),
+        // GroupRideBloc Listener removed
       ],
       child: Container(
         decoration: BoxDecoration(
@@ -315,21 +282,28 @@ class _GroupPageState extends State<GroupPage> {
                             _buildMetaItem(
                               context,
                               Icons.map,
-                              "Rota: ${widget.data.destination}",
+                              "Rota: ${widget.data is Map ? widget.data["destination"] : widget.data.destination}",
                             ),
                             _buildDivider(context),
                             _buildMetaItem(
                               context,
                               Icons.bolt,
-                              widget.data.ridingStyle,
+                              widget.data is Map
+                                  ? widget.data["ridingStyle"]
+                                  : widget.data.ridingStyle,
                             ),
                             _buildDivider(context),
                             _buildMetaItem(
                               context,
-                              widget.data.privacy == "Public"
+                              (widget.data is Map
+                                          ? widget.data["privacy"]
+                                          : widget.data.privacy) ==
+                                      "Public"
                                   ? Icons.public
                                   : Icons.lock,
-                              widget.data.privacy,
+                              widget.data is Map
+                                  ? widget.data["privacy"]
+                                  : widget.data.privacy,
                             ),
                           ],
                         ),
@@ -386,7 +360,13 @@ class _GroupPageState extends State<GroupPage> {
                                     icon: Icons.settings,
                                     size: 40,
                                     iconSize: 20,
-                                    onTap: _showEditDialog,
+                                    onTap: () {
+                                      // Settings page might also need cleanup, but for now just dummy navigation
+                                      context.push(
+                                        '/communication/group-settings',
+                                        extra: {'data': widget.data},
+                                      );
+                                    },
                                   ),
                                 ],
                               ],
@@ -420,16 +400,7 @@ class _GroupPageState extends State<GroupPage> {
     );
   }
 
-  void _showEditDialog() {
-    // Mevcut Bloc'u yakala
-    final groupRideBloc = context.read<GroupRideBloc>();
-
-    // Yeni sayfaya git
-    context.push(
-      '/communication/group-settings',
-      extra: {'data': widget.data, 'bloc': groupRideBloc},
-    );
-  }
+  // _showEditDialog removed and logic moved inline
 
   // --- WIDGET PARÇALARI ---
 
@@ -448,7 +419,10 @@ class _GroupPageState extends State<GroupPage> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              _sessionDetails?.title ?? widget.data.groupName,
+              _sessionDetails?.title ??
+                  (widget.data is Map
+                      ? widget.data["groupName"]
+                      : widget.data.groupName),
               style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface),
               textAlign: TextAlign.right,
             ),
@@ -457,7 +431,9 @@ class _GroupPageState extends State<GroupPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.data.sessionDuration,
+                  widget.data is Map
+                      ? (widget.data["sessionDuration"] ?? "00:00")
+                      : widget.data.sessionDuration,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -471,7 +447,7 @@ class _GroupPageState extends State<GroupPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  "${_sessionDetails?.activeParticipantCount ?? widget.data.currentParticipants} / ${widget.data.maxParticipants}",
+                  "${_sessionDetails?.activeParticipantCount ?? (widget.data is Map ? widget.data["currentParticipants"] : widget.data.currentParticipants)} / ${widget.data is Map ? widget.data["maxParticipants"] : widget.data.maxParticipants}",
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,

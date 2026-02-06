@@ -7,7 +7,7 @@ import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_input_field.dart';
 // Merkezi Butonlar (İkon ve Text için)
 import '../../../../core/widgets/app_frosted_button.dart';
-import '../../domain/entities/group_ride_data.dart';
+// import '../../domain/entities/group_ride_data.dart';
 
 class CreateGroupRide extends StatefulWidget {
   const CreateGroupRide({super.key});
@@ -62,13 +62,13 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     final finalGroupName = groupName.isNotEmpty ? groupName : "Weekend Riders";
     final maxParticipants = participantOptions[selectedMaxParticipantsKey] ?? 6;
 
-    final data = GroupRideData(
-      groupName: finalGroupName,
-      maxParticipants: maxParticipants,
-      privacy: selectedPrivacy,
-      destination: _destinationController.text.trim(),
-      ridingStyle: _ridingStyleController.text.trim(),
-    );
+    final data = {
+      'groupName': finalGroupName,
+      'maxParticipants': maxParticipants,
+      'privacy': selectedPrivacy,
+      'destination': _destinationController.text.trim(),
+      'ridingStyle': _ridingStyleController.text.trim(),
+    };
 
     context.push('/communication/invite', extra: data);
   }

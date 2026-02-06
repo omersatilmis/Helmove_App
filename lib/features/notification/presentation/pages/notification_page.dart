@@ -13,7 +13,7 @@ import '../bloc/notifications_state.dart';
 import '../../domain/entities/notification_entity.dart';
 import 'dart:convert';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/features/communication/domain/entities/group_ride_data.dart';
+// import 'package:moto_comm_app_1/features/communication/domain/entities/group_ride_data.dart';
 import 'package:moto_comm_app_1/features/voice_session/domain/repositories/voice_session_repository.dart';
 
 class NotificationsPage extends StatelessWidget {
@@ -395,14 +395,14 @@ class _NotificationItemModern extends StatelessWidget {
 
     // GroupRideData bekliyor sayfa. Oraya sahte bir data ile gidip ID'yi pasliyoruz.
     // GroupPage icinde ID varsa load et mantigini kurmustuk.
-    final dummyData = GroupRideData(
-      id: sessionId,
-      groupName: "${notification.senderUsername ?? 'Arkadaş'} Daveti",
-      maxParticipants: 10,
-      privacy: "Private",
-      destination: "Bilinmiyor",
-      ridingStyle: "Bilinmiyor",
-    );
+    final dummyData = {
+      'id': sessionId,
+      'groupName': "${notification.senderUsername ?? 'Arkadaş'} Daveti",
+      'maxParticipants': 10,
+      'privacy': "Private",
+      'destination': "Bilinmiyor",
+      'ridingStyle': "Bilinmiyor",
+    };
 
     if (!context.mounted) return;
 

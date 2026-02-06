@@ -7,10 +7,10 @@ import '../../../voice_session/domain/entities/voice_session_entity.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
-import '../../domain/entities/group_ride_data.dart';
-import '../bloc/group_ride_bloc.dart';
-import '../bloc/group_ride_event.dart';
-import '../bloc/group_ride_state.dart';
+// import '../../domain/entities/group_ride_data.dart';
+// import '../bloc/group_ride_bloc.dart';
+// import '../bloc/group_ride_event.dart';
+// import '../bloc/group_ride_state.dart';
 import '../widgets/active_group.dart';
 import '../widgets/nearby_group.dart';
 import '../widgets/rider_card.dart';
@@ -240,41 +240,32 @@ class _CommunicationPageState extends State<CommunicationPage> {
 
                     const SizedBox(height: 16),
 
-                    // --- 5. NEARBY GROUPS LİSTESİ (Backend'den yüklenir) ---
-                    BlocBuilder<GroupRideBloc, GroupRideState>(
-                      builder: (context, state) {
-                        if (state is NearbyGroupRidesLoaded) {
-                          return Column(
-                            children: state.rides.map((ride) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: NearbyGroupCard(
-                                  groupName: ride.title,
-                                  distance:
-                                      "${(ride.estimatedDistanceKm ?? 0).toStringAsFixed(1)} km",
-                                  currentParticipants: ride.currentParticipants,
-                                  maxParticipants: ride.maxParticipants,
-                                  signalStatus: "Strong",
-                                  onJoinPressed: () {
-                                    context.read<GroupRideBloc>().add(
-                                      JoinGroupRide(ride.id),
-                                    );
-                                  },
-                                ),
-                              );
-                            }).toList(),
-                          );
-                        }
-                        // Varsayılan durumda bilgi mesajı
-                        return Center(
-                          child: Text(
-                            'Yakında grup bulunamadı',
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
+                    // --- 5. NEARBY GROUPS LİSTESİ (Dummy UI) ---
+                    Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: NearbyGroupCard(
+                            groupName: "Weekend Riders",
+                            distance: "1.2 km",
+                            currentParticipants: 3,
+                            maxParticipants: 10,
+                            signalStatus: "Strong",
+                            onJoinPressed: () {},
                           ),
-                        );
-                      },
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: NearbyGroupCard(
+                            groupName: "Mountain Tour",
+                            distance: "5.4 km",
+                            currentParticipants: 8,
+                            maxParticipants: 12,
+                            signalStatus: "Good",
+                            onJoinPressed: () {},
+                          ),
+                        ),
+                      ],
                     ),
                     // --- 6. BOTTOM PADDING (for extendBody: true) ---
                     const SizedBox(height: 100),
@@ -360,14 +351,15 @@ class _CommunicationPageState extends State<CommunicationPage> {
       maxParticipants: 10, // Varsayılan
       isActive: activeSession.isActive,
       onOpenPressed: () async {
-        final data = GroupRideData(
-          id: activeSession.id,
-          groupName: activeSession.title,
-          maxParticipants: 10,
-          privacy: "Private",
-          destination: "Bilinmiyor",
-          ridingStyle: "Bilinmiyor",
-        );
+        // Reduced to dummy navigation data
+        final data = {
+          "id": activeSession.id,
+          "groupName": activeSession.title,
+          "maxParticipants": 10,
+          "privacy": "Private",
+          "destination": "Bilinmiyor",
+          "ridingStyle": "Bilinmiyor",
+        };
         await context.push('/communication/group-page', extra: data);
         _loadMySessions();
       },

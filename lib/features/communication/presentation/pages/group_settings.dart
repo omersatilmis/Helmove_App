@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
-import '../../domain/entities/group_ride_data.dart';
-import '../bloc/group_ride_bloc.dart';
-import '../bloc/group_ride_event.dart';
-import '../bloc/group_ride_state.dart';
+// import '../../domain/entities/group_ride_data.dart';
+// import '../bloc/group_ride_bloc.dart';
+// import '../bloc/group_ride_event.dart';
+// import '../bloc/group_ride_state.dart';
 
 class GroupSettings extends StatefulWidget {
-  final GroupRideData data;
+  final dynamic data;
   final ScrollController? scrollController;
 
   const GroupSettings({super.key, required this.data, this.scrollController});
@@ -41,18 +41,29 @@ class _GroupSettingsState extends State<GroupSettings> {
   @override
   void initState() {
     super.initState();
-    _groupNameController = TextEditingController(text: widget.data.groupName);
-    _destinationController = TextEditingController(
-      text: widget.data.destination,
-    );
-    _ridingStyleController = TextEditingController(
-      text: widget.data.ridingStyle,
-    );
-    selectedPrivacy = widget.data.privacy;
+    final groupName = widget.data is Map
+        ? widget.data["groupName"]
+        : widget.data.groupName;
+    final destination = widget.data is Map
+        ? widget.data["destination"]
+        : widget.data.destination;
+    final ridingStyle = widget.data is Map
+        ? widget.data["ridingStyle"]
+        : widget.data.ridingStyle;
+    final privacy = widget.data is Map
+        ? widget.data["privacy"]
+        : widget.data.privacy;
+    final maxParticipants = widget.data is Map
+        ? widget.data["maxParticipants"]
+        : widget.data.maxParticipants;
 
-    final currentMax = widget.data.maxParticipants;
+    _groupNameController = TextEditingController(text: groupName);
+    _destinationController = TextEditingController(text: destination);
+    _ridingStyleController = TextEditingController(text: ridingStyle);
+    selectedPrivacy = privacy ?? "Private";
+
     final matchingKey = participantOptions.keys.firstWhere(
-      (k) => participantOptions[k] == currentMax,
+      (k) => participantOptions[k] == maxParticipants,
       orElse: () => '6 riders',
     );
     selectedMaxParticipantsKey = matchingKey;
@@ -69,41 +80,21 @@ class _GroupSettingsState extends State<GroupSettings> {
   // Güncelleme İşlemi
   void _onUpdate() {
     FocusManager.instance.primaryFocus?.unfocus();
-
-    if (widget.data.id == null) return;
-
-    // Validasyon
-    if (_groupNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Grup adı boş olamaz"),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      return;
-    }
-
-    final groupName = _groupNameController.text.trim();
-    final finalGroupName = groupName; // Zaten boş değil kontrolü yaptık
-    final maxParticipants = participantOptions[selectedMaxParticipantsKey] ?? 6;
-
-    final updatePayload = {
-      'title': finalGroupName,
-      'destination': _destinationController.text.trim(),
-      'description': _ridingStyleController.text.trim(),
-      'isPublic': selectedPrivacy == 'Public',
-      'maxParticipants': maxParticipants,
-    };
-
-    context.read<GroupRideBloc>().add(
-      UpdateGroupRide(widget.data.id!, updatePayload),
+    // Logic temporarily disabled
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Mock Update: Ayarlar güncellendi (Backend kapalı)"),
+      ),
     );
   }
 
   void _onDelete() {
-    if (widget.data.id != null) {
-      context.read<GroupRideBloc>().add(DeleteGroupRide(widget.data.id!));
-    }
+    // Logic temporarily disabled
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Mock Delete: Oturum sonlandırıldı (Backend kapalı)"),
+      ),
+    );
   }
 
   @override
@@ -136,35 +127,9 @@ class _GroupSettingsState extends State<GroupSettings> {
       fontSize: 13,
     );
 
-    return BlocConsumer<GroupRideBloc, GroupRideState>(
-      listener: (context, state) {
-        if (state is GroupRideUpdated) {
-          context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text("Grup başarıyla güncellendi"),
-              backgroundColor: colorScheme.primary,
-            ),
-          );
-        } else if (state is GroupRideDeleted) {
-          context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text("Grup oturumu sonlandırıldı"),
-              backgroundColor: colorScheme.secondary,
-            ),
-          );
-        } else if (state is GroupRideError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: colorScheme.error,
-            ),
-          );
-        }
-      },
-      builder: (context, state) {
-        final isLoading = state is GroupRideLoading;
+    return Builder(
+      builder: (context) {
+        final isLoading = false;
 
         return Scaffold(
           backgroundColor: Colors.transparent,

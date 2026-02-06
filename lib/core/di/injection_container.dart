@@ -159,27 +159,37 @@ import '../../features/voice_session/domain/usecases/get_voice_session_details_u
 import '../../features/voice_session/domain/usecases/get_my_voice_sessions_usecase.dart';
 import '../../features/voice_session/domain/usecases/kick_user_usecase.dart';
 import '../../features/voice_session/domain/usecases/mute_user_usecase.dart';
+// Status Management Feature
+import '../../features/status_management/data/api/status_api.dart';
+import '../../features/status_management/data/datasources/status_remote_data_source.dart';
+import '../../features/status_management/data/repositories/status_repository_impl.dart';
+import '../../features/status_management/domain/repositories/status_repository.dart';
+import '../../features/status_management/domain/usecases/start_ride_usecase.dart';
+import '../../features/status_management/domain/usecases/complete_ride_usecase.dart';
+import '../../features/status_management/domain/usecases/cancel_ride_usecase.dart';
+import '../../features/status_management/domain/usecases/postpone_ride_usecase.dart';
+
+// Group Ride Feature
+import '../../features/group_ride/data/api/group_ride_api.dart';
+import '../../features/group_ride/data/datasources/group_ride_remote_data_source.dart';
+import '../../features/group_ride/data/repositories/group_ride_repository_impl.dart';
+import '../../features/group_ride/domain/repositories/group_ride_repository.dart';
+import '../../features/group_ride/domain/usecases/create_group_ride_usecase.dart';
+import '../../features/group_ride/domain/usecases/get_active_group_rides_usecase.dart';
+import '../../features/group_ride/domain/usecases/get_group_ride_by_id_usecase.dart';
+import '../../features/group_ride/domain/usecases/update_group_ride_usecase.dart';
+import '../../features/group_ride/domain/usecases/delete_group_ride_usecase.dart';
+
+// Call Feature
+import '../../features/call/data/api/call_api.dart';
+import '../../features/call/data/datasources/call_remote_data_source.dart';
+import '../../features/call/data/repositories/call_repository_impl.dart';
+import '../../features/call/domain/repositories/call_repository.dart';
+import '../../features/call/domain/usecases/call_usecases.dart';
+
 import '../../features/voice_session/domain/usecases/transfer_host_usecase.dart';
 import '../../features/voice_session/presentation/bloc/voice_session_bloc.dart';
 
-// GroupRide Feature (Communication)
-import '../../features/communication/data/api/group_ride_api.dart';
-import '../../features/communication/data/datasources/group_ride_data_source.dart';
-import '../../features/communication/data/repositories/group_ride_repository_impl.dart';
-import '../../features/communication/domain/repositories/group_ride_repository.dart';
-import '../../features/communication/domain/usecases/get_my_group_rides_usecase.dart';
-import '../../features/communication/domain/usecases/get_nearby_group_rides_usecase.dart';
-import '../../features/communication/domain/usecases/get_group_ride_participants_usecase.dart';
-import '../../features/communication/domain/usecases/create_group_ride_usecase.dart';
-import '../../features/communication/domain/usecases/join_group_ride_usecase.dart'
-    as comm;
-import '../../features/communication/domain/usecases/leave_group_ride_usecase.dart'
-    as comm;
-import '../../features/communication/domain/usecases/update_group_ride_usecase.dart';
-import '../../features/communication/domain/usecases/delete_group_ride_usecase.dart';
-import '../../features/communication/domain/usecases/get_group_ride_by_id_usecase.dart';
-import '../../features/communication/domain/usecases/get_active_group_rides_usecase.dart';
-import '../../features/communication/presentation/bloc/group_ride_bloc.dart';
 import '../services/signalr_service.dart';
 import '../services/message_signalr_service.dart';
 
@@ -904,13 +914,48 @@ Future<void> init() async {
     ),
   );
 
-  //! GroupRide Feature (Communication)
+  // Bloc
+  sl.registerFactory(
+    () => VoiceSessionBloc(
+      createVoiceSessionUseCase: sl(),
+      joinVoiceSessionUseCase: sl(),
+      leaveVoiceSessionUseCase: sl(),
+      inviteToVoiceSessionUseCase: sl(),
+      getVoiceSessionDetailsUseCase: sl(),
+      getMyVoiceSessionsUseCase: sl(),
+      acceptVoiceSessionInvitationUseCase: sl(),
+      signalRService: sl(),
+      kickUserUseCase: sl(),
+      muteUserUseCase: sl(),
+      transferHostUseCase: sl(),
+    ),
+  );
+
+  //! Status Management Feature
+  // API
+  sl.registerLazySingleton(() => StatusApi(sl()));
+
+  // Data Sources
+  sl.registerLazySingleton<StatusRemoteDataSource>(
+    () => StatusRemoteDataSourceImpl(sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<StatusRepository>(() => StatusRepositoryImpl(sl()));
+
+  // UseCases
+  sl.registerFactory(() => StartRideUseCase(sl()));
+  sl.registerFactory(() => CompleteRideUseCase(sl()));
+  sl.registerFactory(() => CancelRideUseCase(sl()));
+  sl.registerFactory(() => PostponeRideUseCase(sl()));
+
+  //! Group Ride Feature
   // API
   sl.registerLazySingleton(() => GroupRideApi(sl()));
 
   // Data Sources
-  sl.registerLazySingleton<GroupRideDataSource>(
-    () => GroupRideDataSourceImpl(sl()),
+  sl.registerLazySingleton<GroupRideRemoteDataSource>(
+    () => GroupRideRemoteDataSourceImpl(sl()),
   );
 
   // Repository
@@ -919,30 +964,30 @@ Future<void> init() async {
   );
 
   // UseCases
-  sl.registerFactory(() => GetMyGroupRidesUseCase(sl()));
-  sl.registerFactory(() => GetNearbyGroupRidesUseCase(sl()));
-  sl.registerFactory(() => GetGroupRideParticipantsUseCase(sl()));
   sl.registerFactory(() => CreateGroupRideUseCase(sl()));
-  sl.registerFactory(() => comm.JoinGroupRideUseCase(sl()));
-  sl.registerFactory(() => comm.LeaveGroupRideUseCase(sl()));
+  sl.registerFactory(() => GetActiveGroupRidesUseCase(sl()));
+  sl.registerFactory(() => GetGroupRideByIdUseCase(sl()));
   sl.registerFactory(() => UpdateGroupRideUseCase(sl()));
   sl.registerFactory(() => DeleteGroupRideUseCase(sl()));
-  sl.registerFactory(() => GetGroupRideByIdUseCase(sl()));
-  sl.registerFactory(() => GetActiveGroupRidesUseCase(sl()));
 
-  // Bloc
-  sl.registerFactory(
-    () => GroupRideBloc(
-      getMyGroupRidesUseCase: sl(),
-      getNearbyGroupRidesUseCase: sl(),
-      getGroupRideParticipantsUseCase: sl(),
-      createGroupRideUseCase: sl(),
-      joinGroupRideUseCase: sl(),
-      leaveGroupRideUseCase: sl(),
-      updateGroupRideUseCase: sl(),
-      deleteGroupRideUseCase: sl(),
-      getGroupRideByIdUseCase: sl(),
-      getActiveGroupRidesUseCase: sl(),
-    ),
+  //! Call Feature
+  // API
+  sl.registerLazySingleton(() => CallApi(sl()));
+
+  // Data Sources
+  sl.registerLazySingleton<CallRemoteDataSource>(
+    () => CallRemoteDataSourceImpl(sl()),
   );
+
+  // Repository
+  sl.registerLazySingleton<CallRepository>(() => CallRepositoryImpl(sl()));
+
+  // UseCases
+  sl.registerFactory(() => SendCallRequestUseCase(sl()));
+  sl.registerFactory(() => AcceptCallUseCase(sl()));
+  sl.registerFactory(() => RejectCallUseCase(sl()));
+  sl.registerFactory(() => EndCallUseCase(sl()));
+  sl.registerFactory(() => GetOnlineUsersUseCase(sl()));
+  sl.registerFactory(() => CheckUserOnlineStatusUseCase(sl()));
+  sl.registerFactory(() => GetPendingCallsUseCase(sl()));
 }

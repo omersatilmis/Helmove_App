@@ -11,7 +11,6 @@ import '../../../../core/theme/text_styles.dart';
 
 // --- DOMAIN & ENTITIES ---
 import '../../../friendship/domain/entities/friend_user_entity.dart';
-import '../../domain/entities/group_ride_data.dart';
 import '../../../voice_session/data/dto/create_voice_session_request_dto.dart';
 import '../../../voice_session/data/dto/invite_users_request_dto.dart';
 
@@ -25,15 +24,14 @@ import '../../../discover/presentation/bloc/discover_state.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
-import '../bloc/group_ride_bloc.dart';
-import '../bloc/group_ride_state.dart';
 
 // --- LOCAL WIDGETS ---
 import '../widgets/invite_rider_card.dart';
 
 class InvitePage extends StatelessWidget {
   final bool isFromCreateGroup;
-  final GroupRideData? groupData;
+  final dynamic
+  groupData; // Changed to dynamic to preserve UI without GroupRideData entity
   final int? sessionId; // Mevcut odaya davet için
 
   const InvitePage({
@@ -52,7 +50,6 @@ class InvitePage extends StatelessWidget {
         ),
         BlocProvider(create: (_) => sl<DiscoverBloc>()),
         BlocProvider(create: (_) => sl<VoiceSessionBloc>()),
-        BlocProvider(create: (_) => sl<GroupRideBloc>()),
       ],
       child: _InviteView(
         isFromCreateGroup: isFromCreateGroup,
@@ -65,7 +62,7 @@ class InvitePage extends StatelessWidget {
 
 class _InviteView extends StatefulWidget {
   final bool isFromCreateGroup;
-  final GroupRideData? groupData;
+  final dynamic groupData;
   final int? sessionId;
 
   const _InviteView({
@@ -127,44 +124,6 @@ class _InviteViewState extends State<_InviteView> {
               );
               // VoiceSession başarılı olunca belki bir şey yaparız ama
               // asıl yönlendirmeyi GroupRideBloc yapacak.
-            } else if (state is VoiceSessionError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Ses Hatası: ${state.message}"),
-                  backgroundColor: colorScheme.error,
-                ),
-              );
-            }
-          },
-        ),
-        BlocListener<GroupRideBloc, GroupRideState>(
-          listener: (context, state) {
-            if (state is GroupRideCreated) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Grup Turu başarıyla oluşturuldu!"),
-                ),
-              );
-
-              // Başarılı oluşturma sonrası sayfaya git
-              // Backend'den gelen ID'yi kullan
-              final createdRide = state.ride;
-              // Ride nesnesini GroupRideData'ya dönüştür veya direk kullan
-              // Ama GroupPage GroupRideData istiyor.
-              // Elimizdeki groupData'yı güncel ID ile kopyalayalım
-              if (widget.groupData != null) {
-                final updatedData = widget.groupData!.copyWith(
-                  id: createdRide.id,
-                );
-                context.go('/communication/group-page', extra: updatedData);
-              }
-            } else if (state is GroupRideError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Hata: ${state.message}"),
-                  backgroundColor: colorScheme.error,
-                ),
-              );
             }
           },
         ),
@@ -318,8 +277,10 @@ class _InviteViewState extends State<_InviteView> {
                             );
 
                             final request = CreateVoiceSessionRequestDto(
-                              title: widget.groupData!.groupName,
-                              roomName: widget.groupData!.groupName,
+                              title:
+                                  widget.groupData["groupName"] ?? "Yeni Grup",
+                              roomName:
+                                  widget.groupData["groupName"] ?? "Yeni Grup",
                               inviteUserIds: _selectedRiders
                                   .map((e) => e.userId)
                                   .toList(),
