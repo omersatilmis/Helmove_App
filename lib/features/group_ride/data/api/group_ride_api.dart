@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
+import '../datasources/group_ride_remote_data_source.dart';
 import '../models/group_ride_model.dart';
 
-class GroupRideApi {
+class GroupRideApi implements GroupRideRemoteDataSource {
   final Dio _dio;
 
   GroupRideApi(this._dio);
 
+  @override
   Future<GroupRideModel> createGroupRide(GroupRideModel ride) async {
     try {
       final response = await _dio.post('/api/GroupRide', data: ride.toJson());
@@ -15,16 +17,18 @@ class GroupRideApi {
     }
   }
 
+  @override
   Future<List<GroupRideModel>> getActiveGroupRides() async {
     try {
       final response = await _dio.get('/api/GroupRide');
-      final List<dynamic> data = response.data['data'];
+      final List<dynamic> data = response.data['data'] ?? [];
       return data.map((json) => GroupRideModel.fromJson(json)).toList();
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e.response?.data));
     }
   }
 
+  @override
   Future<GroupRideModel> getGroupRideById(int rideId) async {
     try {
       final response = await _dio.get('/api/GroupRide/$rideId');
@@ -34,6 +38,7 @@ class GroupRideApi {
     }
   }
 
+  @override
   Future<GroupRideModel> updateGroupRide(
     int rideId,
     GroupRideModel ride,
@@ -49,10 +54,11 @@ class GroupRideApi {
     }
   }
 
+  @override
   Future<bool> deleteGroupRide(int rideId) async {
     try {
       final response = await _dio.delete('/api/GroupRide/$rideId');
-      return response.data['data'] as bool;
+      return response.data['data'] == true;
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e.response?.data));
     }

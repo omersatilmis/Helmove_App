@@ -1,29 +1,19 @@
 import '../../domain/entities/voice_session_participant_entity.dart';
 
-/// Backend'den gelen SessionParticipantDto'yu parse eden DTO
-class VoiceSessionParticipantDto {
-  final int userId;
-  final String? username;
-  final String? firstName;
-  final String? lastName;
-  final String? profileImage;
-  final String status;
-  final DateTime? joinedAt;
-
-  VoiceSessionParticipantDto({
-    required this.userId,
-    this.username,
-    this.firstName,
-    this.lastName,
-    this.profileImage,
-    required this.status,
-    this.joinedAt,
+class VoiceSessionParticipantModel extends VoiceSessionParticipantEntity {
+  const VoiceSessionParticipantModel({
+    required super.userId,
+    super.username,
+    super.firstName,
+    super.lastName,
+    super.profileImage,
+    required super.status,
+    super.joinedAt,
   });
 
-  factory VoiceSessionParticipantDto.fromJson(Map<String, dynamic> json) {
+  factory VoiceSessionParticipantModel.fromJson(Map<String, dynamic> json) {
     // Backend response structure:
     // { userId, user: { id, username, firstName, lastName, profilePictureUrl }, status, joinedAt }
-
     final user = json['user'] as Map<String, dynamic>?;
 
     // Status can be int (enum) or string
@@ -44,7 +34,7 @@ class VoiceSessionParticipantDto {
       statusString = rawStatus?.toString() ?? 'Unknown';
     }
 
-    return VoiceSessionParticipantDto(
+    return VoiceSessionParticipantModel(
       userId: json['userId'] ?? user?['id'] ?? 0,
       username: user?['username'],
       firstName: user?['firstName'],
@@ -57,15 +47,11 @@ class VoiceSessionParticipantDto {
     );
   }
 
-  VoiceSessionParticipantEntity toEntity() {
-    return VoiceSessionParticipantEntity(
-      userId: userId,
-      username: username,
-      firstName: firstName,
-      lastName: lastName,
-      profileImage: profileImage,
-      status: status,
-      joinedAt: joinedAt,
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'userId': userId,
+      'status': status,
+      'joinedAt': joinedAt?.toIso8601String(),
+    };
   }
 }

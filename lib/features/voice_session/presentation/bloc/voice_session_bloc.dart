@@ -10,6 +10,8 @@ import '../../../../core/services/signalr_service.dart';
 import 'voice_session_event.dart';
 import 'voice_session_state.dart';
 
+import '../../domain/usecases/reject_voice_session_invitation_usecase.dart';
+import '../../domain/usecases/end_voice_session_usecase.dart';
 import '../../domain/usecases/kick_user_usecase.dart';
 import '../../domain/usecases/mute_user_usecase.dart';
 import '../../domain/usecases/transfer_host_usecase.dart';
@@ -22,6 +24,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final GetVoiceSessionDetailsUseCase getVoiceSessionDetailsUseCase;
   final GetMyVoiceSessionsUseCase getMyVoiceSessionsUseCase;
   final AcceptVoiceSessionInvitationUseCase acceptVoiceSessionInvitationUseCase;
+  final RejectVoiceSessionInvitationUseCase rejectVoiceSessionInvitationUseCase;
+  final EndVoiceSessionUseCase endVoiceSessionUseCase;
   final SignalRService signalRService;
   final KickUserUseCase kickUserUseCase;
   final MuteUserUseCase muteUserUseCase;
@@ -35,6 +39,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.getVoiceSessionDetailsUseCase,
     required this.getMyVoiceSessionsUseCase,
     required this.acceptVoiceSessionInvitationUseCase,
+    required this.rejectVoiceSessionInvitationUseCase,
+    required this.endVoiceSessionUseCase,
     required this.signalRService,
     required this.kickUserUseCase,
     required this.muteUserUseCase,
@@ -108,16 +114,15 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     emit(VoiceSessionLoading());
-    try {
-      final sessionId = await createVoiceSessionUseCase(event.request);
-
-      // Join SignalR Group
-      await signalRService.joinRideGroup(sessionId.toString());
-
-      emit(VoiceSessionCreated(sessionId));
-    } catch (e) {
-      emit(VoiceSessionError(e.toString()));
-    }
+    final result = await createVoiceSessionUseCase(event.request);
+    await result.fold(
+      (failure) async => emit(VoiceSessionError(failure.message)),
+      (sessionId) async {
+        // Join SignalR Group
+        await signalRService.joinRideGroup(sessionId.toString());
+        emit(VoiceSessionCreated(sessionId));
+      },
+    );
   }
 
   Future<void> _onJoinVoiceSession(
@@ -125,16 +130,15 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     emit(VoiceSessionLoading());
-    try {
-      await joinVoiceSessionUseCase(event.sessionId);
-
-      // Join SignalR Group
-      await signalRService.joinRideGroup(event.sessionId.toString());
-
-      emit(const VoiceSessionActionSuccess("Odaya başarıyla katılındı"));
-    } catch (e) {
-      emit(VoiceSessionError(e.toString()));
-    }
+    final result = await joinVoiceSessionUseCase(event.sessionId);
+    await result.fold(
+      (failure) async => emit(VoiceSessionError(failure.message)),
+      (_) async {
+        // Join SignalR Group
+        await signalRService.joinRideGroup(event.sessionId.toString());
+        emit(const VoiceSessionActionSuccess("Odaya başarıyla katılındı"));
+      },
+    );
   }
 
   Future<void> _onLeaveVoiceSession(
@@ -142,28 +146,29 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     emit(VoiceSessionLoading());
-    try {
-      await leaveVoiceSessionUseCase(event.sessionId);
-
-      // Leave SignalR Group
-      await signalRService.leaveRideGroup(event.sessionId.toString());
-
-      emit(VoiceSessionLeft(event.sessionId));
-    } catch (e) {
-      emit(VoiceSessionError(e.toString()));
-    }
+    final result = await leaveVoiceSessionUseCase(event.sessionId);
+    await result.fold(
+      (failure) async => emit(VoiceSessionError(failure.message)),
+      (_) async {
+        // Leave SignalR Group
+        await signalRService.leaveRideGroup(event.sessionId.toString());
+        emit(VoiceSessionLeft(event.sessionId));
+      },
+    );
   }
 
   Future<void> _onInviteUsers(
     InviteUsersEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
-    try {
-      await inviteToVoiceSessionUseCase(event.sessionId, event.request);
-      // We don't change state here to avoid disrupting the UI
-    } catch (e) {
-      emit(VoiceSessionError(e.toString()));
-    }
+    final result = await inviteToVoiceSessionUseCase(
+      event.sessionId,
+      event.request,
+    );
+    result.fold(
+      (failure) => emit(VoiceSessionError(failure.message)),
+      (_) => null, // Success is silent in this case as per original code
+    );
   }
 
   Future<void> _onGetVoiceSessionDetails(
@@ -171,12 +176,11 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     emit(VoiceSessionLoading());
-    try {
-      final session = await getVoiceSessionDetailsUseCase(event.sessionId);
-      emit(VoiceSessionDetailsLoaded(session));
-    } catch (e) {
-      emit(VoiceSessionError(e.toString()));
-    }
+    final result = await getVoiceSessionDetailsUseCase(event.sessionId);
+    result.fold(
+      (failure) => emit(VoiceSessionError(failure.message)),
+      (session) => emit(VoiceSessionDetailsLoaded(session)),
+    );
   }
 
   Future<void> _onGetMyVoiceSessions(
@@ -184,12 +188,11 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     emit(VoiceSessionLoading());
-    try {
-      final sessions = await getMyVoiceSessionsUseCase();
-      emit(MyVoiceSessionsLoaded(sessions));
-    } catch (e) {
-      emit(VoiceSessionError(e.toString()));
-    }
+    final result = await getMyVoiceSessionsUseCase();
+    result.fold(
+      (failure) => emit(VoiceSessionError(failure.message)),
+      (sessions) => emit(MyVoiceSessionsLoaded(sessions)),
+    );
   }
 
   Future<void> _onAcceptVoiceSessionInvite(
@@ -197,51 +200,53 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     emit(VoiceSessionLoading());
-    try {
-      await acceptVoiceSessionInvitationUseCase(event.sessionId);
-      emit(VoiceSessionInviteAccepted(event.sessionId));
-    } catch (e) {
-      emit(VoiceSessionError(e.toString()));
-    }
+    final result = await acceptVoiceSessionInvitationUseCase(event.sessionId);
+    result.fold(
+      (failure) => emit(VoiceSessionError(failure.message)),
+      (_) => emit(VoiceSessionInviteAccepted(event.sessionId)),
+    );
   }
 
   Future<void> _onKickUser(
     KickUserEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
-    try {
-      await kickUserUseCase(event.sessionId, event.targetUserId);
-      // Refresh details to reflect change
-      add(GetVoiceSessionDetailsEvent(event.sessionId));
-      emit(const VoiceSessionActionSuccess("Kullanıcı atıldı"));
-    } catch (e) {
-      emit(VoiceSessionError("Kullanıcı atılamadı: $e"));
-    }
+    final result = await kickUserUseCase(event.sessionId, event.targetUserId);
+    result.fold(
+      (failure) =>
+          emit(VoiceSessionError("Kullanıcı atılamadı: ${failure.message}")),
+      (_) {
+        add(GetVoiceSessionDetailsEvent(event.sessionId));
+        emit(const VoiceSessionActionSuccess("Kullanıcı atıldı"));
+      },
+    );
   }
 
   Future<void> _onMuteUser(
     MuteUserEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
-    try {
-      await muteUserUseCase(event.sessionId, event.targetUserId);
-      emit(const VoiceSessionActionSuccess("Kullanıcı susturuldu"));
-    } catch (e) {
-      emit(VoiceSessionError("Kullanıcı susturulamadı: $e"));
-    }
+    final result = await muteUserUseCase(event.sessionId, event.targetUserId);
+    result.fold(
+      (failure) => emit(
+        VoiceSessionError("Kullanıcı susturulamadı: ${failure.message}"),
+      ),
+      (_) => emit(const VoiceSessionActionSuccess("Kullanıcı susturuldu")),
+    );
   }
 
   Future<void> _onTransferHost(
     TransferHostEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
-    try {
-      await transferHostUseCase(event.sessionId, event.newHostId);
-      // Refresh details to reflect new host
-      add(GetVoiceSessionDetailsEvent(event.sessionId));
-      emit(const VoiceSessionActionSuccess("Host yetkisi devredildi"));
-    } catch (e) {
-      emit(VoiceSessionError("Host devredilemedi: $e"));
-    }
+    final result = await transferHostUseCase(event.sessionId, event.newHostId);
+    result.fold(
+      (failure) =>
+          emit(VoiceSessionError("Host devredilemedi: ${failure.message}")),
+      (_) {
+        add(GetVoiceSessionDetailsEvent(event.sessionId));
+        emit(const VoiceSessionActionSuccess("Host yetkisi devredildi"));
+      },
+    );
   }
 }

@@ -1,27 +1,28 @@
 import 'package:dio/dio.dart';
+import '../datasources/voice_session_remote_data_source.dart';
 import '../dto/create_voice_session_request_dto.dart';
 import '../dto/invite_users_request_dto.dart';
+import '../models/voice_session_model.dart';
 
-class VoiceSessionApi {
+class VoiceSessionApi implements VoiceSessionRemoteDataSource {
   final Dio _dio;
 
   VoiceSessionApi(this._dio);
 
+  @override
   Future<int> createSession(CreateVoiceSessionRequestDto request) async {
     try {
       final response = await _dio.post(
         '/api/voice-sessions',
         data: request.toJson(),
       );
-      // Assuming response.data is the ID or contains 'data' with 'id' or is the object with 'id'
-      if (response.data is int) {
-        return response.data;
-      } else if (response.data is Map<String, dynamic>) {
-        if (response.data.containsKey('data')) {
-          if (response.data['data'] is int) return response.data['data'];
-          return response.data['data']['id'];
-        }
-        return response.data['id'];
+      final data = response.data;
+      if (data is int) return data;
+      if (data is Map<String, dynamic>) {
+        final innerData = data['data'];
+        if (innerData is int) return innerData;
+        if (innerData is Map<String, dynamic>) return innerData['id'] ?? 0;
+        return data['id'] ?? 0;
       }
       throw Exception('Invalid response format');
     } on DioException catch (e) {
@@ -29,39 +30,30 @@ class VoiceSessionApi {
     }
   }
 
-  Future<Map<String, dynamic>> getSession(int id) async {
+  @override
+  Future<VoiceSessionModel> getSession(int id) async {
     try {
       final response = await _dio.get('/api/voice-sessions/$id');
-      // Backend returns ServiceResponse<SessionDto>: { success, data, message }
-      if (response.data is Map<String, dynamic>) {
-        if (response.data.containsKey('data')) {
-          return response.data['data'];
-        }
-        return response.data;
-      }
-      throw Exception('Invalid response format');
+      return VoiceSessionModel.fromJson(response.data);
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e.response?.data));
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMySessions() async {
+  @override
+  Future<List<VoiceSessionModel>> getMySessions() async {
     try {
       final response = await _dio.get('/api/voice-sessions/my-sessions');
-      // Backend returns ServiceResponse<List<SessionDto>>: { success, data, message }
-      if (response.data is Map<String, dynamic> &&
-          response.data.containsKey('data')) {
-        final List<dynamic> list = response.data['data'] ?? [];
-        return list.cast<Map<String, dynamic>>();
-      } else if (response.data is List) {
-        return (response.data as List).cast<Map<String, dynamic>>();
-      }
-      return [];
+      final List<dynamic> dataList = (response.data is Map<String, dynamic>)
+          ? (response.data['data'] ?? [])
+          : (response.data ?? []);
+      return dataList.map((json) => VoiceSessionModel.fromJson(json)).toList();
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e.response?.data));
     }
   }
 
+  @override
   Future<void> inviteUsers(int id, InviteUsersRequestDto request) async {
     try {
       await _dio.post('/api/voice-sessions/$id/invite', data: request.toJson());
@@ -70,6 +62,7 @@ class VoiceSessionApi {
     }
   }
 
+  @override
   Future<void> acceptInvitation(int id) async {
     try {
       await _dio.post('/api/voice-sessions/$id/accept');
@@ -78,6 +71,7 @@ class VoiceSessionApi {
     }
   }
 
+  @override
   Future<void> rejectInvitation(int id) async {
     try {
       await _dio.post('/api/voice-sessions/$id/reject');
@@ -86,6 +80,7 @@ class VoiceSessionApi {
     }
   }
 
+  @override
   Future<void> joinSession(int id) async {
     try {
       await _dio.post('/api/voice-sessions/$id/join');
@@ -94,6 +89,7 @@ class VoiceSessionApi {
     }
   }
 
+  @override
   Future<void> leaveSession(int id) async {
     try {
       await _dio.post('/api/voice-sessions/$id/leave');
@@ -102,6 +98,7 @@ class VoiceSessionApi {
     }
   }
 
+  @override
   Future<void> endSession(int id) async {
     try {
       await _dio.post('/api/voice-sessions/$id/end');
@@ -110,6 +107,7 @@ class VoiceSessionApi {
     }
   }
 
+  @override
   Future<void> kickUser(int sessionId, int targetUserId) async {
     try {
       await _dio.post('/api/voice-sessions/$sessionId/kick/$targetUserId');
@@ -118,6 +116,7 @@ class VoiceSessionApi {
     }
   }
 
+  @override
   Future<void> muteUser(int sessionId, int targetUserId) async {
     try {
       await _dio.post('/api/voice-sessions/$sessionId/mute/$targetUserId');
@@ -126,6 +125,7 @@ class VoiceSessionApi {
     }
   }
 
+  @override
   Future<void> transferHost(int sessionId, int newHostId) async {
     try {
       await _dio.post('/api/voice-sessions/$sessionId/transfer/$newHostId');

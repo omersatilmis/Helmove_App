@@ -907,23 +907,8 @@ Future<void> init() async {
       getVoiceSessionDetailsUseCase: sl(),
       getMyVoiceSessionsUseCase: sl(),
       acceptVoiceSessionInvitationUseCase: sl(),
-      signalRService: sl(),
-      kickUserUseCase: sl(),
-      muteUserUseCase: sl(),
-      transferHostUseCase: sl(),
-    ),
-  );
-
-  // Bloc
-  sl.registerFactory(
-    () => VoiceSessionBloc(
-      createVoiceSessionUseCase: sl(),
-      joinVoiceSessionUseCase: sl(),
-      leaveVoiceSessionUseCase: sl(),
-      inviteToVoiceSessionUseCase: sl(),
-      getVoiceSessionDetailsUseCase: sl(),
-      getMyVoiceSessionsUseCase: sl(),
-      acceptVoiceSessionInvitationUseCase: sl(),
+      rejectVoiceSessionInvitationUseCase: sl(),
+      endVoiceSessionUseCase: sl(),
       signalRService: sl(),
       kickUserUseCase: sl(),
       muteUserUseCase: sl(),

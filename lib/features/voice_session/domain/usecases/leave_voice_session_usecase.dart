@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
 import '../repositories/voice_session_repository.dart';
 
 class LeaveVoiceSessionUseCase {
@@ -5,7 +7,7 @@ class LeaveVoiceSessionUseCase {
 
   LeaveVoiceSessionUseCase(this.repository);
 
-  Future<void> call(int id) async {
+  Future<Either<Failure, Unit>> call(int id) async {
     return await repository.leaveSession(id);
   }
 }

@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
 import '../repositories/attendance_repository.dart';
 
 class LeaveGroupRideUseCase {
@@ -5,7 +7,7 @@ class LeaveGroupRideUseCase {
 
   LeaveGroupRideUseCase(this.repository);
 
-  Future<void> call(int rideId) async {
+  Future<Either<Failure, Unit>> call(int rideId) async {
     return await repository.leaveGroupRide(rideId);
   }
 }

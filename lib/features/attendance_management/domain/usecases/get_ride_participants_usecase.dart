@@ -1,3 +1,6 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
+import '../entities/participant_entity.dart';
 import '../repositories/attendance_repository.dart';
 
 class GetRideParticipantsUseCase {
@@ -5,7 +8,7 @@ class GetRideParticipantsUseCase {
 
   GetRideParticipantsUseCase(this.repository);
 
-  Future<List<dynamic>> call(int rideId) async {
+  Future<Either<Failure, List<ParticipantEntity>>> call(int rideId) async {
     return await repository.getRideParticipants(rideId);
   }
 }

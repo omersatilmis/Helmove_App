@@ -1,46 +1,47 @@
-import '../api/attendance_api.dart';
+import '../models/participant_model.dart';
+import '../models/participation_status_model.dart';
 
 abstract class AttendanceRemoteDataSource {
   Future<void> joinGroupRide(int rideId, {String? joinMessage});
   Future<void> leaveGroupRide(int rideId);
   Future<void> approveParticipant(int rideId, int userId);
   Future<void> rejectParticipant(int rideId, int userId);
-  Future<List<dynamic>> getRideParticipants(int rideId);
-  Future<dynamic> getParticipationStatus(int rideId);
+  Future<List<ParticipantModel>> getRideParticipants(int rideId);
+  Future<ParticipationStatusModel> getParticipationStatus(int rideId);
 }
 
 class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
-  final AttendanceApi api;
+  final AttendanceRemoteDataSource _api;
 
-  AttendanceRemoteDataSourceImpl(this.api);
+  AttendanceRemoteDataSourceImpl(this._api);
 
   @override
   Future<void> joinGroupRide(int rideId, {String? joinMessage}) async {
-    return await api.joinGroupRide(rideId, joinMessage: joinMessage);
+    return await _api.joinGroupRide(rideId, joinMessage: joinMessage);
   }
 
   @override
   Future<void> leaveGroupRide(int rideId) async {
-    return await api.leaveGroupRide(rideId);
+    return await _api.leaveGroupRide(rideId);
   }
 
   @override
   Future<void> approveParticipant(int rideId, int userId) async {
-    return await api.approveParticipant(rideId, userId);
+    return await _api.approveParticipant(rideId, userId);
   }
 
   @override
   Future<void> rejectParticipant(int rideId, int userId) async {
-    return await api.rejectParticipant(rideId, userId);
+    return await _api.rejectParticipant(rideId, userId);
   }
 
   @override
-  Future<List<dynamic>> getRideParticipants(int rideId) async {
-    return await api.getRideParticipants(rideId);
+  Future<List<ParticipantModel>> getRideParticipants(int rideId) async {
+    return await _api.getRideParticipants(rideId);
   }
 
   @override
-  Future<dynamic> getParticipationStatus(int rideId) async {
-    return await api.getParticipationStatus(rideId);
+  Future<ParticipationStatusModel> getParticipationStatus(int rideId) async {
+    return await _api.getParticipationStatus(rideId);
   }
 }

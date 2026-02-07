@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
 import '../repositories/group_ride_repository.dart';
 
 class DeleteGroupRideUseCase {
@@ -5,7 +7,7 @@ class DeleteGroupRideUseCase {
 
   DeleteGroupRideUseCase(this.repository);
 
-  Future<bool> execute(int rideId) async {
+  Future<Either<Failure, bool>> execute(int rideId) async {
     return await repository.deleteGroupRide(rideId);
   }
 }

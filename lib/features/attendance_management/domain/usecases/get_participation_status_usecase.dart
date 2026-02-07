@@ -1,3 +1,6 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
+import '../entities/participation_status_entity.dart';
 import '../repositories/attendance_repository.dart';
 
 class GetParticipationStatusUseCase {
@@ -5,7 +8,7 @@ class GetParticipationStatusUseCase {
 
   GetParticipationStatusUseCase(this.repository);
 
-  Future<dynamic> call(int rideId) async {
+  Future<Either<Failure, ParticipationStatusEntity>> call(int rideId) async {
     return await repository.getParticipationStatus(rideId);
   }
 }

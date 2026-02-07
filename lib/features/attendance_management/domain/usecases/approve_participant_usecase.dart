@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
 import '../repositories/attendance_repository.dart';
 
 class ApproveParticipantUseCase {
@@ -5,7 +7,7 @@ class ApproveParticipantUseCase {
 
   ApproveParticipantUseCase(this.repository);
 
-  Future<void> call(int rideId, int userId) async {
+  Future<Either<Failure, Unit>> call(int rideId, int userId) async {
     return await repository.approveParticipant(rideId, userId);
   }
 }

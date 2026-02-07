@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
 import '../../data/dto/create_voice_session_request_dto.dart';
 import '../repositories/voice_session_repository.dart';
 
@@ -6,7 +8,9 @@ class CreateVoiceSessionUseCase {
 
   CreateVoiceSessionUseCase(this.repository);
 
-  Future<int> call(CreateVoiceSessionRequestDto request) async {
+  Future<Either<Failure, int>> call(
+    CreateVoiceSessionRequestDto request,
+  ) async {
     return await repository.createSession(request);
   }
 }

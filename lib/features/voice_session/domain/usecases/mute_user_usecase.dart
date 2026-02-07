@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
 import '../repositories/voice_session_repository.dart';
 
 class MuteUserUseCase {
@@ -5,7 +7,7 @@ class MuteUserUseCase {
 
   MuteUserUseCase(this.repository);
 
-  Future<void> call(int sessionId, int targetUserId) async {
+  Future<Either<Failure, Unit>> call(int sessionId, int targetUserId) async {
     return await repository.muteUser(sessionId, targetUserId);
   }
 }

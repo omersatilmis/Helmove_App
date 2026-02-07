@@ -1,18 +1,20 @@
-import '../../data/dto/create_voice_session_request_dto.dart';
-import '../../data/dto/invite_users_request_dto.dart';
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
 import '../entities/voice_session_entity.dart';
 
 abstract class VoiceSessionRepository {
-  Future<int> createSession(CreateVoiceSessionRequestDto request);
-  Future<VoiceSessionEntity> getSession(int id);
-  Future<List<VoiceSessionEntity>> getMySessions();
-  Future<void> inviteUsers(int id, InviteUsersRequestDto request);
-  Future<void> acceptInvitation(int id);
-  Future<void> rejectInvitation(int id);
-  Future<void> joinSession(int id);
-  Future<void> leaveSession(int id);
-  Future<void> endSession(int id);
-  Future<void> kickUser(int sessionId, int targetUserId);
-  Future<void> muteUser(int sessionId, int targetUserId);
-  Future<void> transferHost(int sessionId, int newHostId);
+  Future<Either<Failure, int>> createSession(dynamic request);
+  Future<Either<Failure, VoiceSessionEntity>> getSession(int id);
+  Future<Either<Failure, List<VoiceSessionEntity>>> getMySessions();
+  Future<Either<Failure, Unit>> inviteUsers(int id, dynamic request);
+  Future<Either<Failure, Unit>> acceptInvitation(int id);
+  Future<Either<Failure, Unit>> rejectInvitation(int id);
+  Future<Either<Failure, Unit>> joinSession(int id);
+  Future<Either<Failure, Unit>> leaveSession(int id);
+  Future<Either<Failure, Unit>> endSession(int id);
+
+  // Moderator methods
+  Future<Either<Failure, Unit>> kickUser(int sessionId, int targetUserId);
+  Future<Either<Failure, Unit>> muteUser(int sessionId, int targetUserId);
+  Future<Either<Failure, Unit>> transferHost(int sessionId, int newHostId);
 }

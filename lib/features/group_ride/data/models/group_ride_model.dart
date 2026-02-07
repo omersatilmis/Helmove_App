@@ -24,24 +24,28 @@ class GroupRideModel extends GroupRideEntity {
 
   factory GroupRideModel.fromJson(Map<String, dynamic> json) {
     return GroupRideModel(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? '',
-      description: json['description'],
-      organizerId: json['organizerId'] ?? 0,
-      startDateTime: DateTime.parse(json['startDateTime']),
-      endDateTime: DateTime.parse(json['endDateTime']),
-      startLocation: json['startLocation'] ?? '',
-      startLatitude: (json['startLatitude'] as num).toDouble(),
-      startLongitude: (json['startLongitude'] as num).toDouble(),
-      endLocation: json['endLocation'] ?? '',
-      endLatitude: (json['endLatitude'] as num).toDouble(),
-      endLongitude: (json['endLongitude'] as num).toDouble(),
-      maxParticipants: json['maxParticipants'] ?? 0,
+      id: json['id'] as int? ?? 0,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String?,
+      organizerId: json['organizerId'] as int? ?? 0,
+      startDateTime: json['startDateTime'] != null
+          ? DateTime.parse(json['startDateTime'] as String)
+          : DateTime.now(),
+      endDateTime: json['endDateTime'] != null
+          ? DateTime.parse(json['endDateTime'] as String)
+          : DateTime.now(),
+      startLocation: json['startLocation'] as String? ?? '',
+      startLatitude: (json['startLatitude'] as num?)?.toDouble() ?? 0.0,
+      startLongitude: (json['startLongitude'] as num?)?.toDouble() ?? 0.0,
+      endLocation: json['endLocation'] as String? ?? '',
+      endLatitude: (json['endLatitude'] as num?)?.toDouble() ?? 0.0,
+      endLongitude: (json['endLongitude'] as num?)?.toDouble() ?? 0.0,
+      maxParticipants: json['maxParticipants'] as int? ?? 0,
       estimatedDistanceKm: (json['estimatedDistanceKm'] as num?)?.toDouble(),
       estimatedDurationMinutes: json['estimatedDurationMinutes'] as int?,
-      status: json['status'] ?? '',
-      difficulty: json['difficulty'],
-      requirements: json['requirements'],
+      status: json['status'] as String? ?? '',
+      difficulty: json['difficulty'] as String?,
+      requirements: json['requirements'] as String?,
     );
   }
 

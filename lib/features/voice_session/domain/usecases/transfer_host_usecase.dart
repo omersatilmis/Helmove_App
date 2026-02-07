@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
 import '../repositories/voice_session_repository.dart';
 
 class TransferHostUseCase {
@@ -5,7 +7,7 @@ class TransferHostUseCase {
 
   TransferHostUseCase(this.repository);
 
-  Future<void> call(int sessionId, int newHostId) async {
+  Future<Either<Failure, Unit>> call(int sessionId, int newHostId) async {
     return await repository.transferHost(sessionId, newHostId);
   }
 }

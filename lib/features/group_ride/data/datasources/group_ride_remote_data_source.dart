@@ -1,4 +1,3 @@
-import '../api/group_ride_api.dart';
 import '../models/group_ride_model.dart';
 
 abstract class GroupRideRemoteDataSource {
@@ -10,23 +9,24 @@ abstract class GroupRideRemoteDataSource {
 }
 
 class GroupRideRemoteDataSourceImpl implements GroupRideRemoteDataSource {
-  final GroupRideApi api;
+  final GroupRideRemoteDataSource
+  _api; // Assuming the API class acts as the data source for now or acts as the client
 
-  GroupRideRemoteDataSourceImpl(this.api);
+  GroupRideRemoteDataSourceImpl(this._api);
 
   @override
   Future<GroupRideModel> createGroupRide(GroupRideModel ride) async {
-    return await api.createGroupRide(ride);
+    return await _api.createGroupRide(ride);
   }
 
   @override
   Future<List<GroupRideModel>> getActiveGroupRides() async {
-    return await api.getActiveGroupRides();
+    return await _api.getActiveGroupRides();
   }
 
   @override
   Future<GroupRideModel> getGroupRideById(int rideId) async {
-    return await api.getGroupRideById(rideId);
+    return await _api.getGroupRideById(rideId);
   }
 
   @override
@@ -34,11 +34,11 @@ class GroupRideRemoteDataSourceImpl implements GroupRideRemoteDataSource {
     int rideId,
     GroupRideModel ride,
   ) async {
-    return await api.updateGroupRide(rideId, ride);
+    return await _api.updateGroupRide(rideId, ride);
   }
 
   @override
   Future<bool> deleteGroupRide(int rideId) async {
-    return await api.deleteGroupRide(rideId);
+    return await _api.deleteGroupRide(rideId);
   }
 }
