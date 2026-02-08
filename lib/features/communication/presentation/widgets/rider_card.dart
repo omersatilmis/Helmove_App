@@ -2,19 +2,33 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
 
+enum RiderRole {
+  organizer, // Kurucu (Altın Taç)
+  host, // Lider/Atanmış (Gümüş Kalkan) - Şimdilik Organizer ile aynı yetkide olabilir
+  participant, // Normal sürücü
+}
+
 class RiderCard extends StatelessWidget {
   final String firstName;
   final String lastName;
   final String profileImageUrl;
   final int batteryLevel;
   final int signalLevel;
+
+  // Durumlar
   final bool isMicOn;
   final bool isSpeaking;
   final bool isFriend;
-  final bool isConnected; // Intercom ses bağlantısını temsil eder
+  final bool isConnected; // Odada mı?
+  final bool isMe; // Ben miyim?
+
+  // Roller
+  final RiderRole role; // Bu karttaki kullanıcının rolü
+  final RiderRole viewerRole; // Bu kartı gören kişinin rolü (Benim rolüm)
+
+  // Aksiyonlar
   final VoidCallback? onMicPressed;
   final VoidCallback? onFriendshipPressed;
-  // Menü Aksiyonları (Sadece Host İse Dolu Gelecek)
   final VoidCallback? onKickUser;
   final VoidCallback? onMuteUser;
   final VoidCallback? onTransferHost;
@@ -24,12 +38,15 @@ class RiderCard extends StatelessWidget {
     required this.firstName,
     required this.lastName,
     required this.profileImageUrl,
-    this.batteryLevel = 76,
-    this.signalLevel = 95,
+    this.batteryLevel = 100,
+    this.signalLevel = 100,
     this.isMicOn = false,
     this.isSpeaking = false,
     this.isFriend = false,
-    this.isConnected = true, // Varsayılan bağlı kabul edelim
+    this.isConnected = true,
+    this.isMe = false,
+    this.role = RiderRole.participant,
+    this.viewerRole = RiderRole.participant,
     this.onMicPressed,
     this.onFriendshipPressed,
     this.onKickUser,
@@ -42,66 +59,97 @@ class RiderCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Kart Arkaplan Rengi (Rolüne göre hafif tonlama yapılabilir)
+    Color cardColor = colorScheme.surfaceContainerLow.withOpacity(0.9);
+    if (isMe) {
+      cardColor = colorScheme.primary.withOpacity(0.05);
+    }
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLow.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(20),
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: colorScheme.outline.withOpacity(0.1),
-            width: 1,
+            color: isSpeaking
+                ? const Color(0xFF22C55E).withOpacity(
+                    0.5,
+                  ) // Konuşuyorsa yeşil border
+                : colorScheme.outline.withOpacity(0.1),
+            width: isSpeaking ? 2 : 1,
           ),
+          boxShadow: isSpeaking
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF22C55E).withOpacity(0.2),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
         ),
         child: Padding(
-          // KENAR BOŞLUKLARI AZALTILDI (16 -> 8)
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+          padding: const EdgeInsets.all(12.0),
           child: Opacity(
             opacity: isConnected ? 1.0 : 0.5,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 1. SOL: Avatar (En sola yaslı)
+                // 1. SOL: Avatar Bölgesi
                 _buildAvatarSection(colorScheme),
 
-                // Avatar ile yazı arası boşluk (biraz daha sıkı)
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
 
-                // 2. ORTA: İsim ve İstatistikler (Aradaki tüm boşluğu kaplar)
+                // 2. ORTA: İsim, Rol ve Bilgiler
                 Expanded(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "$firstName $lastName",
-                        style: AppTextStyles.medium.copyWith(
-                          color: colorScheme.onSurface,
-                          //fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          letterSpacing: 0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4), // Dikey boşluk azaltıldı
+                      // İsim ve Rozet Satırı
                       Row(
                         children: [
-                          _buildMinimalInfo(
-                            Icons.signal_cellular_alt,
-                            isConnected ? "$signalLevel%" : "Bağlantı Yok",
-                            isConnected
-                                ? Colors.greenAccent
-                                : colorScheme.error,
-                            theme,
+                          Flexible(
+                            child: Text(
+                              isMe
+                                  ? "Siz ($firstName)"
+                                  : "$firstName $lastName",
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          const SizedBox(width: 10), // Yatay boşluk azaltıldı
-                          _buildMinimalInfo(
-                            Icons.battery_std,
-                            "$batteryLevel%",
-                            colorScheme.onSurfaceVariant.withOpacity(0.7),
-                            theme,
+                          if (role != RiderRole.participant) ...[
+                            const SizedBox(width: 6),
+                            _buildRoleBadge(context),
+                          ],
+                        ],
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      // İstatistikler (Pil, Sinyal)
+                      Row(
+                        children: [
+                          _buildStatusPill(
+                            context,
+                            icon: Icons.signal_cellular_alt,
+                            text: isConnected ? "$signalLevel%" : "Koptu",
+                            color: isConnected
+                                ? Colors.green
+                                : colorScheme.error,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildStatusPill(
+                            context,
+                            icon: Icons.battery_std,
+                            text: "$batteryLevel%",
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ],
                       ),
@@ -109,112 +157,50 @@ class RiderCard extends StatelessWidget {
                   ),
                 ),
 
-                // BURADAKİ SIZEDBOX KALDIRILDI, Expanded direkt itecek.
-
-                // 3. SAĞ: Aksiyonlar (En sağa yaslı)
+                // 3. SAĞ: Aksiyonlar & Menü
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildActionButton(
-                      icon: isMicOn ? Icons.mic : Icons.mic_off,
-                      color: isMicOn
-                          ? Colors.greenAccent
-                          : colorScheme.error.withOpacity(0.8),
-                      onTap: onMicPressed,
-                      tooltip: "Mikrofon",
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    _buildActionButton(
-                      icon: isFriend ? Icons.check_circle : Icons.person_add,
-                      color: isFriend
-                          ? Colors.greenAccent
-                          : colorScheme.onSurfaceVariant,
-                      onTap: onFriendshipPressed,
-                      tooltip: "Arkadaşlık",
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // 3 nokta menüsü - Sadece yetki varsa (callbackler doluysa) gösterilir veya pasif olur
-                    if (onKickUser != null ||
-                        onMuteUser != null ||
-                        onTransferHost != null)
-                      PopupMenuButton<String>(
-                        icon: Icon(
-                          Icons.more_vert,
-                          color: colorScheme.onSurfaceVariant,
-                          size: 22,
+                    // Mic Durumu (Sadece gösterge veya kendi mic'im ise buton)
+                    if (isMe)
+                      _buildActionButton(
+                        icon: isMicOn ? Icons.mic : Icons.mic_off,
+                        color: isMicOn
+                            ? const Color(0xFF22C55E)
+                            : colorScheme.error,
+                        onTap: onMicPressed,
+                        tooltip: "Mikrofonu Aç/Kapat",
+                        filled: true,
+                      )
+                    else
+                      // Başkası ise sadece ikon
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Icon(
+                          isMicOn ? Icons.mic : Icons.mic_off,
+                          size: 20,
+                          color: isMicOn
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.6)
+                              : colorScheme.error.withOpacity(0.6),
                         ),
-                        tooltip: "Yönetim",
-                        padding: EdgeInsets.zero,
-                        color: colorScheme.surfaceContainerHigh,
-                        onSelected: (value) {
-                          if (value == 'kick') onKickUser?.call();
-                          if (value == 'mute') onMuteUser?.call();
-                          if (value == 'transfer') onTransferHost?.call();
-                        },
-                        itemBuilder: (BuildContext context) =>
-                            <PopupMenuEntry<String>>[
-                              if (onMuteUser != null)
-                                PopupMenuItem<String>(
-                                  value: 'mute',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.mic_off,
-                                        color: colorScheme.onSurface,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        "Sustur",
-                                        style: AppTextStyles.bodySmall,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              if (onKickUser != null)
-                                PopupMenuItem<String>(
-                                  value: 'kick',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.person_remove,
-                                        color: colorScheme.error,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        "Oturumdan At",
-                                        style: AppTextStyles.bodySmall.copyWith(
-                                          color: colorScheme.error,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              if (onTransferHost != null)
-                                PopupMenuItem<String>(
-                                  value: 'transfer',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.admin_panel_settings,
-                                        color: Colors.amber,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        "Host Devret",
-                                        style: AppTextStyles.bodySmall,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
                       ),
+
+                    if (!isMe) ...[
+                      const SizedBox(width: 4),
+                      // Arkadaş Ekle (Eğer arkadaş değilse)
+                      if (!isFriend)
+                        _buildActionButton(
+                          icon: Icons.person_add,
+                          color: colorScheme.primary,
+                          onTap: onFriendshipPressed,
+                          tooltip: "Arkadaş Ekle",
+                        ),
+
+                      const SizedBox(width: 4),
+
+                      // 3 Nokta Menü
+                      _buildPopupMenu(context),
+                    ],
                   ],
                 ),
               ],
@@ -225,69 +211,240 @@ class RiderCard extends StatelessWidget {
     );
   }
 
-  // Minimal Avatar
   Widget _buildAvatarSection(ColorScheme colorScheme) {
-    return Container(
-      padding: const EdgeInsets.all(2), // Border mesafesi azaltıldı (3 -> 2)
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isSpeaking ? Colors.greenAccent : Colors.transparent,
-          width: 2.0,
-        ),
-      ),
-      child: CircleAvatar(
-        radius: 22,
-        backgroundImage: NetworkImage(profileImageUrl),
-        backgroundColor: colorScheme.surfaceContainerHigh,
-        onBackgroundImageError: (_, __) =>
-            Icon(Icons.person, color: colorScheme.onSurface),
-      ),
-    );
-  }
-
-  // Minimal Bilgi Satırı
-  Widget _buildMinimalInfo(
-    IconData icon,
-    String text,
-    Color color,
-    ThemeData theme,
-  ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
       children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+        // Avatar Çerçevesi (Konuşma Efekti)
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isSpeaking ? const Color(0xFF22C55E) : Colors.transparent,
+              width: 2.5,
+            ),
+          ),
+          child: CircleAvatar(
+            radius: 24,
+            backgroundImage: NetworkImage(profileImageUrl),
+            backgroundColor: colorScheme.surfaceContainerHigh,
+            onBackgroundImageError: (_, __) =>
+                Icon(Icons.person, color: colorScheme.onSurface),
           ),
         ),
+
+        // Online Göstergesi (Sağ Alt)
+        if (isConnected)
+          Positioned(
+            right: 2,
+            bottom: 2,
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: const Color(0xFF22C55E),
+                shape: BoxShape.circle,
+                border: Border.all(color: colorScheme.surface, width: 2),
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  // Minimal Aksiyon Butonu (Daha sıkı)
+  Widget _buildRoleBadge(BuildContext context) {
+    IconData icon;
+    Color color;
+    String tooltip;
+
+    switch (role) {
+      case RiderRole.organizer:
+        icon = Icons.workspace_premium; // Taç
+        color = const Color(0xFFFFD700); // Altın
+        tooltip = "Kurucu";
+        break;
+      case RiderRole.host:
+        icon = Icons.shield; // Kalkan
+        color = const Color(0xFFC0C0C0); // Gümüş/Mavi
+        tooltip = "Lider";
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 16, color: color),
+      ),
+    );
+  }
+
+  Widget _buildStatusPill(
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color.withOpacity(0.8)),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: AppTextStyles.bodySmall.copyWith(
+              fontSize: 10,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActionButton({
     required IconData icon,
     required Color color,
     required VoidCallback? onTap,
     required String tooltip,
+    bool filled = false,
   }) {
     return IconButton(
       onPressed: onTap,
-      icon: Icon(icon, color: color, size: 22),
+      icon: Icon(icon, color: filled ? Colors.white : color, size: 20),
       tooltip: tooltip,
       visualDensity: VisualDensity.compact,
-      // BUTONLARIN KENDİ İÇ BOŞLUĞU AZALTILDI (all(8) -> horizontal(2))
-      padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
-      constraints: const BoxConstraints(),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
       style: IconButton.styleFrom(
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        backgroundColor: filled ? color : null,
+        highlightColor: color.withOpacity(0.1),
       ),
+    );
+  }
+
+  Widget _buildPopupMenu(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Yetki Kontrolü:
+    // Eğer ben Organizer isem, herkese her şeyi yapabilirim (kendim hariç).
+    // Eğer ben Host isem, Participantları yönetebilirim.
+
+    bool canManage = false;
+    if (viewerRole == RiderRole.organizer) canManage = true;
+    if (viewerRole == RiderRole.host && role == RiderRole.participant)
+      canManage = true;
+
+    // Eğer yetkim yoksa ve sadece "Profil Görüntüle" vs varsa menü gösterilebilir.
+    // Şimdilik sadece yönetimsel aksiyonlar tanımlı.
+
+    return PopupMenuButton<String>(
+      icon: Icon(
+        Icons.more_vert,
+        color: colorScheme.onSurfaceVariant,
+        size: 22,
+      ),
+      tooltip: "Seçenekler",
+      padding: EdgeInsets.zero,
+      color: colorScheme.surfaceContainerHigh,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) {
+        if (value == 'kick') onKickUser?.call();
+        if (value == 'mute') onMuteUser?.call();
+        if (value == 'transfer') onTransferHost?.call();
+      },
+      itemBuilder: (BuildContext context) {
+        final List<PopupMenuEntry<String>> items = [];
+
+        if (canManage) {
+          if (onMuteUser != null) {
+            items.add(
+              PopupMenuItem<String>(
+                value: 'mute',
+                child: _buildMenuItem(
+                  context,
+                  Icons.mic_off,
+                  "Sustur",
+                  colorScheme.onSurface,
+                ),
+              ),
+            );
+          }
+          if (onKickUser != null) {
+            items.add(
+              PopupMenuItem<String>(
+                value: 'kick',
+                child: _buildMenuItem(
+                  context,
+                  Icons.person_remove,
+                  "Oturumdan At",
+                  colorScheme.error,
+                ),
+              ),
+            );
+          }
+          if (onTransferHost != null && viewerRole == RiderRole.organizer) {
+            // Sadece Organizer devreder varsayımı (veya Host da edebilir backend izin veriyorsa)
+            items.add(const PopupMenuDivider());
+            items.add(
+              PopupMenuItem<String>(
+                value: 'transfer',
+                child: _buildMenuItem(
+                  context,
+                  Icons.shield,
+                  "Liderliği Devret",
+                  Colors.amber,
+                ),
+              ),
+            );
+          }
+        } else {
+          // Normal Kullanıcı Görünümü
+          items.add(
+            PopupMenuItem<String>(
+              value: 'report', // Henüz fonksiyonel değil
+              child: _buildMenuItem(
+                context,
+                Icons.flag,
+                "Şikayet Et",
+                colorScheme.onSurface,
+              ),
+            ),
+          );
+        }
+
+        return items;
+      },
+    );
+  }
+
+  Widget _buildMenuItem(
+    BuildContext context,
+    IconData icon,
+    String text,
+    Color color,
+  ) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 12),
+        Text(text, style: AppTextStyles.bodyMedium.copyWith(color: color)),
+      ],
     );
   }
 }

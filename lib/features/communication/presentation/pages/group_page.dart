@@ -629,12 +629,25 @@ class _GroupPageState extends State<GroupPage> {
 
     if (participants.isEmpty) return _buildEmptyState();
 
-    final isMeHost = _sessionDetails?.hostUserId == _currentUserId;
+    final hostId = _sessionDetails?.hostUserId;
+    final currentUserId = _currentUserId;
+
+    // Viewer Role Determination
+    RiderRole viewerRole = RiderRole.participant;
+    if (currentUserId != null && hostId == currentUserId) {
+      viewerRole = RiderRole.organizer; // Host, Organizer yetkilerine sahip
+    }
 
     return Column(
       children: participants.map((p) {
         final isConnected = p.status == 'Joined';
-        final isMe = p.userId == _currentUserId;
+        final isMe = p.userId == currentUserId;
+
+        // Target Role Determination
+        RiderRole role = RiderRole.participant;
+        if (hostId != null && p.userId == hostId) {
+          role = RiderRole.organizer; // Host'a Taç veriyoruz (Lider)
+        }
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -646,15 +659,24 @@ class _GroupPageState extends State<GroupPage> {
             batteryLevel: isConnected ? 90 : 0,
             signalLevel: isConnected ? 100 : 0,
             isMicOn: isConnected,
-            isSpeaking: isConnected,
+            isSpeaking:
+                isConnected, // Gerçek ses durumu için VoiceSessionBloc'dan veri lazım
             isConnected: isConnected,
-            onKickUser: (isMeHost && !isMe)
+            isMe: isMe,
+            role: role,
+            viewerRole: viewerRole,
+            // Callbackler: RiderCard içindeki yetki kontrolüne güveniyoruz ama yine de sadece yetkiliye dolu göndermek mantıklı.
+            // Fakat yeni tasarımda RiderCard viewerRole'e göre karar veriyor.
+            // Bu yüzden callbackleri her zaman gönderip, RiderCard'ın kısıtlamasına güvenebiliriz
+            // VEYA burada null geçebiliriz. RiderCard logic'i: "callback null ise gösterme".
+            // O yüzden yetkili değilsem null göndermeliyim.
+            onKickUser: (viewerRole == RiderRole.organizer && !isMe)
                 ? () => _kickUser(p.userId, p.firstName ?? 'Kullanıcı')
                 : null,
-            onMuteUser: (isMeHost && !isMe)
+            onMuteUser: (viewerRole == RiderRole.organizer && !isMe)
                 ? () => _muteUser(p.userId, p.firstName ?? 'Kullanıcı')
                 : null,
-            onTransferHost: (isMeHost && !isMe)
+            onTransferHost: (viewerRole == RiderRole.organizer && !isMe)
                 ? () => _transferHost(p.userId, p.firstName ?? 'Kullanıcı')
                 : null,
           ),
