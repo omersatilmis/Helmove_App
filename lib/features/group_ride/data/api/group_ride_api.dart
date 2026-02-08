@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../datasources/group_ride_remote_data_source.dart';
 import '../models/group_ride_model.dart';
+import '../dto/create_group_ride_request_dto.dart';
 
 class GroupRideApi implements GroupRideRemoteDataSource {
   final Dio _dio;
@@ -8,9 +9,14 @@ class GroupRideApi implements GroupRideRemoteDataSource {
   GroupRideApi(this._dio);
 
   @override
-  Future<GroupRideModel> createGroupRide(GroupRideModel ride) async {
+  Future<GroupRideModel> createGroupRide(
+    CreateGroupRideRequestDto request,
+  ) async {
     try {
-      final response = await _dio.post('/api/GroupRide', data: ride.toJson());
+      final response = await _dio.post(
+        '/api/GroupRide',
+        data: request.toJson(),
+      );
       return GroupRideModel.fromJson(response.data['data']);
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e.response?.data));

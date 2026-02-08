@@ -289,7 +289,6 @@ class _NotificationItemModern extends StatelessWidget {
                               color: isDark ? Colors.white70 : Colors.black54,
                             ),
                           ),
-                          // Zamanı metnin sonuna eklemek de bir stil tercihidir
                           TextSpan(
                             text:
                                 '  ${timeago.format(notification.createdAt, locale: 'tr')}',
@@ -303,6 +302,59 @@ class _NotificationItemModern extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (_isVoiceInviteKind(notification)) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () => _handleAcceptInvite(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 0,
+                              ),
+                              minimumSize: const Size(80, 32),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Katıl',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            onPressed: () => _handleRejectInvite(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 0,
+                              ),
+                              minimumSize: const Size(80, 32),
+                              side: BorderSide(
+                                color: isDark ? Colors.white24 : Colors.black12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'Reddet',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -325,60 +377,79 @@ class _NotificationItemModern extends StatelessWidget {
     }
 
     // 2. Navigasyon Mantığı
-    // Sesli Oturum Daveti Kontrolü
-    final msg = notification.message.toLowerCase();
-
-    // Backend'de type string olarak geliyorsa onu kontrol et, yoksa mesaja bak
-    bool isVoiceInvite =
-        (notification.type == 'VoiceSessionInvite') ||
-        (notification.type == '5') ||
-        msg.contains('davet') ||
-        msg.contains('sesli');
-
-    if (isVoiceInvite) {
+    if (_isVoiceInviteKind(notification)) {
       _navigateToVoiceSession(context);
       return;
     }
+  }
 
-    // Diğer tipler için buraya ekeleme yapılabilir
+  bool _isVoiceInviteKind(NotificationEntity notification) {
+    final msg = notification.message.toLowerCase();
+    // 5 = VoiceSessionInvite from Backend Enum usually
+    return (notification.type == 'VoiceSessionInvite') ||
+        (notification.type == '5') ||
+        msg.contains('davet') ||
+        msg.contains('sesli');
+  }
+
+  int? _getSessionId(NotificationEntity notification) {
+    if (notification.relatedId != null) return notification.relatedId;
+    if (notification.dataJson != null) {
+      try {
+        final data = json.decode(notification.dataJson!);
+        if (data is Map && data.containsKey('sessionId')) {
+          return data['sessionId'];
+        }
+      } catch (e) {
+        debugPrint("JSON Parse hatası: $e");
+      }
+    }
+    return null;
+  }
+
+  Future<void> _handleAcceptInvite(BuildContext context) async {
+    final sessionId = _getSessionId(notification);
+    if (sessionId != null) {
+      await _goToGroupPage(context, sessionId);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Oturum bilgisine ulaşılamadı.")),
+      );
+    }
+  }
+
+  Future<void> _handleRejectInvite(BuildContext context) async {
+    final sessionId = _getSessionId(notification);
+    if (sessionId != null) {
+      try {
+        final voiceSessionRepository = sl<VoiceSessionRepository>();
+        await voiceSessionRepository.rejectInvitation(sessionId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Davet reddedildi.')));
+        }
+      } catch (e) {
+        debugPrint('Davet reddetme hatası: $e');
+      }
+    }
+    // Mark as read
+    if (context.mounted) {
+      context.read<NotificationsBloc>().add(
+        MarkNotificationReadEvent(notification.id),
+      );
+    }
   }
 
   void _navigateToVoiceSession(BuildContext context) {
-    try {
-      int? sessionId;
-
-      // 1. Durum: relatedId direkt sessionId ise
-      if (notification.relatedId != null) {
-        sessionId = notification.relatedId;
-      }
-
-      // 2. Durum: dataJson içinden sessionId çekme
-      if (sessionId == null && notification.dataJson != null) {
-        try {
-          final data = json.decode(notification.dataJson!);
-          if (data is Map && data.containsKey('sessionId')) {
-            sessionId = data['sessionId'];
-          }
-        } catch (e) {
-          debugPrint("JSON Parse hatası: $e");
-        }
-      }
-
-      if (sessionId != null) {
-        _goToGroupPage(context, sessionId);
-      } else {
-        debugPrint("⚠️ Bildirim detayında ID bulunamadı.");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Oturum bilgisine ulaşılamadı. (ID Yok)"),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint("❌ Navigasyon hatası: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Bir hata oluştu.")));
+    final sessionId = _getSessionId(notification);
+    if (sessionId != null) {
+      _goToGroupPage(context, sessionId);
+    } else {
+      debugPrint("⚠️ Bildirim detayında ID bulunamadı.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Oturum bilgisine ulaşılamadı. (ID Yok)")),
+      );
     }
   }
 
@@ -390,11 +461,9 @@ class _NotificationItemModern extends StatelessWidget {
       debugPrint('✅ Davet kabul edildi: $sessionId');
     } catch (e) {
       debugPrint('⚠️ Davet kabul hatası (belki zaten kabul edilmiş): $e');
-      // Hata olsa bile devam et - belki zaten kabul edilmiş
     }
 
-    // GroupRideData bekliyor sayfa. Oraya sahte bir data ile gidip ID'yi pasliyoruz.
-    // GroupPage icinde ID varsa load et mantigini kurmustuk.
+    // Navigasyon
     final dummyData = {
       'id': sessionId,
       'groupName': "${notification.senderUsername ?? 'Arkadaş'} Daveti",
@@ -405,8 +474,6 @@ class _NotificationItemModern extends StatelessWidget {
     };
 
     if (!context.mounted) return;
-
-    // go kullanarak tüm stack'i değiştiriyoruz
     context.go('/communication/group-page', extra: dummyData);
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/create_voice_session_usecase.dart';
 import '../../domain/usecases/join_voice_session_usecase.dart';
@@ -31,6 +32,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final MuteUserUseCase muteUserUseCase;
   final TransferHostUseCase transferHostUseCase;
 
+  StreamSubscription? _rideTerminatedSubscription;
+  StreamSubscription? _rideCreatedSubscription;
+  StreamSubscription? _userJoinedSubscription;
+
+  StreamSubscription? _userLeftSubscription;
+  StreamSubscription? _hostChangedSubscription;
+
   VoiceSessionBloc({
     required this.createVoiceSessionUseCase,
     required this.joinVoiceSessionUseCase,
@@ -59,6 +67,62 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       }
     });
 
+    // --- SignalR Broadcast Listeners for List Refresh ---
+
+    // 1. Ride Terminated
+    _rideTerminatedSubscription = signalRService.rideTerminatedStream.listen((
+      rideId,
+    ) {
+      try {
+        if (!isClosed) {
+          add(const GetMyVoiceSessionsEvent());
+        }
+      } catch (e) {
+        // Bloc likely closed
+      }
+    });
+
+    // 2. Ride Created
+    _rideCreatedSubscription = signalRService.rideCreatedStream.listen((_) {
+      try {
+        if (!isClosed) {
+          add(const GetMyVoiceSessionsEvent());
+        }
+      } catch (e) {
+        // Bloc likely closed
+      }
+    });
+
+    // 3. User Joined
+    _userJoinedSubscription = signalRService.userJoinedStream.listen((userId) {
+      try {
+        if (!isClosed) {
+          add(const GetMyVoiceSessionsEvent());
+        }
+      } catch (e) {
+        // Bloc likely closed
+      }
+    });
+
+    // 4. User Left
+    _userLeftSubscription = signalRService.userLeftStream.listen((userId) {
+      try {
+        if (!isClosed) {
+          add(const GetMyVoiceSessionsEvent());
+        }
+      } catch (e) {
+        // Bloc likely closed
+        // Bloc likely closed
+      }
+    });
+
+    // 5. Host Changed
+    _hostChangedSubscription = signalRService.hostChangedStream.listen((data) {
+      if (!isClosed) {
+        add(VoiceSessionHostChanged(data));
+      }
+    });
+
     // Initialize SignalR
     signalRService.init();
 
@@ -73,7 +137,9 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     // New Handlers
     on<KickUserEvent>(_onKickUser);
     on<MuteUserEvent>(_onMuteUser);
+
     on<TransferHostEvent>(_onTransferHost);
+    on<VoiceSessionHostChanged>(_onHostChanged);
 
     on<VoiceSessionParticipantJoinedEvent>((event, emit) {
       // Refresh session details to get updated list
@@ -107,6 +173,16 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         }
       }
     });
+  }
+
+  @override
+  Future<void> close() {
+    _rideTerminatedSubscription?.cancel();
+    _rideCreatedSubscription?.cancel();
+    _userJoinedSubscription?.cancel();
+    _userLeftSubscription?.cancel();
+    _hostChangedSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onCreateVoiceSession(
@@ -248,5 +324,15 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         emit(const VoiceSessionActionSuccess("Host yetkisi devredildi"));
       },
     );
+  }
+
+  Future<void> _onHostChanged(
+    VoiceSessionHostChanged event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    if (state is VoiceSessionDetailsLoaded) {
+      final currentSessionId = (state as VoiceSessionDetailsLoaded).session.id;
+      add(GetVoiceSessionDetailsEvent(currentSessionId));
+    }
   }
 }

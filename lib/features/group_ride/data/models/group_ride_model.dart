@@ -19,7 +19,9 @@ class GroupRideModel extends GroupRideEntity {
     super.estimatedDurationMinutes,
     required super.status,
     super.difficulty,
+    super.ridingStyle,
     super.requirements,
+    super.voiceSessionId,
   });
 
   factory GroupRideModel.fromJson(Map<String, dynamic> json) {
@@ -45,7 +47,9 @@ class GroupRideModel extends GroupRideEntity {
       estimatedDurationMinutes: json['estimatedDurationMinutes'] as int?,
       status: json['status'] as String? ?? '',
       difficulty: json['difficulty'] as String?,
+      ridingStyle: json['ridingStyle'] as String?,
       requirements: json['requirements'] as String?,
+      voiceSessionId: json['voiceSessionId'] as int?,
     );
   }
 
@@ -68,7 +72,9 @@ class GroupRideModel extends GroupRideEntity {
       'estimatedDurationMinutes': estimatedDurationMinutes,
       'status': status,
       'difficulty': difficulty,
+      'ridingStyle': ridingStyle,
       'requirements': requirements,
+      'voiceSessionId': voiceSessionId,
     };
   }
 }

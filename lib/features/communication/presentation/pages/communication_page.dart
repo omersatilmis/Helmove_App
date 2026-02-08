@@ -14,6 +14,7 @@ import '../../../voice_session/presentation/bloc/voice_session_state.dart';
 import '../widgets/active_group.dart';
 import '../widgets/nearby_group.dart';
 import '../widgets/rider_card.dart';
+import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
 
 class CommunicationPage extends StatefulWidget {
   const CommunicationPage({super.key});
@@ -351,17 +352,33 @@ class _CommunicationPageState extends State<CommunicationPage> {
       maxParticipants: 10, // Varsayılan
       isActive: activeSession.isActive,
       onOpenPressed: () async {
-        // Reduced to dummy navigation data
-        final data = {
-          "id": activeSession.id,
-          "groupName": activeSession.title,
-          "maxParticipants": 10,
-          "privacy": "Private",
-          "destination": "Bilinmiyor",
-          "ridingStyle": "Bilinmiyor",
-        };
-        await context.push('/communication/group-page', extra: data);
-        _loadMySessions();
+        final args = GroupRideArgs(
+          rideId: activeSession.groupRideId ?? activeSession.id,
+          voiceSessionId: activeSession.id,
+          groupName: activeSession.title,
+          maxParticipants: 10,
+          currentParticipants: activeSession.activeParticipantCount,
+          destination: "Bilinmiyor",
+          ridingStyle: "Bilinmiyor",
+          privacy: "Private",
+        );
+        final result = await context.push<bool>(
+          '/communication/group-page',
+          extra: args,
+        );
+
+        if (result == true) {
+          // Force clear and reload
+          setState(() {
+            _mySessions = [];
+            _isLoadingSessions = true;
+          });
+          // Increased delay to ensure backend consistency (1500ms)
+          await Future.delayed(const Duration(milliseconds: 1500));
+          if (mounted) _loadMySessions();
+        } else {
+          _loadMySessions();
+        }
       },
       riderCards: participants.take(3).map((p) {
         return RiderCard(

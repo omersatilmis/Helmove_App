@@ -131,16 +131,16 @@ import '../../features/plan/domain/usecases/subscribe_usecase.dart';
 import '../../features/plan/presentation/bloc/subscription_bloc.dart';
 
 // Attendance Feature
-import '../../features/attendance_management/data/api/attendance_api.dart';
-import '../../features/attendance_management/data/datasources/attendance_remote_data_source.dart';
-import '../../features/attendance_management/data/repositories/attendance_repository_impl.dart';
-import '../../features/attendance_management/domain/repositories/attendance_repository.dart';
-import '../../features/attendance_management/domain/usecases/join_group_ride_usecase.dart';
-import '../../features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
-import '../../features/attendance_management/domain/usecases/approve_participant_usecase.dart';
-import '../../features/attendance_management/domain/usecases/reject_participant_usecase.dart';
-import '../../features/attendance_management/domain/usecases/get_ride_participants_usecase.dart';
-import '../../features/attendance_management/domain/usecases/get_participation_status_usecase.dart';
+import 'package:moto_comm_app_1/features/attendance_management/data/api/attendance_api.dart';
+import 'package:moto_comm_app_1/features/attendance_management/data/datasources/attendance_remote_data_source.dart';
+import 'package:moto_comm_app_1/features/attendance_management/data/repositories/attendance_repository_impl.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/repositories/attendance_repository.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/usecases/join_group_ride_usecase.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/usecases/approve_participant_usecase.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/usecases/reject_participant_usecase.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/usecases/get_ride_participants_usecase.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/usecases/get_participation_status_usecase.dart';
 
 // Voice Session Feature
 import '../../features/voice_session/data/api/voice_session_api.dart';
@@ -179,6 +179,7 @@ import '../../features/group_ride/domain/usecases/get_active_group_rides_usecase
 import '../../features/group_ride/domain/usecases/get_group_ride_by_id_usecase.dart';
 import '../../features/group_ride/domain/usecases/update_group_ride_usecase.dart';
 import '../../features/group_ride/domain/usecases/delete_group_ride_usecase.dart';
+import '../../features/group_ride/presentation/bloc/group_ride_bloc.dart';
 
 // Call Feature
 import '../../features/call/data/api/call_api.dart';
@@ -383,28 +384,13 @@ void _registerFeatureSingletons() {
     () => FriendshipRepositoryImpl(sl()),
   );
 
-  // Attendance Feature
-  if (!sl.isRegistered<AttendanceApi>()) {
-    sl.registerLazySingleton(() => AttendanceApi(sl()));
-  }
-  if (!sl.isRegistered<AttendanceRemoteDataSource>()) {
-    sl.registerLazySingleton<AttendanceRemoteDataSource>(
-      () => AttendanceRemoteDataSourceImpl(sl()),
-    );
-  }
-  if (!sl.isRegistered<AttendanceRepository>()) {
-    sl.registerLazySingleton<AttendanceRepository>(
-      () => AttendanceRepositoryImpl(sl()),
-    );
-  }
-
   // Voice Session Feature
   if (!sl.isRegistered<VoiceSessionApi>()) {
     sl.registerLazySingleton(() => VoiceSessionApi(sl()));
   }
   if (!sl.isRegistered<VoiceSessionRemoteDataSource>()) {
     sl.registerLazySingleton<VoiceSessionRemoteDataSource>(
-      () => VoiceSessionRemoteDataSourceImpl(sl()),
+      () => VoiceSessionRemoteDataSourceImpl(sl<VoiceSessionApi>()),
     );
   }
   if (!sl.isRegistered<VoiceSessionRepository>()) {
@@ -501,6 +487,21 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<CommentRepository>()) {
     sl.registerLazySingleton<CommentRepository>(
       () => CommentRepositoryImpl(sl<CommentRemoteDataSource>()),
+    );
+  }
+
+  // Attendance Feature
+  if (!sl.isRegistered<AttendanceApi>()) {
+    sl.registerLazySingleton(() => AttendanceApi(sl()));
+  }
+  if (!sl.isRegistered<AttendanceRemoteDataSource>()) {
+    sl.registerLazySingleton<AttendanceRemoteDataSource>(
+      () => AttendanceRemoteDataSourceImpl(sl<AttendanceApi>()),
+    );
+  }
+  if (!sl.isRegistered<AttendanceRepository>()) {
+    sl.registerLazySingleton<AttendanceRepository>(
+      () => AttendanceRepositoryImpl(sl()),
     );
   }
 }
@@ -798,6 +799,7 @@ Future<void> init() async {
       getUnreadCount: sl(),
       markNotificationRead: sl(),
       markAllNotificationsRead: sl(),
+      signalRService: sl(),
     ),
   );
 
@@ -852,7 +854,7 @@ Future<void> init() async {
 
   // Data Sources
   sl.registerLazySingleton<AttendanceRemoteDataSource>(
-    () => AttendanceRemoteDataSourceImpl(sl()),
+    () => AttendanceRemoteDataSourceImpl(sl<AttendanceApi>()),
   );
 
   // Repository
@@ -874,7 +876,7 @@ Future<void> init() async {
 
   // Data Sources
   sl.registerLazySingleton<VoiceSessionRemoteDataSource>(
-    () => VoiceSessionRemoteDataSourceImpl(sl()),
+    () => VoiceSessionRemoteDataSourceImpl(sl<VoiceSessionApi>()),
   );
 
   // Repository
@@ -940,7 +942,7 @@ Future<void> init() async {
 
   // Data Sources
   sl.registerLazySingleton<GroupRideRemoteDataSource>(
-    () => GroupRideRemoteDataSourceImpl(sl()),
+    () => GroupRideRemoteDataSourceImpl(sl<GroupRideApi>()),
   );
 
   // Repository
@@ -954,6 +956,17 @@ Future<void> init() async {
   sl.registerFactory(() => GetGroupRideByIdUseCase(sl()));
   sl.registerFactory(() => UpdateGroupRideUseCase(sl()));
   sl.registerFactory(() => DeleteGroupRideUseCase(sl()));
+
+  // Bloc
+  sl.registerFactory(
+    () => GroupRideBloc(
+      createGroupRideUseCase: sl(),
+      deleteGroupRideUseCase: sl(),
+      getActiveGroupRidesUseCase: sl(),
+      leaveGroupRideUseCase: sl(), // From Attendance Feature
+      signalRService: sl(),
+    ),
+  );
 
   //! Call Feature
   // API

@@ -11,7 +11,6 @@ import '../../../../core/theme/text_styles.dart';
 
 // --- DOMAIN & ENTITIES ---
 import '../../../friendship/domain/entities/friend_user_entity.dart';
-import '../../../voice_session/data/dto/create_voice_session_request_dto.dart';
 import '../../../voice_session/data/dto/invite_users_request_dto.dart';
 
 // --- BLOCS ---
@@ -24,6 +23,11 @@ import '../../../discover/presentation/bloc/discover_state.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
+import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
+import '../../../group_ride/presentation/bloc/group_ride_event.dart';
+import '../../../group_ride/presentation/bloc/group_ride_state.dart';
+import '../../../group_ride/data/dto/create_group_ride_request_dto.dart';
+import '../../../group_ride/presentation/models/group_ride_args.dart';
 
 // --- LOCAL WIDGETS ---
 import '../widgets/invite_rider_card.dart';
@@ -50,6 +54,7 @@ class InvitePage extends StatelessWidget {
         ),
         BlocProvider(create: (_) => sl<DiscoverBloc>()),
         BlocProvider(create: (_) => sl<VoiceSessionBloc>()),
+        BlocProvider(create: (_) => sl<GroupRideBloc>()),
       ],
       child: _InviteView(
         isFromCreateGroup: isFromCreateGroup,
@@ -122,8 +127,59 @@ class _InviteViewState extends State<_InviteView> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Sesli oturum oluşturuldu!")),
               );
-              // VoiceSession başarılı olunca belki bir şey yaparız ama
-              // asıl yönlendirmeyi GroupRideBloc yapacak.
+            }
+          },
+        ),
+        BlocListener<GroupRideBloc, GroupRideState>(
+          listener: (context, state) {
+            if (state is GroupRideFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Hata: ${state.message}"),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            } else if (state is GroupRideCreatedSync) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Grup ve Sesli Oturum başarıyla oluşturuldu!"),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              // Navigate to Group Page with the new data
+              // 使用 context.go to reset the stack so Back button goes to Communication Page
+              context.go(
+                '/communication/group-page',
+                extra: GroupRideArgs(
+                  rideId: state.ride.id,
+                  voiceSessionId: state.voiceSessionId,
+                  groupName: state.ride.title,
+                  maxParticipants: state.ride.maxParticipants,
+                  currentParticipants: 1,
+                  destination: state.ride.endLocation,
+                  ridingStyle: state.ride.difficulty ?? "Sakin Sürüş",
+                  privacy: "Public",
+                ),
+              );
+            } else if (state is GroupRideSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              context.go(
+                '/communication/group-page',
+                extra: GroupRideArgs(
+                  rideId: state.ride.id,
+                  groupName: state.ride.title,
+                  maxParticipants: state.ride.maxParticipants,
+                  currentParticipants: 1,
+                  destination: state.ride.endLocation,
+                  ridingStyle: state.ride.difficulty ?? "Sakin Sürüş",
+                  privacy: "Public",
+                ),
+              );
             }
           },
         ),
@@ -256,65 +312,97 @@ class _InviteViewState extends State<_InviteView> {
                 // --- 3. FOOTER (SABİT BUTON) ---
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-                  child: BlocBuilder<VoiceSessionBloc, VoiceSessionState>(
-                    builder: (context, state) {
-                      return AppFrostedTextButton(
-                        text: widget.isFromCreateGroup
-                            ? "Grubu Kur"
-                            : "Kişileri Davet Et",
-                        isLoading: state is VoiceSessionLoading,
-                        height: 52,
-                        // 🔥 Turuncu (Primary) Renk
-                        backgroundColor: colorScheme.primary.withValues(
-                          alpha: 0.1,
-                        ),
-                        textColor: colorScheme.primary,
-                        onPressed: () {
-                          if (widget.isFromCreateGroup &&
-                              widget.groupData != null) {
-                            debugPrint(
-                              "🚀 [VoiceSession] Grubu Kur başlatılıyor...",
-                            );
+                  child: BlocBuilder<GroupRideBloc, GroupRideState>(
+                    builder: (context, rideState) {
+                      return BlocBuilder<VoiceSessionBloc, VoiceSessionState>(
+                        builder: (context, vsState) {
+                          final isLoading =
+                              rideState is GroupRideLoading ||
+                              vsState is VoiceSessionLoading;
+                          return AppFrostedTextButton(
+                            text: widget.isFromCreateGroup
+                                ? "Grubu Kur"
+                                : "Kişileri Davet Et",
+                            isLoading: isLoading,
+                            height: 52,
+                            // 🔥 Turuncu (Primary) Renk
+                            backgroundColor: colorScheme.primary.withValues(
+                              alpha: 0.1,
+                            ),
+                            textColor: colorScheme.primary,
+                            onPressed: () {
+                              if (widget.isFromCreateGroup &&
+                                  widget.groupData != null) {
+                                debugPrint(
+                                  "🚀 [GroupRide] Senkronize kurulum başlatılıyor...",
+                                );
 
-                            final request = CreateVoiceSessionRequestDto(
-                              title:
-                                  widget.groupData["groupName"] ?? "Yeni Grup",
-                              roomName:
-                                  widget.groupData["groupName"] ?? "Yeni Grup",
-                              inviteUserIds: _selectedRiders
-                                  .map((e) => e.userId)
-                                  .toList(),
-                            );
+                                final request = CreateGroupRideRequestDto(
+                                  title:
+                                      widget.groupData["groupName"] ??
+                                      "Yeni Grup",
+                                  description:
+                                      (widget.groupData["description"]
+                                              ?.toString()
+                                              .isNotEmpty ??
+                                          false)
+                                      ? widget.groupData["description"]
+                                      : "belirlenmedi",
+                                  maxParticipants:
+                                      widget.groupData["maxParticipants"] ?? 10,
+                                  privacy:
+                                      widget.groupData["privacy"] ?? "Public",
+                                  startDateTime: DateTime.now(),
+                                  endDateTime: DateTime.now().add(
+                                    const Duration(hours: 4),
+                                  ),
+                                  startLocation: "Mevcut Konum",
+                                  startLatitude: 0,
+                                  startLongitude: 0,
+                                  endLocation:
+                                      widget.groupData["destination"] ??
+                                      "Hedef Belirtilmedi",
+                                  endLatitude: 0,
+                                  endLongitude: 0,
+                                  difficulty:
+                                      widget.groupData["difficulty"] ??
+                                      "Beginner",
+                                  ridingStyle:
+                                      widget.groupData["ridingStyle"] ??
+                                      "Sakin",
+                                );
 
-                            context.read<VoiceSessionBloc>().add(
-                              CreateVoiceSessionEvent(request),
-                            );
-                          } else if (widget.sessionId != null &&
-                              _selectedRiders.isNotEmpty) {
-                            debugPrint(
-                              "📨 [VoiceSession] Davet event'i gönderiliyor. SessionID: ${widget.sessionId}",
-                            );
-                            final request = InviteUsersRequestDto(
-                              userIds: _selectedRiders
-                                  .map((e) => e.userId)
-                                  .toList(),
-                            );
-                            context.read<VoiceSessionBloc>().add(
-                              InviteUsersEvent(widget.sessionId!, request),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Davetler gönderildi!"),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                            context.pop();
-                          } else {
-                            debugPrint(
-                              "🔙 [GroupRide] Geri dönülüyor: ${_selectedRiders.length} kişi",
-                            );
-                            context.pop(_selectedRiders);
-                          }
+                                context.read<GroupRideBloc>().add(
+                                  CreateGroupRideEvent(request),
+                                );
+                              } else if (widget.sessionId != null &&
+                                  _selectedRiders.isNotEmpty) {
+                                debugPrint(
+                                  "📨 [VoiceSession] Davet event'i gönderiliyor. SessionID: ${widget.sessionId}",
+                                );
+                                final request = InviteUsersRequestDto(
+                                  userIds: _selectedRiders
+                                      .map((e) => e.userId)
+                                      .toList(),
+                                );
+                                context.read<VoiceSessionBloc>().add(
+                                  InviteUsersEvent(widget.sessionId!, request),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Davetler gönderildi!"),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                context.pop();
+                              } else {
+                                debugPrint(
+                                  "🔙 [GroupRide] Geri dönülüyor: ${_selectedRiders.length} kişi",
+                                );
+                                context.pop(_selectedRiders);
+                              }
+                            },
+                          );
                         },
                       );
                     },

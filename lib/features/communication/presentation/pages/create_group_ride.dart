@@ -21,9 +21,12 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   final TextEditingController _groupNameController = TextEditingController();
   final TextEditingController _destinationController = TextEditingController();
   final TextEditingController _ridingStyleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
 
   // Durum değişkenleri
   String selectedPrivacy = 'Public';
+  String selectedDifficulty = 'Beginner';
+  String selectedRidingStyle = 'Sakin';
 
   // Katılımcı Seçenekleri (Map)
   final Map<String, int> participantOptions = {
@@ -51,6 +54,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     _groupNameController.dispose();
     _destinationController.dispose();
     _ridingStyleController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -62,12 +66,17 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     final finalGroupName = groupName.isNotEmpty ? groupName : "Weekend Riders";
     final maxParticipants = participantOptions[selectedMaxParticipantsKey] ?? 6;
 
+    final descriptionText = _descriptionController.text.trim();
     final data = {
       'groupName': finalGroupName,
       'maxParticipants': maxParticipants,
       'privacy': selectedPrivacy,
       'destination': _destinationController.text.trim(),
-      'ridingStyle': _ridingStyleController.text.trim(),
+      'ridingStyle': selectedRidingStyle,
+      'difficulty': selectedDifficulty,
+      'description': descriptionText.isNotEmpty
+          ? descriptionText
+          : "belirlenmedi",
     };
 
     context.push('/communication/invite', extra: data);
@@ -208,12 +217,79 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
 
                         const SizedBox(height: 20),
 
-                        // Sürüş Tarzı
+                        // Sürüş Tarzı ve Zorluk (Yan Yana veya Accordion)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Sürüş Tarzı",
+                                    style: AppTextStyles.inputLabel.copyWith(
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildAccordionSelector(
+                                    context: context,
+                                    title: selectedRidingStyle,
+                                    icon: Icons.two_wheeler,
+                                    options: [
+                                      'Sakin',
+                                      'Tour',
+                                      'Viraj',
+                                      'Sehir',
+                                    ],
+                                    onSelected: (val) => setState(
+                                      () => selectedRidingStyle = val,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Zorluk",
+                                    style: AppTextStyles.inputLabel.copyWith(
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildAccordionSelector(
+                                    context: context,
+                                    title: selectedDifficulty,
+                                    icon: Icons.speed,
+                                    options: [
+                                      'Beginner',
+                                      'Intermediate',
+                                      'Advanced',
+                                      'Expert',
+                                    ],
+                                    onSelected: (val) => setState(
+                                      () => selectedDifficulty = val,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Açıklama
                         AppInputField(
-                          controller: _ridingStyleController,
-                          hint: "Örn: Sakin Sürüş, Viraj",
-                          label: "Sürüş Tarzı",
-                          leadingIcon: Icons.two_wheeler,
+                          controller: _descriptionController,
+                          hint: "Sürüş hakkında kısa bir açıklama yazın...",
+                          label: "Açıklama",
+                          leadingIcon: Icons.description,
+                          maxLines: 3,
                         ),
 
                         // Alt kısımda biraz boşluk bırakalım ki en son input klavye açılınca sıkışmasın
@@ -327,6 +403,57 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccordionSelector({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required List<String> options,
+    required Function(String) onSelected,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+        ),
+        child: ExpansionTile(
+          leading: Icon(icon, color: colorScheme.primary, size: 20),
+          title: Text(
+            title,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          children: options.map((opt) {
+            return ListTile(
+              title: Text(
+                opt,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: opt == title
+                      ? colorScheme.primary
+                      : colorScheme.onSurface,
+                  fontWeight: opt == title
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+              onTap: () {
+                onSelected(opt);
+                // Close accordion manually is not directly possible with ExpansionTile easily without a key,
+                // but for now, the user can tap to close or we can use a custom widget.
+              },
+            );
+          }).toList(),
         ),
       ),
     );

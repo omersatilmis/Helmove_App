@@ -13,6 +13,7 @@ class VoiceSessionEntity extends Equatable {
   final String roomName;
   final bool isActive;
   final DateTime createdAt;
+  final int? groupRideId;
   final List<VoiceSessionParticipantEntity> participants;
 
   const VoiceSessionEntity({
@@ -26,6 +27,7 @@ class VoiceSessionEntity extends Equatable {
     required this.roomName,
     required this.isActive,
     required this.createdAt,
+    this.groupRideId,
     required this.participants,
   });
 
@@ -59,6 +61,7 @@ class VoiceSessionEntity extends Equatable {
     roomName,
     isActive,
     createdAt,
+    groupRideId,
     participants,
   ];
 }

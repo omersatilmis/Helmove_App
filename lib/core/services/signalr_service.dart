@@ -12,10 +12,27 @@ class SignalRService {
   SignalRService(this.sharedPreferences);
 
   // Callbacks
-  // Callbacks -> Updated to include rideId
   Function(String userId, String? rideId)? _onUserJoinedRide;
   Function(String userId, String? rideId)? _onUserLeftRide;
   Function(String userId, dynamic locationData)? _onRideLocationUpdate;
+  Function(dynamic notification)? _onNotificationReceived;
+  // Previously: Function(String? rideId)? _onRideTerminated;
+
+  // Broadcast Streams
+  final _rideTerminatedController = StreamController<String?>.broadcast();
+  final _rideCreatedController = StreamController<void>.broadcast();
+  final _userJoinedController = StreamController<String>.broadcast();
+  final _userLeftController = StreamController<String>.broadcast();
+  final _hostChangedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<String?> get rideTerminatedStream => _rideTerminatedController.stream;
+  Stream<void> get rideCreatedStream => _rideCreatedController.stream;
+  Stream<String> get userJoinedStream => _userJoinedController.stream;
+
+  Stream<String> get userLeftStream => _userLeftController.stream;
+  Stream<Map<String, dynamic>> get hostChangedStream =>
+      _hostChangedController.stream;
 
   // Active Ride Context
   String? _activeRideId;
@@ -60,6 +77,7 @@ class SignalRService {
           "SignalR: User Joined Ride -> $userId (Ride: $_activeRideId)",
         );
         _onUserJoinedRide?.call(userId, _activeRideId);
+        _userJoinedController.add(userId);
       }
     });
 
@@ -70,6 +88,16 @@ class SignalRService {
           "SignalR: User Left Ride -> $userId (Ride: $_activeRideId)",
         );
         _onUserLeftRide?.call(userId, _activeRideId);
+        _userLeftController.add(userId);
+      }
+    });
+
+    _hubConnection!.on("RideCreated", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        // Assuming arguments[0] is rideId or ride object.
+        // For list refresh, we might just need the signal.
+        AppLogger.info("SignalR: Ride Created Event Received");
+        _rideCreatedController.add(null);
       }
     });
 
@@ -78,6 +106,33 @@ class SignalRService {
         final userId = arguments[0] as String;
         final data = arguments[1];
         _onRideLocationUpdate?.call(userId, data);
+      }
+    });
+
+    _hubConnection!.on("RideTerminated", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final rideId = arguments[0] as String?;
+        AppLogger.info("SignalR: Ride Terminated -> $rideId");
+        // Broadcast event instead of single callback
+        _rideTerminatedController.add(rideId);
+        // Broadcast event instead of single callback
+        _rideTerminatedController.add(rideId);
+      }
+    });
+
+    _hubConnection!.on("HostChanged", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final data = arguments[0] as Map<String, dynamic>;
+        AppLogger.info("SignalR: Host Changed -> $data");
+        _hostChangedController.add(data);
+      }
+    });
+
+    _hubConnection!.on("ReceiveNotification", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final notification = arguments[0];
+        AppLogger.info("SignalR: Received Notification -> $notification");
+        _onNotificationReceived?.call(notification);
       }
     });
   }
@@ -99,6 +154,8 @@ class SignalRService {
     if (_hubConnection != null) {
       await _hubConnection!.stop();
       _hubConnection = null;
+      // Close local streams if needed, or keep open if service is singleton
+      // _rideTerminatedController.close(); // Careful with singletons
       AppLogger.info("SignalR Connection Stopped");
     }
   }
@@ -137,5 +194,14 @@ class SignalRService {
 
   void setOnUserLeftRide(Function(String userId, String? rideId) callback) {
     _onUserLeftRide = callback;
+  }
+
+  // DEPRECATED: Use rideTerminatedStream instead
+  // void setOnRideTerminated(Function(String? rideId)? callback) {
+  //   _onRideTerminated = callback;
+  // }
+
+  void setOnNotificationReceived(Function(dynamic notification)? callback) {
+    _onNotificationReceived = callback;
   }
 }

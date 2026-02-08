@@ -110,3 +110,10 @@ class TransferHostEvent extends VoiceSessionEvent {
   @override
   List<Object?> get props => [sessionId, newHostId];
 }
+
+class VoiceSessionHostChanged extends VoiceSessionEvent {
+  final Map<String, dynamic> data;
+  const VoiceSessionHostChanged(this.data);
+  @override
+  List<Object?> get props => [data];
+}

@@ -1,8 +1,6 @@
-class GroupRideEntity {
-  final int id;
+class CreateGroupRideRequestDto {
   final String title;
   final String? description;
-  final int organizerId;
   final DateTime startDateTime;
   final DateTime endDateTime;
   final String startLocation;
@@ -12,18 +10,13 @@ class GroupRideEntity {
   final double endLatitude;
   final double endLongitude;
   final int maxParticipants;
-  final double? estimatedDistanceKm;
-  final int? estimatedDurationMinutes;
-  final String status;
   final String? difficulty;
   final String? ridingStyle;
-  final String? requirements;
+  final String privacy;
 
-  GroupRideEntity({
-    required this.id,
+  CreateGroupRideRequestDto({
     required this.title,
     this.description,
-    required this.organizerId,
     required this.startDateTime,
     required this.endDateTime,
     required this.startLocation,
@@ -33,14 +26,27 @@ class GroupRideEntity {
     required this.endLatitude,
     required this.endLongitude,
     required this.maxParticipants,
-    this.estimatedDistanceKm,
-    this.estimatedDurationMinutes,
-    required this.status,
     this.difficulty,
     this.ridingStyle,
-    this.requirements,
-    this.voiceSessionId,
+    required this.privacy,
   });
 
-  final int? voiceSessionId;
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'description': description,
+      'startDateTime': startDateTime.toIso8601String(),
+      'endDateTime': endDateTime.toIso8601String(),
+      'startLocation': startLocation,
+      'startLatitude': startLatitude,
+      'startLongitude': startLongitude,
+      'endLocation': endLocation,
+      'endLatitude': endLatitude,
+      'endLongitude': endLongitude,
+      'maxParticipants': maxParticipants,
+      'difficulty': difficulty,
+      'ridingStyle': ridingStyle,
+      'privacy': privacy,
+    };
+  }
 }

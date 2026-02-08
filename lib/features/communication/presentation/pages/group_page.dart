@@ -6,8 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
-
-// import '../../domain/entities/group_ride_data.dart';
 import '../widgets/rider_card.dart';
 
 // --- BACKEND BLOC & ENTITY İMPORTLARI ---
@@ -15,17 +13,14 @@ import '../../../voice_session/domain/entities/voice_session_entity.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
-// import '../bloc/group_ride_bloc.dart';
-// import '../bloc/group_ride_event.dart';
-// import '../bloc/group_ride_state.dart';
-
-// ... existing imports ...
-
-// ... existing imports ...
+import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
+import '../../../group_ride/presentation/bloc/group_ride_event.dart';
+import '../../../group_ride/presentation/bloc/group_ride_state.dart';
+import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
 import '../../../../features/auth/data/datasources/auth_local_data_source.dart';
 
 class GroupPage extends StatefulWidget {
-  final dynamic data;
+  final GroupRideArgs data;
 
   const GroupPage({super.key, required this.data});
 
@@ -43,8 +38,10 @@ class _GroupPageState extends State<GroupPage> {
   void initState() {
     super.initState();
     _loadCurrentUser();
-    final id = widget.data is Map ? widget.data["id"] : widget.data.id;
-    if (id != null && id > 0) {
+    if (widget.data.rideId > 0) {
+      context.read<GroupRideBloc>().add(
+        JoinSignalRGroupEvent(widget.data.rideId),
+      );
       _loadSessionDetails();
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -67,10 +64,12 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   void _loadSessionDetails() {
-    final id = widget.data is Map ? widget.data["id"] : widget.data.id;
     setState(() => _isLoadingSession = true);
-    context.read<VoiceSessionBloc>().add(GetVoiceSessionDetailsEvent(id));
-    // GroupRideBloc call removed
+    context.read<VoiceSessionBloc>().add(
+      GetVoiceSessionDetailsEvent(
+        widget.data.voiceSessionId ?? widget.data.rideId,
+      ),
+    );
   }
 
   // --- UI ACTIONS ---
@@ -89,7 +88,10 @@ class _GroupPageState extends State<GroupPage> {
             onPressed: () {
               Navigator.pop(ctx);
               context.read<VoiceSessionBloc>().add(
-                KickUserEvent(widget.data.id!, targetUserId),
+                KickUserEvent(
+                  widget.data.voiceSessionId ?? widget.data.rideId,
+                  targetUserId,
+                ),
               );
             },
             child: const Text('At', style: TextStyle(color: Colors.red)),
@@ -114,7 +116,10 @@ class _GroupPageState extends State<GroupPage> {
             onPressed: () {
               Navigator.pop(ctx);
               context.read<VoiceSessionBloc>().add(
-                MuteUserEvent(widget.data.id!, targetUserId),
+                MuteUserEvent(
+                  widget.data.voiceSessionId ?? widget.data.rideId,
+                  targetUserId,
+                ),
               );
             },
             child: const Text('Sustur'),
@@ -141,7 +146,10 @@ class _GroupPageState extends State<GroupPage> {
             onPressed: () {
               Navigator.pop(ctx);
               context.read<VoiceSessionBloc>().add(
-                TransferHostEvent(widget.data.id!, targetUserId),
+                TransferHostEvent(
+                  widget.data.voiceSessionId ?? widget.data.rideId,
+                  targetUserId,
+                ),
               );
             },
             child: const Text('Devret'),
@@ -152,6 +160,25 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   void _showLeaveDialog() {
+    // 1. Host Check
+    final isHost = _sessionDetails?.hostUserId == _currentUserId;
+
+    // 2. Participant Check (Count > 1 means Host + Others)
+    final participants = _sessionDetails?.participants ?? [];
+    final activeCount = participants
+        .where((p) => p.status == 'Joined' || p.status == 'Accepted')
+        .length;
+    final hasOthers = activeCount > 1;
+
+    // 3. Decision
+    if (isHost && hasOthers) {
+      _showSmartLeaveDialog();
+    } else {
+      _showStandardLeaveDialog();
+    }
+  }
+
+  void _showStandardLeaveDialog() {
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -170,18 +197,7 @@ class _GroupPageState extends State<GroupPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              final id = widget.data is Map
-                  ? widget.data["id"]
-                  : widget.data.id;
-              if (id != null) {
-                // Konuşmadan ayrılarak Grup turundan da ayrıl
-                context.read<VoiceSessionBloc>().add(
-                  LeaveVoiceSessionEvent(id),
-                );
-                // GroupRideBloc call removed
-              } else {
-                context.pop();
-              }
+              _performLeave();
             },
             child: Text(
               'Ayrıl',
@@ -196,13 +212,79 @@ class _GroupPageState extends State<GroupPage> {
     );
   }
 
+  void _showSmartLeaveDialog() {
+    final colorScheme = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colorScheme.surfaceContainerHigh,
+        title: Text('Gruptan Ayrılıyor musunuz?', style: AppTextStyles.h3),
+        content: Text('Ne yapmak istersiniz?', style: AppTextStyles.bodyMedium),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), // Cancel
+            child: Text(
+              'İptal',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+          ),
+          // Option 1: Leave & Transfer (Orange)
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _performLeave(); // Backend handles transfer automatically
+            },
+            child: Text(
+              'Ayrıl & Devret',
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          // Option 2: Terminate (Red)
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _performTerminate();
+            },
+            child: Text(
+              'Grubu Sonlandır',
+              style: TextStyle(
+                color: colorScheme.error,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _performLeave() {
+    final id = widget.data.rideId;
+    if (id > 0) {
+      context.read<GroupRideBloc>().add(LeaveGroupRideEvent(id));
+    } else {
+      context.pop();
+    }
+  }
+
+  void _performTerminate() {
+    final id = widget.data.rideId;
+    if (id > 0) {
+      context.read<GroupRideBloc>().add(DeleteGroupRideEvent(id));
+    } else {
+      context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Arka Plan Gradyanı
     final backgroundGradient = isDark
         ? const LinearGradient(
             begin: Alignment.topCenter,
@@ -238,7 +320,13 @@ class _GroupPageState extends State<GroupPage> {
               );
               setState(() => _isLoadingSession = false);
             } else if (state is VoiceSessionLeft) {
-              context.pop();
+              if (context.mounted) {
+                if (Navigator.of(context).canPop()) {
+                  context.pop(true);
+                } else {
+                  context.go('/communication');
+                }
+              }
             } else if (state is VoiceSessionActionSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -250,7 +338,85 @@ class _GroupPageState extends State<GroupPage> {
             }
           },
         ),
-        // GroupRideBloc Listener removed
+        BlocListener<GroupRideBloc, GroupRideState>(
+          listener: (context, state) {
+            if (state is GroupRideLeft) {
+              // 1. Leave Voice Session (Sequentially)
+              if (widget.data.voiceSessionId != null &&
+                  widget.data.voiceSessionId! > 0) {
+                context.read<VoiceSessionBloc>().add(
+                  LeaveVoiceSessionEvent(widget.data.voiceSessionId!),
+                );
+                // DO NOT POP HERE - Wait for VoiceSessionLeft
+              } else {
+                // 2. No Voice Session -> Navigate Back Immediately
+                if (!context.mounted) return;
+                if (Navigator.of(context).canPop()) {
+                  context.pop(true);
+                } else {
+                  context.go('/communication');
+                }
+              }
+            } else if (state is GroupRideTerminated) {
+              // 1. Leave Voice Session
+              if (widget.data.voiceSessionId != null &&
+                  widget.data.voiceSessionId! > 0) {
+                context.read<VoiceSessionBloc>().add(
+                  LeaveVoiceSessionEvent(widget.data.voiceSessionId!),
+                );
+              }
+              // 2. Show Info
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    'Grup turu organizatör tarafından sonlandırıldı.',
+                  ),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+
+              if (context.mounted) {
+                if (Navigator.of(context).canPop()) {
+                  context.pop(true);
+                } else {
+                  context.go('/communication');
+                }
+              }
+            } else if (state is GroupRideDeleted) {
+              // 1. Leave Voice Session
+              if (widget.data.voiceSessionId != null &&
+                  widget.data.voiceSessionId! > 0) {
+                context.read<VoiceSessionBloc>().add(
+                  LeaveVoiceSessionEvent(widget.data.voiceSessionId!),
+                );
+              }
+              // 2. Show Info
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Grup turu başarıyla silindi ve sonlandırıldı.',
+                  ),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+              // 3. Navigate Away
+              if (context.mounted) {
+                if (Navigator.of(context).canPop()) {
+                  context.pop(true);
+                } else {
+                  context.go('/communication');
+                }
+              }
+            } else if (state is GroupRideFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Hata: ${state.message}'),
+                  backgroundColor: colorScheme.error,
+                ),
+              );
+            }
+          },
+        ),
       ],
       child: Container(
         decoration: BoxDecoration(
@@ -262,60 +428,41 @@ class _GroupPageState extends State<GroupPage> {
           body: SafeArea(
             child: Column(
               children: [
-                // --- SCROLLABLE CONTENT ---
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 1. HEADER (Geri Dönüş ve Grup Bilgileri)
                         _buildHeader(context, colorScheme),
-
                         const SizedBox(height: 16),
-
-                        // 2. METADATA (Sağa Yaslandı)
                         Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.end, // 🔥 SAĞA YASLAMA
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             _buildMetaItem(
                               context,
                               Icons.map,
-                              "Rota: ${widget.data is Map ? widget.data["destination"] : widget.data.destination}",
+                              "Rota: ${widget.data.destination ?? 'Bilinmiyor'}",
                             ),
                             _buildDivider(context),
                             _buildMetaItem(
                               context,
                               Icons.bolt,
-                              widget.data is Map
-                                  ? widget.data["ridingStyle"]
-                                  : widget.data.ridingStyle,
+                              widget.data.ridingStyle ?? 'Bilinmiyor',
                             ),
                             _buildDivider(context),
                             _buildMetaItem(
                               context,
-                              (widget.data is Map
-                                          ? widget.data["privacy"]
-                                          : widget.data.privacy) ==
-                                      "Public"
+                              (widget.data.privacy ?? "Public") == "Public"
                                   ? Icons.public
                                   : Icons.lock,
-                              widget.data is Map
-                                  ? widget.data["privacy"]
-                                  : widget.data.privacy,
+                              widget.data.privacy ?? "Public",
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 24),
-
-                        // 3. INTERCOM ACTIVE BANNER
                         _buildIntercomBanner(),
-
                         const SizedBox(height: 30),
-
-                        // 4. LIST HEADER & ACTIONS
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -336,7 +483,7 @@ class _GroupPageState extends State<GroupPage> {
                                   onTap: () {
                                     context.push(
                                       '/communication/invite',
-                                      extra: widget.data.id,
+                                      extra: widget.data.rideId,
                                     );
                                   },
                                 ),
@@ -346,12 +493,11 @@ class _GroupPageState extends State<GroupPage> {
                                   size: 40,
                                   iconSize: 20,
                                   onTap: () {
-                                    if (widget.data.id != null) {
+                                    if (widget.data.rideId > 0) {
                                       _loadSessionDetails();
                                     }
                                   },
                                 ),
-                                // --- SETTINGS BUTTON (Only for Organizer) ---
                                 if (_currentUserId != null &&
                                     _sessionDetails?.hostUserId ==
                                         _currentUserId) ...[
@@ -361,10 +507,9 @@ class _GroupPageState extends State<GroupPage> {
                                     size: 40,
                                     iconSize: 20,
                                     onTap: () {
-                                      // Settings page might also need cleanup, but for now just dummy navigation
                                       context.push(
                                         '/communication/group-settings',
-                                        extra: {'data': widget.data},
+                                        extra: widget.data,
                                       );
                                     },
                                   ),
@@ -373,10 +518,7 @@ class _GroupPageState extends State<GroupPage> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 16),
-
-                        // 5. RIDER LIST
                         _isLoadingSession
                             ? const Padding(
                                 padding: EdgeInsets.all(20.0),
@@ -389,8 +531,6 @@ class _GroupPageState extends State<GroupPage> {
                     ),
                   ),
                 ),
-
-                // 6. FOOTER (LEAVE BUTTON)
                 _buildFooter(context, colorScheme),
               ],
             ),
@@ -399,10 +539,6 @@ class _GroupPageState extends State<GroupPage> {
       ),
     );
   }
-
-  // _showEditDialog removed and logic moved inline
-
-  // --- WIDGET PARÇALARI ---
 
   Widget _buildHeader(BuildContext context, ColorScheme colorScheme) {
     return Row(
@@ -413,16 +549,11 @@ class _GroupPageState extends State<GroupPage> {
           size: 44,
           onTap: () => context.pop(),
         ),
-
-        // Grup Bilgileri
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              _sessionDetails?.title ??
-                  (widget.data is Map
-                      ? widget.data["groupName"]
-                      : widget.data.groupName),
+              _sessionDetails?.title ?? widget.data.groupName,
               style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface),
               textAlign: TextAlign.right,
             ),
@@ -431,9 +562,7 @@ class _GroupPageState extends State<GroupPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.data is Map
-                      ? (widget.data["sessionDuration"] ?? "00:00")
-                      : widget.data.sessionDuration,
+                  widget.data.sessionDuration ?? "00:00",
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -447,7 +576,7 @@ class _GroupPageState extends State<GroupPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  "${_sessionDetails?.activeParticipantCount ?? (widget.data is Map ? widget.data["currentParticipants"] : widget.data.currentParticipants)} / ${widget.data is Map ? widget.data["maxParticipants"] : widget.data.maxParticipants}",
+                  "${_sessionDetails?.activeParticipantCount ?? (widget.data.currentParticipants ?? 0)} / ${widget.data.maxParticipants ?? 0}",
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -487,8 +616,6 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   Widget _buildParticipantList() {
-    // Doğrudan VoiceSession katılımcılarını kullan
-    // Bu, odada olan herkesi gösterir (Joined, Accepted, Disconnected)
     final participants =
         _sessionDetails?.participants
             .where(
@@ -502,12 +629,10 @@ class _GroupPageState extends State<GroupPage> {
 
     if (participants.isEmpty) return _buildEmptyState();
 
-    // Check if I am host
     final isMeHost = _sessionDetails?.hostUserId == _currentUserId;
 
     return Column(
       children: participants.map((p) {
-        // isConnected: Sadece Joined olanlar bağlı sayılır
         final isConnected = p.status == 'Joined';
         final isMe = p.userId == _currentUserId;
 
@@ -523,7 +648,6 @@ class _GroupPageState extends State<GroupPage> {
             isMicOn: isConnected,
             isSpeaking: isConnected,
             isConnected: isConnected,
-            // Host Controls (Only if I am host AND target is not me)
             onKickUser: (isMeHost && !isMe)
                 ? () => _kickUser(p.userId, p.firstName ?? 'Kullanıcı')
                 : null,
@@ -541,8 +665,6 @@ class _GroupPageState extends State<GroupPage> {
 
   Widget _buildFooter(BuildContext context, ColorScheme colorScheme) {
     return Padding(
-      // 🔥 GÜNCELLEME: Üstten 20px boşluk vererek listeden ayırdım,
-      // Alttan sadece 10px boşluk vererek (SafeArea da var) ekranın altına yaklaştırdım.
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
       child: Column(
         children: [
@@ -553,8 +675,7 @@ class _GroupPageState extends State<GroupPage> {
             backgroundColor: colorScheme.error.withOpacity(0.1),
             textColor: colorScheme.error,
           ),
-
-          const SizedBox(height: 12), // Boşluğu biraz açtım
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

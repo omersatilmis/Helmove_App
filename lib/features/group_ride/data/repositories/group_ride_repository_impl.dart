@@ -3,6 +3,7 @@ import '../../../../core/error/failures.dart';
 import '../../domain/entities/group_ride_entity.dart';
 import '../../domain/repositories/group_ride_repository.dart';
 import '../datasources/group_ride_remote_data_source.dart';
+import '../dto/create_group_ride_request_dto.dart';
 import '../models/group_ride_model.dart';
 
 class GroupRideRepositoryImpl implements GroupRideRepository {
@@ -12,11 +13,10 @@ class GroupRideRepositoryImpl implements GroupRideRepository {
 
   @override
   Future<Either<Failure, GroupRideEntity>> createGroupRide(
-    GroupRideEntity ride,
+    CreateGroupRideRequestDto request,
   ) async {
     try {
-      final model = _mapToModel(ride);
-      final result = await remoteDataSource.createGroupRide(model);
+      final result = await remoteDataSource.createGroupRide(request);
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

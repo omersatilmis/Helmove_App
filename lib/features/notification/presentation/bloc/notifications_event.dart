@@ -28,3 +28,11 @@ class MarkNotificationReadEvent extends NotificationsEvent {
 class MarkAllNotificationsReadEvent extends NotificationsEvent {}
 
 class RefreshNotificationsEvent extends NotificationsEvent {}
+
+class NotificationReceivedEvent extends NotificationsEvent {
+  final dynamic notification;
+  const NotificationReceivedEvent(this.notification);
+
+  @override
+  List<Object> get props => [notification];
+}

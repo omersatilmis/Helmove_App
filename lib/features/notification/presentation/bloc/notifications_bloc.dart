@@ -1,5 +1,7 @@
 import 'package:bloc/bloc.dart';
 import '../../../../core/usecases/usecase.dart';
+import '../../../../core/services/signalr_service.dart';
+import '../../domain/entities/notification_entity.dart';
 import '../../domain/usecases/get_notifications_usecase.dart';
 import '../../domain/usecases/get_unread_count_usecase.dart';
 import '../../domain/usecases/mark_all_notifications_read_usecase.dart';
@@ -12,18 +14,56 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   final GetUnreadCountUseCase getUnreadCount;
   final MarkNotificationReadUseCase markNotificationRead;
   final MarkAllNotificationsReadUseCase markAllNotificationsRead;
+  final SignalRService signalRService;
 
   NotificationsBloc({
     required this.getNotifications,
     required this.getUnreadCount,
     required this.markNotificationRead,
     required this.markAllNotificationsRead,
+    required this.signalRService,
   }) : super(const NotificationsState()) {
     on<GetNotificationsEvent>(_onGetNotifications);
     on<GetUnreadCountEvent>(_onGetUnreadCount);
     on<MarkNotificationReadEvent>(_onMarkNotificationRead);
     on<MarkAllNotificationsReadEvent>(_onMarkAllNotificationsRead);
     on<RefreshNotificationsEvent>(_onRefreshNotifications);
+    on<NotificationReceivedEvent>(_onNotificationReceived);
+
+    // Subscribe to SignalR
+    signalRService.setOnNotificationReceived((notification) {
+      add(NotificationReceivedEvent(notification));
+    });
+  }
+
+  void _onNotificationReceived(
+    NotificationReceivedEvent event,
+    Emitter<NotificationsState> emit,
+  ) {
+    final data = event.notification as Map<String, dynamic>;
+
+    final newNotification = NotificationEntity(
+      id: data['id'],
+      title: data['title'],
+      message: data['body'],
+      isRead: false,
+      createdAt: data['createdAt'] != null
+          ? DateTime.parse(data['createdAt'])
+          : DateTime.now(),
+      type: data['type'],
+      senderId: data['actorId'],
+      senderUsername: data['actorUsername'],
+      senderProfileImage: data['actorProfilePictureUrl'],
+      dataJson: data['dataJson'],
+    );
+
+    // Add to top of list and increment unread count
+    emit(
+      state.copyWith(
+        notifications: [newNotification, ...state.notifications],
+        unreadCount: state.unreadCount + 1,
+      ),
+    );
   }
 
   Future<void> _onGetNotifications(

@@ -1,3 +1,4 @@
+import '../api/voice_session_api.dart';
 import '../dto/create_voice_session_request_dto.dart';
 import '../dto/invite_users_request_dto.dart';
 import '../models/voice_session_model.dart';
@@ -20,7 +21,7 @@ abstract class VoiceSessionRemoteDataSource {
 }
 
 class VoiceSessionRemoteDataSourceImpl implements VoiceSessionRemoteDataSource {
-  final VoiceSessionRemoteDataSource _api;
+  final VoiceSessionApi _api;
 
   VoiceSessionRemoteDataSourceImpl(this._api);
 
