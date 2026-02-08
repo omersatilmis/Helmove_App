@@ -77,6 +77,13 @@ class _ChatViewState extends State<ChatView> {
       final isNotEmpty = _controller.text.trim().isNotEmpty;
       if (_isTyping != isNotEmpty) {
         setState(() => _isTyping = isNotEmpty);
+        // Notify Bloc about typing status
+        context.read<ChatBloc>().add(
+          UpdateTypingStatus(
+            targetUserId: widget.otherUserId,
+            isTyping: isNotEmpty,
+          ),
+        );
       }
     });
   }
@@ -253,24 +260,45 @@ class _ChatViewState extends State<ChatView> {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${widget.firstName} ${widget.lastName}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  'çevrimiçi',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            child: BlocBuilder<ChatBloc, ChatState>(
+              buildWhen: (previous, current) {
+                if (previous is ChatLoaded && current is ChatLoaded) {
+                  return previous.isOtherUserTyping !=
+                      current.isOtherUserTyping;
+                }
+                return true;
+              },
+              builder: (context, state) {
+                bool isTyping = false;
+                if (state is ChatLoaded) {
+                  isTyping = state.isOtherUserTyping;
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${widget.firstName} ${widget.lastName}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      isTyping ? 'yazıyor...' : 'çevrimiçi',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isTyping
+                            ? Colors.greenAccent
+                            : colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                        fontStyle: isTyping
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],

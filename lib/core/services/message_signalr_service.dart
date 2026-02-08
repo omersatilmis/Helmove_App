@@ -86,6 +86,22 @@ class MessageSignalRService {
     }
   }
 
+  Future<void> sendTypingIndicator(int targetUserId, bool isTyping) async {
+    if (_hubConnection == null ||
+        _hubConnection!.state != HubConnectionState.Connected) {
+      return;
+    }
+
+    try {
+      await _hubConnection!.invoke(
+        "SendTypingIndicator",
+        args: [targetUserId.toString(), isTyping],
+      );
+    } catch (e) {
+      AppLogger.error("Error sending typing indicator", e);
+    }
+  }
+
   // --- Listeners Setters ---
 
   void setOnReceiveDirectMessage(Function(dynamic message) callback) {

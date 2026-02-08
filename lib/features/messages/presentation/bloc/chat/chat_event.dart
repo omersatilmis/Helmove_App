@@ -62,3 +62,25 @@ class ReceiveMessageEvent extends ChatEvent {
   @override
   List<Object> get props => [messageData];
 }
+
+class UpdateTypingStatus extends ChatEvent {
+  final int targetUserId;
+  final bool isTyping;
+
+  const UpdateTypingStatus({
+    required this.targetUserId,
+    required this.isTyping,
+  });
+
+  @override
+  List<Object> get props => [targetUserId, isTyping];
+}
+
+class OtherUserTypingReceived extends ChatEvent {
+  final bool isTyping;
+
+  const OtherUserTypingReceived(this.isTyping);
+
+  @override
+  List<Object> get props => [isTyping];
+}

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/usecases/delete_message_usecase.dart';
 import '../../../domain/usecases/edit_message_usecase.dart';
@@ -16,6 +17,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final MarkConversationAsReadUseCase markConversationAsRead;
   final MessageSignalRService messageSignalRService;
 
+  Timer? _typingTimer;
+
   ChatBloc({
     required this.getMessages,
     required this.sendMessage,
@@ -30,21 +33,25 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<DeleteMessageEvent>(_onDeleteMessage);
     on<MarkAsRead>(_onMarkAsRead);
     on<ReceiveMessageEvent>(_onReceiveMessage);
+    on<UpdateTypingStatus>(_onUpdateTypingStatus);
+    on<OtherUserTypingReceived>(_onOtherUserTypingReceived);
 
-    // Set up SignalR listener
+    // Set up SignalR Direct Message listener
     messageSignalRService.setOnReceiveDirectMessage((messageData) {
       if (!isClosed) {
-        // Map dynamic data to MessageEntity
-        try {
-          // Assuming messageData matches MessageModel.fromJson structure or is close enough
-          // Since we don't have the model here easily without heavy imports,
-          // we might need to parse it. Ideally use MessageModel.fromJson(messageData)
-          // But strict architecture says Entity in Bloc.
-          // For now, let's assume we can map it.
-          // Actually better to handle this via Event
-          add(ReceiveMessageEvent(messageData));
-        } catch (e) {
-          print("Error parsing signalr message: $e");
+        add(ReceiveMessageEvent(messageData));
+      }
+    });
+
+    // Set up SignalR Typing listener
+    messageSignalRService.setOnUserTyping((senderId, isTyping) {
+      if (!isClosed) {
+        final currentState = state;
+        if (currentState is ChatLoaded) {
+          // Only react if it's the person we are currently chatting with
+          if (currentState.otherUserId.toString() == senderId) {
+            add(OtherUserTypingReceived(isTyping));
+          }
         }
       }
     });
@@ -132,5 +139,42 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         // Handle error
       }
     }
+  }
+
+  Future<void> _onUpdateTypingStatus(
+    UpdateTypingStatus event,
+    Emitter<ChatState> emit,
+  ) async {
+    await messageSignalRService.sendTypingIndicator(
+      event.targetUserId,
+      event.isTyping,
+    );
+  }
+
+  Future<void> _onOtherUserTypingReceived(
+    OtherUserTypingReceived event,
+    Emitter<ChatState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is ChatLoaded) {
+      _typingTimer?.cancel();
+
+      emit(currentState.copyWith(isOtherUserTyping: event.isTyping));
+
+      if (event.isTyping) {
+        // Safety timeout: if we don't receive "stop typing" within 5 seconds, clear it
+        _typingTimer = Timer(const Duration(seconds: 5), () {
+          if (!isClosed) {
+            add(const OtherUserTypingReceived(false));
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _typingTimer?.cancel();
+    return super.close();
   }
 }
