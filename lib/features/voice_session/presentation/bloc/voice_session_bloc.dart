@@ -123,6 +123,20 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       }
     });
 
+    // 6. Voice Session Refresh (Accept/Reject updates)
+    signalRService.voiceSessionRefreshStream.listen((sessionId) {
+      if (!isClosed) {
+        // If we are currently viewing this session, refresh details
+        if (state is VoiceSessionDetailsLoaded) {
+          final currentSessionId =
+              (state as VoiceSessionDetailsLoaded).session.id;
+          if (currentSessionId == sessionId) {
+            add(GetVoiceSessionDetailsEvent(sessionId));
+          }
+        }
+      }
+    });
+
     // Initialize SignalR
     signalRService.init();
 

@@ -1,10 +1,9 @@
-// ImageFilter için
 import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
 
 enum RiderRole {
   organizer, // Kurucu (Altın Taç)
-  host, // Lider/Atanmış (Gümüş Kalkan) - Şimdilik Organizer ile aynı yetkide olabilir
+  host, // Lider/Atanmış (Gümüş/Mavi Kalkan)
   participant, // Normal sürücü
 }
 
@@ -59,45 +58,36 @@ class RiderCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Kart Arkaplan Rengi (Rolüne göre hafif tonlama yapılabilir)
-    Color cardColor = colorScheme.surfaceContainerLow.withOpacity(0.9);
-    if (isMe) {
-      cardColor = colorScheme.primary.withOpacity(0.05);
-    }
+    // ESKİ RENK MANTIĞI: Arkaplan Rengi (SurfaceContainerLow + Opacity)
+    // Kendi kartımız ise çok hafif bir vurgu (Primary Tint) alabilir ama orijinali bozmadan.
+    Color cardColor = isMe
+        ? colorScheme.primary.withOpacity(0.08)
+        : colorScheme.surfaceContainerLow.withOpacity(0.9);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20), // ESKİ: 20px radius korundu
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
+            // Konuşuyorsa çerçeve parlasın, değilse silik outline
             color: isSpeaking
-                ? const Color(0xFF22C55E).withOpacity(
-                    0.5,
-                  ) // Konuşuyorsa yeşil border
+                ? Colors.greenAccent.withOpacity(0.6)
                 : colorScheme.outline.withOpacity(0.1),
             width: isSpeaking ? 2 : 1,
           ),
-          boxShadow: isSpeaking
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF22C55E).withOpacity(0.2),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : null,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          // ESKİ: Sıkı Padding (8.0) korundu
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
           child: Opacity(
             opacity: isConnected ? 1.0 : 0.5,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 1. SOL: Avatar Bölgesi
+                // 1. SOL: Avatar Bölgesi (Eski tasarım: GreenAccent border)
                 _buildAvatarSection(colorScheme),
 
                 const SizedBox(width: 12),
@@ -108,7 +98,7 @@ class RiderCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // İsim ve Rozet Satırı
+                      // İsim ve Rol Rozeti Satırı
                       Row(
                         children: [
                           Flexible(
@@ -116,40 +106,43 @@ class RiderCard extends StatelessWidget {
                               isMe
                                   ? "Siz ($firstName)"
                                   : "$firstName $lastName",
-                              style: AppTextStyles.bodyLarge.copyWith(
+                              style: AppTextStyles.medium.copyWith(
+                                // ESKİ: Medium Style
                                 color: colorScheme.onSurface,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                letterSpacing: 0.3,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          // Rol Rozeti Varsa Göster
                           if (role != RiderRole.participant) ...[
                             const SizedBox(width: 6),
-                            _buildRoleBadge(context),
+                            _buildRoleBadge(),
                           ],
                         ],
                       ),
 
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
 
-                      // İstatistikler (Pil, Sinyal)
+                      // İstatistikler (Eski MinimalInfo stili ile)
                       Row(
                         children: [
-                          _buildStatusPill(
-                            context,
-                            icon: Icons.signal_cellular_alt,
-                            text: isConnected ? "$signalLevel%" : "Koptu",
-                            color: isConnected
-                                ? Colors.green
+                          _buildMinimalInfo(
+                            Icons.signal_cellular_alt,
+                            isConnected ? "$signalLevel%" : "---",
+                            isConnected
+                                ? Colors.greenAccent
                                 : colorScheme.error,
+                            theme,
                           ),
-                          const SizedBox(width: 8),
-                          _buildStatusPill(
-                            context,
-                            icon: Icons.battery_std,
-                            text: "$batteryLevel%",
-                            color: colorScheme.onSurfaceVariant,
+                          const SizedBox(width: 10),
+                          _buildMinimalInfo(
+                            Icons.battery_std,
+                            "$batteryLevel%",
+                            colorScheme.onSurfaceVariant.withOpacity(0.7),
+                            theme,
                           ),
                         ],
                       ),
@@ -157,50 +150,62 @@ class RiderCard extends StatelessWidget {
                   ),
                 ),
 
-                // 3. SAĞ: Aksiyonlar & Menü
+                // 3. SAĞ: Aksiyonlar (Eski Buton Stilleriyle)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Mic Durumu (Sadece gösterge veya kendi mic'im ise buton)
-                    if (isMe)
+                    // --- MİKROFON BUTONU ---
+                    // Kendimsem: Tıklanabilir buton
+                    // Başkasıysam ve Adminsem: Tıklanabilir (Mute için)
+                    // Normal kullanıcıysam: Sadece ikon
+                    if (isMe || _canManage(viewerRole, role))
                       _buildActionButton(
                         icon: isMicOn ? Icons.mic : Icons.mic_off,
                         color: isMicOn
-                            ? const Color(0xFF22C55E)
-                            : colorScheme.error,
+                            ? Colors.greenAccent
+                            : colorScheme.error.withOpacity(0.8),
                         onTap: onMicPressed,
-                        tooltip: "Mikrofonu Aç/Kapat",
-                        filled: true,
+                        tooltip: "Mikrofon",
                       )
                     else
-                      // Başkası ise sadece ikon
                       Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: Icon(
                           isMicOn ? Icons.mic : Icons.mic_off,
                           size: 20,
                           color: isMicOn
-                              ? colorScheme.onSurfaceVariant.withOpacity(0.6)
+                              ? Colors.greenAccent.withOpacity(0.7)
                               : colorScheme.error.withOpacity(0.6),
                         ),
                       ),
 
-                    if (!isMe) ...[
-                      const SizedBox(width: 4),
-                      // Arkadaş Ekle (Eğer arkadaş değilse)
-                      if (!isFriend)
-                        _buildActionButton(
-                          icon: Icons.person_add,
-                          color: colorScheme.primary,
-                          onTap: onFriendshipPressed,
-                          tooltip: "Arkadaş Ekle",
+                    const SizedBox(width: 8),
+
+                    // --- ARKADAŞLIK BUTONU ---
+                    // Sadece başkasına bakıyorsam ve arkadaş değilsem
+                    if (!isMe && !isFriend)
+                      _buildActionButton(
+                        icon: Icons.person_add,
+                        color: colorScheme.onSurfaceVariant,
+                        onTap: onFriendshipPressed,
+                        tooltip: "Arkadaş Ekle",
+                      )
+                    else if (!isMe && isFriend)
+                      // Arkadaşsak ufak bir ikonla belirtelim (Buton değil)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8.0),
+                        child: Icon(
+                          Icons.check_circle,
+                          size: 20,
+                          color: Colors.greenAccent,
                         ),
+                      ),
 
-                      const SizedBox(width: 4),
+                    const SizedBox(width: 8),
 
-                      // 3 Nokta Menü
-                      _buildPopupMenu(context),
-                    ],
+                    // --- YÖNETİM MENÜSÜ (3 Nokta) ---
+                    // Sadece yetkim varsa görünür
+                    _buildPopupMenu(context),
                   ],
                 ),
               ],
@@ -211,146 +216,136 @@ class RiderCard extends StatelessWidget {
     );
   }
 
+  // Avatar Bölgesi (Eski Tasarımın Aynısı)
   Widget _buildAvatarSection(ColorScheme colorScheme) {
-    return Stack(
-      children: [
-        // Avatar Çerçevesi (Konuşma Efekti)
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isSpeaking ? const Color(0xFF22C55E) : Colors.transparent,
-              width: 2.5,
-            ),
-          ),
-          child: CircleAvatar(
-            radius: 24,
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          // Konuşuyorsa GreenAccent, değilse Transparent
+          color: isSpeaking ? Colors.greenAccent : Colors.transparent,
+          width: 2.0,
+        ),
+      ),
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 22, // ESKİ: Radius 22
             backgroundImage: NetworkImage(profileImageUrl),
             backgroundColor: colorScheme.surfaceContainerHigh,
             onBackgroundImageError: (_, __) =>
                 Icon(Icons.person, color: colorScheme.onSurface),
           ),
-        ),
-
-        // Online Göstergesi (Sağ Alt)
-        if (isConnected)
-          Positioned(
-            right: 2,
-            bottom: 2,
-            child: Container(
-              width: 14,
-              height: 14,
-              decoration: BoxDecoration(
-                color: const Color(0xFF22C55E),
-                shape: BoxShape.circle,
-                border: Border.all(color: colorScheme.surface, width: 2),
+          // Online Dot (Opsiyonel, connected ise)
+          if (isConnected)
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: Colors.greenAccent,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colorScheme.surface, width: 1.5),
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildRoleBadge(BuildContext context) {
+  // Rol Rozeti (İkonlar)
+  Widget _buildRoleBadge() {
     IconData icon;
     Color color;
-    String tooltip;
 
     switch (role) {
       case RiderRole.organizer:
         icon = Icons.workspace_premium; // Taç
-        color = const Color(0xFFFFD700); // Altın
-        tooltip = "Kurucu";
+        color = const Color(0xFFFFD700); // Altın Sarısı
         break;
       case RiderRole.host:
         icon = Icons.shield; // Kalkan
-        color = const Color(0xFFC0C0C0); // Gümüş/Mavi
-        tooltip = "Lider";
+        color = Colors.blueAccent; // Mavi/Gümüş
         break;
       default:
         return const SizedBox.shrink();
     }
 
     return Tooltip(
-      message: tooltip,
-      child: Container(
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 16, color: color),
-      ),
+      message: role == RiderRole.organizer ? "Kurucu" : "Lider",
+      child: Icon(icon, size: 18, color: color),
     );
   }
 
-  Widget _buildStatusPill(
-    BuildContext context, {
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color.withOpacity(0.8)),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: AppTextStyles.bodySmall.copyWith(
-              fontSize: 10,
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
+  // Minimal Info (Eski Tasarımın Aynısı)
+  Widget _buildMinimalInfo(
+    IconData icon,
+    String text,
+    Color color,
+    ThemeData theme,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
+  // Aksiyon Butonu (Eski Tasarımın Aynısı - Sıkı Padding)
   Widget _buildActionButton({
     required IconData icon,
     required Color color,
     required VoidCallback? onTap,
     required String tooltip,
-    bool filled = false,
   }) {
     return IconButton(
       onPressed: onTap,
-      icon: Icon(icon, color: filled ? Colors.white : color, size: 20),
+      icon: Icon(icon, color: color, size: 22),
       tooltip: tooltip,
       visualDensity: VisualDensity.compact,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
+      constraints: const BoxConstraints(),
       style: IconButton.styleFrom(
-        backgroundColor: filled ? color : null,
-        highlightColor: color.withOpacity(0.1),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }
 
+  // Yetki Kontrolü
+  bool _canManage(RiderRole viewer, RiderRole target) {
+    if (viewer == RiderRole.organizer) return true; // Organizer herkesi yönetir
+    if (viewer == RiderRole.host && target == RiderRole.participant)
+      return true; // Host sadece katılımcıları yönetir
+    return false;
+  }
+
+  // Popup Menü (Sadece yetki varsa dolu gelir)
   Widget _buildPopupMenu(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Yetki Kontrolü:
-    // Eğer ben Organizer isem, herkese her şeyi yapabilirim (kendim hariç).
-    // Eğer ben Host isem, Participantları yönetebilirim.
+    // Yetki yoksa ve kendim değilsem (veya kendimsem bile menü boşsa) gösterme
+    if (!_canManage(viewerRole, role) && !isMe) {
+      return const SizedBox.shrink(); // Veya Şikayet Et butonu koyulabilir
+    }
 
-    bool canManage = false;
-    if (viewerRole == RiderRole.organizer) canManage = true;
-    if (viewerRole == RiderRole.host && role == RiderRole.participant)
-      canManage = true;
-
-    // Eğer yetkim yoksa ve sadece "Profil Görüntüle" vs varsa menü gösterilebilir.
-    // Şimdilik sadece yönetimsel aksiyonlar tanımlı.
+    // Eğer butonları dolduracak bir aksiyon yoksa hiç çizme
+    if (onKickUser == null && onMuteUser == null && onTransferHost == null) {
+      return const SizedBox.shrink();
+    }
 
     return PopupMenuButton<String>(
       icon: Icon(
@@ -358,10 +353,9 @@ class RiderCard extends StatelessWidget {
         color: colorScheme.onSurfaceVariant,
         size: 22,
       ),
-      tooltip: "Seçenekler",
+      tooltip: "Yönetim",
       padding: EdgeInsets.zero,
       color: colorScheme.surfaceContainerHigh,
-      elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (value) {
         if (value == 'kick') onKickUser?.call();
@@ -369,61 +363,40 @@ class RiderCard extends StatelessWidget {
         if (value == 'transfer') onTransferHost?.call();
       },
       itemBuilder: (BuildContext context) {
-        final List<PopupMenuEntry<String>> items = [];
+        List<PopupMenuEntry<String>> items = [];
 
-        if (canManage) {
-          if (onMuteUser != null) {
-            items.add(
-              PopupMenuItem<String>(
-                value: 'mute',
-                child: _buildMenuItem(
-                  context,
-                  Icons.mic_off,
-                  "Sustur",
-                  colorScheme.onSurface,
-                ),
-              ),
-            );
-          }
-          if (onKickUser != null) {
-            items.add(
-              PopupMenuItem<String>(
-                value: 'kick',
-                child: _buildMenuItem(
-                  context,
-                  Icons.person_remove,
-                  "Oturumdan At",
-                  colorScheme.error,
-                ),
-              ),
-            );
-          }
-          if (onTransferHost != null && viewerRole == RiderRole.organizer) {
-            // Sadece Organizer devreder varsayımı (veya Host da edebilir backend izin veriyorsa)
-            items.add(const PopupMenuDivider());
-            items.add(
-              PopupMenuItem<String>(
-                value: 'transfer',
-                child: _buildMenuItem(
-                  context,
-                  Icons.shield,
-                  "Liderliği Devret",
-                  Colors.amber,
-                ),
-              ),
-            );
-          }
-        } else {
-          // Normal Kullanıcı Görünümü
+        if (onMuteUser != null) {
           items.add(
-            PopupMenuItem<String>(
-              value: 'report', // Henüz fonksiyonel değil
+            PopupMenuItem(
+              value: 'mute',
               child: _buildMenuItem(
-                context,
-                Icons.flag,
-                "Şikayet Et",
+                Icons.mic_off,
+                "Sustur",
                 colorScheme.onSurface,
               ),
+            ),
+          );
+        }
+
+        if (onKickUser != null) {
+          items.add(
+            PopupMenuItem(
+              value: 'kick',
+              child: _buildMenuItem(
+                Icons.person_remove,
+                "Oturumdan At",
+                colorScheme.error,
+              ),
+            ),
+          );
+        }
+
+        if (onTransferHost != null && viewerRole == RiderRole.organizer) {
+          items.add(const PopupMenuDivider());
+          items.add(
+            PopupMenuItem(
+              value: 'transfer',
+              child: _buildMenuItem(Icons.shield, "Liderlik Ver", Colors.amber),
             ),
           );
         }
@@ -433,12 +406,7 @@ class RiderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context,
-    IconData icon,
-    String text,
-    Color color,
-  ) {
+  Widget _buildMenuItem(IconData icon, String text, Color color) {
     return Row(
       children: [
         Icon(icon, size: 20, color: color),

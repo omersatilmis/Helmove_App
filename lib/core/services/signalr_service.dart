@@ -34,6 +34,10 @@ class SignalRService {
   Stream<Map<String, dynamic>> get hostChangedStream =>
       _hostChangedController.stream;
 
+  final _voiceSessionRefreshController = StreamController<int>.broadcast();
+  Stream<int> get voiceSessionRefreshStream =>
+      _voiceSessionRefreshController.stream;
+
   // Active Ride Context
   String? _activeRideId;
 
@@ -125,6 +129,14 @@ class SignalRService {
         final data = arguments[0] as Map<String, dynamic>;
         AppLogger.info("SignalR: Host Changed -> $data");
         _hostChangedController.add(data);
+      }
+    });
+
+    _hubConnection!.on("VoiceSessionRefresh", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final sessionId = arguments[0] as int;
+        AppLogger.info("SignalR: VoiceSession Refresh -> $sessionId");
+        _voiceSessionRefreshController.add(sessionId);
       }
     });
 
