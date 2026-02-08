@@ -61,3 +61,30 @@ class HostChangedReceived extends GroupRideEvent {
   @override
   List<Object?> get props => [data];
 }
+
+class UpdateGroupRideEvent extends GroupRideEvent {
+  final int rideId;
+  final CreateGroupRideRequestDto request;
+  final int organizerId;
+
+  const UpdateGroupRideEvent(this.rideId, this.request, this.organizerId);
+
+  @override
+  List<Object?> get props => [rideId, request, organizerId];
+}
+
+class LoadGroupRideDetailsEvent extends GroupRideEvent {
+  final int rideId;
+  const LoadGroupRideDetailsEvent(this.rideId);
+
+  @override
+  List<Object?> get props => [rideId];
+}
+
+class GroupRideUpdatedReceived extends GroupRideEvent {
+  final String rideId;
+  const GroupRideUpdatedReceived(this.rideId);
+
+  @override
+  List<Object?> get props => [rideId];
+}

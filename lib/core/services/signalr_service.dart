@@ -25,6 +25,7 @@ class SignalRService {
   final _userLeftController = StreamController<String>.broadcast();
   final _hostChangedController =
       StreamController<Map<String, dynamic>>.broadcast();
+  final _groupRideUpdatedController = StreamController<String>.broadcast();
 
   Stream<String?> get rideTerminatedStream => _rideTerminatedController.stream;
   Stream<void> get rideCreatedStream => _rideCreatedController.stream;
@@ -33,6 +34,8 @@ class SignalRService {
   Stream<String> get userLeftStream => _userLeftController.stream;
   Stream<Map<String, dynamic>> get hostChangedStream =>
       _hostChangedController.stream;
+  Stream<String> get groupRideUpdatedStream =>
+      _groupRideUpdatedController.stream;
 
   final _voiceSessionRefreshController = StreamController<int>.broadcast();
   Stream<int> get voiceSessionRefreshStream =>
@@ -137,6 +140,14 @@ class SignalRService {
         final sessionId = arguments[0] as int;
         AppLogger.info("SignalR: VoiceSession Refresh -> $sessionId");
         _voiceSessionRefreshController.add(sessionId);
+      }
+    });
+
+    _hubConnection!.on("GroupRideUpdated", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final rideId = arguments[0].toString();
+        AppLogger.info("SignalR: GroupRide Updated -> $rideId");
+        _groupRideUpdatedController.add(rideId);
       }
     });
 

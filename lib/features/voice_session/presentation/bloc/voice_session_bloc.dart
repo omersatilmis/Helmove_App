@@ -126,12 +126,31 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     // 6. Voice Session Refresh (Accept/Reject updates)
     signalRService.voiceSessionRefreshStream.listen((sessionId) {
       if (!isClosed) {
+        // ALWAYS refresh the list for CommunicationPage
+        add(const GetMyVoiceSessionsEvent());
+
         // If we are currently viewing this session, refresh details
         if (state is VoiceSessionDetailsLoaded) {
           final currentSessionId =
               (state as VoiceSessionDetailsLoaded).session.id;
           if (currentSessionId == sessionId) {
             add(GetVoiceSessionDetailsEvent(sessionId));
+          }
+        }
+      }
+    });
+
+    // 7. Group Ride Updated (Name/Desc changes)
+    signalRService.groupRideUpdatedStream.listen((rideId) {
+      if (!isClosed) {
+        // Refresh session list
+        add(const GetMyVoiceSessionsEvent());
+
+        // Refresh details if current session is for this ride
+        if (state is VoiceSessionDetailsLoaded) {
+          final session = (state as VoiceSessionDetailsLoaded).session;
+          if (session.groupRideId?.toString() == rideId) {
+            add(GetVoiceSessionDetailsEvent(session.id));
           }
         }
       }
@@ -196,6 +215,10 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     _userJoinedSubscription?.cancel();
     _userLeftSubscription?.cancel();
     _hostChangedSubscription?.cancel();
+    // signalRService handles its own subscriptions or we can add local ones if needed
+    // The .listen pattern used for groupRideUpdatedStream above should ideally be matched
+    // with a stream subscription stored in a variable if we want manual control,
+    // but Bloc listeners are usually fine as long as they check !isClosed.
     return super.close();
   }
 

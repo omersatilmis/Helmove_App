@@ -21,6 +21,7 @@ class GroupRideModel extends GroupRideEntity {
     super.difficulty,
     super.ridingStyle,
     super.requirements,
+    required super.isPrivate,
     super.voiceSessionId,
   });
 
@@ -49,6 +50,7 @@ class GroupRideModel extends GroupRideEntity {
       difficulty: json['difficulty'] as String?,
       ridingStyle: json['ridingStyle'] as String?,
       requirements: json['requirements'] as String?,
+      isPrivate: json['isPrivate'] as bool? ?? false,
       voiceSessionId: json['voiceSessionId'] as int?,
     );
   }
@@ -73,6 +75,7 @@ class GroupRideModel extends GroupRideEntity {
       'status': status,
       'difficulty': difficulty,
       'ridingStyle': ridingStyle,
+      'isPrivate': isPrivate,
       'requirements': requirements,
       'voiceSessionId': voiceSessionId,
     };

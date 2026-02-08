@@ -965,6 +965,8 @@ Future<void> init() async {
       getActiveGroupRidesUseCase: sl(),
       leaveGroupRideUseCase: sl(), // From Attendance Feature
       signalRService: sl(),
+      updateGroupRideUseCase: sl(),
+      getGroupRideByIdUseCase: sl(),
     ),
   );
 

@@ -15,6 +15,8 @@ import '../widgets/active_group.dart';
 import '../widgets/nearby_group.dart';
 import '../widgets/rider_card.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../features/auth/data/datasources/auth_local_data_source.dart';
 
 class CommunicationPage extends StatefulWidget {
   const CommunicationPage({super.key});
@@ -26,15 +28,89 @@ class CommunicationPage extends StatefulWidget {
 class _CommunicationPageState extends State<CommunicationPage> {
   List<VoiceSessionEntity> _mySessions = [];
   bool _isLoadingSessions = true;
+  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUser();
     _loadMySessions();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final authLocal = sl<AuthLocalDataSource>();
+    final userId = await authLocal.getUserId();
+    if (mounted) {
+      setState(() {
+        _currentUserId = userId;
+      });
+    }
   }
 
   void _loadMySessions() {
     context.read<VoiceSessionBloc>().add(const GetMyVoiceSessionsEvent());
+  }
+
+  // --- MODERATION ACTIONS ---
+  void _kickUser(int targetUserId, String userName, int sessionId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kullanıcıyı At'),
+        content: Text('$userName adlı kullanıcıyı atmak istiyor musunuz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<VoiceSessionBloc>().add(
+                KickUserEvent(sessionId, targetUserId),
+              );
+            },
+            child: const Text('At', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _muteUser(int targetUserId, String userName, int sessionId) {
+    context.read<VoiceSessionBloc>().add(
+      MuteUserEvent(sessionId, targetUserId),
+    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$userName susturuldu')));
+  }
+
+  void _transferHost(int targetUserId, String userName, int sessionId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Liderlik Devret'),
+        content: Text(
+          '$userName adlı kullanıcıya liderliği devretmek istiyor musunuz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<VoiceSessionBloc>().add(
+                TransferHostEvent(sessionId, targetUserId),
+              );
+            },
+            child: const Text('Devret', style: TextStyle(color: Colors.amber)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -349,18 +425,19 @@ class _CommunicationPageState extends State<CommunicationPage> {
     return ActiveGroupCard(
       groupName: activeSession.title,
       currentParticipants: activeSession.activeParticipantCount,
-      maxParticipants: 10, // Varsayılan
+      maxParticipants: activeSession.maxParticipants,
+      destination: activeSession.destination,
+      ridingStyle: activeSession.ridingStyle,
+      difficulty: activeSession.difficulty,
       isActive: activeSession.isActive,
       onOpenPressed: () async {
         final args = GroupRideArgs(
           rideId: activeSession.groupRideId ?? activeSession.id,
           voiceSessionId: activeSession.id,
           groupName: activeSession.title,
-          maxParticipants: 10,
+          maxParticipants: activeSession.maxParticipants,
           currentParticipants: activeSession.activeParticipantCount,
-          destination: "Bilinmiyor",
-          ridingStyle: "Bilinmiyor",
-          privacy: "Private",
+          organizerId: activeSession.hostUserId,
         );
         final result = await context.push<bool>(
           '/communication/group-page',
@@ -380,17 +457,57 @@ class _CommunicationPageState extends State<CommunicationPage> {
           _loadMySessions();
         }
       },
-      riderCards: participants.take(3).map((p) {
+      riderCards: participants.map((p) {
+        final isConnected = p.status == 'Joined';
+        final isMe = p.userId == _currentUserId;
+
+        // Viewer Role Determination
+        RiderRole viewerRole = RiderRole.participant;
+        if (_currentUserId != null &&
+            activeSession.hostUserId == _currentUserId) {
+          viewerRole = RiderRole.organizer;
+        }
+
+        // Target Role Determination
+        RiderRole targetRole = RiderRole.participant;
+        if (p.userId == activeSession.hostUserId) {
+          targetRole = RiderRole.organizer;
+        }
+
         return RiderCard(
           firstName: p.firstName ?? '',
           lastName: p.lastName ?? '',
           profileImageUrl:
               p.profileImage ?? 'https://i.pravatar.cc/150?u=${p.userId}',
-          batteryLevel: 100,
-          signalLevel: 100,
-          isSpeaking: p.status == 'Joined',
-          isConnected:
-              p.status == 'Joined', // Only Joined = connected for voice
+          batteryLevel: isConnected ? 90 : 0,
+          signalLevel: isConnected ? 100 : 0,
+          isMicOn: isConnected,
+          isSpeaking: isConnected,
+          isConnected: isConnected,
+          isMe: isMe,
+          role: targetRole,
+          viewerRole: viewerRole,
+          onKickUser: (viewerRole == RiderRole.organizer && !isMe)
+              ? () => _kickUser(
+                  p.userId,
+                  p.firstName ?? 'Kullanıcı',
+                  activeSession.id,
+                )
+              : null,
+          onMuteUser: (viewerRole == RiderRole.organizer && !isMe)
+              ? () => _muteUser(
+                  p.userId,
+                  p.firstName ?? 'Kullanıcı',
+                  activeSession.id,
+                )
+              : null,
+          onTransferHost: (viewerRole == RiderRole.organizer && !isMe)
+              ? () => _transferHost(
+                  p.userId,
+                  p.firstName ?? 'Kullanıcı',
+                  activeSession.id,
+                )
+              : null,
         );
       }).toList(),
     );

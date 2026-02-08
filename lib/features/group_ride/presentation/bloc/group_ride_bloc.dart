@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/create_group_ride_usecase.dart';
 import '../../domain/usecases/delete_group_ride_usecase.dart';
 import '../../domain/usecases/get_active_group_rides_usecase.dart';
+import '../../domain/usecases/update_group_ride_usecase.dart';
+import '../../domain/usecases/get_group_ride_by_id_usecase.dart';
+import '../../domain/entities/group_ride_entity.dart';
 import 'package:moto_comm_app_1/features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
 import 'package:moto_comm_app_1/core/services/signalr_service.dart';
 import 'group_ride_event.dart';
@@ -14,6 +17,8 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
   final GetActiveGroupRidesUseCase getActiveGroupRidesUseCase;
   final LeaveGroupRideUseCase leaveGroupRideUseCase;
   final SignalRService signalRService;
+  final GetGroupRideByIdUseCase? getGroupRideByIdUseCase;
+  final UpdateGroupRideUseCase updateGroupRideUseCase;
 
   StreamSubscription? _rideTerminatedSubscription;
   StreamSubscription? _rideCreatedSubscription;
@@ -21,6 +26,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
   StreamSubscription? _userLeftSubscription;
 
   StreamSubscription? _hostChangedSubscription;
+  StreamSubscription? _groupRideUpdatedSubscription;
 
   GroupRideBloc({
     required this.createGroupRideUseCase,
@@ -28,6 +34,8 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     required this.getActiveGroupRidesUseCase,
     required this.leaveGroupRideUseCase,
     required this.signalRService,
+    this.getGroupRideByIdUseCase,
+    required this.updateGroupRideUseCase,
   }) : super(GroupRideInitial()) {
     on<CreateGroupRideEvent>(_onCreateGroupRide);
     on<LoadActiveGroupRidesEvent>(_onLoadActiveGroupRides);
@@ -38,6 +46,9 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
 
     on<HostChangedReceived>(_onHostChanged);
     on<JoinSignalRGroupEvent>(_onJoinSignalRGroup);
+    on<UpdateGroupRideEvent>(_onUpdateGroupRide);
+    on<LoadGroupRideDetailsEvent>(_onLoadGroupRideDetails);
+    on<GroupRideUpdatedReceived>(_onGroupRideUpdatedReceived);
 
     // --- SignalR Listeners ---
 
@@ -103,6 +114,20 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
         // Bloc likely closed
       }
     });
+
+    // 6. Group Ride Updated
+    _groupRideUpdatedSubscription = signalRService.groupRideUpdatedStream
+        .listen((rideId) {
+          try {
+            if (!isClosed) {
+              add(GroupRideUpdatedReceived(rideId));
+              // Refresh list for CommunicationPage
+              add(const LoadActiveGroupRidesEvent());
+            }
+          } catch (e) {
+            // Bloc likely closed
+          }
+        });
   }
 
   @override
@@ -112,6 +137,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     _userJoinedSubscription?.cancel();
     _userLeftSubscription?.cancel();
     _hostChangedSubscription?.cancel();
+    _groupRideUpdatedSubscription?.cancel();
     return super.close();
   }
 
@@ -211,5 +237,73 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     // Optionally emit a state to notify UI, but refreshing list is usually enough for the list view.
     // GroupPage handles logic via VoiceSessionBloc usually, but if it listens here too:
     // We could emit a "GroupInfoUpdated" state if needed.
+    // We could emit a "GroupInfoUpdated" state if needed.
+  }
+
+  Future<void> _onUpdateGroupRide(
+    UpdateGroupRideEvent event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    emit(GroupRideLoading());
+
+    // Map DTO to Entity for UpdateGroupRideUseCase
+    final rideEntity = GroupRideEntity(
+      id: event.rideId,
+      title: event.request.title,
+      description: event.request.description,
+      organizerId: event.organizerId,
+      startDateTime: event.request.startDateTime,
+      endDateTime: event.request.endDateTime,
+      startLocation: event.request.startLocation,
+      startLatitude: event.request.startLatitude,
+      startLongitude: event.request.startLongitude,
+      endLocation: event.request.endLocation,
+      endLatitude: event.request.endLatitude,
+      endLongitude: event.request.endLongitude,
+      maxParticipants: event.request.maxParticipants,
+      status: 'Active',
+      difficulty: event.request.difficulty,
+      ridingStyle: event.request.ridingStyle,
+      isPrivate: event.request.privacy == 'Private',
+    );
+
+    final result = await updateGroupRideUseCase.execute(
+      event.rideId,
+      rideEntity,
+    );
+
+    result.fold((failure) => emit(GroupRideFailure(failure.message)), (ride) {
+      emit(GroupRideSuccess(ride, "Grup turu başarıyla güncellendi"));
+      add(const LoadActiveGroupRidesEvent());
+    });
+  }
+
+  Future<void> _onLoadGroupRideDetails(
+    LoadGroupRideDetailsEvent event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    if (getGroupRideByIdUseCase == null) return;
+
+    emit(GroupRideLoading());
+    final result = await getGroupRideByIdUseCase!.execute(event.rideId);
+    result.fold(
+      (failure) => emit(GroupRideFailure(failure.message)),
+      (ride) => emit(GroupRideSuccess(ride, "Grup detayları yüklendi")),
+    );
+  }
+
+  Future<void> _onGroupRideUpdatedReceived(
+    GroupRideUpdatedReceived event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    // If we are currently on a page that needs specific ride details, reload it.
+    // The LoadActiveGroupRidesEvent added in the listener handles the list refresh.
+    // If the UI is showing a specific ride (GroupPage), it might want to re-fetch details.
+    if (getGroupRideByIdUseCase != null) {
+      final rideIdInt = int.tryParse(event.rideId);
+      if (rideIdInt != null) {
+        add(LoadGroupRideDetailsEvent(rideIdInt));
+      }
+    }
   }
 }

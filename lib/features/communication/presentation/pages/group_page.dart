@@ -13,6 +13,7 @@ import '../../../voice_session/domain/entities/voice_session_entity.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
+import '../../../group_ride/domain/entities/group_ride_entity.dart';
 import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
 import '../../../group_ride/presentation/bloc/group_ride_event.dart';
 import '../../../group_ride/presentation/bloc/group_ride_state.dart';
@@ -31,7 +32,9 @@ class GroupPage extends StatefulWidget {
 class _GroupPageState extends State<GroupPage> {
   // --- BACKEND STATE ---
   VoiceSessionEntity? _sessionDetails;
+  GroupRideEntity? _rideDetails;
   bool _isLoadingSession = false;
+  bool _isLoadingRide = false;
   int? _currentUserId;
 
   @override
@@ -42,6 +45,7 @@ class _GroupPageState extends State<GroupPage> {
       context.read<GroupRideBloc>().add(
         JoinSignalRGroupEvent(widget.data.rideId),
       );
+      _loadRideDetails();
       _loadSessionDetails();
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -69,6 +73,13 @@ class _GroupPageState extends State<GroupPage> {
       GetVoiceSessionDetailsEvent(
         widget.data.voiceSessionId ?? widget.data.rideId,
       ),
+    );
+  }
+
+  void _loadRideDetails() {
+    setState(() => _isLoadingRide = true);
+    context.read<GroupRideBloc>().add(
+      LoadGroupRideDetailsEvent(widget.data.rideId),
     );
   }
 
@@ -340,7 +351,14 @@ class _GroupPageState extends State<GroupPage> {
         ),
         BlocListener<GroupRideBloc, GroupRideState>(
           listener: (context, state) {
-            if (state is GroupRideLeft) {
+            if (state is GroupRideSuccess) {
+              if (state.ride.id == widget.data.rideId) {
+                setState(() {
+                  _rideDetails = state.ride;
+                  _isLoadingRide = false;
+                });
+              }
+            } else if (state is GroupRideLeft) {
               // 1. Leave Voice Session (Sequentially)
               if (widget.data.voiceSessionId != null &&
                   widget.data.voiceSessionId! > 0) {
@@ -408,6 +426,7 @@ class _GroupPageState extends State<GroupPage> {
                 }
               }
             } else if (state is GroupRideFailure) {
+              setState(() => _isLoadingRide = false);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Hata: ${state.message}'),
@@ -435,6 +454,11 @@ class _GroupPageState extends State<GroupPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildHeader(context, colorScheme),
+                        if (_isLoadingRide && _rideDetails == null)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: LinearProgressIndicator(minHeight: 2),
+                          ),
                         const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -442,21 +466,33 @@ class _GroupPageState extends State<GroupPage> {
                             _buildMetaItem(
                               context,
                               Icons.map,
-                              "Rota: ${widget.data.destination ?? 'Bilinmiyor'}",
+                              "Rota: ${_rideDetails?.endLocation ?? widget.data.destination ?? 'Bilinmiyor'}",
                             ),
                             _buildDivider(context),
                             _buildMetaItem(
                               context,
                               Icons.bolt,
-                              widget.data.ridingStyle ?? 'Bilinmiyor',
+                              _rideDetails?.ridingStyle ??
+                                  widget.data.ridingStyle ??
+                                  'Bilinmiyor',
                             ),
                             _buildDivider(context),
                             _buildMetaItem(
                               context,
-                              (widget.data.privacy ?? "Public") == "Public"
-                                  ? Icons.public
-                                  : Icons.lock,
-                              widget.data.privacy ?? "Public",
+                              Icons.bar_chart,
+                              _rideDetails?.difficulty ?? 'Bilinmiyor',
+                            ),
+                            _buildDivider(context),
+                            _buildMetaItem(
+                              context,
+                              (_rideDetails?.isPrivate ??
+                                      (widget.data.privacy == "Private"))
+                                  ? Icons.lock
+                                  : Icons.public,
+                              (_rideDetails?.isPrivate ??
+                                      (widget.data.privacy == "Private"))
+                                  ? "Private"
+                                  : "Public",
                             ),
                           ],
                         ),
@@ -553,7 +589,9 @@ class _GroupPageState extends State<GroupPage> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              _sessionDetails?.title ?? widget.data.groupName,
+              _rideDetails?.title ??
+                  _sessionDetails?.title ??
+                  widget.data.groupName,
               style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface),
               textAlign: TextAlign.right,
             ),
@@ -576,7 +614,7 @@ class _GroupPageState extends State<GroupPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  "${_sessionDetails?.activeParticipantCount ?? (widget.data.currentParticipants ?? 0)} / ${widget.data.maxParticipants ?? 0}",
+                  "${_sessionDetails?.activeParticipantCount ?? (widget.data.currentParticipants ?? 0)} / ${_rideDetails?.maxParticipants ?? widget.data.maxParticipants ?? 0}",
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,

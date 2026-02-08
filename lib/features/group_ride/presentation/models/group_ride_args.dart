@@ -8,6 +8,17 @@ class GroupRideArgs {
   final String? ridingStyle;
   final String? privacy;
   final String? sessionDuration;
+  final String? description;
+  final String? difficulty;
+  final DateTime? startDateTime;
+  final DateTime? endDateTime;
+  final String? startLocation;
+  final String? endLocation;
+  final double? startLatitude;
+  final double? startLongitude;
+  final double? endLatitude;
+  final double? endLongitude;
+  final int? organizerId;
 
   const GroupRideArgs({
     required this.rideId,
@@ -19,6 +30,17 @@ class GroupRideArgs {
     this.ridingStyle,
     this.privacy,
     this.sessionDuration,
+    this.description,
+    this.difficulty,
+    this.startDateTime,
+    this.endDateTime,
+    this.startLocation,
+    this.endLocation,
+    this.startLatitude,
+    this.startLongitude,
+    this.endLatitude,
+    this.endLongitude,
+    this.organizerId,
   });
 
   factory GroupRideArgs.fromMap(Map<String, dynamic> map) {
@@ -32,6 +54,21 @@ class GroupRideArgs {
       ridingStyle: map['ridingStyle'],
       privacy: map['privacy'],
       sessionDuration: map['sessionDuration'],
+      description: map['description'],
+      difficulty: map['difficulty'],
+      startDateTime: map['startDateTime'] != null
+          ? DateTime.parse(map['startDateTime'])
+          : null,
+      endDateTime: map['endDateTime'] != null
+          ? DateTime.parse(map['endDateTime'])
+          : null,
+      startLocation: map['startLocation'],
+      endLocation: map['endLocation'],
+      startLatitude: map['startLatitude']?.toDouble(),
+      startLongitude: map['startLongitude']?.toDouble(),
+      endLatitude: map['endLatitude']?.toDouble(),
+      endLongitude: map['endLongitude']?.toDouble(),
+      organizerId: map['organizerId'],
     );
   }
 
@@ -46,6 +83,17 @@ class GroupRideArgs {
       'ridingStyle': ridingStyle,
       'privacy': privacy,
       'sessionDuration': sessionDuration,
+      'description': description,
+      'difficulty': difficulty,
+      'startDateTime': startDateTime?.toIso8601String(),
+      'endDateTime': endDateTime?.toIso8601String(),
+      'startLocation': startLocation,
+      'endLocation': endLocation,
+      'startLatitude': startLatitude,
+      'startLongitude': startLongitude,
+      'endLatitude': endLatitude,
+      'endLongitude': endLongitude,
+      'organizerId': organizerId,
     };
   }
 }

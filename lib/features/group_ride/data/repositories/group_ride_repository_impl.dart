@@ -86,7 +86,10 @@ class GroupRideRepositoryImpl implements GroupRideRepository {
       estimatedDurationMinutes: ride.estimatedDurationMinutes,
       status: ride.status,
       difficulty: ride.difficulty,
+      ridingStyle: ride.ridingStyle,
       requirements: ride.requirements,
+      isPrivate: ride.isPrivate,
+      voiceSessionId: ride.voiceSessionId,
     );
   }
 }

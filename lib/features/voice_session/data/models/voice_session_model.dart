@@ -14,6 +14,10 @@ class VoiceSessionModel extends VoiceSessionEntity {
     required super.isActive,
     required super.createdAt,
     super.groupRideId,
+    super.maxParticipants = 10,
+    super.destination,
+    super.ridingStyle,
+    super.difficulty,
     required List<VoiceSessionParticipantModel> super.participants,
   });
 
@@ -39,6 +43,10 @@ class VoiceSessionModel extends VoiceSessionEntity {
       roomName: data['roomName'] ?? '',
       isActive: data['isActive'] ?? true,
       groupRideId: data['groupRideId'],
+      maxParticipants: data['maxParticipants'] ?? 10,
+      destination: data['destination'],
+      ridingStyle: data['ridingStyle'],
+      difficulty: data['difficulty'],
       createdAt: data['createdAt'] != null
           ? DateTime.tryParse(data['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),

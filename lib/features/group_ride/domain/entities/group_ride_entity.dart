@@ -18,6 +18,7 @@ class GroupRideEntity {
   final String? difficulty;
   final String? ridingStyle;
   final String? requirements;
+  final bool isPrivate;
 
   GroupRideEntity({
     required this.id,
@@ -39,6 +40,7 @@ class GroupRideEntity {
     this.difficulty,
     this.ridingStyle,
     this.requirements,
+    required this.isPrivate,
     this.voiceSessionId,
   });
 
