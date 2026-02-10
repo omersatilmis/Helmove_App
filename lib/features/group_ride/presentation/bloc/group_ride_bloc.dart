@@ -157,7 +157,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
         // We just need to check if we have the ID.
         if (ride.voiceSessionId != null) {
           // Join SignalR Group for specific updates
-          await signalRService.joinRideGroup(ride.id.toString());
+          await signalRService.joinVoiceSessionGroup(ride.id.toString());
           emit(GroupRideCreatedSync(ride, ride.voiceSessionId!));
         } else {
           // Fallback if backend didn't create it (shouldn't happen with new logic)
@@ -194,7 +194,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     final result = await deleteGroupRideUseCase.execute(event.rideId);
     result.fold((failure) => emit(GroupRideFailure(failure.message)), (_) {
       // Leave SignalR Group
-      signalRService.leaveRideGroup(event.rideId.toString());
+      signalRService.leaveVoiceSessionGroup(event.rideId.toString());
       emit(GroupRideDeleted());
     });
   }
@@ -207,7 +207,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     final result = await leaveGroupRideUseCase.call(event.rideId);
     result.fold((failure) => emit(GroupRideFailure(failure.message)), (_) {
       // Leave SignalR Group
-      signalRService.leaveRideGroup(event.rideId.toString());
+      signalRService.leaveVoiceSessionGroup(event.rideId.toString());
       emit(GroupRideLeft());
     });
   }
@@ -218,7 +218,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
   ) async {
     // Leave SignalR Group as the ride is already gone on server
     if (event.rideId != null) {
-      await signalRService.leaveRideGroup(event.rideId!);
+      await signalRService.leaveVoiceSessionGroup(event.rideId!);
     }
     emit(GroupRideTerminated());
   }
@@ -227,7 +227,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     JoinSignalRGroupEvent event,
     Emitter<GroupRideState> emit,
   ) async {
-    await signalRService.joinRideGroup(event.rideId.toString());
+    await signalRService.joinVoiceSessionGroup(event.rideId.toString());
   }
 
   Future<void> _onHostChanged(

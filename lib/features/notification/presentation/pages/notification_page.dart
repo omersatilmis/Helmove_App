@@ -392,7 +392,55 @@ class _NotificationItemModern extends StatelessWidget {
         msg.contains('sesli');
   }
 
-  int? _getSessionId(NotificationEntity notification) {
+  Future<void> _handleAcceptInvite(BuildContext context) async {
+    final sessionId = notification.voiceSessionId;
+    // Eğer voiceSessionId yoksa eski usul sessionId ara (Geriye uyumluluk)
+    final effectiveSessionId = sessionId ?? _getLegacySessionId(notification);
+
+    if (effectiveSessionId != null) {
+      // 1. Bildirimi sil (Optimistik)
+      context.read<NotificationsBloc>().add(
+        DeleteNotificationEvent(notification.id),
+      );
+
+      // 2. Gruba Katılma İsteği ve Navigasyon
+      await _goToGroupPage(context, effectiveSessionId);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Oturum bilgisine ulaşılamadı.")),
+      );
+    }
+  }
+
+  Future<void> _handleRejectInvite(BuildContext context) async {
+    // Sadece bildirimi sil
+    context.read<NotificationsBloc>().add(
+      DeleteNotificationEvent(notification.id),
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Davet reddedildi (Bildirim silindi).')),
+      );
+    }
+  }
+
+  void _navigateToVoiceSession(BuildContext context) {
+    final sessionId =
+        notification.voiceSessionId ?? _getLegacySessionId(notification);
+
+    if (sessionId != null) {
+      _goToGroupPage(context, sessionId);
+    } else {
+      debugPrint("⚠️ Bildirim detayında ID bulunamadı.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Oturum bilgisine ulaşılamadı. (ID Yok)")),
+      );
+    }
+  }
+
+  // Eski tip JSON parse (Geriye uyumluluk için, eğer entity getter null dönerse)
+  int? _getLegacySessionId(NotificationEntity notification) {
     if (notification.relatedId != null) return notification.relatedId;
     if (notification.dataJson != null) {
       try {
@@ -407,58 +455,13 @@ class _NotificationItemModern extends StatelessWidget {
     return null;
   }
 
-  Future<void> _handleAcceptInvite(BuildContext context) async {
-    final sessionId = _getSessionId(notification);
-    if (sessionId != null) {
-      await _goToGroupPage(context, sessionId);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Oturum bilgisine ulaşılamadı.")),
-      );
-    }
-  }
-
-  Future<void> _handleRejectInvite(BuildContext context) async {
-    final sessionId = _getSessionId(notification);
-    if (sessionId != null) {
-      try {
-        final voiceSessionRepository = sl<VoiceSessionRepository>();
-        await voiceSessionRepository.rejectInvitation(sessionId);
-        if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Davet reddedildi.')));
-        }
-      } catch (e) {
-        debugPrint('Davet reddetme hatası: $e');
-      }
-    }
-    // Mark as read
-    if (context.mounted) {
-      context.read<NotificationsBloc>().add(
-        MarkNotificationReadEvent(notification.id),
-      );
-    }
-  }
-
-  void _navigateToVoiceSession(BuildContext context) {
-    final sessionId = _getSessionId(notification);
-    if (sessionId != null) {
-      _goToGroupPage(context, sessionId);
-    } else {
-      debugPrint("⚠️ Bildirim detayında ID bulunamadı.");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Oturum bilgisine ulaşılamadı. (ID Yok)")),
-      );
-    }
-  }
-
   Future<void> _goToGroupPage(BuildContext context, int sessionId) async {
-    // Önce daveti kabul et
+    // Burada repository çağrısı yapmak yerine sayfaya gidince Bloc oradan halletsin mi?
+    // Mevcut kod repository çağrısı yapıyor. Koruyalım.
     try {
       final voiceSessionRepository = sl<VoiceSessionRepository>();
       await voiceSessionRepository.acceptInvitation(sessionId);
-      debugPrint('✅ Davet kabul edildi: $sessionId');
+      debugPrint('✅ Davet kabul edildi API çağrısı: $sessionId');
     } catch (e) {
       debugPrint('⚠️ Davet kabul hatası (belki zaten kabul edilmiş): $e');
     }
@@ -466,7 +469,9 @@ class _NotificationItemModern extends StatelessWidget {
     // Navigasyon
     final dummyData = {
       'id': sessionId,
-      'groupName': "${notification.senderUsername ?? 'Arkadaş'} Daveti",
+      'groupName':
+          notification.groupName ??
+          "${notification.senderUsername ?? 'Arkadaş'} Daveti", // Entity getter kullandık
       'maxParticipants': 10,
       'privacy': "Private",
       'destination': "Bilinmiyor",

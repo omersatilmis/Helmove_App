@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
@@ -208,9 +209,7 @@ class _GroupSettingsState extends State<GroupSettings> {
             context,
           ).showSnackBar(SnackBar(content: Text("Hata: ${state.message}")));
         } else if (state is GroupRideSuccess) {
-          // Veri yüklendiğinde veya güncellendiğinde UI'ı güncelle
           _updateControllers(state.ride);
-
           if (state.message.contains("güncellendi")) {
             ScaffoldMessenger.of(
               context,
@@ -222,53 +221,70 @@ class _GroupSettingsState extends State<GroupSettings> {
         builder: (context, state) {
           return Scaffold(
             backgroundColor: Colors.transparent,
-            extendBodyBehindAppBar: true,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: Center(
-                child: AppFrostedButton(
-                  icon: Icons.arrow_back,
-                  onTap: () => context.pop(),
-                  size: 40,
-                ),
-              ),
-              centerTitle: true,
-              title: Text(
-                "Grup Ayarları",
-                style: AppTextStyles.h3.copyWith(color: colorScheme.onSurface),
-              ),
-            ),
             body: Container(
-              width: double.infinity,
-              height: double.infinity,
               decoration: BoxDecoration(gradient: backgroundGradient),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView(
-                      controller: widget.scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).padding.top + 60,
-                        ),
-                        const SizedBox(height: 10),
+              child: CustomScrollView(
+                controller: widget.scrollController,
+                slivers: [
+                  // --- 1. Sabit Başlık (Sticky Header) ---
+                  SliverAppBar(
+                    pinned: true,
+                    floating: false,
+                    backgroundColor: Colors.transparent,
+                    surfaceTintColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    elevation: 0,
+                    scrolledUnderElevation: 0,
+                    leading: Center(
+                      child: AppFrostedButton(
+                        icon: Icons.arrow_back,
+                        onTap: () => context.pop(),
+                        size: 40,
+                      ),
+                    ),
+                    centerTitle: true,
+                    title: Text(
+                      "Grup Ayarları",
+                      style: AppTextStyles.h3.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    flexibleSpace: ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+                  ),
+
+                  // --- 2. Form İçeriği ---
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        const SizedBox(height: 20),
+
+                        // Grup Adı
                         Text("Grup Adı", style: labelStyle),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         AppInputField(
                           controller: _groupNameController,
                           hint: "Grup Adı",
                           leadingIcon: Icons.group,
                           enabled: isOrganizer,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
+
+                        // Maksimum Sürücü
                         Text("Maksimum Sürücü", style: labelStyle),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         _buildGlassDropdown(colorScheme),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
+
+                        // Grup Gizliliği
                         Text("Grup Gizliliği", style: labelStyle),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             Expanded(
@@ -300,18 +316,22 @@ class _GroupSettingsState extends State<GroupSettings> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
+
+                        // Rota / Hedef
                         Text("Rota / Hedef", style: labelStyle),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         AppInputField(
                           controller: _destinationController,
                           hint: "Örn: Abant Gölü",
                           leadingIcon: Icons.map,
                           enabled: isOrganizer,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
+
+                        // Sürüş Tarzı ve Zorluk
                         Text("Sürüş Tarzı ve Zorluk", style: labelStyle),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             Expanded(
@@ -346,9 +366,11 @@ class _GroupSettingsState extends State<GroupSettings> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
+
+                        // Açıklama
                         Text("Açıklama", style: labelStyle),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         AppInputField(
                           controller: _descriptionController,
                           hint: "Sürüş hakkında açıklama...",
@@ -356,38 +378,62 @@ class _GroupSettingsState extends State<GroupSettings> {
                           maxLines: 3,
                           enabled: isOrganizer,
                         ),
-                        const SizedBox(height: 24),
-                        if (isOrganizer)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: AppFrostedTextButton(
-                                  text: "Sonlandır",
-                                  height: 48,
-                                  backgroundColor: colorScheme.error
-                                      .withOpacity(0.1),
-                                  textColor: colorScheme.error,
-                                  onPressed: _onDelete,
-                                  isLoading: state is GroupRideLoading,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: AppFrostedTextButton(
-                                  text: "Güncelle",
-                                  height: 48,
-                                  backgroundColor: colorScheme.primary
-                                      .withOpacity(0.1),
-                                  textColor: colorScheme.primary,
-                                  onPressed: _onUpdate,
-                                  isLoading: state is GroupRideLoading,
-                                ),
-                              ),
-                            ],
-                          ),
-                      ],
+                        const SizedBox(height: 30),
+                      ]),
                     ),
                   ),
+
+                  // --- 3. Butonlar (Sadece Organizer ise) ---
+                  if (isOrganizer)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AppFrostedTextButton(
+                                    text: "Sonlandır",
+                                    height: 52,
+                                    backgroundColor: colorScheme.error
+                                        .withOpacity(0.1),
+                                    textColor: colorScheme.error,
+                                    onPressed: _onDelete,
+                                    isLoading: state is GroupRideLoading,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: AppFrostedTextButton(
+                                    text: "Güncelle",
+                                    height: 52,
+                                    backgroundColor: colorScheme.primary
+                                        .withOpacity(0.1),
+                                    textColor: colorScheme.primary,
+                                    onPressed: _onUpdate,
+                                    isLoading: state is GroupRideLoading,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Bottom Navigation Bar'ın arkasında kalmaması için safe area padding
+                            SizedBox(
+                              height:
+                                  MediaQuery.of(context).padding.bottom + 80,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // Eğer Organizer değilse de bottom padding ekle
+                  if (!isOrganizer)
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: MediaQuery.of(context).padding.bottom + 80,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -503,43 +549,53 @@ class _GroupSettingsState extends State<GroupSettings> {
   }) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+    return PopupMenuButton<String>(
+      enabled: isOrganizer,
+      onSelected: onSelected,
+      color: colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      offset: const Offset(0, -4),
+      itemBuilder: (context) => options.map((opt) {
+        return PopupMenuItem<String>(
+          value: opt,
+          child: Text(
+            opt,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: opt == title ? colorScheme.primary : colorScheme.onSurface,
+              fontWeight: opt == title ? FontWeight.w500 : FontWeight.w300,
+              fontSize: 12,
+            ),
+          ),
+        );
+      }).toList(),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
         ),
-        child: ExpansionTile(
-          enabled: isOrganizer,
-          leading: Icon(icon, color: colorScheme.primary, size: 20),
-          title: Text(
-            title,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-          children: options.map((opt) {
-            return ListTile(
-              title: Text(
-                opt,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: opt == title
-                      ? colorScheme.primary
-                      : colorScheme.onSurface,
-                  fontWeight: opt == title
-                      ? FontWeight.bold
-                      : FontWeight.normal,
+        child: Row(
+          children: [
+            Icon(icon, color: colorScheme.primary, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
-              onTap: () {
-                onSelected(opt);
-              },
-            );
-          }).toList(),
+            ),
+            Icon(
+              Icons.keyboard_arrow_down,
+              color: colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
+          ],
         ),
       ),
     );

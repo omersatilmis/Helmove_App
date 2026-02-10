@@ -13,6 +13,7 @@ class CreateGroupRideRequestDto {
   final String? difficulty;
   final String? ridingStyle;
   final String privacy;
+  final List<int>? invitedUserIds;
 
   CreateGroupRideRequestDto({
     required this.title,
@@ -29,6 +30,7 @@ class CreateGroupRideRequestDto {
     this.difficulty,
     this.ridingStyle,
     required this.privacy,
+    this.invitedUserIds,
   });
 
   Map<String, dynamic> toJson() {
@@ -47,6 +49,7 @@ class CreateGroupRideRequestDto {
       'difficulty': difficulty,
       'ridingStyle': ridingStyle,
       'privacy': privacy,
+      'invitedUserIds': invitedUserIds ?? [],
     };
   }
 }

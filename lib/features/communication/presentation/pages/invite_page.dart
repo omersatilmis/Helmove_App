@@ -370,6 +370,9 @@ class _InviteViewState extends State<_InviteView> {
                                   ridingStyle:
                                       widget.groupData["ridingStyle"] ??
                                       "Sakin",
+                                  invitedUserIds: _selectedRiders
+                                      .map((e) => e.userId)
+                                      .toList(),
                                 );
 
                                 context.read<GroupRideBloc>().add(

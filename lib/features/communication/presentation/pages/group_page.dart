@@ -10,6 +10,7 @@ import '../widgets/rider_card.dart';
 
 // --- BACKEND BLOC & ENTITY İMPORTLARI ---
 import '../../../voice_session/domain/entities/voice_session_entity.dart';
+
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
@@ -322,6 +323,27 @@ class _GroupPageState extends State<GroupPage> {
                 _sessionDetails = state.session;
                 _isLoadingSession = false;
               });
+
+              // --- AUTO JOIN LOGIC (SAFE) ---
+              if (_currentUserId != null && state.session != null) {
+                final matchingParticipants = state.session!.participants.where(
+                  (p) => p.userId == _currentUserId,
+                );
+
+                if (matchingParticipants.isNotEmpty) {
+                  final myParticipant = matchingParticipants.first;
+                  // Eğer statü 'Accepted' ise ve henüz bağlanmadıysak -> KATIL
+                  if (myParticipant.status == 'Accepted') {
+                    debugPrint(
+                      "🚀 [GroupPage] Auto-Joining Voice Session: ${state.session!.id}",
+                    );
+                    context.read<VoiceSessionBloc>().add(
+                      JoinVoiceSessionEvent(state.session!.id),
+                    );
+                  }
+                }
+              }
+              // -----------------------
             } else if (state is VoiceSessionError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -678,7 +700,7 @@ class _GroupPageState extends State<GroupPage> {
 
     return Column(
       children: participants.map((p) {
-        final isConnected = p.status == 'Joined';
+        final isConnected = p.status == 'Joined' || p.status == 'Accepted';
         final isMe = p.userId == currentUserId;
 
         // Target Role Determination

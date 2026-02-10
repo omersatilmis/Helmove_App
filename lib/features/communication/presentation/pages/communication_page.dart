@@ -458,7 +458,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
         }
       },
       riderCards: participants.map((p) {
-        final isConnected = p.status == 'Joined';
+        final isConnected = p.status == 'Joined' || p.status == 'Accepted';
         final isMe = p.userId == _currentUserId;
 
         // Viewer Role Determination

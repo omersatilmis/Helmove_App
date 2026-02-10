@@ -111,6 +111,7 @@ import '../../features/notification/domain/usecases/get_unread_count_usecase.dar
     as notif;
 import '../../features/notification/domain/usecases/mark_all_notifications_read_usecase.dart';
 import '../../features/notification/domain/usecases/mark_notification_read_usecase.dart';
+import '../../features/notification/domain/usecases/delete_notification_usecase.dart';
 import '../../features/notification/presentation/bloc/notifications_bloc.dart';
 
 // Settings Feature
@@ -791,6 +792,7 @@ Future<void> init() async {
   sl.registerFactory(() => notif.GetUnreadCountUseCase(sl()));
   sl.registerFactory(() => MarkNotificationReadUseCase(sl()));
   sl.registerFactory(() => MarkAllNotificationsReadUseCase(sl()));
+  sl.registerFactory(() => DeleteNotificationUseCase(sl()));
 
   // Bloc
   sl.registerFactory(
@@ -800,6 +802,7 @@ Future<void> init() async {
       markNotificationRead: sl(),
       markAllNotificationsRead: sl(),
       signalRService: sl(),
+      deleteNotification: sl(),
     ),
   );
 

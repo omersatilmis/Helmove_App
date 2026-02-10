@@ -52,4 +52,14 @@ class NotificationRepositoryImpl implements NotificationRepository {
       return Left(ServerFailure());
     }
   }
+
+  @override
+  Future<Either<Failure, void>> deleteNotification(int id) async {
+    try {
+      await remoteDataSource.deleteNotification(id);
+      return const Right(null);
+    } on ServerException {
+      return Left(ServerFailure());
+    }
+  }
 }

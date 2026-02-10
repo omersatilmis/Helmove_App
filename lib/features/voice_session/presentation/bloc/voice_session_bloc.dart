@@ -38,6 +38,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
   StreamSubscription? _userLeftSubscription;
   StreamSubscription? _hostChangedSubscription;
+  StreamSubscription? _voiceSessionRefreshSubscription;
+  StreamSubscription? _groupRideUpdatedSubscription;
 
   VoiceSessionBloc({
     required this.createVoiceSessionUseCase,
@@ -55,15 +57,15 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.transferHostUseCase,
   }) : super(VoiceSessionInitial()) {
     // Listen to SignalR events
-    signalRService.setOnUserJoinedRide((userId, rideId) {
+    signalRService.setOnUserJoinedVoiceSession((userId, voiceSessionId) {
       if (!isClosed) {
-        add(VoiceSessionParticipantJoinedEvent(userId, roomId: rideId));
+        add(VoiceSessionParticipantJoinedEvent(userId, roomId: voiceSessionId));
       }
     });
 
-    signalRService.setOnUserLeftRide((userId, rideId) {
+    signalRService.setOnUserLeftVoiceSession((userId, voiceSessionId) {
       if (!isClosed) {
-        add(VoiceSessionParticipantLeftEvent(userId, roomId: rideId));
+        add(VoiceSessionParticipantLeftEvent(userId, roomId: voiceSessionId));
       }
     });
 
@@ -124,37 +126,25 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     });
 
     // 6. Voice Session Refresh (Accept/Reject updates)
-    signalRService.voiceSessionRefreshStream.listen((sessionId) {
-      if (!isClosed) {
-        // ALWAYS refresh the list for CommunicationPage
-        add(const GetMyVoiceSessionsEvent());
+    _voiceSessionRefreshSubscription = signalRService.voiceSessionRefreshStream
+        .listen((sessionId) {
+          if (!isClosed) {
+            // Refresh session list for CommunicationPage
+            add(const GetMyVoiceSessionsEvent());
 
-        // If we are currently viewing this session, refresh details
-        if (state is VoiceSessionDetailsLoaded) {
-          final currentSessionId =
-              (state as VoiceSessionDetailsLoaded).session.id;
-          if (currentSessionId == sessionId) {
+            // Always refresh session details — GroupPage listens for this
             add(GetVoiceSessionDetailsEvent(sessionId));
           }
-        }
-      }
-    });
+        });
 
     // 7. Group Ride Updated (Name/Desc changes)
-    signalRService.groupRideUpdatedStream.listen((rideId) {
-      if (!isClosed) {
-        // Refresh session list
-        add(const GetMyVoiceSessionsEvent());
-
-        // Refresh details if current session is for this ride
-        if (state is VoiceSessionDetailsLoaded) {
-          final session = (state as VoiceSessionDetailsLoaded).session;
-          if (session.groupRideId?.toString() == rideId) {
-            add(GetVoiceSessionDetailsEvent(session.id));
+    _groupRideUpdatedSubscription = signalRService.groupRideUpdatedStream
+        .listen((rideId) {
+          if (!isClosed) {
+            // Refresh session list
+            add(const GetMyVoiceSessionsEvent());
           }
-        }
-      }
-    });
+        });
 
     // Initialize SignalR
     signalRService.init();
@@ -208,20 +198,6 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     });
   }
 
-  @override
-  Future<void> close() {
-    _rideTerminatedSubscription?.cancel();
-    _rideCreatedSubscription?.cancel();
-    _userJoinedSubscription?.cancel();
-    _userLeftSubscription?.cancel();
-    _hostChangedSubscription?.cancel();
-    // signalRService handles its own subscriptions or we can add local ones if needed
-    // The .listen pattern used for groupRideUpdatedStream above should ideally be matched
-    // with a stream subscription stored in a variable if we want manual control,
-    // but Bloc listeners are usually fine as long as they check !isClosed.
-    return super.close();
-  }
-
   Future<void> _onCreateVoiceSession(
     CreateVoiceSessionEvent event,
     Emitter<VoiceSessionState> emit,
@@ -232,7 +208,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) async => emit(VoiceSessionError(failure.message)),
       (sessionId) async {
         // Join SignalR Group
-        await signalRService.joinRideGroup(sessionId.toString());
+        await signalRService.joinVoiceSessionGroup(sessionId.toString());
         emit(VoiceSessionCreated(sessionId));
       },
     );
@@ -248,7 +224,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) async => emit(VoiceSessionError(failure.message)),
       (_) async {
         // Join SignalR Group
-        await signalRService.joinRideGroup(event.sessionId.toString());
+        await signalRService.joinVoiceSessionGroup(event.sessionId.toString());
         emit(const VoiceSessionActionSuccess("Odaya başarıyla katılındı"));
       },
     );
@@ -264,7 +240,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) async => emit(VoiceSessionError(failure.message)),
       (_) async {
         // Leave SignalR Group
-        await signalRService.leaveRideGroup(event.sessionId.toString());
+        await signalRService.leaveVoiceSessionGroup(event.sessionId.toString());
         emit(VoiceSessionLeft(event.sessionId));
       },
     );
@@ -290,9 +266,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   ) async {
     emit(VoiceSessionLoading());
     final result = await getVoiceSessionDetailsUseCase(event.sessionId);
-    result.fold(
-      (failure) => emit(VoiceSessionError(failure.message)),
-      (session) => emit(VoiceSessionDetailsLoaded(session)),
+    await result.fold(
+      (failure) async => emit(VoiceSessionError(failure.message)),
+      (session) async {
+        // Join SignalR Group for real-time updates
+        await signalRService.joinVoiceSessionGroup(session.id.toString());
+        emit(VoiceSessionDetailsLoaded(session));
+      },
     );
   }
 
@@ -371,5 +351,17 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       final currentSessionId = (state as VoiceSessionDetailsLoaded).session.id;
       add(GetVoiceSessionDetailsEvent(currentSessionId));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _rideTerminatedSubscription?.cancel();
+    _rideCreatedSubscription?.cancel();
+    _userJoinedSubscription?.cancel();
+    _userLeftSubscription?.cancel();
+    _hostChangedSubscription?.cancel();
+    _voiceSessionRefreshSubscription?.cancel();
+    _groupRideUpdatedSubscription?.cancel();
+    return super.close();
   }
 }

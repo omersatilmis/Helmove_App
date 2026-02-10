@@ -11,11 +11,10 @@ class SignalRService {
 
   SignalRService(this.sharedPreferences);
 
-  // Callbacks
-  Function(String userId, String? rideId)? _onUserJoinedRide;
-  Function(String userId, String? rideId)? _onUserLeftRide;
+  // Callbacks - Voice Session oriented naming
+  Function(String userId, String? voiceSessionId)? _onUserJoinedVoiceSession;
+  Function(String userId, String? voiceSessionId)? _onUserLeftVoiceSession;
   Function(String userId, dynamic locationData)? _onRideLocationUpdate;
-  Function(dynamic notification)? _onNotificationReceived;
   // Previously: Function(String? rideId)? _onRideTerminated;
 
   // Broadcast Streams
@@ -26,23 +25,25 @@ class SignalRService {
   final _hostChangedController =
       StreamController<Map<String, dynamic>>.broadcast();
   final _groupRideUpdatedController = StreamController<String>.broadcast();
+  final _notificationReceivedController = StreamController<dynamic>.broadcast();
 
   Stream<String?> get rideTerminatedStream => _rideTerminatedController.stream;
   Stream<void> get rideCreatedStream => _rideCreatedController.stream;
   Stream<String> get userJoinedStream => _userJoinedController.stream;
-
   Stream<String> get userLeftStream => _userLeftController.stream;
   Stream<Map<String, dynamic>> get hostChangedStream =>
       _hostChangedController.stream;
   Stream<String> get groupRideUpdatedStream =>
       _groupRideUpdatedController.stream;
+  Stream<dynamic> get notificationReceivedStream =>
+      _notificationReceivedController.stream;
 
   final _voiceSessionRefreshController = StreamController<int>.broadcast();
   Stream<int> get voiceSessionRefreshStream =>
       _voiceSessionRefreshController.stream;
 
-  // Active Ride Context
-  String? _activeRideId;
+  // Active Voice Session Context
+  String? _activeVoiceSessionId;
 
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
 
@@ -77,24 +78,36 @@ class SignalRService {
   void _registerEventHandlers() {
     if (_hubConnection == null) return;
 
-    _hubConnection!.on("UserJoinedRide", (arguments) {
+    _hubConnection!.on("UserJoinedVoiceSession", (arguments) {
       if (arguments != null && arguments.isNotEmpty) {
         final userId = arguments[0] as String;
+        final voiceSessionId = arguments.length > 1
+            ? arguments[1] as String?
+            : null;
         AppLogger.info(
-          "SignalR: User Joined Ride -> $userId (Ride: $_activeRideId)",
+          "SignalR: User Joined Voice Session -> $userId (Session: ${voiceSessionId ?? _activeVoiceSessionId})",
         );
-        _onUserJoinedRide?.call(userId, _activeRideId);
+        _onUserJoinedVoiceSession?.call(
+          userId,
+          voiceSessionId ?? _activeVoiceSessionId,
+        );
         _userJoinedController.add(userId);
       }
     });
 
-    _hubConnection!.on("UserLeftRide", (arguments) {
+    _hubConnection!.on("UserLeftVoiceSession", (arguments) {
       if (arguments != null && arguments.isNotEmpty) {
         final userId = arguments[0] as String;
+        final voiceSessionId = arguments.length > 1
+            ? arguments[1] as String?
+            : null;
         AppLogger.info(
-          "SignalR: User Left Ride -> $userId (Ride: $_activeRideId)",
+          "SignalR: User Left Voice Session -> $userId (Session: ${voiceSessionId ?? _activeVoiceSessionId})",
         );
-        _onUserLeftRide?.call(userId, _activeRideId);
+        _onUserLeftVoiceSession?.call(
+          userId,
+          voiceSessionId ?? _activeVoiceSessionId,
+        );
         _userLeftController.add(userId);
       }
     });
@@ -155,7 +168,7 @@ class SignalRService {
       if (arguments != null && arguments.isNotEmpty) {
         final notification = arguments[0];
         AppLogger.info("SignalR: Received Notification -> $notification");
-        _onNotificationReceived?.call(notification);
+        _notificationReceivedController.add(notification);
       }
     });
   }
@@ -185,46 +198,52 @@ class SignalRService {
 
   // --- Actions ---
 
-  Future<void> joinRideGroup(String rideGroupId) async {
+  Future<void> joinVoiceSessionGroup(String voiceSessionId) async {
     if (!isConnected) return;
     try {
-      await _hubConnection!.invoke("JoinRideGroup", args: [rideGroupId]);
-      _activeRideId = rideGroupId;
-      AppLogger.info("Joined Ride Group: $rideGroupId");
+      await _hubConnection!.invoke(
+        "JoinVoiceSessionGroup",
+        args: [voiceSessionId],
+      );
+      _activeVoiceSessionId = voiceSessionId;
+      AppLogger.info("Joined Voice Session Group: $voiceSessionId");
     } catch (e) {
-      AppLogger.error("Error joining ride group", e);
+      AppLogger.error("Error joining voice session group", e);
     }
   }
 
-  Future<void> leaveRideGroup(String rideGroupId) async {
+  Future<void> leaveVoiceSessionGroup(String voiceSessionId) async {
     if (!isConnected) return;
     try {
-      await _hubConnection!.invoke("LeaveRideGroup", args: [rideGroupId]);
-      if (_activeRideId == rideGroupId) {
-        _activeRideId = null;
+      await _hubConnection!.invoke(
+        "LeaveVoiceSessionGroup",
+        args: [voiceSessionId],
+      );
+      if (_activeVoiceSessionId == voiceSessionId) {
+        _activeVoiceSessionId = null;
       }
-      AppLogger.info("Left Ride Group: $rideGroupId");
+      AppLogger.info("Left Voice Session Group: $voiceSessionId");
     } catch (e) {
-      AppLogger.error("Error leaving ride group", e);
+      AppLogger.error("Error leaving voice session group", e);
     }
   }
 
   // --- Listeners Setters ---
 
-  void setOnUserJoinedRide(Function(String userId, String? rideId) callback) {
-    _onUserJoinedRide = callback;
+  void setOnUserJoinedVoiceSession(
+    Function(String userId, String? voiceSessionId) callback,
+  ) {
+    _onUserJoinedVoiceSession = callback;
   }
 
-  void setOnUserLeftRide(Function(String userId, String? rideId) callback) {
-    _onUserLeftRide = callback;
+  void setOnUserLeftVoiceSession(
+    Function(String userId, String? voiceSessionId) callback,
+  ) {
+    _onUserLeftVoiceSession = callback;
   }
 
   // DEPRECATED: Use rideTerminatedStream instead
   // void setOnRideTerminated(Function(String? rideId)? callback) {
   //   _onRideTerminated = callback;
   // }
-
-  void setOnNotificationReceived(Function(dynamic notification)? callback) {
-    _onNotificationReceived = callback;
-  }
 }

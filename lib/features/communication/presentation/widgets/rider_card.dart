@@ -328,8 +328,9 @@ class RiderCard extends StatelessWidget {
   // Yetki Kontrolü
   bool _canManage(RiderRole viewer, RiderRole target) {
     if (viewer == RiderRole.organizer) return true; // Organizer herkesi yönetir
-    if (viewer == RiderRole.host && target == RiderRole.participant)
+    if (viewer == RiderRole.host && target == RiderRole.participant) {
       return true; // Host sadece katılımcıları yönetir
+    }
     return false;
   }
 
