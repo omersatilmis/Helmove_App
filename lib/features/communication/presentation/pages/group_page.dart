@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+// --- P2P CALL İMPORTLARI ---
+import '../../../call/presentation/bloc/call_bloc.dart';
+import '../../../call/presentation/bloc/call_event.dart';
+
 // --- PROJE İMPORTLARI ---
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/text_styles.dart';
@@ -37,6 +41,15 @@ class _GroupPageState extends State<GroupPage> {
   bool _isLoadingSession = false;
   bool _isLoadingRide = false;
   int? _currentUserId;
+
+  /// P2P modunda mı? (2 kişi odada)
+  /// P2P modunda mı? (2 kişi odada)
+  bool _isP2PMode = false;
+
+  // --- LIVEKIT STATE ---
+  bool _isLiveKitConnected = false;
+  bool _isMicOn = true;
+  Set<String> _activeSpeakers = {};
 
   @override
   void initState() {
@@ -317,34 +330,116 @@ class _GroupPageState extends State<GroupPage> {
     return MultiBlocListener(
       listeners: [
         BlocListener<VoiceSessionBloc, VoiceSessionState>(
+          listenWhen: (previous, current) {
+            // Rebuild/Listen only when relevant parts change
+            return previous.status != current.status ||
+                previous.message != current.message ||
+                previous.session != current.session ||
+                previous.isLiveKitConnected != current.isLiveKitConnected ||
+                previous.isMicOn != current.isMicOn ||
+                previous.activeSpeakers != current.activeSpeakers ||
+                previous.liveKitError != current.liveKitError;
+          },
           listener: (context, state) {
-            if (state is VoiceSessionDetailsLoaded) {
+            // 1. Session Details Loaded
+            if (state.status == VoiceSessionStatus.detailsLoaded &&
+                state.session != null) {
               setState(() {
                 _sessionDetails = state.session;
                 _isLoadingSession = false;
               });
 
               // --- AUTO JOIN LOGIC (SAFE) ---
-              if (_currentUserId != null && state.session != null) {
+              if (_currentUserId != null) {
                 final matchingParticipants = state.session!.participants.where(
                   (p) => p.userId == _currentUserId,
                 );
 
                 if (matchingParticipants.isNotEmpty) {
                   final myParticipant = matchingParticipants.first;
-                  // Eğer statü 'Accepted' ise ve henüz bağlanmadıysak -> KATIL
                   if (myParticipant.status == 'Accepted') {
-                    debugPrint(
-                      "🚀 [GroupPage] Auto-Joining Voice Session: ${state.session!.id}",
+                    if (!state.isLiveKitConnected &&
+                        !_isP2PMode &&
+                        widget.data.rideId > 0) {
+                      debugPrint(
+                        "🚀 [GroupPage] Auto-Connecting to LiveKit: ${state.session!.id}",
+                      );
+                      context.read<VoiceSessionBloc>().add(
+                        ConnectToLiveKitEvent(
+                          state.session!.roomName,
+                          displayName:
+                              '${myParticipant.firstName} ${myParticipant.lastName}',
+                        ),
+                      );
+                    }
+                  }
+                }
+
+                // --- P2P AUTO-SWITCH DETECTION ---
+                final activeParticipants = state.session!.participants
+                    .where(
+                      (p) =>
+                          p.status == 'Joined' ||
+                          p.status == 'Accepted' ||
+                          p.status == 'Disconnected',
+                    )
+                    .toList();
+
+                final shouldBeP2P = activeParticipants.length == 2;
+
+                if (shouldBeP2P && !_isP2PMode) {
+                  setState(() => _isP2PMode = true);
+                  final otherParticipant = activeParticipants.firstWhere(
+                    (p) => p.userId != _currentUserId,
+                  );
+                  debugPrint(
+                    "📞 [GroupPage] P2P Mode Activated → target: ${otherParticipant.userId}",
+                  );
+                  try {
+                    context.read<CallBloc>().add(
+                      CallRequested(
+                        targetUserId: otherParticipant.userId.toString(),
+                        targetDisplayName: otherParticipant.displayName,
+                      ),
                     );
+                  } catch (e) {
+                    debugPrint('⚠️ [GroupPage] CallBloc not available: $e');
+                  }
+                } else if (!shouldBeP2P && _isP2PMode) {
+                  setState(() => _isP2PMode = false);
+                  debugPrint(
+                    "📞 [GroupPage] P2P Mode Deactivated → switching to SFU",
+                  );
+                  if (!state.isLiveKitConnected) {
+                    final myParticipant = state.session!.participants
+                        .firstWhere(
+                          (p) => p.userId == _currentUserId,
+                          orElse: () => state.session!.participants.first,
+                        );
                     context.read<VoiceSessionBloc>().add(
-                      JoinVoiceSessionEvent(state.session!.id),
+                      ConnectToLiveKitEvent(
+                        state.session!.roomName,
+                        displayName:
+                            '${myParticipant.firstName} ${myParticipant.lastName}',
+                      ),
                     );
                   }
                 }
+
+                if (_isP2PMode && state.isLiveKitConnected) {
+                  debugPrint(
+                    "📞 [GroupPage] Disconnecting LiveKit due to P2P Mode",
+                  );
+                  context.read<VoiceSessionBloc>().add(
+                    const DisconnectFromLiveKitEvent(),
+                  );
+                }
               }
-              // -----------------------
-            } else if (state is VoiceSessionError) {
+            }
+
+            // 2. Error handling
+            if (state.status == VoiceSessionStatus.error &&
+                state.message != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Hata: ${state.message}'),
@@ -352,7 +447,10 @@ class _GroupPageState extends State<GroupPage> {
                 ),
               );
               setState(() => _isLoadingSession = false);
-            } else if (state is VoiceSessionLeft) {
+            }
+
+            // 3. Left Session
+            if (state.status == VoiceSessionStatus.left) {
               if (context.mounted) {
                 if (Navigator.of(context).canPop()) {
                   context.pop(true);
@@ -360,14 +458,42 @@ class _GroupPageState extends State<GroupPage> {
                   context.go('/communication');
                 }
               }
-            } else if (state is VoiceSessionActionSuccess) {
+            }
+
+            // 4. Action Success (Transient Message)
+            // Note: Since we don't have a distinct ActionSuccess status for all actions,
+            // we check if message is present and status is NOT error/loading/initial.
+            // Also excluding 'joined' message if handled elsewhere.
+            if (state.message != null &&
+                state.status != VoiceSessionStatus.error &&
+                state.status != VoiceSessionStatus.loading) {
+              // Optional: Show snackbar for messages like "Kullanıcı atıldı"
+              // Filter out "Odaya başarıyla katılındı" if you want, or show it.
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.message),
+                  content: Text(state.message!),
                   backgroundColor: Colors.green,
                 ),
               );
               setState(() => _isLoadingSession = false);
+            }
+
+            // 5. LiveKit State Updates
+            // Always update local state from Bloc state
+            setState(() {
+              _isLiveKitConnected = state.isLiveKitConnected;
+              _isMicOn = state.isMicOn;
+              _activeSpeakers = state.activeSpeakers.toSet();
+            });
+
+            // 6. LiveKit Error
+            if (state.liveKitError != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('LiveKit Hatası: ${state.liveKitError}'),
+                  backgroundColor: colorScheme.error,
+                ),
+              );
             }
           },
         ),
@@ -651,27 +777,112 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   Widget _buildIntercomBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF22C55E).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.wifi_tethering, color: Color(0xFF22C55E)),
-          const SizedBox(width: 12),
-          Text(
-            "Intercom Active",
-            style: AppTextStyles.bodyLarge.copyWith(
-              color: const Color(0xFF22C55E),
-              fontWeight: FontWeight.bold,
+    // Sol Taraf: Intercom Active (Sabit Yeşil)
+    const intercomColor = Color(0xFF22C55E);
+
+    // Sağ Taraf: Bağlantı Tipi (P2P veya SFU)
+    final connectionColor = _isP2PMode
+        ? const Color(0xFF3B82F6) // Mavi: P2P
+        : const Color(0xFF8B5CF6); // Mor: SFU / LiveKit
+
+    final connectionText = _isP2PMode
+        ? 'P2P Bağlantı'
+        : (_isLiveKitConnected ? 'SFU Bağlantı' : 'Bağlanıyor...');
+
+    final connectionIcon = _isP2PMode ? Icons.call : Icons.hub;
+
+    return Row(
+      children: [
+        // SOL: Intercom Active
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            decoration: BoxDecoration(
+              color: intercomColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: intercomColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.wifi_tethering,
+                  color: intercomColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Intercom Active",
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: intercomColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 12),
+        // SAĞ: P2P / SFU Durumu
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            decoration: BoxDecoration(
+              color: connectionColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: connectionColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(connectionIcon, color: connectionColor, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        connectionText,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: connectionColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                // Mic Toggle (Sadece SFU'da ve bağlıysa gösterelim, P2P call ekranında zaten var)
+                if (!_isP2PMode && _isLiveKitConnected) ...[
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () {
+                      context.read<VoiceSessionBloc>().add(
+                        const ToggleMicrophoneEvent(),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _isMicOn ? Colors.white : Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isMicOn ? Icons.mic : Icons.mic_off,
+                        color: _isMicOn ? connectionColor : Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -719,8 +930,9 @@ class _GroupPageState extends State<GroupPage> {
             batteryLevel: isConnected ? 90 : 0,
             signalLevel: isConnected ? 100 : 0,
             isMicOn: isConnected,
-            isSpeaking:
-                isConnected, // Gerçek ses durumu için VoiceSessionBloc'dan veri lazım
+            isSpeaking: _activeSpeakers.contains(
+              p.userId.toString(),
+            ), // LiveKit durumu
             isConnected: isConnected,
             isMe: isMe,
             role: role,
