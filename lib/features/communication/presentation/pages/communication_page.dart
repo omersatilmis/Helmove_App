@@ -143,19 +143,22 @@ class _CommunicationPageState extends State<CommunicationPage> {
 
     return BlocListener<VoiceSessionBloc, VoiceSessionState>(
       listener: (context, state) {
-        if (state is MyVoiceSessionsLoaded) {
+        if (state.status == VoiceSessionStatus.mySessionsLoaded &&
+            state.mySessions != null) {
           setState(() {
             // Sadece aktif oturumları göster (isActive = true)
-            _mySessions = state.sessions
+            _mySessions = state.mySessions!
                 .cast<VoiceSessionEntity>()
                 .where((s) => s.isActive)
                 .toList();
             _isLoadingSessions = false;
           });
-        } else if (state is VoiceSessionError) {
+        } else if (state.status == VoiceSessionStatus.error) {
           setState(() => _isLoadingSessions = false);
-        } else if (state is VoiceSessionLoading) {
-          setState(() => _isLoadingSessions = true);
+        } else if (state.status == VoiceSessionStatus.loading) {
+          if (_mySessions.isEmpty) {
+            setState(() => _isLoadingSessions = true);
+          }
         }
       },
       child: Container(

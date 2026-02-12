@@ -45,6 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Motosiklet sürüşünde grup arkadaşlarınızla sesli iletişim kurabilmeniz için mikrofona ihtiyacımız var.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Kask interkom cihazınıza bağlanabilmek için Bluetooth iznine ihtiyacımız var.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

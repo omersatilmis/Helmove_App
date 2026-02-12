@@ -14,6 +14,8 @@ import 'package:moto_comm_app_1/features/auth/domain/repositories/auth_repositor
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/profile/domain/repositories/profile_repository.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/core/services/notification_service.dart'; // Import added
+import 'package:moto_comm_app_1/features/call/presentation/widgets/call_listener_wrapper.dart'; // Import added
 import 'package:intl/date_symbol_data_local.dart'; // LocaleDataException için gerekli
 
 void main() async {
@@ -21,6 +23,9 @@ void main() async {
 
   // 1. Dependency Injection Kurulumu
   await di.init();
+
+  // 1.5 Notification Check
+  sl<NotificationService>().initialize(); // Init OneSignal
 
   // 2. Date Formatting Başlatma (Türkçe için)
   await initializeDateFormatting('tr_TR', null);
@@ -39,8 +44,11 @@ void main() async {
 
         // --- ViewModels / Providers ---
         ChangeNotifierProvider(
-          create: (_) =>
-              AuthProvider(sl<AuthRepository>(), sl<ProfileRepository>()),
+          create: (_) => AuthProvider(
+            sl<AuthRepository>(),
+            sl<ProfileRepository>(),
+            sl<NotificationService>(), // Injected
+          ),
         ),
 
         // --- Profile Provider ---
@@ -95,6 +103,9 @@ class _MyAppState extends State<MyApp> {
       themeMode: themeProvider.themeMode,
 
       routerConfig: _router,
+      builder: (context, child) {
+        return CallListenerWrapper(child: child!);
+      },
       debugShowCheckedModeBanner: false,
     );
   }

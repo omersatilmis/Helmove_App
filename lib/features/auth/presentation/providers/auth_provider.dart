@@ -2,17 +2,22 @@ import 'package:flutter/foundation.dart';
 import '../../domain/entities/auth_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../profile/domain/repositories/profile_repository.dart'; // Import added
+import '../../../../core/services/notification_service.dart'; // Import added
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/services/signalr_service.dart';
 import '../../../../core/di/injection_container.dart' as di;
+import '../../../../core/di/injection_container.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
-  final ProfileRepository _profileRepository; // Dependency added
+  final ProfileRepository _profileRepository;
+  final NotificationService _notificationService; // Dependency added
 
   AuthProvider(
     this._authRepository,
     this._profileRepository,
-  ); // Constructor updated
+    this._notificationService, // Constructor updated
+  );
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -31,6 +36,16 @@ class AuthProvider extends ChangeNotifier {
     try {
       final authEntity = await _authRepository.login(email, password);
       _currentUser = authEntity;
+
+      // OneSignal Login
+      await _notificationService.login(authEntity.id.toString());
+
+      try {
+        await sl<SignalRService>().init();
+      } catch (e) {
+        AppLogger.error("SignalR init failed on login: $e");
+      }
+
       _setLoading(false);
       return true;
     } catch (e) {
@@ -118,6 +133,10 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _authRepository.logout();
       _currentUser = null; // Kullanıcı bilgisini temizle
+
+      // OneSignal Logout
+      await _notificationService.logout();
+
       // Singleton önbelleklerini temizle - yeni kullanıcı için taze veri
       await di.resetOnLogout();
     } catch (e) {
@@ -164,16 +183,21 @@ class AuthProvider extends ChangeNotifier {
                 _currentUser!.id,
                 _currentUser!.username,
               );
+
+              // Ensure OneSignal is logged in
+              await _notificationService.login(_currentUser!.id.toString());
             }
           } catch (e) {
             AppLogger.error("Failed to fetch profile on auth check: $e");
-            // If API call fails, we might still be logged in (token exists),
-            // but we don't have user details.
           }
         }
-        if (_currentUser != null) {
-          notifyListeners();
-        }
+      }
+
+      // Ensure SignalR is initialized whenever we are logged in
+      try {
+        sl<SignalRService>().init();
+      } catch (e) {
+        AppLogger.error("SignalR init failed on auth check: $e");
       }
     } else {
       if (_currentUser != null) {

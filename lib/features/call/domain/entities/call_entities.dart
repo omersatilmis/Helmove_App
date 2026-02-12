@@ -1,5 +1,5 @@
 class CallRequestEntity {
-  final String targetUserId;
+  final int targetUserId;
   final String callType;
   final String? notes;
 
@@ -12,8 +12,8 @@ class CallRequestEntity {
 
 class CallResponseEntity {
   final int callId;
-  final String callerId;
-  final String targetUserId;
+  final int callerId;
+  final int targetUserId;
   final String status;
   final DateTime createdAt;
 

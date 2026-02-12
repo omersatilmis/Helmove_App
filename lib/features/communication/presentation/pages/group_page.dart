@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 // --- P2P CALL İMPORTLARI ---
 import '../../../call/presentation/bloc/call_bloc.dart';
 import '../../../call/presentation/bloc/call_event.dart';
+import '../../../call/presentation/bloc/call_state.dart';
 
 // --- PROJE İMPORTLARI ---
 import '../../../../core/di/injection_container.dart';
@@ -41,6 +43,7 @@ class _GroupPageState extends State<GroupPage> {
   bool _isLoadingSession = false;
   bool _isLoadingRide = false;
   int? _currentUserId;
+  Timer? _p2pDebounceTimer;
 
   /// P2P modunda mı? (2 kişi odada)
   /// P2P modunda mı? (2 kişi odada)
@@ -357,12 +360,32 @@ class _GroupPageState extends State<GroupPage> {
 
                 if (matchingParticipants.isNotEmpty) {
                   final myParticipant = matchingParticipants.first;
-                  if (myParticipant.status == 'Accepted') {
+                  if (myParticipant.status == 'Accepted' ||
+                      myParticipant.status == 'Joined') {
+                    // Check active participant count (Joined/Accepted/Disconnected)
+                    final activeParticipantsCount = state.session!.participants
+                        .where(
+                          (p) =>
+                              p.status == 'Joined' ||
+                              p.status == 'Accepted' ||
+                              p.status == 'Disconnected',
+                        )
+                        .length;
+
+                    // Condition 1: Not already connected
+                    // Condition 2: Not in P2P mode (implicitly covered by count check, but safe to keep)
+                    // Condition 3: Ride ID exists
+                    // Condition 4: Room name is valid
+                    // Condition 5: More than 2 participants (LiveKit Threshold)
                     if (!state.isLiveKitConnected &&
                         !_isP2PMode &&
-                        widget.data.rideId > 0) {
+                        widget.data.rideId > 0 &&
+                        state.session!.roomName.isNotEmpty &&
+                        state.liveKitError ==
+                            null && // Stop infinite loop on error
+                        activeParticipantsCount > 2) {
                       debugPrint(
-                        "🚀 [GroupPage] Auto-Connecting to LiveKit: ${state.session!.id}",
+                        "🚀 [GroupPage] Auto-Connecting to LiveKit: ${state.session!.id} | Room: '${state.session!.roomName}' | Count: $activeParticipantsCount",
                       );
                       context.read<VoiceSessionBloc>().add(
                         ConnectToLiveKitEvent(
@@ -370,6 +393,10 @@ class _GroupPageState extends State<GroupPage> {
                           displayName:
                               '${myParticipant.firstName} ${myParticipant.lastName}',
                         ),
+                      );
+                    } else if (activeParticipantsCount <= 2) {
+                      debugPrint(
+                        "ℹ️ [GroupPage] Waiting for more participants or P2P logic (Count: $activeParticipantsCount)",
                       );
                     }
                   }
@@ -388,28 +415,81 @@ class _GroupPageState extends State<GroupPage> {
                 final shouldBeP2P = activeParticipants.length == 2;
 
                 if (shouldBeP2P && !_isP2PMode) {
-                  setState(() => _isP2PMode = true);
-                  final otherParticipant = activeParticipants.firstWhere(
-                    (p) => p.userId != _currentUserId,
-                  );
-                  debugPrint(
-                    "📞 [GroupPage] P2P Mode Activated → target: ${otherParticipant.userId}",
-                  );
-                  try {
-                    context.read<CallBloc>().add(
-                      CallRequested(
-                        targetUserId: otherParticipant.userId.toString(),
-                        targetDisplayName: otherParticipant.displayName,
-                      ),
+                  // DEBOUNCE LOGIC (5 Seconds Delay)
+                  if (_p2pDebounceTimer != null &&
+                      _p2pDebounceTimer!.isActive) {
+                    // Timer zaten çalışıyor, bekle...
+                    debugPrint("⏳ [GroupPage] P2P Debounce active, waiting...");
+                  } else {
+                    debugPrint(
+                      "⏳ [GroupPage] Starting 5s Timer for P2P Switch...",
                     );
-                  } catch (e) {
-                    debugPrint('⚠️ [GroupPage] CallBloc not available: $e');
+                    _p2pDebounceTimer = Timer(const Duration(seconds: 5), () {
+                      if (!mounted) return;
+
+                      // 5 saniye sonra hala 2 kişi miyiz kontrol et:
+                      final currentSession =
+                          _sessionDetails; // State'den güncel al
+                      if (currentSession == null) return;
+
+                      final currentActive = currentSession.participants
+                          .where(
+                            (p) =>
+                                p.status == 'Joined' ||
+                                p.status == 'Accepted' ||
+                                p.status == 'Disconnected',
+                          )
+                          .toList();
+
+                      if (currentActive.length == 2) {
+                        setState(() => _isP2PMode = true);
+                        final otherParticipant = currentActive.firstWhere(
+                          (p) => p.userId != _currentUserId,
+                        );
+                        debugPrint(
+                          "📞 [GroupPage] P2P Mode Activated (After Delay) → with: ${otherParticipant.userId}",
+                        );
+
+                        // Polite Caller Strategy
+                        if (_currentUserId != null &&
+                            _currentUserId! < otherParticipant.userId) {
+                          debugPrint(
+                            "📞 [GroupPage] I am the CALLER (My ID: $_currentUserId < Other ID: ${otherParticipant.userId})",
+                          );
+                          try {
+                            context.read<CallBloc>().add(
+                              CallRequested(
+                                targetUserId: otherParticipant.userId,
+                                targetDisplayName: otherParticipant.displayName,
+                              ),
+                            );
+                          } catch (e) {
+                            debugPrint(
+                              '⚠️ [GroupPage] CallBloc not available: $e',
+                            );
+                          }
+                        } else {
+                          debugPrint(
+                            "⏳ [GroupPage] I am the CALLEE (My ID: $_currentUserId > Other ID: ${otherParticipant.userId}). Waiting for call...",
+                          );
+                        }
+                      } else {
+                        debugPrint(
+                          "🚫 [GroupPage] P2P Switch Aborted: Participant count changed to ${currentActive.length}",
+                        );
+                      }
+                    });
                   }
                 } else if (!shouldBeP2P && _isP2PMode) {
+                  _p2pDebounceTimer
+                      ?.cancel(); // Mod değiştiyse timer'ı iptal et
                   setState(() => _isP2PMode = false);
                   debugPrint(
                     "📞 [GroupPage] P2P Mode Deactivated → switching to SFU",
                   );
+                  // P2P Arama Sonlandır
+                  context.read<CallBloc>().add(const CallHangUp());
+
                   if (!state.isLiveKitConnected) {
                     final myParticipant = state.session!.participants
                         .firstWhere(
@@ -542,11 +622,8 @@ class _GroupPageState extends State<GroupPage> {
               );
 
               if (context.mounted) {
-                if (Navigator.of(context).canPop()) {
-                  context.pop(true);
-                } else {
-                  context.go('/communication');
-                }
+                // Navigate to Homepage to ensure clean state
+                context.go('/homepage');
               }
             } else if (state is GroupRideDeleted) {
               // 1. Leave Voice Session
@@ -567,11 +644,8 @@ class _GroupPageState extends State<GroupPage> {
               );
               // 3. Navigate Away
               if (context.mounted) {
-                if (Navigator.of(context).canPop()) {
-                  context.pop(true);
-                } else {
-                  context.go('/communication');
-                }
+                // Navigate to Homepage to ensure clean state
+                context.go('/homepage');
               }
             } else if (state is GroupRideFailure) {
               setState(() => _isLoadingRide = false);
@@ -581,6 +655,20 @@ class _GroupPageState extends State<GroupPage> {
                   backgroundColor: colorScheme.error,
                 ),
               );
+            }
+          },
+        ),
+        BlocListener<CallBloc, CallState>(
+          listener: (context, state) {
+            if (state is CallIncoming) {
+              debugPrint(
+                "📞 [GroupPage] Incoming P2P Call -> Auto Accepting...",
+              );
+              context.read<CallBloc>().add(const CallAccepted());
+            } else if (state is CallEnded) {
+              debugPrint("📞 [GroupPage] Call Ended: ${state.reason}");
+            } else if (state is CallError) {
+              debugPrint("❌ [GroupPage] Call Error: ${state.message}");
             }
           },
         ),
@@ -1014,6 +1102,12 @@ class _GroupPageState extends State<GroupPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _p2pDebounceTimer?.cancel();
+    super.dispose();
   }
 
   Widget _buildMetaItem(BuildContext context, IconData icon, String text) {

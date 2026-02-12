@@ -60,14 +60,14 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       final data = event.notification as Map<String, dynamic>;
 
       // Güvenli Parsing Helper
-      int _parseInt(dynamic value) {
+      int parseInt(dynamic value) {
         if (value == null) return 0; // ID required
         if (value is int) return value;
         if (value is String) return int.tryParse(value) ?? 0;
         return 0;
       }
 
-      int? _parseNullableInt(dynamic value) {
+      int? parseNullableInt(dynamic value) {
         if (value == null) return null;
         if (value is int) return value;
         if (value is String) return int.tryParse(value);
@@ -75,7 +75,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       }
 
       final newNotification = NotificationEntity(
-        id: _parseInt(data['id']),
+        id: parseInt(data['id']),
         title: data['title']?.toString() ?? '',
         message: data['body']?.toString() ?? '',
         isRead: false,
@@ -83,7 +83,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
             ? DateTime.parse(data['createdAt'].toString())
             : DateTime.now(),
         type: data['type']?.toString(),
-        senderId: _parseNullableInt(data['actorId']),
+        senderId: parseNullableInt(data['actorId']),
         senderUsername: data['actorUsername']?.toString(),
         senderProfileImage: data['actorProfilePictureUrl']?.toString(),
         dataJson: data['dataJson']?.toString(),

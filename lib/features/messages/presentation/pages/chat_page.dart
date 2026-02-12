@@ -10,6 +10,7 @@ import '../../../../core/di/injection_container.dart';
 import '../bloc/chat/chat_bloc.dart';
 import '../bloc/chat/chat_event.dart';
 import '../bloc/chat/chat_state.dart';
+import 'call_page.dart';
 
 class ChatPage extends StatelessWidget {
   final int otherUserId;
@@ -306,7 +307,19 @@ class _ChatViewState extends State<ChatView> {
       actions: [
         IconButton(
           icon: Icon(Icons.call_outlined, color: colorScheme.primary, size: 22),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CallPage(
+                  targetUserId: widget.otherUserId,
+                  targetDisplayName: '${widget.firstName} ${widget.lastName}'
+                      .trim(),
+                  targetProfileImageUrl: widget.profileImageUrl,
+                  isOutgoing: true,
+                ),
+              ),
+            );
+          },
         ),
         IconButton(
           icon: Icon(

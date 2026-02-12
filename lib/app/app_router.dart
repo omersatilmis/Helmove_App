@@ -7,6 +7,7 @@ import 'package:moto_comm_app_1/features/auth/presentation/pages/login_page.dart
 import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/invite_page.dart';
+// Removed CallListenerWrapper import
 
 // 🔥 YENİ SAYFALARIN IMPORTLARI
 import 'package:moto_comm_app_1/features/homepage/presentation/pages/home_page.dart';
@@ -22,6 +23,7 @@ import 'package:moto_comm_app_1/features/media/presentation/pages/prepare_media_
 import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_event.dart';
+import 'package:moto_comm_app_1/features/call/presentation/bloc/call_bloc.dart';
 
 // Drawer Sayfalarının Importları
 import 'package:moto_comm_app_1/features/profile/presentation/pages/profile_page.dart';
@@ -54,14 +56,14 @@ class PlaceholderScreen extends StatelessWidget {
 }
 // -------------------------------------
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 // --- REFACTOR: Router'ı bir fonksiyon haline getirdik ---
 // Böylece AuthProvider'ı dinleyip yönlendirme yapabiliriz.
 
 GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/homepage',
 
     // AuthProvider'ı dinle: Oturum durumu değişince yönlendir
@@ -246,6 +248,7 @@ GoRouter createRouter(AuthProvider authProvider) {
                           BlocProvider(
                             create: (context) => sl<VoiceSessionBloc>(),
                           ),
+                          BlocProvider.value(value: sl<CallBloc>()),
                         ],
                         child: GroupPage(data: args),
                       );

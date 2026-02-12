@@ -117,3 +117,51 @@ class VoiceSessionHostChanged extends VoiceSessionEvent {
   @override
   List<Object?> get props => [data];
 }
+
+// ============================================================
+// LiveKit SFU Events (Faz 3)
+// ============================================================
+
+/// LiveKit room'a bağlan (token al + room.connect).
+/// [roomName] — VoiceSessionEntity.roomName
+class ConnectToLiveKitEvent extends VoiceSessionEvent {
+  final String roomName;
+  final String? displayName;
+  const ConnectToLiveKitEvent(this.roomName, {this.displayName});
+  @override
+  List<Object?> get props => [roomName, displayName];
+}
+
+/// LiveKit room'dan bağlantıyı kes.
+class DisconnectFromLiveKitEvent extends VoiceSessionEvent {
+  const DisconnectFromLiveKitEvent();
+}
+
+/// Mikrofon aç/kapat.
+class ToggleMicrophoneEvent extends VoiceSessionEvent {
+  const ToggleMicrophoneEvent();
+}
+
+/// Mikrofon durumu dışarıdan (service'den) değişti (internal event).
+class LiveKitMicStateChangedEvent extends VoiceSessionEvent {
+  final bool isEnabled;
+  const LiveKitMicStateChangedEvent(this.isEnabled);
+  @override
+  List<Object?> get props => [isEnabled];
+}
+
+/// LiveKit bağlantı durumu değişti (internal event).
+class LiveKitConnectionChangedEvent extends VoiceSessionEvent {
+  final String connectionState; // connected, disconnected, reconnecting
+  const LiveKitConnectionChangedEvent(this.connectionState);
+  @override
+  List<Object?> get props => [connectionState];
+}
+
+/// Aktif konuşmacılar değişti (internal event).
+class ActiveSpeakersChangedEvent extends VoiceSessionEvent {
+  final List<String> speakerIdentities;
+  const ActiveSpeakersChangedEvent(this.speakerIdentities);
+  @override
+  List<Object?> get props => [speakerIdentities];
+}

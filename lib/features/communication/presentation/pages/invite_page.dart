@@ -123,9 +123,24 @@ class _InviteViewState extends State<_InviteView> {
       listeners: [
         BlocListener<VoiceSessionBloc, VoiceSessionState>(
           listener: (context, state) {
-            if (state is VoiceSessionCreated) {
+            if (state.status == VoiceSessionStatus.created) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Sesli oturum oluşturuldu!")),
+              );
+            } else if (state.status == VoiceSessionStatus.inviteSent) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Davetler başarıyla gönderildi!"),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              context.pop();
+            } else if (state.status == VoiceSessionStatus.error) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message ?? "Bir hata oluştu"),
+                  backgroundColor: Colors.red,
+                ),
               );
             }
           },
@@ -318,7 +333,7 @@ class _InviteViewState extends State<_InviteView> {
                         builder: (context, vsState) {
                           final isLoading =
                               rideState is GroupRideLoading ||
-                              vsState is VoiceSessionLoading;
+                              vsState.status == VoiceSessionStatus.loading;
                           return AppFrostedTextButton(
                             text: widget.isFromCreateGroup
                                 ? "Grubu Kur"
@@ -330,81 +345,81 @@ class _InviteViewState extends State<_InviteView> {
                               alpha: 0.1,
                             ),
                             textColor: colorScheme.primary,
-                            onPressed: () {
-                              if (widget.isFromCreateGroup &&
-                                  widget.groupData != null) {
-                                debugPrint(
-                                  "🚀 [GroupRide] Senkronize kurulum başlatılıyor...",
-                                );
+                            onPressed: isLoading
+                                ? null
+                                : () {
+                                    if (widget.isFromCreateGroup &&
+                                        widget.groupData != null) {
+                                      // ... (Log omitted for brevity)
+                                      // ... (CreateGroupRideRequestDto building omitted)
+                                      final request = CreateGroupRideRequestDto(
+                                        title:
+                                            widget.groupData["groupName"] ??
+                                            "Yeni Grup",
+                                        description:
+                                            (widget.groupData["description"]
+                                                    ?.toString()
+                                                    .isNotEmpty ??
+                                                false)
+                                            ? widget.groupData["description"]
+                                            : "belirlenmedi",
+                                        maxParticipants:
+                                            widget
+                                                .groupData["maxParticipants"] ??
+                                            10,
+                                        privacy:
+                                            widget.groupData["privacy"] ??
+                                            "Public",
+                                        startDateTime: DateTime.now(),
+                                        endDateTime: DateTime.now().add(
+                                          const Duration(hours: 4),
+                                        ),
+                                        startLocation: "Mevcut Konum",
+                                        startLatitude: 0,
+                                        startLongitude: 0,
+                                        endLocation:
+                                            widget.groupData["destination"] ??
+                                            "Hedef Belirtilmedi",
+                                        endLatitude: 0,
+                                        endLongitude: 0,
+                                        difficulty:
+                                            widget.groupData["difficulty"] ??
+                                            "Beginner",
+                                        ridingStyle:
+                                            widget.groupData["ridingStyle"] ??
+                                            "Sakin",
+                                        invitedUserIds: _selectedRiders
+                                            .map((e) => e.userId)
+                                            .toList(),
+                                      );
 
-                                final request = CreateGroupRideRequestDto(
-                                  title:
-                                      widget.groupData["groupName"] ??
-                                      "Yeni Grup",
-                                  description:
-                                      (widget.groupData["description"]
-                                              ?.toString()
-                                              .isNotEmpty ??
-                                          false)
-                                      ? widget.groupData["description"]
-                                      : "belirlenmedi",
-                                  maxParticipants:
-                                      widget.groupData["maxParticipants"] ?? 10,
-                                  privacy:
-                                      widget.groupData["privacy"] ?? "Public",
-                                  startDateTime: DateTime.now(),
-                                  endDateTime: DateTime.now().add(
-                                    const Duration(hours: 4),
-                                  ),
-                                  startLocation: "Mevcut Konum",
-                                  startLatitude: 0,
-                                  startLongitude: 0,
-                                  endLocation:
-                                      widget.groupData["destination"] ??
-                                      "Hedef Belirtilmedi",
-                                  endLatitude: 0,
-                                  endLongitude: 0,
-                                  difficulty:
-                                      widget.groupData["difficulty"] ??
-                                      "Beginner",
-                                  ridingStyle:
-                                      widget.groupData["ridingStyle"] ??
-                                      "Sakin",
-                                  invitedUserIds: _selectedRiders
-                                      .map((e) => e.userId)
-                                      .toList(),
-                                );
-
-                                context.read<GroupRideBloc>().add(
-                                  CreateGroupRideEvent(request),
-                                );
-                              } else if (widget.sessionId != null &&
-                                  _selectedRiders.isNotEmpty) {
-                                debugPrint(
-                                  "📨 [VoiceSession] Davet event'i gönderiliyor. SessionID: ${widget.sessionId}",
-                                );
-                                final request = InviteUsersRequestDto(
-                                  userIds: _selectedRiders
-                                      .map((e) => e.userId)
-                                      .toList(),
-                                );
-                                context.read<VoiceSessionBloc>().add(
-                                  InviteUsersEvent(widget.sessionId!, request),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Davetler gönderildi!"),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                                context.pop();
-                              } else {
-                                debugPrint(
-                                  "🔙 [GroupRide] Geri dönülüyor: ${_selectedRiders.length} kişi",
-                                );
-                                context.pop(_selectedRiders);
-                              }
-                            },
+                                      context.read<GroupRideBloc>().add(
+                                        CreateGroupRideEvent(request),
+                                      );
+                                    } else if (widget.sessionId != null &&
+                                        _selectedRiders.isNotEmpty) {
+                                      debugPrint(
+                                        "📨 [VoiceSession] Davet event'i gönderiliyor. SessionID: ${widget.sessionId}",
+                                      );
+                                      final request = InviteUsersRequestDto(
+                                        userIds: _selectedRiders
+                                            .map((e) => e.userId)
+                                            .toList(),
+                                      );
+                                      context.read<VoiceSessionBloc>().add(
+                                        InviteUsersEvent(
+                                          widget.sessionId!,
+                                          request,
+                                        ),
+                                      );
+                                      // Button will be disabled due to loading state, no need to pop here.
+                                    } else {
+                                      debugPrint(
+                                        "🔙 [GroupRide] Geri dönülüyor: ${_selectedRiders.length} kişi",
+                                      );
+                                      context.pop(_selectedRiders);
+                                    }
+                                  },
                           );
                         },
                       );

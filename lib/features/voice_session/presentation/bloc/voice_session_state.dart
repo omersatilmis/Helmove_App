@@ -1,78 +1,78 @@
 import 'package:equatable/equatable.dart';
 
-abstract class VoiceSessionState extends Equatable {
-  const VoiceSessionState();
-
-  @override
-  List<Object?> get props => [];
+enum VoiceSessionStatus {
+  initial,
+  loading,
+  created,
+  joined,
+  left,
+  error,
+  detailsLoaded,
+  mySessionsLoaded,
+  inviteAccepted,
+  inviteSent,
 }
 
-class VoiceSessionInitial extends VoiceSessionState {}
+class VoiceSessionState extends Equatable {
+  final VoiceSessionStatus status;
+  final String? message;
+  final int? sessionId; // For Created, Left, InviteAccepted
+  final dynamic session; // VoiceSessionEntity (DetailsLoaded)
+  final List<dynamic>?
+  mySessions; // List<VoiceSessionEntity> (MySessionsLoaded)
 
-class VoiceSessionLoading extends VoiceSessionState {}
+  // LiveKit State
+  final bool isLiveKitConnected;
+  final bool isMicOn;
+  final List<String> activeSpeakers;
+  final String? liveKitError;
 
-class VoiceSessionCreated extends VoiceSessionState {
-  final int sessionId;
+  const VoiceSessionState({
+    this.status = VoiceSessionStatus.initial,
+    this.message,
+    this.sessionId,
+    this.session,
+    this.mySessions,
+    this.isLiveKitConnected = false,
+    this.isMicOn = true,
+    this.activeSpeakers = const [],
+    this.liveKitError,
+  });
 
-  const VoiceSessionCreated(this.sessionId);
-
-  @override
-  List<Object?> get props => [sessionId];
-}
-
-class VoiceSessionActionSuccess extends VoiceSessionState {
-  final String message;
-
-  const VoiceSessionActionSuccess(this.message);
-
-  @override
-  List<Object?> get props => [message];
-}
-
-class VoiceSessionLeft extends VoiceSessionState {
-  final int sessionId;
-
-  const VoiceSessionLeft(this.sessionId);
-
-  @override
-  List<Object?> get props => [sessionId];
-}
-
-class VoiceSessionError extends VoiceSessionState {
-  final String message;
-
-  const VoiceSessionError(this.message);
-
-  @override
-  List<Object?> get props => [message];
-}
-
-/// Tek bir session'ın detayları yüklendi
-class VoiceSessionDetailsLoaded extends VoiceSessionState {
-  final dynamic session; // VoiceSessionEntity
-
-  const VoiceSessionDetailsLoaded(this.session);
-
-  @override
-  List<Object?> get props => [session];
-}
-
-/// Kullanıcının aktif session'ları yüklendi
-class MyVoiceSessionsLoaded extends VoiceSessionState {
-  final List<dynamic> sessions; // List<VoiceSessionEntity>
-
-  const MyVoiceSessionsLoaded(this.sessions);
+  VoiceSessionState copyWith({
+    VoiceSessionStatus? status,
+    String? message,
+    int? sessionId,
+    dynamic session,
+    List<dynamic>? mySessions,
+    bool? isLiveKitConnected,
+    bool? isMicOn,
+    List<String>? activeSpeakers,
+    String? liveKitError,
+  }) {
+    return VoiceSessionState(
+      status: status ?? this.status,
+      message: message, // Message is transient, usually overridden or null
+      sessionId: sessionId ?? this.sessionId,
+      session: session ?? this.session, // Persist session details
+      mySessions: mySessions ?? this.mySessions,
+      isLiveKitConnected: isLiveKitConnected ?? this.isLiveKitConnected,
+      isMicOn: isMicOn ?? this.isMicOn,
+      activeSpeakers: activeSpeakers ?? this.activeSpeakers,
+      liveKitError: liveKitError, // Error is transient
+    );
+  }
 
   @override
-  List<Object?> get props => [sessions];
-}
-
-/// Davet kabul edildi
-class VoiceSessionInviteAccepted extends VoiceSessionState {
-  final int sessionId;
-
-  const VoiceSessionInviteAccepted(this.sessionId);
-
-  @override
-  List<Object?> get props => [sessionId];
+  List<Object?> get props => [
+    status,
+    message,
+    sessionId,
+    session,
+    mySessions,
+    isLiveKitConnected,
+    isMicOn,
+    activeSpeakers,
+    liveKitError,
+  ];
 }

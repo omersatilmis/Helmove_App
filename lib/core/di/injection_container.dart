@@ -183,17 +183,22 @@ import '../../features/group_ride/domain/usecases/delete_group_ride_usecase.dart
 import '../../features/group_ride/presentation/bloc/group_ride_bloc.dart';
 
 // Call Feature
-import '../../features/call/data/api/call_api.dart';
+// import '../../features/call/data/api/call_api.dart'; // Removed
 import '../../features/call/data/datasources/call_remote_data_source.dart';
 import '../../features/call/data/repositories/call_repository_impl.dart';
 import '../../features/call/domain/repositories/call_repository.dart';
 import '../../features/call/domain/usecases/call_usecases.dart';
+import '../../features/call/presentation/bloc/call_bloc.dart';
 
 import '../../features/voice_session/domain/usecases/transfer_host_usecase.dart';
 import '../../features/voice_session/presentation/bloc/voice_session_bloc.dart';
 
 import '../services/signalr_service.dart';
 import '../services/message_signalr_service.dart';
+import '../services/webrtc_service.dart';
+import '../services/livekit_api.dart';
+import '../services/livekit_room_service.dart';
+import '../services/notification_service.dart'; // Import added
 
 final sl = GetIt.instance;
 
@@ -518,6 +523,8 @@ Future<void> init() async {
 
   sl.registerLazySingleton(() => SignalRService(sl()));
   sl.registerLazySingleton(() => MessageSignalRService(sl()));
+  sl.registerLazySingleton(() => WebRTCService());
+  sl.registerLazySingleton(() => NotificationService()); // Registration added
 
   //! Auth Feature
   // API
@@ -918,8 +925,14 @@ Future<void> init() async {
       kickUserUseCase: sl(),
       muteUserUseCase: sl(),
       transferHostUseCase: sl(),
+      liveKitApi: sl(),
+      liveKitRoomService: sl(),
     ),
   );
+
+  //! LiveKit Service (SFU — Mode B)
+  sl.registerLazySingleton(() => LiveKitApi(sl()));
+  sl.registerLazySingleton(() => LiveKitRoomService());
 
   //! Status Management Feature
   // API
@@ -974,12 +987,12 @@ Future<void> init() async {
   );
 
   //! Call Feature
-  // API
-  sl.registerLazySingleton(() => CallApi(sl()));
+  // API - Removed
+  // sl.registerLazySingleton(() => CallApi(sl()));
 
   // Data Sources
   sl.registerLazySingleton<CallRemoteDataSource>(
-    () => CallRemoteDataSourceImpl(sl()),
+    () => CallRemoteDataSourceImpl(client: sl()),
   );
 
   // Repository
@@ -993,4 +1006,17 @@ Future<void> init() async {
   sl.registerFactory(() => GetOnlineUsersUseCase(sl()));
   sl.registerFactory(() => CheckUserOnlineStatusUseCase(sl()));
   sl.registerFactory(() => GetPendingCallsUseCase(sl()));
+
+  // Bloc (single instance to avoid duplicate SignalR listeners/SDP offers)
+  sl.registerLazySingleton(
+    () => CallBloc(
+      signalRService: sl(),
+      webRTCService: sl(),
+      sendCallRequestUseCase: sl(),
+      acceptCallUseCase: sl(),
+      rejectCallUseCase: sl(),
+      endCallUseCase: sl(),
+      getPendingCallsUseCase: sl(),
+    ),
+  );
 }
