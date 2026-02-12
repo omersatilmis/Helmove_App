@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../config/env_config.dart';
+import '../network/network_module.dart';
 import '../utils/app_logger.dart';
 
 class MessageSignalRService {
   HubConnection? _hubConnection;
-  final String _hubUrl = "${EnvConfig.localDeviceBaseUrl}messagehub";
+  String? _resolvedBaseUrl;
   final SharedPreferences sharedPreferences;
 
   MessageSignalRService(this.sharedPreferences);
@@ -27,9 +27,12 @@ class MessageSignalRService {
     }
 
     try {
+      _resolvedBaseUrl ??= await NetworkModule.getBaseUrl();
+      final hubUrl = "${_resolvedBaseUrl!}messagehub";
+
       _hubConnection = HubConnectionBuilder()
           .withUrl(
-            _hubUrl,
+            hubUrl,
             options: HttpConnectionOptions(
               accessTokenFactory: () async => token,
             ),
