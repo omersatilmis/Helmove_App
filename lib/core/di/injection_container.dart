@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../network/network_module.dart';
 import '../../features/auth/data/api/auth_api.dart';
@@ -348,7 +349,10 @@ Future<void> resetOnLogout() async {
   }
   if (!sl.isRegistered<AuthLocalDataSource>()) {
     sl.registerLazySingleton<AuthLocalDataSource>(
-      () => AuthLocalDataSourceImpl(sharedPreferences: sl()),
+      () => AuthLocalDataSourceImpl(
+        sharedPreferences: sl(),
+        secureStorage: sl(),
+      ),
     );
   }
   if (!sl.isRegistered<AuthRepository>()) {
@@ -520,11 +524,26 @@ Future<void> init() async {
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
 
-  final dio = await NetworkModule.provideDio(sharedPreferences);
+  if (!sl.isRegistered<FlutterSecureStorage>()) {
+    sl.registerLazySingleton<FlutterSecureStorage>(
+      () => const FlutterSecureStorage(),
+    );
+  }
+
+  if (!sl.isRegistered<AuthLocalDataSource>()) {
+    sl.registerLazySingleton<AuthLocalDataSource>(
+      () => AuthLocalDataSourceImpl(
+        sharedPreferences: sl(),
+        secureStorage: sl(),
+      ),
+    );
+  }
+
+  final dio = await NetworkModule.provideDio(sl<AuthLocalDataSource>());
   sl.registerSingleton<Dio>(dio);
 
-  sl.registerLazySingleton(() => SignalRService(sl()));
-  sl.registerLazySingleton(() => MessageSignalRService(sl()));
+  sl.registerLazySingleton(() => SignalRService(sl<AuthLocalDataSource>()));
+  sl.registerLazySingleton(() => MessageSignalRService(sl<AuthLocalDataSource>()));
   sl.registerLazySingleton(() => WebRTCService());
   sl.registerLazySingleton(() => PermissionsService());
   sl.registerLazySingleton(() => CallKitIncomingService());
@@ -541,9 +560,14 @@ Future<void> init() async {
     () => AuthRemoteDataSourceImpl(api: sl()),
   );
 
-  sl.registerLazySingleton<AuthLocalDataSource>(
-    () => AuthLocalDataSourceImpl(sharedPreferences: sl()),
-  );
+  if (!sl.isRegistered<AuthLocalDataSource>()) {
+    sl.registerLazySingleton<AuthLocalDataSource>(
+      () => AuthLocalDataSourceImpl(
+        sharedPreferences: sl(),
+        secureStorage: sl(),
+      ),
+    );
+  }
 
   // Repository
   sl.registerLazySingleton<AuthRepository>(

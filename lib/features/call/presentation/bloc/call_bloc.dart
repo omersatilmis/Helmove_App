@@ -644,7 +644,8 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     Emitter<CallState> emit,
   ) async {
     final duration = _callDuration;
-    await _safeEndCurrentCall(remoteUserId: event.targetUserId);
+    // Remote taraf sonlandırdıysa tekrar "EndCall" sinyali yollamayalım (ping-pong yapabilir).
+    await _safeEndCurrentCall(remoteUserId: event.targetUserId, signalREnd: false);
     await _cleanupCall();
     emit(
       CallEnded(
@@ -877,25 +878,38 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     _connectingTimeoutTimer = null;
   }
 
-  Future<void> _safeEndCurrentCall({int? remoteUserId}) async {
+  Future<void> _safeEndCurrentCall({
+    int? remoteUserId,
+    bool signalREnd = true,
+  }) async {
     final callId = _currentCallId;
     if (callId != null && callId > 0) {
       try {
         await endCallUseCase.execute(callId);
-        return;
       } catch (e) {
         AppLogger.warning('CallBloc: safe end failed for callId=$callId: $e');
       }
     }
 
-    if (remoteUserId != null && remoteUserId > 0) {
+    final effectiveRemoteUserId = remoteUserId ?? _remoteUserId;
+    if (effectiveRemoteUserId != null && effectiveRemoteUserId > 0) {
       try {
         await _endPendingCallsFallback(
-          remoteUserId: remoteUserId,
+          remoteUserId: effectiveRemoteUserId,
           preferredCallId: callId,
         );
       } catch (e) {
         AppLogger.warning('CallBloc: safe end pending fallback failed: $e');
+      }
+
+      // Emniyet kemeri: REST ile call ended olsa bile, SignalR "in-call" state'i takılı kalabiliyor.
+      // Bu yüzden aktifse "EndCall" de gönder.
+      if (signalREnd) {
+        try {
+          await signalRService.endCall(effectiveRemoteUserId.toString());
+        } catch (e) {
+          AppLogger.warning('CallBloc: safe end SignalR EndCall failed: $e');
+        }
       }
     }
   }

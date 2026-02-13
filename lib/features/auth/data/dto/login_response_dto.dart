@@ -1,4 +1,4 @@
-class LoginResponseDto {
+﻿class LoginResponseDto {
   final bool success;
   final String? message;
   final LoginDataDto? data;
@@ -18,7 +18,18 @@ class LoginResponseDto {
 }
 
 class LoginDataDto {
+  // Access token
   final String token;
+
+  // Refresh token (rotation enabled)
+  final String? refreshToken;
+  final DateTime? refreshTokenExpiresAt;
+
+  // Access token metadata
+  final int? expiresIn;
+  final String? tokenType;
+
+  // User fields
   final int? id;
   final String? username;
   final String? email;
@@ -28,6 +39,10 @@ class LoginDataDto {
 
   LoginDataDto({
     required this.token,
+    this.refreshToken,
+    this.refreshTokenExpiresAt,
+    this.expiresIn,
+    this.tokenType,
     this.id,
     this.username,
     this.email,
@@ -37,11 +52,16 @@ class LoginDataDto {
   });
 
   factory LoginDataDto.fromJson(Map<String, dynamic> json) {
-    // Helper: Gelen sayı int mi String mi dert etmeden int'e çevirir
     int? toInt(dynamic value) {
       if (value == null) return null;
       if (value is int) return value;
       return int.tryParse(value.toString());
+    }
+
+    DateTime? toDateTime(dynamic value) {
+      if (value == null) return null;
+      if (value is DateTime) return value;
+      return DateTime.tryParse(value.toString());
     }
 
     return LoginDataDto(
@@ -51,6 +71,12 @@ class LoginDataDto {
           json['token'] ??
           json['Token'] ??
           '',
+      refreshToken: (json['refreshToken'] ?? json['RefreshToken'])?.toString(),
+      refreshTokenExpiresAt: toDateTime(
+        json['refreshTokenExpiresAt'] ?? json['RefreshTokenExpiresAt'],
+      ),
+      expiresIn: toInt(json['expiresIn'] ?? json['ExpiresIn']),
+      tokenType: (json['tokenType'] ?? json['TokenType'])?.toString(),
       id: toInt(
         json['userId'] ??
             json['UserId'] ??

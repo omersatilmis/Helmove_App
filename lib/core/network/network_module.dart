@@ -1,9 +1,10 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../config/env_config.dart';
 import 'auth_interceptor.dart';
 
@@ -16,16 +17,15 @@ class NetworkModule {
     if (Platform.isAndroid) {
       final deviceInfo = DeviceInfoPlugin();
       final androidInfo = await deviceInfo.androidInfo;
-      // "generic" genellikle emülatörleri işaret eder
-      if (androidInfo.fingerprint.contains("generic") ||
-          androidInfo.model.contains("sdk") ||
-          androidInfo.product.contains("sdk")) {
+      // "generic" genellikle emulatorleri isaret eder
+      if (androidInfo.fingerprint.contains('generic') ||
+          androidInfo.model.contains('sdk') ||
+          androidInfo.product.contains('sdk')) {
         return EnvConfig.emulatorBaseUrl;
       } else {
         return EnvConfig.localDeviceBaseUrl;
       }
     } else if (Platform.isIOS) {
-      // iOS Simulator kontrolü
       final deviceInfo = DeviceInfoPlugin();
       final iosInfo = await deviceInfo.iosInfo;
       if (!iosInfo.isPhysicalDevice) {
@@ -37,7 +37,7 @@ class NetworkModule {
     return EnvConfig.localDeviceBaseUrl;
   }
 
-  static Future<Dio> provideDio(SharedPreferences sharedPreferences) async {
+  static Future<Dio> provideDio(AuthLocalDataSource localDataSource) async {
     final baseUrl = await getBaseUrl();
 
     final dio = Dio(
@@ -52,10 +52,21 @@ class NetworkModule {
       ),
     );
 
-    // Auth Interceptor'ı ekle
-    dio.interceptors.add(AuthInterceptor(sharedPreferences));
+    // A separate dio without the auth interceptor (used for refresh flow).
+    final refreshDio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: EnvConfig.connectTimeout,
+        receiveTimeout: EnvConfig.receiveTimeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
 
-    // İstekleri loglamak için Interceptor ekleyebiliriz
+    dio.interceptors.add(AuthInterceptor(dio, refreshDio, localDataSource));
+
     dio.interceptors.add(
       LogInterceptor(
         request: true,

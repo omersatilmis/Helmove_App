@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'package:signalr_netcore/signalr_client.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../network/network_module.dart';
 import '../utils/app_logger.dart';
+import '../../features/auth/data/datasources/auth_local_data_source.dart';
 
 class MessageSignalRService {
   HubConnection? _hubConnection;
   String? _resolvedBaseUrl;
-  final SharedPreferences sharedPreferences;
+  final AuthLocalDataSource authLocalDataSource;
 
-  MessageSignalRService(this.sharedPreferences);
+  MessageSignalRService(this.authLocalDataSource);
 
   // Callbacks
   Function(dynamic message)? _onReceiveDirectMessage;
@@ -20,8 +20,8 @@ class MessageSignalRService {
   Future<void> init() async {
     if (_hubConnection != null) return;
 
-    final token = sharedPreferences.getString('AUTH_TOKEN');
-    if (token == null) {
+    final token = await authLocalDataSource.getToken();
+    if (token == null || token.trim().isEmpty) {
       AppLogger.warning("Message SignalR Init Failed: No Token");
       return;
     }
@@ -34,7 +34,8 @@ class MessageSignalRService {
           .withUrl(
             hubUrl,
             options: HttpConnectionOptions(
-              accessTokenFactory: () async => token,
+              accessTokenFactory: () async =>
+                  await authLocalDataSource.getToken() ?? '',
             ),
           )
           .withAutomaticReconnect()

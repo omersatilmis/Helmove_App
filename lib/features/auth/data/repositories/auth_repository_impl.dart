@@ -33,6 +33,10 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Token ve kullanıcı bilgilerini kaydet
       await _localDataSource.saveToken(entity.token);
+      final refreshToken = responseDto.data?.refreshToken;
+      if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+        await _localDataSource.saveRefreshToken(refreshToken);
+      }
       await _localDataSource.saveUserId(entity.id);
       await _localDataSource.saveUsername(entity.username);
 
@@ -74,7 +78,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     try {
-      await _remoteDataSource.logout();
+      final refreshToken = await _localDataSource.getRefreshToken();
+      if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+        await _remoteDataSource.logout(
+          request: RevokeTokenRequestDto(refreshToken: refreshToken),
+        );
+      } else {
+        await _remoteDataSource.logout();
+      }
     } catch (e) {
       AppLogger.warning("Logout API error: $e");
     } finally {
@@ -151,6 +162,10 @@ class AuthRepositoryImpl implements AuthRepository {
       final responseDto = await _remoteDataSource.refreshToken(request);
       if (responseDto.success && responseDto.data != null) {
         await _localDataSource.saveToken(responseDto.data!.token);
+        final refreshToken = responseDto.data!.refreshToken;
+        if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+          await _localDataSource.saveRefreshToken(refreshToken);
+        }
       }
     } catch (e) {
       throw Exception(ErrorHandler.getErrorMessage(e));

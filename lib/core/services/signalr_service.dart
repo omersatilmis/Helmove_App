@@ -2,16 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:signalr_netcore/signalr_client.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../network/network_module.dart';
 import '../utils/app_logger.dart';
+import '../../features/auth/data/datasources/auth_local_data_source.dart';
 
 class SignalRService {
   HubConnection? _hubConnection;
   String? _resolvedBaseUrl;
-  final SharedPreferences sharedPreferences;
+  final AuthLocalDataSource authLocalDataSource;
 
-  SignalRService(this.sharedPreferences);
+  SignalRService(this.authLocalDataSource);
 
   // Callbacks - Voice Session oriented naming
   Function(String userId, String? voiceSessionId)? _onUserJoinedVoiceSession;
@@ -84,7 +84,7 @@ class SignalRService {
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
 
   Future<void> init() async {
-    final token = sharedPreferences.getString('AUTH_TOKEN');
+    final token = await authLocalDataSource.getToken();
     if (token == null || token.trim().isEmpty) {
       AppLogger.warning("SignalR Init Failed: No Token");
       return;
@@ -106,7 +106,7 @@ class SignalRService {
             hubUrl,
             options: HttpConnectionOptions(
               accessTokenFactory: () async =>
-                  sharedPreferences.getString('AUTH_TOKEN') ?? '',
+                  await authLocalDataSource.getToken() ?? '',
             ),
           )
           .withAutomaticReconnect()
@@ -814,7 +814,7 @@ class SignalRService {
   /// GET /api/turn/ice-servers
   Future<List<Map<String, dynamic>>> fetchIceServers() async {
     try {
-      final token = sharedPreferences.getString('AUTH_TOKEN');
+      final token = await authLocalDataSource.getToken();
       _resolvedBaseUrl ??= await NetworkModule.getBaseUrl();
       final dio = Dio();
       final response = await dio.get(
