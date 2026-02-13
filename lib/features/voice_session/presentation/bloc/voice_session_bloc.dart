@@ -11,6 +11,7 @@ import '../../domain/usecases/accept_voice_session_invitation_usecase.dart';
 import '../../../../core/services/signalr_service.dart';
 import '../../../../core/services/livekit_api.dart';
 import '../../../../core/services/livekit_room_service.dart';
+import '../../../../core/services/permissions_service.dart';
 import 'voice_session_event.dart';
 import 'voice_session_state.dart';
 
@@ -38,6 +39,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   // LiveKit SFU (Faz 3)
   final LiveKitApi liveKitApi;
   final LiveKitRoomService liveKitRoomService;
+  final PermissionsService permissionsService;
 
   StreamSubscription? _rideTerminatedSubscription;
   StreamSubscription? _rideCreatedSubscription;
@@ -69,6 +71,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.transferHostUseCase,
     required this.liveKitApi,
     required this.liveKitRoomService,
+    required this.permissionsService,
   }) : super(const VoiceSessionState()) {
     // Listen to SignalR events
     signalRService.setOnUserJoinedVoiceSession((userId, voiceSessionId) {
@@ -229,6 +232,18 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     CreateVoiceSessionEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    final permissionsOk = await permissionsService
+        .ensureVoiceSessionPermissions(requestLocation: true);
+    if (!permissionsOk) {
+      emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message: 'Oturum icin gerekli izinler verilmedi',
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(status: VoiceSessionStatus.loading));
     final result = await createVoiceSessionUseCase(event.request);
     await result.fold(
@@ -254,6 +269,18 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     JoinVoiceSessionEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    final permissionsOk = await permissionsService
+        .ensureVoiceSessionPermissions(requestLocation: true);
+    if (!permissionsOk) {
+      emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message: 'Oturum icin gerekli izinler verilmedi',
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(status: VoiceSessionStatus.loading));
     final result = await joinVoiceSessionUseCase(event.sessionId);
     await result.fold(
@@ -426,6 +453,18 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     AcceptVoiceSessionInviteEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    final permissionsOk = await permissionsService
+        .ensureVoiceSessionPermissions(requestLocation: true);
+    if (!permissionsOk) {
+      emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message: 'Oturum icin gerekli izinler verilmedi',
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(status: VoiceSessionStatus.loading));
     final result = await acceptVoiceSessionInvitationUseCase(event.sessionId);
     result.fold(

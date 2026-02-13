@@ -1,62 +1,93 @@
-import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
+import '../utils/app_logger.dart';
+import 'callkit_incoming_service.dart';
+
 class NotificationService {
-  static const String _appId =
-      "826a8fdc-3290-4a00-a14b-74a4c6e8ac20"; // Backend appsettings.json'dan aldım
+  static const String _appId = '826a8fdc-3290-4a00-a14b-74a4c6e8ac20';
 
-  /// OneSignal'i başlatır
+  final CallKitIncomingService _callKitIncomingService;
+  bool _isInitialized = false;
+
+  NotificationService(this._callKitIncomingService);
+
   Future<void> initialize() async {
+    if (_isInitialized) return;
+    _isInitialized = true;
     try {
-      // 1. OneSignal Debugging (Geliştirme aşamasında açık kalsın)
       OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-
-      // 2. Initialize
       OneSignal.initialize(_appId);
 
-      // 3. İzin İste
+      await _callKitIncomingService.initialize();
+
       final permission = await OneSignal.Notifications.requestPermission(true);
-      debugPrint("🔔 [NotificationService] Permission: $permission");
+      AppLogger.info('NotificationService: permission=$permission');
 
-      // 4. Global Event Handlers
-      // Bildirime tıklandığında ne olacak?
-      OneSignal.Notifications.addClickListener((event) {
-        debugPrint(
-          "🔔 [NotificationService] Notification Clicked: ${event.notification.additionalData}",
+      OneSignal.Notifications.addClickListener((event) async {
+        final data = event.notification.additionalData;
+        AppLogger.info(
+          'NotificationService: click payloadType=${data.runtimeType} payload=$data',
         );
-        // Burada navigation logic eklenebilir (örn. go_router ile odaya git)
+
+        await _handleIncomingCallPayload(data, source: 'click');
       });
 
-      // Bildirim ön planda geldiğinde ne olacak?
-      OneSignal.Notifications.addForegroundWillDisplayListener((event) {
-        debugPrint(
-          "🔔 [NotificationService] Notification Received in Foreground: ${event.notification.title}",
+      OneSignal.Notifications.addForegroundWillDisplayListener((event) async {
+        final data = event.notification.additionalData;
+        AppLogger.info(
+          'NotificationService: foreground payloadType=${data.runtimeType} payload=$data',
         );
-        // event.preventDefault(); // Eğer sistem bildirimini göstermek istemiyorsak
-        // event.notification.display(); // Manuel göstermek için
+
+        final handled = await _handleIncomingCallPayload(
+          data,
+          source: 'foreground',
+        );
+        if (handled) {
+          event.preventDefault();
+        }
       });
-    } catch (e) {
-      debugPrint("❌ [NotificationService] Init Error: $e");
+    } catch (e, st) {
+      AppLogger.error('NotificationService: initialize error', e, st);
     }
   }
 
-  /// Kullanıcı giriş yaptığında OneSignal ile eşleştirip External ID atar
   Future<void> login(String userId) async {
     try {
-      debugPrint("🔔 [NotificationService] Logging in user: $userId");
       await OneSignal.login(userId);
-    } catch (e) {
-      debugPrint("❌ [NotificationService] Login Error: $e");
+
+      final voipToken = await _callKitIncomingService.getVoipToken();
+      if (voipToken != null) {
+        AppLogger.info(
+          'NotificationService: VoIP token ready len=${voipToken.length}',
+        );
+      }
+    } catch (e, st) {
+      AppLogger.error('NotificationService: login error', e, st);
     }
   }
 
-  /// Çıkış yapıldığında
   Future<void> logout() async {
     try {
-      debugPrint("🔔 [NotificationService] Logging out");
       await OneSignal.logout();
-    } catch (e) {
-      debugPrint("❌ [NotificationService] Logout Error: $e");
+    } catch (e, st) {
+      AppLogger.error('NotificationService: logout error', e, st);
     }
+  }
+
+  Future<bool> _handleIncomingCallPayload(
+    dynamic raw, {
+    required String source,
+  }) async {
+    final payload = CallInvitePayload.tryParse(raw);
+    if (payload == null) {
+      return false;
+    }
+
+    AppLogger.info(
+      'NotificationService: incoming_call detected source=$source callerId=${payload.callerId} callId=${payload.callId ?? 0}',
+    );
+
+    await _callKitIncomingService.showIncomingCall(payload);
+    return true;
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../../../core/services/signalr_service.dart';
 import '../../../../core/services/webrtc_service.dart';
+import '../../../../core/services/permissions_service.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../domain/entities/call_entities.dart';
 import '../../domain/usecases/call_usecases.dart';
@@ -14,6 +15,7 @@ import 'call_state.dart';
 class CallBloc extends Bloc<CallEvent, CallState> {
   final SignalRService signalRService;
   final WebRTCService webRTCService;
+  final PermissionsService permissionsService;
   final SendCallRequestUseCase sendCallRequestUseCase;
   final AcceptCallUseCase acceptCallUseCase;
   final RejectCallUseCase rejectCallUseCase;
@@ -54,6 +56,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   CallBloc({
     required this.signalRService,
     required this.webRTCService,
+    required this.permissionsService,
     required this.sendCallRequestUseCase,
     required this.acceptCallUseCase,
     required this.rejectCallUseCase,
@@ -246,6 +249,12 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     CallRequested event,
     Emitter<CallState> emit,
   ) async {
+    final permissionsOk = await permissionsService.ensureCallPermissions();
+    if (!permissionsOk) {
+      emit(const CallError(message: 'Arama icin gerekli izinler verilmedi'));
+      return;
+    }
+
     _remoteUserId = event.targetUserId;
     _currentCallId = null;
     _resetSignalingSessionState();
@@ -359,6 +368,14 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   ) async {
     try {
       await _enqueueSignaling('CallAccepted', () async {
+        final permissionsOk = await permissionsService.ensureCallPermissions();
+        if (!permissionsOk) {
+          emit(
+            const CallError(message: 'Arama icin gerekli izinler verilmedi'),
+          );
+          return;
+        }
+
         final remoteUserId = _remoteUserId;
         if (remoteUserId == null || remoteUserId <= 0) return;
 

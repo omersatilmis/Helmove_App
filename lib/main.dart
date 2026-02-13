@@ -25,7 +25,7 @@ void main() async {
   await di.init();
 
   // 1.5 Notification Check
-  sl<NotificationService>().initialize(); // Init OneSignal
+  await sl<NotificationService>().initialize(); // Init OneSignal + CallKit
 
   // 2. Date Formatting Başlatma (Türkçe için)
   await initializeDateFormatting('tr_TR', null);

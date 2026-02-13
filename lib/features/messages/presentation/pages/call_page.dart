@@ -20,6 +20,7 @@ class CallPage extends StatelessWidget {
   final String? targetDisplayName;
   final String? targetProfileImageUrl;
   final bool isOutgoing;
+  final bool autoAcceptIncoming;
   final int? callId;
 
   const CallPage({
@@ -28,6 +29,7 @@ class CallPage extends StatelessWidget {
     this.targetDisplayName,
     this.targetProfileImageUrl,
     this.isOutgoing = true,
+    this.autoAcceptIncoming = false,
     this.callId,
   });
 
@@ -39,6 +41,7 @@ class CallPage extends StatelessWidget {
       value: bloc,
       child: _CallInitializer(
         isOutgoing: isOutgoing,
+        autoAcceptIncoming: autoAcceptIncoming,
         targetUserId: targetUserId,
         targetDisplayName: targetDisplayName,
         callId: callId,
@@ -54,6 +57,7 @@ class CallPage extends StatelessWidget {
 
 class _CallInitializer extends StatefulWidget {
   final bool isOutgoing;
+  final bool autoAcceptIncoming;
   final int targetUserId;
   final String? targetDisplayName;
   final int? callId;
@@ -61,6 +65,7 @@ class _CallInitializer extends StatefulWidget {
 
   const _CallInitializer({
     required this.isOutgoing,
+    required this.autoAcceptIncoming,
     required this.targetUserId,
     required this.targetDisplayName,
     required this.callId,
@@ -91,6 +96,9 @@ class _CallInitializerState extends State<_CallInitializer> {
           callId: widget.callId,
         ),
       );
+      if (widget.autoAcceptIncoming) {
+        bloc.add(const CallAccepted());
+      }
     }
   }
 

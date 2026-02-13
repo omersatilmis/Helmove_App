@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/app_router.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/services/callkit_incoming_service.dart';
 import '../../../../core/services/signalr_service.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../features/call/presentation/bloc/call_bloc.dart';
+import '../../../../features/call/presentation/bloc/call_event.dart';
 import '../../../../features/messages/presentation/pages/call_page.dart';
 
-/// Listens incoming 1v1 call events globally and opens incoming [CallPage].
 class CallListenerWrapper extends StatefulWidget {
   final Widget child;
 
@@ -19,12 +22,16 @@ class CallListenerWrapper extends StatefulWidget {
 
 class _CallListenerWrapperState extends State<CallListenerWrapper> {
   StreamSubscription<Map<String, dynamic>>? _incomingCallSub;
+  StreamSubscription<CallKitAction>? _callKitActionSub;
   bool _isOpeningIncomingCall = false;
+  int? _lastOpenedCallerId;
+  DateTime? _lastOpenedAt;
 
   @override
   void initState() {
     super.initState();
     _listenToIncomingCalls();
+    _listenToCallKitActions();
   }
 
   void _listenToIncomingCalls() {
@@ -38,44 +45,108 @@ class _CallListenerWrapperState extends State<CallListenerWrapper> {
 
       final callerId = _toInt(data['callerId']) ?? _toInt(data['CallerId']);
       if (callerId == null || callerId <= 0) {
-        debugPrint(
-          'CallListenerWrapper: Invalid callerId in incoming call payload: $data',
+        AppLogger.warning(
+          'CallListenerWrapper: Invalid callerId in incoming payload: $data',
         );
         return;
       }
 
-      final callId = _toInt(data['callId']) ?? _toInt(data['CallId']);
-      final callerDisplayName =
-          data['callerDisplayName']?.toString() ??
-          data['CallerDisplayName']?.toString() ??
-          data['displayName']?.toString();
-
-      if (_isOpeningIncomingCall) {
-        debugPrint('CallListenerWrapper: Incoming call page already opening.');
-        return;
-      }
-
-      final route = MaterialPageRoute(
-        builder: (_) => CallPage(
-          targetUserId: callerId,
-          targetDisplayName: callerDisplayName,
-          isOutgoing: false,
-          callId: callId,
-        ),
+      _openIncomingCallPage(
+        callerId: callerId,
+        callId: _toInt(data['callId']) ?? _toInt(data['CallId']),
+        callerDisplayName:
+            data['callerDisplayName']?.toString() ??
+            data['CallerDisplayName']?.toString() ??
+            data['displayName']?.toString(),
+        autoAcceptIncoming: false,
       );
+    });
+  }
 
-      final navigator = rootNavigatorKey.currentState;
-      if (navigator == null) {
-        debugPrint(
-          'CallListenerWrapper: rootNavigator is null, incoming call page not opened.',
-        );
-        return;
+  void _listenToCallKitActions() {
+    final callKitService = sl<CallKitIncomingService>();
+    unawaited(callKitService.initialize());
+
+    _callKitActionSub = callKitService.actionStream.listen((action) async {
+      if (!mounted) return;
+
+      final payload = action.payload;
+      switch (action.type) {
+        case CallKitActionType.accepted:
+          if (payload == null) return;
+          await callKitService.endAllCalls();
+          _openIncomingCallPage(
+            callerId: payload.callerId,
+            callId: payload.callId,
+            callerDisplayName: payload.callerDisplayName,
+            autoAcceptIncoming: true,
+          );
+          break;
+        case CallKitActionType.declined:
+          if (payload == null) return;
+          sl<CallBloc>().add(
+            CallIncomingReceived(
+              callerId: payload.callerId,
+              callerDisplayName: payload.callerDisplayName,
+              callId: payload.callId,
+            ),
+          );
+          sl<CallBloc>().add(const CallRejected());
+          await callKitService.endAllCalls();
+          break;
+        case CallKitActionType.timeout:
+        case CallKitActionType.ended:
+          sl<CallBloc>().add(const CallHangUp());
+          await callKitService.endAllCalls();
+          break;
+        case CallKitActionType.devicePushTokenUpdated:
+        case CallKitActionType.incoming:
+        case CallKitActionType.connected:
+        case CallKitActionType.callback:
+        case CallKitActionType.unknown:
+          break;
       }
+    });
+  }
 
-      _isOpeningIncomingCall = true;
-      navigator.push(route).whenComplete(() {
-        _isOpeningIncomingCall = false;
-      });
+  void _openIncomingCallPage({
+    required int callerId,
+    required bool autoAcceptIncoming,
+    int? callId,
+    String? callerDisplayName,
+  }) {
+    if (_isOpeningIncomingCall) return;
+
+    if (_lastOpenedCallerId == callerId &&
+        _lastOpenedAt != null &&
+        DateTime.now().difference(_lastOpenedAt!) <
+            const Duration(seconds: 4)) {
+      return;
+    }
+
+    final navigator = rootNavigatorKey.currentState;
+    if (navigator == null) {
+      AppLogger.warning(
+        'CallListenerWrapper: rootNavigator is null, incoming call not opened.',
+      );
+      return;
+    }
+
+    final route = MaterialPageRoute(
+      builder: (_) => CallPage(
+        targetUserId: callerId,
+        targetDisplayName: callerDisplayName,
+        isOutgoing: false,
+        autoAcceptIncoming: autoAcceptIncoming,
+        callId: callId,
+      ),
+    );
+
+    _isOpeningIncomingCall = true;
+    _lastOpenedCallerId = callerId;
+    _lastOpenedAt = DateTime.now();
+    navigator.push(route).whenComplete(() {
+      _isOpeningIncomingCall = false;
     });
   }
 
@@ -88,6 +159,7 @@ class _CallListenerWrapperState extends State<CallListenerWrapper> {
   @override
   void dispose() {
     _incomingCallSub?.cancel();
+    _callKitActionSub?.cancel();
     super.dispose();
   }
 

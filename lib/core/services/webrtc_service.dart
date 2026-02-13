@@ -485,7 +485,7 @@ class WebRTCService {
   // ICE CANDIDATES
   // ============================================================
 
-  /// KarÅŸÄ± taraftan gelen ICE Candidate'i ekler.
+  /// Karşı taraftan gelen ICE Candidate'i ekler.
   ///
   /// [candidate] â€” ICE candidate string
   /// [sdpMid] â€” Media stream ID

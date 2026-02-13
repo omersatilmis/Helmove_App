@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -45,10 +45,22 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>fetch</string>
+		<string>voip</string>
+		<string>remote-notification</string>
+		<string>processing</string>
+	</array>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Motosiklet sürüşünde grup arkadaşlarınızla sesli iletişim kurabilmeniz için mikrofona ihtiyacımız var.</string>
+	<string>Sesli iletisim kurabilmeniz icin mikrofona ihtiyacimiz var.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Kask interkom cihazınıza bağlanabilmek için Bluetooth iznine ihtiyacımız var.</string>
+	<string>Kask interkom cihaziniza baglanabilmek icin Bluetooth iznine ihtiyacimiz var.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Grup suruslerinde canli konum paylasimi icin konum erisimine ihtiyacimiz var.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Grup suruslerinde canli konum paylasimi icin konum erisimine ihtiyacimiz var.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -56,3 +68,7 @@
 	</dict>
 </dict>
 </plist>
+
+
+
+

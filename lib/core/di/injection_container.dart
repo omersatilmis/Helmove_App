@@ -198,6 +198,8 @@ import '../services/message_signalr_service.dart';
 import '../services/webrtc_service.dart';
 import '../services/livekit_api.dart';
 import '../services/livekit_room_service.dart';
+import '../services/callkit_incoming_service.dart';
+import '../services/permissions_service.dart';
 import '../services/notification_service.dart'; // Import added
 
 final sl = GetIt.instance;
@@ -524,7 +526,11 @@ Future<void> init() async {
   sl.registerLazySingleton(() => SignalRService(sl()));
   sl.registerLazySingleton(() => MessageSignalRService(sl()));
   sl.registerLazySingleton(() => WebRTCService());
-  sl.registerLazySingleton(() => NotificationService()); // Registration added
+  sl.registerLazySingleton(() => PermissionsService());
+  sl.registerLazySingleton(() => CallKitIncomingService());
+  sl.registerLazySingleton(
+    () => NotificationService(sl()),
+  ); // Registration added
 
   //! Auth Feature
   // API
@@ -927,6 +933,7 @@ Future<void> init() async {
       transferHostUseCase: sl(),
       liveKitApi: sl(),
       liveKitRoomService: sl(),
+      permissionsService: sl(),
     ),
   );
 
@@ -1017,6 +1024,7 @@ Future<void> init() async {
       rejectCallUseCase: sl(),
       endCallUseCase: sl(),
       getPendingCallsUseCase: sl(),
+      permissionsService: sl(),
     ),
   );
 }
