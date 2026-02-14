@@ -44,6 +44,8 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   Timer? _connectingTimeoutTimer;
   Duration _callDuration = Duration.zero;
   Future<void> _signalingQueue = Future.value();
+  Future<void>? _cleanupFuture;
+  bool _isLocalHangupInProgress = false;
   String? _lastRemoteOfferSdp;
   String? _lastRemoteAnswerSdp;
   bool _hasLocalOffer = false;
@@ -117,19 +119,35 @@ class CallBloc extends Bloc<CallEvent, CallState> {
 
     _callAcceptedSub = signalRService.callAcceptedStream.listen((data) {
       if (isClosed) return;
-      add(CallAcceptedByRemote(targetUserId: _readIntDynamic(data)));
+      final acceptedByUserId = _readIntDynamic(data);
+      if (acceptedByUserId <= 0) {
+        AppLogger.warning('CallBloc: CallAccepted ignored, invalid actor id.');
+        return;
+      }
+      add(CallAcceptedByRemote(targetUserId: acceptedByUserId));
     });
 
     _callRejectedSub = signalRService.callRejectedStream.listen((data) {
       if (isClosed) return;
+      final rejectedByUserId = _readIntFromMap(data, const [
+        'rejectedByUserId',
+        'RejectedByUserId',
+        'targetUserId',
+        'TargetUserId',
+        'callerId',
+        'CallerId',
+        'userId',
+        'UserId',
+      ]);
+      if (rejectedByUserId <= 0) {
+        AppLogger.warning(
+          'CallBloc: CallRejected ignored, invalid actor id. Payload: $data',
+        );
+        return;
+      }
       add(
         CallRejectedByRemote(
-          targetUserId: _readIntFromMap(data, const [
-            'targetUserId',
-            'TargetUserId',
-            'userId',
-            'UserId',
-          ]),
+          targetUserId: rejectedByUserId,
           reason: _readStringFromMap(data, const ['reason', 'Reason']),
         ),
       );
@@ -137,7 +155,27 @@ class CallBloc extends Bloc<CallEvent, CallState> {
 
     _callEndedSub = signalRService.callEndedStream.listen((data) {
       if (isClosed) return;
-      add(CallEndedByRemote(targetUserId: _readIntDynamic(data)));
+      final endedByUserId = _readIntFromMap(data, const [
+        'endedByUserId',
+        'EndedByUserId',
+        'callerId',
+        'CallerId',
+        'userId',
+        'UserId',
+      ]);
+      final targetUserId = _readIntFromMap(data, const [
+        'targetUserId',
+        'TargetUserId',
+        'receiverId',
+        'ReceiverId',
+      ]);
+
+      add(
+        CallEndedByRemote(
+          targetUserId: targetUserId,
+          endedByUserId: endedByUserId,
+        ),
+      );
     });
 
     _offerSub = signalRService.offerStream.listen((data) {
@@ -626,6 +664,12 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   }
 
   Future<void> _onCallHangUp(CallHangUp event, Emitter<CallState> emit) async {
+    if (_isLocalHangupInProgress) {
+      AppLogger.warning('CallBloc: Duplicate local hangup ignored');
+      return;
+    }
+
+    _isLocalHangupInProgress = true;
     final duration = _callDuration;
 
     final remoteUserId = _remoteUserId;
@@ -636,16 +680,52 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     }
 
     await _cleanupCall();
-    emit(CallEnded(reason: 'Arama sonlandirildi', callDuration: duration));
+    emit(CallEnded(reason: 'Aramayi sonlandirdin', callDuration: duration));
   }
 
   Future<void> _onCallEndedByRemote(
     CallEndedByRemote event,
     Emitter<CallState> emit,
   ) async {
+    if (_isLocalHangupInProgress) {
+      AppLogger.info(
+        'CallBloc: Remote ended event ignored during local hangup. '
+        'endedBy=${event.endedByUserId} target=${event.targetUserId}',
+      );
+      return;
+    }
+
+    final activeRemoteUserId = _remoteUserId;
+    if (activeRemoteUserId == null || activeRemoteUserId <= 0) {
+      AppLogger.warning(
+        'CallBloc: Remote ended event ignored because there is no active remote user. '
+        'endedBy=${event.endedByUserId} target=${event.targetUserId}',
+      );
+      return;
+    }
+
+    if (event.endedByUserId > 0 && event.endedByUserId != activeRemoteUserId) {
+      AppLogger.warning(
+        'CallBloc: Remote ended event ignored due to endedBy mismatch. '
+        'expected=$activeRemoteUserId endedBy=${event.endedByUserId}',
+      );
+      return;
+    }
+
+    if (event.targetUserId > 0 && event.targetUserId != activeRemoteUserId) {
+      AppLogger.warning(
+        'CallBloc: Remote ended event ignored due to user mismatch. '
+        'expected=$activeRemoteUserId incoming=${event.targetUserId}',
+      );
+      return;
+    }
+
     final duration = _callDuration;
     // Remote taraf sonlandırdıysa tekrar "EndCall" sinyali yollamayalım (ping-pong yapabilir).
-    await _safeEndCurrentCall(remoteUserId: event.targetUserId, signalREnd: false);
+    await _safeEndCurrentCall(
+      remoteUserId: activeRemoteUserId,
+      signalREnd: false,
+    );
     await _cleanupCall();
     emit(
       CallEnded(
@@ -778,11 +858,19 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       final remoteUserId = _remoteUserId;
       if (remoteUserId == null || remoteUserId <= 0) return;
 
-      signalRService.sendIceCandidate(
-        remoteUserId.toString(),
-        candidate.candidate ?? '',
-        candidate.sdpMid,
-        candidate.sdpMLineIndex,
+      unawaited(
+        signalRService
+            .sendIceCandidate(
+              remoteUserId.toString(),
+              candidate.candidate ?? '',
+              candidate.sdpMid,
+              candidate.sdpMLineIndex,
+            )
+            .catchError((Object error, StackTrace stackTrace) {
+              AppLogger.warning(
+                'CallBloc: sendIceCandidate failed during stream callback: $error',
+              );
+            }),
       );
     });
 
@@ -959,6 +1047,23 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   }
 
   Future<void> _cleanupCall() async {
+    final ongoing = _cleanupFuture;
+    if (ongoing != null) {
+      await ongoing;
+      return;
+    }
+
+    final cleanupTask = _performCleanupCall();
+    _cleanupFuture = cleanupTask;
+    try {
+      await cleanupTask;
+    } finally {
+      _cleanupFuture = null;
+      _isLocalHangupInProgress = false;
+    }
+  }
+
+  Future<void> _performCleanupCall() async {
     _cancelOutgoingTimeout();
     _cancelConnectingTimeout();
 

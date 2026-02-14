@@ -106,11 +106,15 @@ class IceCandidateReceived extends CallEvent {
 
 class CallEndedByRemote extends CallEvent {
   final int targetUserId;
+  final int endedByUserId;
 
-  const CallEndedByRemote({required this.targetUserId});
+  const CallEndedByRemote({
+    required this.targetUserId,
+    required this.endedByUserId,
+  });
 
   @override
-  List<Object?> get props => [targetUserId];
+  List<Object?> get props => [targetUserId, endedByUserId];
 }
 
 class CallConnectionStateChanged extends CallEvent {

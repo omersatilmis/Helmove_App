@@ -26,6 +26,8 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   String _distanceUnit = "Kilometre (km)";
   String _tempUnit = "Celsius (°C)";
   String _audioQuality = "Dengeli (32 kbps)";
+  String _themeMode = "Sistem";
+  String _language = "Türkçe";
 
   String _mapType = "Normal";
   bool _trafficEnabled = false;
@@ -48,11 +50,24 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   Future<void> _loadSavedSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedQualityKey = prefs.getString('audio_quality_key'); // Anahtarı oku
-      if (savedQualityKey != null && mounted) {
-        final qualityLabel = _qualityOptions[savedQualityKey] ?? _qualityOptions['medium']!;
-        setState(() => _audioQuality = qualityLabel);
-        _updateWebRTCServiceWithKey(savedQualityKey); // Servisi anahtarla güncelle
+      
+      // Kayıtlı ayarları oku
+      final savedTheme = prefs.getString('theme_mode');
+      final savedLanguage = prefs.getString('language');
+      final savedQualityKey = prefs.getString('audio_quality_key');
+
+      if (mounted) {
+        setState(() {
+          if (savedTheme != null) _themeMode = savedTheme;
+          if (savedLanguage != null) _language = savedLanguage;
+          if (savedQualityKey != null) {
+            _audioQuality = _qualityOptions[savedQualityKey] ?? _qualityOptions['medium']!;
+          }
+        });
+
+        if (savedQualityKey != null) {
+          _updateWebRTCServiceWithKey(savedQualityKey);
+        }
       }
     } catch (e) {
       debugPrint("Ayarlar yüklenirken hata: $e");
@@ -98,6 +113,45 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SettingsSectionHeader(title: "Uygulama Ayarları"),
+
+        // 2. GENEL AYARLAR (Tema & Dil)
+        SettingsExpansionTile(
+          icon: Icons.settings_rounded,
+          title: "Genel Ayarlar",
+          children: [
+            SettingsActionTile(
+              title: "Tema",
+              value: _themeMode,
+              icon: Icons.brightness_6_rounded,
+              onTap: () => showSettingsBottomSheet(
+                context,
+                "Tema Seçimi",
+                ["Sistem", "Aydınlık", "Karanlık"],
+                (val) async {
+                  setState(() => _themeMode = val);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('theme_mode', val);
+                  // Not: Uygulamanın anlık tema değişimi için main.dart veya ThemeBloc'un bu değeri dinlemesi gerekir.
+                },
+              ),
+            ),
+            SettingsActionTile(
+              title: "Dil",
+              value: _language,
+              icon: Icons.language_rounded,
+              onTap: () => showSettingsBottomSheet(
+                context,
+                "Dil Seçimi",
+                ["Türkçe", "English"],
+                (val) async {
+                  setState(() => _language = val);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('language', val);
+                },
+              ),
+            ),
+          ],
+        ),
 
         // 3. ÖLÇÜ BİRİMLERİ
         SettingsExpansionTile(

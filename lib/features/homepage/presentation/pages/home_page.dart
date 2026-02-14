@@ -45,7 +45,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
       final messageService = GetIt.I<MessageSignalRService>();
       // Stream yapısı sayesinde diğer dinleyicileri (örn: Chat sayfası) bozmadan dinliyoruz
       _messageSubscription = messageService.onDirectMessageReceived.listen((message) {
-        if (mounted) {
+        if (mounted && !_hasUnreadMessages) {
           setState(() {
             _hasUnreadMessages = true;
           });
@@ -65,7 +65,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     try {
       final signalRService = GetIt.I<SignalRService>();
       _notificationSubscription = signalRService.notificationReceivedStream.listen((_) {
-        if (mounted) {
+        if (mounted && !_hasUnreadNotifications) {
           setState(() => _hasUnreadNotifications = true);
         }
       });

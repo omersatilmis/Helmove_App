@@ -37,7 +37,8 @@ class SignalRService {
   final _callAcceptedController = StreamController<String>.broadcast();
   final _callRejectedController =
       StreamController<Map<String, dynamic>>.broadcast();
-  final _callEndedController = StreamController<String>.broadcast();
+    final _callEndedController =
+      StreamController<Map<String, dynamic>>.broadcast();
   final _offerController = StreamController<Map<String, dynamic>>.broadcast();
   final _answerController = StreamController<Map<String, dynamic>>.broadcast();
   final _iceCandidateController =
@@ -51,7 +52,8 @@ class SignalRService {
   Stream<String> get callAcceptedStream => _callAcceptedController.stream;
   Stream<Map<String, dynamic>> get callRejectedStream =>
       _callRejectedController.stream;
-  Stream<String> get callEndedStream => _callEndedController.stream;
+    Stream<Map<String, dynamic>> get callEndedStream =>
+      _callEndedController.stream;
   Stream<Map<String, dynamic>> get offerStream => _offerController.stream;
   Stream<Map<String, dynamic>> get answerStream => _answerController.stream;
   Stream<Map<String, dynamic>> get iceCandidateStream =>
@@ -284,21 +286,79 @@ class SignalRService {
 
     _hubConnection!.on("CallAccepted", (arguments) {
       if (arguments != null && arguments.isNotEmpty) {
-        final targetUserId = _asString(arguments[0]);
-        if (targetUserId == null || targetUserId.isEmpty) return;
-        AppLogger.info("SignalR: Arama kabul edildi <- $targetUserId");
-        _callAcceptedController.add(targetUserId);
+        String? acceptedByUserId;
+        String? targetUserId;
+
+        if (arguments[0] is Map) {
+          final payload = Map<String, dynamic>.from(arguments[0] as Map);
+          acceptedByUserId =
+              _readString(payload, const [
+                'acceptedByUserId',
+                'AcceptedByUserId',
+                'callerId',
+                'CallerId',
+                'userId',
+                'UserId',
+              ]) ??
+              '';
+          targetUserId = _readString(payload, const [
+            'targetUserId',
+            'TargetUserId',
+            'receiverId',
+            'ReceiverId',
+          ]);
+        } else {
+          acceptedByUserId = _asString(arguments[0]);
+          targetUserId = arguments.length > 1 ? _asString(arguments[1]) : null;
+        }
+
+        if (acceptedByUserId == null || acceptedByUserId.isEmpty) return;
+        AppLogger.info(
+          "SignalR: Arama kabul edildi <- acceptedBy=$acceptedByUserId target=${targetUserId ?? '-'}",
+        );
+        _callAcceptedController.add(acceptedByUserId);
       }
     });
 
     _hubConnection!.on("CallRejected", (arguments) {
       if (arguments != null && arguments.isNotEmpty) {
-        final targetUserId = _asString(arguments[0]);
-        if (targetUserId == null || targetUserId.isEmpty) return;
-        final reason = arguments.length > 1 ? _asString(arguments[1]) : null;
-        AppLogger.info("SignalR: Arama reddedildi <- $targetUserId");
+        String? rejectedByUserId;
+        String? targetUserId;
+        String? reason;
+
+        if (arguments[0] is Map) {
+          final payload = Map<String, dynamic>.from(arguments[0] as Map);
+          rejectedByUserId =
+              _readString(payload, const [
+                'rejectedByUserId',
+                'RejectedByUserId',
+                'callerId',
+                'CallerId',
+                'userId',
+                'UserId',
+              ]) ??
+              '';
+          targetUserId = _readString(payload, const [
+            'targetUserId',
+            'TargetUserId',
+            'receiverId',
+            'ReceiverId',
+          ]);
+          reason = _readString(payload, const ['reason', 'Reason']);
+        } else {
+          rejectedByUserId = _asString(arguments[0]);
+          targetUserId = arguments.length > 1 ? _asString(arguments[1]) : null;
+          reason = arguments.length > 2 ? _asString(arguments[2]) : null;
+        }
+
+        if (rejectedByUserId == null || rejectedByUserId.isEmpty) return;
+        AppLogger.info(
+          "SignalR: Arama reddedildi <- rejectedBy=$rejectedByUserId target=${targetUserId ?? '-'}",
+        );
         _callRejectedController.add({
-          'targetUserId': targetUserId,
+          'targetUserId': rejectedByUserId,
+          'rejectedByUserId': rejectedByUserId,
+          'targetUserIdOriginal': targetUserId,
           'reason': reason,
         });
       }
@@ -306,12 +366,40 @@ class SignalRService {
 
     _hubConnection!.on("CallEnded", (arguments) {
       if (arguments != null && arguments.isNotEmpty) {
-        final targetUserId = _asString(arguments[0]);
-        if (targetUserId == null || targetUserId.isEmpty) return;
+        String? endedByUserId;
+        String? targetUserId;
+
+        if (arguments[0] is Map) {
+          final payload = Map<String, dynamic>.from(arguments[0] as Map);
+          endedByUserId =
+              _readString(payload, const [
+                'endedByUserId',
+                'EndedByUserId',
+                'callerId',
+                'CallerId',
+                'userId',
+                'UserId',
+              ]) ??
+              '';
+          targetUserId = _readString(payload, const [
+            'targetUserId',
+            'TargetUserId',
+            'receiverId',
+            'ReceiverId',
+          ]);
+        } else {
+          endedByUserId = _asString(arguments[0]);
+          targetUserId = arguments.length > 1 ? _asString(arguments[1]) : null;
+        }
+
+        if (endedByUserId == null || endedByUserId.isEmpty) return;
         AppLogger.info(
-          "SignalR: Arama sonlandÃƒâ€Ã‚Â±rÃƒâ€Ã‚Â±ldÃƒâ€Ã‚Â± <- $targetUserId",
+          "SignalR: Arama sonlandirildi <- endedBy=$endedByUserId target=${targetUserId ?? '-'}",
         );
-        _callEndedController.add(targetUserId);
+        _callEndedController.add({
+          'endedByUserId': endedByUserId,
+          'targetUserId': targetUserId,
+        });
       }
     });
 

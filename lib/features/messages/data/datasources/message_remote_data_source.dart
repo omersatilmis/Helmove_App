@@ -65,12 +65,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
 
     final response = await dio.post(MessageEndpoints.send, data: body);
 
-    var data = response.data;
-    if (data is Map<String, dynamic> && data.containsKey('data')) {
-      data = data['data'];
-    }
-
-    return MessageModel.fromJson(data);
+    return MessageModel.fromJson(_extractData(response));
   }
 
   @override
@@ -87,11 +82,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
         queryParameters: {'page': page, 'pageSize': pageSize},
       );
 
-      var data = response.data;
-      if (data is Map<String, dynamic> && data.containsKey('data')) {
-        data = data['data'];
-      }
-
+      final data = _extractData(response);
       final List list = data is List ? data : [];
       return list.map((e) => MessageModel.fromJson(e)).toList();
     } on DioException {
@@ -108,11 +99,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   Future<List<ConversationModel>> getConversations() async {
     final response = await dio.get(MessageEndpoints.conversations);
 
-    var data = response.data;
-    if (data is Map<String, dynamic> && data.containsKey('data')) {
-      data = data['data'];
-    }
-
+    final data = _extractData(response);
     final List list = data is List ? data : [];
     return list.map((e) => ConversationModel.fromJson(e)).toList();
   }
@@ -137,12 +124,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       data: {'content': newContent},
     );
 
-    var data = response.data;
-    if (data is Map<String, dynamic> && data.containsKey('data')) {
-      data = data['data'];
-    }
-
-    return MessageModel.fromJson(data);
+    return MessageModel.fromJson(_extractData(response));
   }
 
   @override
@@ -154,12 +136,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   Future<int> getUnreadCount() async {
     final response = await dio.get(MessageEndpoints.unreadCount);
 
-    var data = response.data;
-    if (data is Map<String, dynamic> && data.containsKey('data')) {
-      data = data['data'];
-    }
-
-    return data as int;
+    return _extractData(response) as int;
   }
 
   @override
@@ -168,11 +145,14 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       MessageEndpoints.unreadCountWithUser(otherUserId),
     );
 
+    return _extractData(response) as int;
+  }
+
+  dynamic _extractData(Response response) {
     var data = response.data;
     if (data is Map<String, dynamic> && data.containsKey('data')) {
-      data = data['data'];
+      return data['data'];
     }
-
-    return data as int;
+    return data;
   }
 }
