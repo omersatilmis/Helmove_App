@@ -30,6 +30,14 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   String _mapType = "Normal";
   bool _trafficEnabled = false;
 
+  // Ses Kalitesi Seçenekleri (Key -> Label)
+  final Map<String, String> _qualityOptions = {
+    'low': "Düşük (16 kbps) - Veri Tasarrufu",
+    'medium': "Dengeli (32 kbps) - Varsayılan",
+    'high': "Yüksek (48 kbps) - WiFi Önerilir",
+    'ultra': "Ultra (64 kbps) - En Yüksek Kalite",
+  };
+
   @override
   void initState() {
     super.initState();
@@ -40,10 +48,11 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   Future<void> _loadSavedSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedQuality = prefs.getString('audio_quality');
-      if (savedQuality != null && mounted) {
-        setState(() => _audioQuality = savedQuality);
-        _updateWebRTCService(savedQuality);
+      final savedQualityKey = prefs.getString('audio_quality_key'); // Anahtarı oku
+      if (savedQualityKey != null && mounted) {
+        final qualityLabel = _qualityOptions[savedQualityKey] ?? _qualityOptions['medium']!;
+        setState(() => _audioQuality = qualityLabel);
+        _updateWebRTCServiceWithKey(savedQualityKey); // Servisi anahtarla güncelle
       }
     } catch (e) {
       debugPrint("Ayarlar yüklenirken hata: $e");
@@ -51,20 +60,36 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   }
 
   // WebRTC servisine yeni kaliteyi bildir
-  void _updateWebRTCService(String qualityLabel) {
+  void _updateWebRTCServiceWithKey(String qualityKey) {
     try {
       if (!GetIt.I.isRegistered<WebRTCService>()) return;
       
       final service = GetIt.I<WebRTCService>();
       CallAudioQuality qualityEnum = CallAudioQuality.medium;
 
-      if (qualityLabel.contains("Düşük")) {
-        qualityEnum = CallAudioQuality.low;
-      } else if (qualityLabel.contains("Yüksek")) qualityEnum = CallAudioQuality.high;
-      else if (qualityLabel.contains("Ultra")) qualityEnum = CallAudioQuality.ultra;
+      switch (qualityKey) {
+        case 'low':
+          qualityEnum = CallAudioQuality.low;
+          break;
+        case 'medium':
+          qualityEnum = CallAudioQuality.medium;
+          break;
+        case 'high':
+          qualityEnum = CallAudioQuality.high;
+          break;
+        case 'ultra':
+          qualityEnum = CallAudioQuality.ultra;
+          break;
+      }
 
       service.setAudioQuality(qualityEnum);
     } catch (_) {}
+  }
+
+  String _getKeyFromLabel(String label) {
+    return _qualityOptions.entries
+        .firstWhere((e) => e.value == label, orElse: () => const MapEntry('medium', ''))
+        .key;
   }
 
   @override
@@ -153,19 +178,15 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
               onTap: () => showSettingsBottomSheet(
                 context,
                 "Ses Kalitesi",
-                [
-                  "Düşük (16 kbps) - Veri Tasarrufu",
-                  "Dengeli (32 kbps) - Varsayılan",
-                  "Yüksek (48 kbps) - WiFi Önerilir",
-                  "Ultra (64 kbps) - En Yüksek Kalite",
-                ],
+                _qualityOptions.values.toList(),
                 (val) async {
                   setState(() => _audioQuality = val);
+                  final qualityKey = _getKeyFromLabel(val);
                   // 1. Kalıcı olarak kaydet
                   final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('audio_quality', val);
+                  await prefs.setString('audio_quality_key', qualityKey);
                   // 2. Servisi anlık güncelle
-                  _updateWebRTCService(val);
+                  _updateWebRTCServiceWithKey(qualityKey);
                   context.read<SettingsBloc>().add(const UpdateAudioEvent());
                 },
               ),

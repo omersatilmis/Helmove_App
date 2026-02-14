@@ -16,11 +16,13 @@ class PermissionsService {
     final micOk = _isGranted(results[Permission.microphone]);
     final btConnectOk = _isGranted(results[Permission.bluetoothConnect]);
     final btScanOk = _isGranted(results[Permission.bluetoothScan]);
+    final phoneOk = _isGranted(results[Permission.phone]);
+    final notificationOk = _isGranted(results[Permission.notification]);
 
-    if (!micOk || !btConnectOk || !btScanOk) {
+    if (!micOk || !btConnectOk || !btScanOk || !phoneOk || !notificationOk) {
       AppLogger.warning(
         'PermissionsService: call permissions denied '
-        'mic=$micOk btConnect=$btConnectOk btScan=$btScanOk',
+        'mic=$micOk btConnect=$btConnectOk btScan=$btScanOk phone=$phoneOk notification=$notificationOk',
       );
       return false;
     }
@@ -47,11 +49,12 @@ class PermissionsService {
     final micOk = _isGranted(results[Permission.microphone]);
     final btConnectOk = _isGranted(results[Permission.bluetoothConnect]);
     final btScanOk = _isGranted(results[Permission.bluetoothScan]);
+    final notificationOk = _isGranted(results[Permission.notification]);
 
-    if (!micOk || !btConnectOk || !btScanOk) {
+    if (!micOk || !btConnectOk || !btScanOk || !notificationOk) {
       AppLogger.warning(
         'PermissionsService: voice permissions denied '
-        'mic=$micOk btConnect=$btConnectOk btScan=$btScanOk',
+        'mic=$micOk btConnect=$btConnectOk btScan=$btScanOk notification=$notificationOk',
       );
       return false;
     }
