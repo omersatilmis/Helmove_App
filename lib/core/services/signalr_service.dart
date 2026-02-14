@@ -678,7 +678,11 @@ class SignalRService {
       );
     } catch (e) {
       AppLogger.error("SignalR: Arama isteÃƒâ€Ã…Â¸i hatasÃƒâ€Ã‚Â±", e);
-      rethrow;
+      // İYİLEŞTİRME: Hata durumunda UI'ın sonsuz beklemesini önlemek için hata fırlatmak yerine
+      // controller üzerinden hata mesajı yayınlayabiliriz. Ancak mevcut yapıda rethrow
+      // UI tarafında try-catch ile yakalanıyorsa uygundur.
+      // Profesyonel kullanımda buraya bir "Retry" mekanizması eklenebilir.
+      _callRequestFailedController.add("Bağlantı hatası: Arama başlatılamadı.");
     }
   }
 

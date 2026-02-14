@@ -210,6 +210,7 @@ class _ChatViewState extends State<ChatView> {
                             text: message.content,
                             time: localSentAt,
                             isMe: isMe,
+                            isRead: message.isRead,
                             isFirstInGroup: isFirstInGroup,
                             isLastInGroup: isLastInGroup,
                           ),
@@ -481,6 +482,7 @@ class _MessageBubble extends StatelessWidget {
   final String text;
   final DateTime time;
   final bool isMe;
+  final bool isRead;
   final bool isFirstInGroup;
   final bool isLastInGroup;
 
@@ -488,6 +490,7 @@ class _MessageBubble extends StatelessWidget {
     required this.text,
     required this.time,
     required this.isMe,
+    required this.isRead,
     required this.isFirstInGroup,
     required this.isLastInGroup,
   });
@@ -569,7 +572,7 @@ class _MessageBubble extends StatelessWidget {
                         Icon(
                           Icons.done_all_rounded,
                           size: 14,
-                          color: colorScheme.onPrimary.withOpacity(0.8),
+                          color: isRead ? const Color(0xFF69F0AE) : colorScheme.onPrimary.withOpacity(0.6),
                         ),
                       ],
                     ],

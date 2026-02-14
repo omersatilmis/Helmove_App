@@ -211,6 +211,9 @@ class CallKitIncomingService {
 
   Future<void> endCall(String callKitId) async {
     if (callKitId.trim().isEmpty) return;
+    
+    // İYİLEŞTİRME: CallKit arayüzünü kapatmadan önce native tarafa bildir.
+    // Bu, kilit ekranındaki aramanın takılı kalmasını önler.
     await FlutterCallkitIncoming.endCall(callKitId);
   }
 

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:moto_comm_app_1/core/services/webrtc_service.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_event.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
@@ -22,9 +25,47 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
 
   String _distanceUnit = "Kilometre (km)";
   String _tempUnit = "Celsius (°C)";
+  String _audioQuality = "Dengeli (32 kbps)";
 
   String _mapType = "Normal";
   bool _trafficEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedSettings();
+  }
+
+  // Kayıtlı ayarları yükle ve servise uygula
+  Future<void> _loadSavedSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedQuality = prefs.getString('audio_quality');
+      if (savedQuality != null && mounted) {
+        setState(() => _audioQuality = savedQuality);
+        _updateWebRTCService(savedQuality);
+      }
+    } catch (e) {
+      debugPrint("Ayarlar yüklenirken hata: $e");
+    }
+  }
+
+  // WebRTC servisine yeni kaliteyi bildir
+  void _updateWebRTCService(String qualityLabel) {
+    try {
+      if (!GetIt.I.isRegistered<WebRTCService>()) return;
+      
+      final service = GetIt.I<WebRTCService>();
+      CallAudioQuality qualityEnum = CallAudioQuality.medium;
+
+      if (qualityLabel.contains("Düşük")) {
+        qualityEnum = CallAudioQuality.low;
+      } else if (qualityLabel.contains("Yüksek")) qualityEnum = CallAudioQuality.high;
+      else if (qualityLabel.contains("Ultra")) qualityEnum = CallAudioQuality.ultra;
+
+      service.setAudioQuality(qualityEnum);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +146,30 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
           icon: Icons.volume_up_rounded,
           title: "Ses & Medya",
           children: [
+            SettingsActionTile(
+              title: "Ses Kalitesi",
+              value: _audioQuality,
+              icon: Icons.equalizer_rounded,
+              onTap: () => showSettingsBottomSheet(
+                context,
+                "Ses Kalitesi",
+                [
+                  "Düşük (16 kbps) - Veri Tasarrufu",
+                  "Dengeli (32 kbps) - Varsayılan",
+                  "Yüksek (48 kbps) - WiFi Önerilir",
+                  "Ultra (64 kbps) - En Yüksek Kalite",
+                ],
+                (val) async {
+                  setState(() => _audioQuality = val);
+                  // 1. Kalıcı olarak kaydet
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('audio_quality', val);
+                  // 2. Servisi anlık güncelle
+                  _updateWebRTCService(val);
+                  context.read<SettingsBloc>().add(const UpdateAudioEvent());
+                },
+              ),
+            ),
             SettingsSwitchTile(
               title: "Gürültü Engelleme",
               subtitle: "Rüzgar sesini azaltır",

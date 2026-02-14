@@ -2,6 +2,14 @@ import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../utils/app_logger.dart';
 
+/// Ses kalitesi seçenekleri
+enum CallAudioQuality {
+  low,    // 16 kbps (Veri Tasarrufu - Düşük Bant Genişliği)
+  medium, // 32 kbps (Dengeli - Varsayılan / WhatsApp Benzeri)
+  high,   // 48 kbps (Yüksek Kalite - WiFi önerilir)
+  ultra,  // 64 kbps (En Yüksek Kalite - Sadece çok iyi bağlantılar için)
+}
+
 /// P2P (Mode A) 1v1 arama iÃ§in WebRTC motoru.
 ///
 /// Bu servis UI'dan tamamen baÄŸÄ±msÄ±zdÄ±r. Sadece ÅŸunlarÄ± yapar:
@@ -24,6 +32,7 @@ class WebRTCService {
   MediaStream? _localStream;
   MediaStream? _remoteStream;
   final List<RTCIceCandidate> _pendingCandidates = [];
+  int _currentBitrate = 32000; // Varsayılan: Medium
   
   // ============================================================
   // STREAMS â€” UI KatmanÄ±na veri aktarÄ±mÄ±
@@ -112,6 +121,7 @@ class WebRTCService {
       'bundlePolicy': 'max-bundle',
       'rtcpMuxPolicy': 'require',
       'sdpSemantics': 'unified-plan',
+      'iceCandidatePoolSize': 2, // Bağlantı öncesi aday toplamayı hızlandırır
     };
 
     final constraints = <String, dynamic>{
@@ -123,6 +133,10 @@ class WebRTCService {
 
     _peerConnection = await createPeerConnection(configuration, constraints);
     _registerPeerConnectionCallbacks();
+
+    // İYİLEŞTİRME: Varsayılan olarak sesi ahizeye (Earpiece) yönlendir.
+    // Bu, "WhatsApp gibi" profesyonel bir deneyim için şarttır.
+    await Helper.setSpeakerphoneOn(false);
 
     AppLogger.info('WebRTC: PeerConnection oluÅŸturuldu.');
   }
@@ -260,9 +274,18 @@ class WebRTCService {
 
     final constraints = <String, dynamic>{
       'audio': {
-        'echoCancellation': true,
-        'noiseSuppression': true,
-        'autoGainControl': true,
+        // Düşük gecikme ve donanım hızlandırma için özel ayarlar
+        'echoCancellation': true, // Yankı giderme
+        'googEchoCancellation': true,
+        'googEchoCancellation2': true,
+        'googDAEchoCancellation': true, // Donanım tabanlı AEC
+        'noiseSuppression': true, // Gürültü engelleme
+        'googNoiseSuppression': true, // Google gürültü bastırma
+        'googNoiseReduction': true,   // Ekstra gürültü azaltma
+        'autoGainControl': true, // Otomatik ses seviyesi
+        'googAutoGainControl': true,
+        'googHighpassFilter': true,
+        'googAudioMirroring': false,
       },
       'video': false, // Sadece ses â€” video yok
     };
@@ -304,6 +327,32 @@ class WebRTCService {
     AppLogger.info('WebRTC: Mikrofon â†’ ${enabled ? "aÃ§Ä±k" : "kapalÄ±"}');
   }
 
+  /// Hoparlör / Ahize geçişi (UI'dan çağrılabilir)
+  Future<void> setSpeakerphone(bool enable) async {
+    await Helper.setSpeakerphoneOn(enable);
+    AppLogger.info('WebRTC: Ses çıkışı -> ${enable ? "Hoparlör" : "Ahize"}');
+  }
+
+  /// Ses kalitesini ayarlar (Low/Medium/High).
+  /// Bu ayar bir sonraki SDP oluşturma işleminde (yeni arama) geçerli olur.
+  void setAudioQuality(CallAudioQuality quality) {
+    switch (quality) {
+      case CallAudioQuality.low:
+        _currentBitrate = 16000;
+        break;
+      case CallAudioQuality.medium:
+        _currentBitrate = 32000;
+        break;
+      case CallAudioQuality.high:
+        _currentBitrate = 48000;
+        break;
+      case CallAudioQuality.ultra:
+        _currentBitrate = 64000;
+        break;
+    }
+    AppLogger.info('WebRTC: Ses kalitesi ayarlandı -> $quality ($_currentBitrate bps)');
+  }
+
   // ============================================================
   // SDP â€” Offer / Answer
   // ============================================================
@@ -329,13 +378,18 @@ class WebRTCService {
         offer.type!.trim().isEmpty) {
       throw StateError('WebRTC: createOffer returned invalid description');
     }
-    await pc.setLocalDescription(offer);
+    
+    // SDP Munging: Opus codec ayarlarını optimize et (Düşük gecikme için)
+    final optimizedSdp = _optimizeSdp(offer.sdp!);
+    final optimizedOffer = RTCSessionDescription(optimizedSdp, offer.type);
+    
+    await pc.setLocalDescription(optimizedOffer);
     AppLogger.info('WebRTC: SDP Offer length=${offer.sdp?.length ?? 0}');
 
     AppLogger.info(
-      'WebRTC: SDP Offer oluÅŸturuldu ve LocalDescription set edildi.',
+      'WebRTC: SDP Offer oluşturuldu (Optimize edildi) ve LocalDescription set edildi.',
     );
-    return offer;
+    return optimizedOffer;
   }
 
   /// SDP Answer oluÅŸturur (aranan taraf Ã§aÄŸÄ±rÄ±r).
@@ -360,13 +414,18 @@ class WebRTCService {
         answer.type!.trim().isEmpty) {
       throw StateError('WebRTC: createAnswer returned invalid description');
     }
-    await pc.setLocalDescription(answer);
+
+    // SDP Munging: Opus codec ayarlarını optimize et
+    final optimizedSdp = _optimizeSdp(answer.sdp!);
+    final optimizedAnswer = RTCSessionDescription(optimizedSdp, answer.type);
+
+    await pc.setLocalDescription(optimizedAnswer);
     AppLogger.info('WebRTC: SDP Answer length=${answer.sdp?.length ?? 0}');
 
     AppLogger.info(
-      'WebRTC: SDP Answer oluÅŸturuldu ve LocalDescription set edildi.',
+      'WebRTC: SDP Answer oluşturuldu (Optimize edildi) ve LocalDescription set edildi.',
     );
-    return answer;
+    return optimizedAnswer;
   }
 
   /// KarÅŸÄ± taraftan gelen SDP'yi (Offer veya Answer) set eder.
@@ -606,5 +665,37 @@ class WebRTCService {
     _iceGatheringStateController.close();
 
     AppLogger.info('WebRTC: Service destroy edildi.');
+  }
+
+  /// SDP (Session Description Protocol) içeriğini manipüle ederek
+  /// Opus ses codec'ini düşük gecikme için optimize eder.
+  String _optimizeSdp(String sdp) {
+    // 1. Opus Payload Type'ı bul (Genellikle 111 ama dinamik olabilir)
+    // a=rtpmap:111 opus/48000/2
+    final opusMatch = RegExp(r'a=rtpmap:(\d+) opus/48000/2').firstMatch(sdp);
+    if (opusMatch == null) return sdp; // Opus bulunamadı
+
+    final payloadType = opusMatch.group(1);
+
+    // 2. İlgili fmtp satırını bul veya oluştur
+    // a=fmtp:111 ...
+    final fmtpRegex = RegExp('a=fmtp:$payloadType (.*)\r\n');
+
+    // Motosiklet için optimize edilmiş parametreler:
+    // usedtx=0 -> Sessizlikte veri kesmeyi kapat (Rüzgarı konuşma sanıp kesmesin)
+    // useinbandfec=1 -> Paket kaybı onarımı
+    // minptime=10 -> Düşük gecikme (10ms paketler)
+    final newParams = 'a=fmtp:$payloadType minptime=10;useinbandfec=1;maxaveragebitrate=$_currentBitrate;stereo=0;sprop-stereo=0;usedtx=0;cbr=0\r\n';
+
+    if (!sdp.contains(fmtpRegex)) {
+      // fmtp satırı yoksa rtpmap'in altına ekle
+      return sdp.replaceFirst(
+          'a=rtpmap:$payloadType opus/48000/2\r\n',
+          'a=rtpmap:$payloadType opus/48000/2\r\n$newParams'
+      );
+    }
+
+    // fmtp satırı varsa değiştir
+    return sdp.replaceAll(fmtpRegex, newParams);
   }
 }

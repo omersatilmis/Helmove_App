@@ -15,6 +15,13 @@ class MessageSignalRService {
   Function(dynamic message)? _onReceiveDirectMessage;
   Function(String senderId, bool isTyping)? _onUserTyping;
 
+  // Streams (Broadcast - Çoklu dinleyici için)
+  final _directMessageController = StreamController<dynamic>.broadcast();
+  Stream<dynamic> get onDirectMessageReceived => _directMessageController.stream;
+
+  final _messagesReadController = StreamController<void>.broadcast();
+  Stream<void> get onMessagesRead => _messagesReadController.stream;
+
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
 
   Future<void> init() async {
@@ -57,7 +64,13 @@ class MessageSignalRService {
         final message = arguments[0];
         AppLogger.info("SignalR: ReceiveDirectMessage");
         _onReceiveDirectMessage?.call(message);
+        _directMessageController.add(message);
       }
+    });
+
+    _hubConnection!.on("MessagesRead", (arguments) {
+      AppLogger.info("SignalR: MessagesRead event received");
+      _messagesReadController.add(null);
     });
 
     _hubConnection!.on("UserTyping", (arguments) {

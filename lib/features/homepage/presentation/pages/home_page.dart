@@ -1,6 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:moto_comm_app_1/core/services/message_signalr_service.dart';
+import 'package:moto_comm_app_1/features/messages/data/datasources/message_remote_data_source.dart';
+import 'package:moto_comm_app_1/core/services/signalr_service.dart';
 
 // 🔥 DİKKAT: Drawer'ı dışarıdan kontrol etmek için bu import şart!
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
@@ -17,6 +22,11 @@ class HomePageWithDrawer extends StatefulWidget {
 
 class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   late String _visorMessage;
+  bool _hasUnreadMessages = false;
+  bool _hasUnreadNotifications = false;
+  StreamSubscription? _messageSubscription;
+  StreamSubscription? _readSubscription;
+  StreamSubscription? _notificationSubscription;
 
   @override
   void initState() {
@@ -26,6 +36,65 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProfileProvider>().loadProfile();
     });
+
+    // Uygulama açıldığında okunmamış mesaj sayısını kontrol et
+    _checkUnreadMessages();
+
+    // SignalR üzerinden gelen mesajları dinle
+    try {
+      final messageService = GetIt.I<MessageSignalRService>();
+      // Stream yapısı sayesinde diğer dinleyicileri (örn: Chat sayfası) bozmadan dinliyoruz
+      _messageSubscription = messageService.onDirectMessageReceived.listen((message) {
+        if (mounted) {
+          setState(() {
+            _hasUnreadMessages = true;
+          });
+        }
+      });
+
+      // Mesajlar okunduğunda (MessagesRead) sayıyı tekrar kontrol et
+      _readSubscription = messageService.onMessagesRead.listen((_) {
+        _checkUnreadMessages();
+      });
+
+    } catch (e) {
+      debugPrint("MessageSignalRService bağlantı hatası: $e");
+    }
+
+    // Genel bildirimleri dinle (SignalRService)
+    try {
+      final signalRService = GetIt.I<SignalRService>();
+      _notificationSubscription = signalRService.notificationReceivedStream.listen((_) {
+        if (mounted) {
+          setState(() => _hasUnreadNotifications = true);
+        }
+      });
+    } catch (e) {
+      debugPrint("SignalRService bağlantı hatası: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _messageSubscription?.cancel();
+    _readSubscription?.cancel();
+    _notificationSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkUnreadMessages() async {
+    try {
+      // MessageRemoteDataSource'u GetIt üzerinden alıyoruz
+      final messageDataSource = GetIt.I<MessageRemoteDataSource>();
+      final count = await messageDataSource.getUnreadCount();
+      if (mounted) {
+        setState(() {
+          _hasUnreadMessages = count > 0;
+        });
+      }
+    } catch (e) {
+      debugPrint("Okunmamış mesaj sayısı alınamadı: $e");
+    }
   }
 
   @override
@@ -115,23 +184,67 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
             ),
           ),
           actions: [
-            IconButton(
-              icon: Image.asset(
-                'assets/icons/ic_message.png',
-                width: 26,
-                height: 26,
-                color: theme.colorScheme.onSurface,
-              ),
-              onPressed: () => context.push('/messages'),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: Image.asset(
+                    'assets/icons/ic_message.png',
+                    width: 26,
+                    height: 26,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _hasUnreadMessages = false;
+                    });
+                    context.push('/messages');
+                  },
+                ),
+                if (_hasUnreadMessages)
+                  Positioned(
+                    right: 10,
+                    top: 10,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.orange,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            IconButton(
-              icon: Image.asset(
-                'assets/icons/ic_bell.png',
-                width: 26,
-                height: 26,
-                color: theme.colorScheme.onSurface,
-              ),
-              onPressed: () => context.push('/notifications'),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: Image.asset(
+                    'assets/icons/ic_bell.png',
+                    width: 26,
+                    height: 26,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  onPressed: () {
+                    setState(() => _hasUnreadNotifications = false);
+                    context.push('/notifications');
+                  },
+                ),
+                if (_hasUnreadNotifications)
+                  Positioned(
+                    right: 10,
+                    top: 10,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 8),
           ],
