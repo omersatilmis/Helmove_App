@@ -17,8 +17,6 @@ import 'package:moto_comm_app_1/features/content/posts/presentation/pages/feed_p
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 import 'package:moto_comm_app_1/core/services/permissions_service.dart' as di;
-import 'package:moto_comm_app_1/core/di/injection_container.dart'
-    as di_container;
 
 class HomePageWithDrawer extends StatefulWidget {
   const HomePageWithDrawer({super.key});
