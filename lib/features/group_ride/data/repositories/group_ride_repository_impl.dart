@@ -89,7 +89,7 @@ class GroupRideRepositoryImpl implements GroupRideRepository {
       ridingStyle: ride.ridingStyle,
       requirements: ride.requirements,
       isPrivate: ride.isPrivate,
-      voiceSessionId: ride.voiceSessionId,
+      sessionId: ride.sessionId,
     );
   }
 }

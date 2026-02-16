@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import '../../domain/entities/voice_session_entity.dart';
+import '../../domain/enums/rtc_state.dart';
 
 enum VoiceSessionStatus {
   initial,
@@ -16,10 +18,11 @@ enum VoiceSessionStatus {
 class VoiceSessionState extends Equatable {
   final VoiceSessionStatus status;
   final String? message;
+  final int? currentUserId;
   final int? sessionId; // For Created, Left, InviteAccepted
-  final dynamic session; // VoiceSessionEntity (DetailsLoaded)
-  final List<dynamic>?
-  mySessions; // List<VoiceSessionEntity> (MySessionsLoaded)
+  final VoiceSessionEntity? session;
+  final List<VoiceSessionEntity>? mySessions;
+  final RtcConnectionStatus rtcStatus;
 
   // LiveKit State
   final bool isLiveKitConnected;
@@ -30,6 +33,7 @@ class VoiceSessionState extends Equatable {
   const VoiceSessionState({
     this.status = VoiceSessionStatus.initial,
     this.message,
+    this.currentUserId,
     this.sessionId,
     this.session,
     this.mySessions,
@@ -37,22 +41,26 @@ class VoiceSessionState extends Equatable {
     this.isMicOn = true,
     this.activeSpeakers = const [],
     this.liveKitError,
+    this.rtcStatus = RtcConnectionStatus.disconnected,
   });
 
   VoiceSessionState copyWith({
     VoiceSessionStatus? status,
     String? message,
+    int? currentUserId,
     int? sessionId,
-    dynamic session,
-    List<dynamic>? mySessions,
+    VoiceSessionEntity? session,
+    List<VoiceSessionEntity>? mySessions,
     bool? isLiveKitConnected,
     bool? isMicOn,
     List<String>? activeSpeakers,
     String? liveKitError,
+    RtcConnectionStatus? rtcStatus,
   }) {
     return VoiceSessionState(
       status: status ?? this.status,
       message: message, // Message is transient, usually overridden or null
+      currentUserId: currentUserId ?? this.currentUserId,
       sessionId: sessionId ?? this.sessionId,
       session: session ?? this.session, // Persist session details
       mySessions: mySessions ?? this.mySessions,
@@ -60,6 +68,7 @@ class VoiceSessionState extends Equatable {
       isMicOn: isMicOn ?? this.isMicOn,
       activeSpeakers: activeSpeakers ?? this.activeSpeakers,
       liveKitError: liveKitError, // Error is transient
+      rtcStatus: rtcStatus ?? this.rtcStatus,
     );
   }
 
@@ -67,6 +76,7 @@ class VoiceSessionState extends Equatable {
   List<Object?> get props => [
     status,
     message,
+    currentUserId,
     sessionId,
     session,
     mySessions,
@@ -74,5 +84,6 @@ class VoiceSessionState extends Equatable {
     isMicOn,
     activeSpeakers,
     liveKitError,
+    rtcStatus,
   ];
 }

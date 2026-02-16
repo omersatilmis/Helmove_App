@@ -1,6 +1,6 @@
 class GroupRideArgs {
   final int rideId;
-  final int? voiceSessionId;
+  final int? sessionId;
   final String groupName;
   final int? maxParticipants;
   final int? currentParticipants;
@@ -22,7 +22,7 @@ class GroupRideArgs {
 
   const GroupRideArgs({
     required this.rideId,
-    this.voiceSessionId,
+    this.sessionId,
     required this.groupName,
     this.maxParticipants,
     this.currentParticipants,
@@ -46,7 +46,7 @@ class GroupRideArgs {
   factory GroupRideArgs.fromMap(Map<String, dynamic> map) {
     return GroupRideArgs(
       rideId: map['id'] ?? map['rideId'] ?? 0,
-      voiceSessionId: map['voiceSessionId'],
+      sessionId: map['sessionId'] ?? map['voiceSessionId'],
       groupName: map['groupName'] ?? map['title'] ?? 'Bilinmeyen Grup',
       maxParticipants: map['maxParticipants'],
       currentParticipants: map['currentParticipants'],
@@ -75,7 +75,7 @@ class GroupRideArgs {
   Map<String, dynamic> toMap() {
     return {
       'id': rideId,
-      'voiceSessionId': voiceSessionId,
+      'sessionId': sessionId,
       'groupName': groupName,
       'maxParticipants': maxParticipants,
       'currentParticipants': currentParticipants,

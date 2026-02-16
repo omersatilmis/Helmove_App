@@ -42,12 +42,12 @@ class GroupRideFailure extends GroupRideState {
 
 class GroupRideCreatedSync extends GroupRideState {
   final GroupRideEntity ride;
-  final int voiceSessionId;
+  final int sessionId;
 
-  const GroupRideCreatedSync(this.ride, this.voiceSessionId);
+  const GroupRideCreatedSync(this.ride, this.sessionId);
 
   @override
-  List<Object?> get props => [ride, voiceSessionId];
+  List<Object?> get props => [ride, sessionId];
 }
 
 class GroupRideDeleted extends GroupRideState {}

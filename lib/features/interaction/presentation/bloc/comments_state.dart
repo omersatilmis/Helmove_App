@@ -6,6 +6,7 @@ enum CommentsStatus { initial, loading, success, failure }
 class CommentsState extends Equatable {
   final CommentsStatus status;
   final List<CommentEntity> comments;
+  final int? currentUserId;
   final String? errorMessage;
   final bool isPostingComment;
   final bool hasReachedMax;
@@ -14,6 +15,7 @@ class CommentsState extends Equatable {
   const CommentsState({
     this.status = CommentsStatus.initial,
     this.comments = const [],
+    this.currentUserId,
     this.errorMessage,
     this.isPostingComment = false,
     this.hasReachedMax = false,
@@ -23,6 +25,7 @@ class CommentsState extends Equatable {
   CommentsState copyWith({
     CommentsStatus? status,
     List<CommentEntity>? comments,
+    int? currentUserId,
     String? errorMessage,
     bool? isPostingComment,
     bool? hasReachedMax,
@@ -31,6 +34,7 @@ class CommentsState extends Equatable {
     return CommentsState(
       status: status ?? this.status,
       comments: comments ?? this.comments,
+      currentUserId: currentUserId ?? this.currentUserId,
       errorMessage: errorMessage,
       isPostingComment: isPostingComment ?? this.isPostingComment,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
@@ -42,6 +46,7 @@ class CommentsState extends Equatable {
   List<Object?> get props => [
     status,
     comments,
+    currentUserId,
     errorMessage,
     isPostingComment,
     hasReachedMax,

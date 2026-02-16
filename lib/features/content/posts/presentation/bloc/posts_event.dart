@@ -52,3 +52,12 @@ class LikePostEvent extends PostsEvent {
   @override
   List<Object?> get props => [postId];
 }
+
+class PostsCurrentUserChangedEvent extends PostsEvent {
+  final int? userId;
+
+  const PostsCurrentUserChangedEvent(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
+}

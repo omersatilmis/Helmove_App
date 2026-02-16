@@ -22,7 +22,7 @@ class GroupRideModel extends GroupRideEntity {
     super.ridingStyle,
     super.requirements,
     required super.isPrivate,
-    super.voiceSessionId,
+    super.sessionId,
   });
 
   factory GroupRideModel.fromJson(Map<String, dynamic> json) {
@@ -51,7 +51,7 @@ class GroupRideModel extends GroupRideEntity {
       ridingStyle: json['ridingStyle'] as String?,
       requirements: json['requirements'] as String?,
       isPrivate: json['isPrivate'] as bool? ?? false,
-      voiceSessionId: json['voiceSessionId'] as int?,
+      sessionId: json['sessionId'] as int?,
     );
   }
 
@@ -77,7 +77,7 @@ class GroupRideModel extends GroupRideEntity {
       'ridingStyle': ridingStyle,
       'isPrivate': isPrivate,
       'requirements': requirements,
-      'voiceSessionId': voiceSessionId,
+      'sessionId': sessionId,
     };
   }
 }

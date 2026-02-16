@@ -169,7 +169,7 @@ class _BioSection extends StatelessWidget {
         textAlign: TextAlign.center,
         style: AppTextStyles.medium.copyWith(
           fontSize: 14,
-          color: theme.colorScheme.onSurface.withOpacity(0.7),
+          color: theme.colorScheme.onSurface.withValues(alpha:0.7),
         ),
       ),
     );
@@ -212,7 +212,7 @@ class _NameSection extends StatelessWidget {
           "@$username", // 👈 Dinamik Veri
           style: AppTextStyles.medium.copyWith(
             fontSize: 14,
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha:0.6),
           ),
         ),
 
@@ -284,7 +284,7 @@ class _StatItem extends StatelessWidget {
               label,
               style: AppTextStyles.bodySmall.copyWith(
                 fontSize: 13,
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha:0.6),
               ),
             ),
           ],
@@ -374,7 +374,7 @@ class _ActionButtonsSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             side: const BorderSide(color: AppColors.primary, width: 1.5),
-            overlayColor: AppColors.primary.withOpacity(0.1),
+            overlayColor: AppColors.primary.withValues(alpha:0.1),
           ),
         ),
       ),
@@ -432,7 +432,7 @@ class _ActionButtonsSection extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          overlayColor: AppColors.primary.withOpacity(0.1),
+          overlayColor: AppColors.primary.withValues(alpha:0.1),
         ),
       );
     } else if (status == FriendshipStatus.pending) {
@@ -557,7 +557,7 @@ class _ActionButtonsSection extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            overlayColor: AppColors.primary.withOpacity(0.1),
+            overlayColor: AppColors.primary.withValues(alpha:0.1),
           ),
         ),
       ),

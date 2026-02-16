@@ -4,10 +4,10 @@ import '../utils/app_logger.dart';
 
 /// Ses kalitesi seçenekleri
 enum CallAudioQuality {
-  low,    // 16 kbps (Veri Tasarrufu - Düşük Bant Genişliği)
+  low, // 16 kbps (Veri Tasarrufu - Düşük Bant Genişliği)
   medium, // 32 kbps (Dengeli - Varsayılan / WhatsApp Benzeri)
-  high,   // 48 kbps (Yüksek Kalite - WiFi önerilir)
-  ultra,  // 64 kbps (En Yüksek Kalite - Sadece çok iyi bağlantılar için)
+  high, // 48 kbps (Yüksek Kalite - WiFi önerilir)
+  ultra, // 64 kbps (En Yüksek Kalite - Sadece çok iyi bağlantılar için)
 }
 
 /// P2P (Mode A) 1v1 arama iÃ§in WebRTC motoru.
@@ -33,7 +33,7 @@ class WebRTCService {
   MediaStream? _remoteStream;
   final List<RTCIceCandidate> _pendingCandidates = [];
   int _currentBitrate = 32000; // Varsayılan: Medium
-  
+
   // ============================================================
   // STREAMS â€” UI KatmanÄ±na veri aktarÄ±mÄ±
   // ============================================================
@@ -281,7 +281,7 @@ class WebRTCService {
         'googDAEchoCancellation': true, // Donanım tabanlı AEC
         'noiseSuppression': true, // Gürültü engelleme
         'googNoiseSuppression': true, // Google gürültü bastırma
-        'googNoiseReduction': true,   // Ekstra gürültü azaltma
+        'googNoiseReduction': true, // Ekstra gürültü azaltma
         'autoGainControl': true, // Otomatik ses seviyesi
         'googAutoGainControl': true,
         'googHighpassFilter': true,
@@ -350,7 +350,9 @@ class WebRTCService {
         _currentBitrate = 64000;
         break;
     }
-    AppLogger.info('WebRTC: Ses kalitesi ayarlandı -> $quality ($_currentBitrate bps)');
+    AppLogger.info(
+      'WebRTC: Ses kalitesi ayarlandı -> $quality ($_currentBitrate bps)',
+    );
   }
 
   // ============================================================
@@ -378,11 +380,11 @@ class WebRTCService {
         offer.type!.trim().isEmpty) {
       throw StateError('WebRTC: createOffer returned invalid description');
     }
-    
+
     // SDP Munging: Opus codec ayarlarını optimize et (Düşük gecikme için)
     final optimizedSdp = _optimizeSdp(offer.sdp!);
     final optimizedOffer = RTCSessionDescription(optimizedSdp, offer.type);
-    
+
     await pc.setLocalDescription(optimizedOffer);
     AppLogger.info('WebRTC: SDP Offer length=${offer.sdp?.length ?? 0}');
 
@@ -667,6 +669,41 @@ class WebRTCService {
     AppLogger.info('WebRTC: Service destroy edildi.');
   }
 
+  // ============================================================
+  // ORCHESTRATION HELPERS
+  // ============================================================
+
+  /// Combine all steps to handle an incoming offer
+  Future<String?> handleOffer(String fromUserId, String sdp) async {
+    try {
+      await stopAll(); // Clean start
+      // Note: In a real app, you'd get ICE servers from backend.
+      // For now, using default STUN.
+      await initialize([]);
+      await setRemoteDescription('offer', sdp);
+      await startLocalStream();
+      final answer = await createAnswer();
+      return answer.sdp;
+    } catch (e) {
+      AppLogger.error("WebRTC: handleOffer failed", e);
+      return null;
+    }
+  }
+
+  /// Combine all steps to handle an incoming answer
+  Future<void> handleAnswer(String fromUserId, String sdp) async {
+    try {
+      await setRemoteDescription('answer', sdp);
+    } catch (e) {
+      AppLogger.error("WebRTC: handleAnswer failed", e);
+    }
+  }
+
+  /// Stop all streams and connection
+  Future<void> stopAll() async {
+    await dispose();
+  }
+
   /// SDP (Session Description Protocol) içeriğini manipüle ederek
   /// Opus ses codec'ini düşük gecikme için optimize eder.
   String _optimizeSdp(String sdp) {
@@ -685,13 +722,14 @@ class WebRTCService {
     // usedtx=0 -> Sessizlikte veri kesmeyi kapat (Rüzgarı konuşma sanıp kesmesin)
     // useinbandfec=1 -> Paket kaybı onarımı
     // minptime=10 -> Düşük gecikme (10ms paketler)
-    final newParams = 'a=fmtp:$payloadType minptime=10;useinbandfec=1;maxaveragebitrate=$_currentBitrate;stereo=0;sprop-stereo=0;usedtx=0;cbr=0\r\n';
+    final newParams =
+        'a=fmtp:$payloadType minptime=10;useinbandfec=1;maxaveragebitrate=$_currentBitrate;stereo=0;sprop-stereo=0;usedtx=0;cbr=0\r\n';
 
     if (!sdp.contains(fmtpRegex)) {
       // fmtp satırı yoksa rtpmap'in altına ekle
       return sdp.replaceFirst(
-          'a=rtpmap:$payloadType opus/48000/2\r\n',
-          'a=rtpmap:$payloadType opus/48000/2\r\n$newParams'
+        'a=rtpmap:$payloadType opus/48000/2\r\n',
+        'a=rtpmap:$payloadType opus/48000/2\r\n$newParams',
       );
     }
 

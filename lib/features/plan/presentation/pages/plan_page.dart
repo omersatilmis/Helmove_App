@@ -153,10 +153,10 @@ class _PlanViewState extends State<_PlanView> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.2),
+                color: AppColors.primary.withValues(alpha:0.2),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.2),
+                    color: AppColors.primary.withValues(alpha:0.2),
                     blurRadius: 100,
                     spreadRadius: 20,
                   ),

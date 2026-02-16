@@ -41,8 +41,8 @@ class GroupRideEntity {
     this.ridingStyle,
     this.requirements,
     required this.isPrivate,
-    this.voiceSessionId,
+    this.sessionId,
   });
 
-  final int? voiceSessionId;
+  final int? sessionId;
 }

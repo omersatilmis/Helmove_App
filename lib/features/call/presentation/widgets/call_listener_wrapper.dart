@@ -10,6 +10,7 @@ import '../../../../core/utils/app_logger.dart';
 import '../../../../features/call/presentation/bloc/call_bloc.dart';
 import '../../../../features/call/presentation/bloc/call_event.dart';
 import '../../../../features/messages/presentation/pages/call_page.dart';
+import '../../../../core/services/models/signalr_payloads.dart';
 
 class CallListenerWrapper extends StatefulWidget {
   final Widget child;
@@ -21,7 +22,7 @@ class CallListenerWrapper extends StatefulWidget {
 }
 
 class _CallListenerWrapperState extends State<CallListenerWrapper> {
-  StreamSubscription<Map<String, dynamic>>? _incomingCallSub;
+  StreamSubscription<CallRequestPayload>? _incomingCallSub;
   StreamSubscription<CallKitAction>? _callKitActionSub;
   bool _isOpeningIncomingCall = false;
   int? _lastOpenedCallerId;
@@ -40,24 +41,21 @@ class _CallListenerWrapperState extends State<CallListenerWrapper> {
       signalR.init();
     }
 
-    _incomingCallSub = signalR.incomingCallStream.listen((data) {
+    _incomingCallSub = signalR.incomingCallStream.listen((payload) {
       if (!mounted) return;
 
-      final callerId = _toInt(data['callerId']) ?? _toInt(data['CallerId']);
+      final callerId = _toInt(payload.callerId);
       if (callerId == null || callerId <= 0) {
         AppLogger.warning(
-          'CallListenerWrapper: Invalid callerId in incoming payload: $data',
+          'CallListenerWrapper: Invalid callerId in incoming payload: $payload',
         );
         return;
       }
 
       _openIncomingCallPage(
         callerId: callerId,
-        callId: _toInt(data['callId']) ?? _toInt(data['CallId']),
-        callerDisplayName:
-            data['callerDisplayName']?.toString() ??
-            data['CallerDisplayName']?.toString() ??
-            data['displayName']?.toString(),
+        callId: _toInt(payload.callId),
+        callerDisplayName: payload.callerDisplayName,
         autoAcceptIncoming: false,
       );
     });

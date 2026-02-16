@@ -87,18 +87,13 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   }
 
   void _subscribeToSignalRStreams() {
-    _incomingCallSub = signalRService.incomingCallStream.listen((data) {
+    _incomingCallSub = signalRService.incomingCallStream.listen((payload) {
       if (isClosed) return;
 
-      final callerId = _readIntFromMap(data, const [
-        'callerId',
-        'CallerId',
-        'fromUserId',
-        'FromUserId',
-      ]);
+      final callerId = int.tryParse(payload.callerId) ?? -1;
       if (callerId <= 0) {
         AppLogger.warning(
-          'CallBloc: Incoming call ignored, invalid caller id. Payload: $data',
+          'CallBloc: Incoming call ignored, invalid caller id. Payload: $payload',
         );
         return;
       }
@@ -106,20 +101,15 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       add(
         CallIncomingReceived(
           callerId: callerId,
-          callerDisplayName: _readStringFromMap(data, const [
-            'callerDisplayName',
-            'CallerDisplayName',
-            'displayName',
-            'DisplayName',
-          ]),
-          callId: _readNullableIntFromMap(data, const ['callId', 'CallId']),
+          callerDisplayName: payload.callerDisplayName,
+          callId: payload.callId,
         ),
       );
     });
 
-    _callAcceptedSub = signalRService.callAcceptedStream.listen((data) {
+    _callAcceptedSub = signalRService.callAcceptedStream.listen((payload) {
       if (isClosed) return;
-      final acceptedByUserId = _readIntDynamic(data);
+      final acceptedByUserId = int.tryParse(payload.actorId) ?? -1;
       if (acceptedByUserId <= 0) {
         AppLogger.warning('CallBloc: CallAccepted ignored, invalid actor id.');
         return;
@@ -127,48 +117,26 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       add(CallAcceptedByRemote(targetUserId: acceptedByUserId));
     });
 
-    _callRejectedSub = signalRService.callRejectedStream.listen((data) {
+    _callRejectedSub = signalRService.callRejectedStream.listen((payload) {
       if (isClosed) return;
-      final rejectedByUserId = _readIntFromMap(data, const [
-        'rejectedByUserId',
-        'RejectedByUserId',
-        'targetUserId',
-        'TargetUserId',
-        'callerId',
-        'CallerId',
-        'userId',
-        'UserId',
-      ]);
+      final rejectedByUserId = int.tryParse(payload.actorId) ?? -1;
       if (rejectedByUserId <= 0) {
-        AppLogger.warning(
-          'CallBloc: CallRejected ignored, invalid actor id. Payload: $data',
-        );
+        AppLogger.warning('CallBloc: CallRejected ignored, invalid actor id.');
         return;
       }
       add(
         CallRejectedByRemote(
           targetUserId: rejectedByUserId,
-          reason: _readStringFromMap(data, const ['reason', 'Reason']),
+          reason: payload.reason,
         ),
       );
     });
 
-    _callEndedSub = signalRService.callEndedStream.listen((data) {
+    _callEndedSub = signalRService.callEndedStream.listen((payload) {
       if (isClosed) return;
-      final endedByUserId = _readIntFromMap(data, const [
-        'endedByUserId',
-        'EndedByUserId',
-        'callerId',
-        'CallerId',
-        'userId',
-        'UserId',
-      ]);
-      final targetUserId = _readIntFromMap(data, const [
-        'targetUserId',
-        'TargetUserId',
-        'receiverId',
-        'ReceiverId',
-      ]);
+      final endedByUserId = int.tryParse(payload.actorId) ?? -1;
+      // targetUserId might be null or string
+      final targetUserId = int.tryParse(payload.targetUserId ?? '') ?? -1;
 
       add(
         CallEndedByRemote(
@@ -178,24 +146,18 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       );
     });
 
-    _offerSub = signalRService.offerStream.listen((data) {
+    _offerSub = signalRService.offerStream.listen((payload) {
       if (isClosed) return;
 
-      final callerId = _readIntFromMap(data, const [
-        'callerId',
-        'CallerId',
-        'fromUserId',
-        'FromUserId',
-      ]);
-      final rawSdp = data['sdp'] ?? data['Sdp'];
-      final sdp = rawSdp is String ? rawSdp : (rawSdp?.toString() ?? '');
+      final callerId = int.tryParse(payload.userId) ?? -1;
+      final sdp = payload.sdp;
+
       if (callerId <= 0 ||
           sdp.trim().isEmpty ||
           !sdp.trimLeft().startsWith('v=')) {
         AppLogger.warning(
           'CallBloc: Offer ignored, invalid payload. '
-          'callerId=$callerId sdpEmpty=${sdp.trim().isEmpty} '
-          'sdpType=${rawSdp?.runtimeType} sdpHead=${_sdpHeadSafe(sdp)}',
+          'callerId=$callerId sdpEmpty=${sdp.trim().isEmpty}',
         );
         return;
       }
@@ -204,24 +166,18 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       add(OfferReceived(callerId: callerId, sdp: sdp));
     });
 
-    _answerSub = signalRService.answerStream.listen((data) {
+    _answerSub = signalRService.answerStream.listen((payload) {
       if (isClosed) return;
 
-      final targetUserId = _readIntFromMap(data, const [
-        'targetUserId',
-        'TargetUserId',
-        'userId',
-        'UserId',
-      ]);
-      final rawSdp = data['sdp'] ?? data['Sdp'];
-      final sdp = rawSdp is String ? rawSdp : (rawSdp?.toString() ?? '');
+      final targetUserId = int.tryParse(payload.userId) ?? -1;
+      final sdp = payload.sdp;
+
       if (targetUserId <= 0 ||
           sdp.trim().isEmpty ||
           !sdp.trimLeft().startsWith('v=')) {
         AppLogger.warning(
           'CallBloc: Answer ignored, invalid payload. '
-          'targetUserId=$targetUserId sdpEmpty=${sdp.trim().isEmpty} '
-          'sdpType=${rawSdp?.runtimeType} sdpHead=${_sdpHeadSafe(sdp)}',
+          'targetUserId=$targetUserId sdpEmpty=${sdp.trim().isEmpty} ',
         );
         return;
       }
@@ -230,17 +186,14 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       add(AnswerReceived(targetUserId: targetUserId, sdp: sdp));
     });
 
-    _iceCandidateSignalRSub = signalRService.iceCandidateStream.listen((data) {
+    _iceCandidateSignalRSub = signalRService.iceCandidateStream.listen((
+      payload,
+    ) {
       if (isClosed) return;
 
-      final fromUserId = _readIntFromMap(data, const [
-        'fromUserId',
-        'FromUserId',
-        'userId',
-        'UserId',
-      ]);
-      final candidate =
-          _readStringFromMap(data, const ['candidate', 'Candidate']) ?? '';
+      final fromUserId = int.tryParse(payload.fromUserId) ?? -1;
+      final candidate = payload.candidate;
+
       if (fromUserId <= 0 || candidate.isEmpty) {
         AppLogger.warning(
           'CallBloc: ICE ignored, invalid payload. fromUserId=$fromUserId candidateEmpty=${candidate.isEmpty}',
@@ -252,11 +205,8 @@ class CallBloc extends Bloc<CallEvent, CallState> {
         IceCandidateReceived(
           fromUserId: fromUserId,
           candidate: candidate,
-          sdpMid: _readStringFromMap(data, const ['sdpMid', 'SdpMid']),
-          sdpMLineIndex: _readNullableIntFromMap(data, const [
-            'sdpMLineIndex',
-            'SdpMLineIndex',
-          ]),
+          sdpMid: payload.sdpMid,
+          sdpMLineIndex: payload.sdpMLineIndex,
         ),
       );
     });
@@ -1107,72 +1057,6 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       case RTCPeerConnectionState.RTCPeerConnectionStateConnecting:
         return 'connecting';
     }
-  }
-
-  int _readIntDynamic(dynamic value) {
-    if (value is int) return value;
-    if (value is String) return int.tryParse(value) ?? 0;
-
-    if (value is Map<String, dynamic>) {
-      return _readIntFromMap(value, const [
-        'targetUserId',
-        'TargetUserId',
-        'userId',
-        'UserId',
-        'id',
-        'Id',
-      ]);
-    }
-
-    if (value is Map) {
-      return _readIntFromMap(Map<String, dynamic>.from(value), const [
-        'targetUserId',
-        'TargetUserId',
-        'userId',
-        'UserId',
-        'id',
-        'Id',
-      ]);
-    }
-
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  int _readIntFromMap(Map<String, dynamic> data, List<String> keys) {
-    for (final key in keys) {
-      final value = data[key];
-      if (value is int) return value;
-      final parsed = int.tryParse(value?.toString() ?? '');
-      if (parsed != null) return parsed;
-    }
-    return 0;
-  }
-
-  int? _readNullableIntFromMap(Map<String, dynamic> data, List<String> keys) {
-    for (final key in keys) {
-      final value = data[key];
-      if (value is int) return value;
-      final parsed = int.tryParse(value?.toString() ?? '');
-      if (parsed != null) return parsed;
-    }
-    return null;
-  }
-
-  String? _readStringFromMap(Map<String, dynamic> data, List<String> keys) {
-    for (final key in keys) {
-      final value = data[key];
-      if (value == null) continue;
-      final text = value.toString().trim();
-      if (text.isNotEmpty) return text;
-    }
-    return null;
-  }
-
-  String _sdpHeadSafe(String sdp) {
-    if (sdp.isEmpty) return 'empty';
-    final flattened = sdp.replaceAll('\r', r'\r').replaceAll('\n', r'\n');
-    if (flattened.length <= 40) return flattened;
-    return '${flattened.substring(0, 40)}...';
   }
 
   @override

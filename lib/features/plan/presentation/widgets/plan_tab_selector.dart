@@ -57,7 +57,7 @@ class PlanTabSelector extends StatelessWidget {
                           boxShadow: [
                             BoxShadow(
                               color: plans[safeIndex].gradientColors.first
-                                  .withOpacity(0.3),
+                                  .withValues(alpha:0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),

@@ -1,8 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/features/drawer/app_drawer.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:moto_comm_app_1/core/di/injection_container.dart';
+import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/core/theme/theme_provider.dart';
 
 final GlobalKey<ScaffoldState> mainScaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -27,17 +32,26 @@ class BottomBarWrapper extends StatelessWidget {
       currentIndex++; // Skip the Add Post index for UI
     }
 
-    return Scaffold(
-      key: mainScaffoldKey,
-      extendBody:
-          true, // Arkadaki içeriğin bottom barın altına girmesini sağlar
-      drawer: const AppDrawer(),
-      body: navigationShell,
+    // Provider'ları sadece bu shell'in altına inject et.
+    // Root'ta değil ama StatefulShellRoute.builder içinde — yine derinlik ekler
+    // ama alternatif yok (drawer + pages için gerekli).
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: sl<AuthProvider>()),
+        ChangeNotifierProvider.value(value: sl<ThemeProvider>()),
+        ChangeNotifierProvider.value(value: sl<ProfileProvider>()),
+      ],
+      child: Scaffold(
+        key: mainScaffoldKey,
+        extendBody:
+            true, // Arkadaki içeriğin bottom barın altına girmesini sağlar
+        drawer: const AppDrawer(),
+        body: navigationShell,
 
-      // 🎨 BOTTOM BAR TASARIMI
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          // 1. Arkadaki sabit ışığı kapatır (Zaten vardı)
+        // 🎨 BOTTOM BAR TASARIMI
+        bottomNavigationBar: NavigationBarTheme(
+          data: NavigationBarThemeData(
+            // 1. Arkadaki sabit ışığı kapatır (Zaten vardı)
           indicatorColor: Colors.transparent,
 
           // 🔥 2. YENİ EKLENDİ: Tıklayınca çıkan dalgalanma (ripple) efektini kapatır
@@ -170,6 +184,7 @@ class BottomBarWrapper extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+    ); // MultiProvider child (Scaffold) kapanış parantezi
   }
 }

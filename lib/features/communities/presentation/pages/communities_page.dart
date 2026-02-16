@@ -58,7 +58,7 @@ class CommunitiesPage extends StatelessWidget {
                     Icon(
                       Icons.groups_rounded,
                       size: 80,
-                      color: theme.colorScheme.primary.withOpacity(0.5),
+                      color: theme.colorScheme.primary.withValues(alpha:0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(

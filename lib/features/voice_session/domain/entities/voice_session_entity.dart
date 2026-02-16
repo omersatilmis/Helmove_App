@@ -13,12 +13,13 @@ class VoiceSessionEntity extends Equatable {
   final String roomName;
   final bool isActive;
   final DateTime createdAt;
-  final int? groupRideId;
+  final int? rideId;
   final int maxParticipants;
   final String? destination;
   final String? ridingStyle;
   final String? difficulty;
   final List<VoiceSessionParticipantEntity> participants;
+  final int joinedCount;
 
   const VoiceSessionEntity({
     required this.id,
@@ -31,13 +32,54 @@ class VoiceSessionEntity extends Equatable {
     required this.roomName,
     required this.isActive,
     required this.createdAt,
-    this.groupRideId,
+    this.rideId,
     this.maxParticipants = 10,
     this.destination,
     this.ridingStyle,
     this.difficulty,
     required this.participants,
+    this.joinedCount = 0,
   });
+
+  VoiceSessionEntity copyWith({
+    int? id,
+    int? hostUserId,
+    String? hostUsername,
+    String? hostFirstName,
+    String? hostLastName,
+    String? hostProfileImage,
+    String? title,
+    String? roomName,
+    bool? isActive,
+    DateTime? createdAt,
+    int? rideId,
+    int? maxParticipants,
+    String? destination,
+    String? ridingStyle,
+    String? difficulty,
+    List<VoiceSessionParticipantEntity>? participants,
+    int? joinedCount,
+  }) {
+    return VoiceSessionEntity(
+      id: id ?? this.id,
+      hostUserId: hostUserId ?? this.hostUserId,
+      hostUsername: hostUsername ?? this.hostUsername,
+      hostFirstName: hostFirstName ?? this.hostFirstName,
+      hostLastName: hostLastName ?? this.hostLastName,
+      hostProfileImage: hostProfileImage ?? this.hostProfileImage,
+      title: title ?? this.title,
+      roomName: roomName ?? this.roomName,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      rideId: rideId ?? this.rideId,
+      maxParticipants: maxParticipants ?? this.maxParticipants,
+      destination: destination ?? this.destination,
+      ridingStyle: ridingStyle ?? this.ridingStyle,
+      difficulty: difficulty ?? this.difficulty,
+      participants: participants ?? this.participants,
+      joinedCount: joinedCount ?? this.joinedCount,
+    );
+  }
 
   /// Host'un görünen adı
   String get hostDisplayName {
@@ -69,7 +111,7 @@ class VoiceSessionEntity extends Equatable {
     roomName,
     isActive,
     createdAt,
-    groupRideId,
+    rideId,
     participants,
   ];
 }

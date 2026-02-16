@@ -141,7 +141,7 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final borderColor = theme.dividerColor.withOpacity(0.1);
+    final borderColor = theme.dividerColor.withValues(alpha:0.1);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -151,7 +151,7 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -183,7 +183,7 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
                     color: widget.bike.isPrimary
                         ? Colors
                               .amber // Favori rengi
-                        : theme.colorScheme.onSurface.withOpacity(0.3),
+                        : theme.colorScheme.onSurface.withValues(alpha:0.3),
                   ),
                 ),
                 // AKSİYON BUTONLARI
@@ -250,7 +250,7 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
 
   Widget _buildViewInfo(ThemeData theme) {
     final labelStyle = AppTextStyles.bodySmall.copyWith(
-      color: theme.colorScheme.onSurface.withOpacity(0.5),
+      color: theme.colorScheme.onSurface.withValues(alpha:0.5),
       fontSize: 12,
     );
     final valueStyle = AppTextStyles.medium.copyWith(

@@ -6,7 +6,6 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_input_field.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/comment_entity.dart';
 import '../bloc/comments_bloc.dart';
 import '../bloc/comments_event.dart';
@@ -86,7 +85,7 @@ class _SheetHeader extends StatelessWidget {
               // DİNAMİK RENK: Arka plan koyuysa açık, açıksa koyu olur
               color: Theme.of(
                 context,
-              ).colorScheme.onSurfaceVariant.withOpacity(0.3),
+              ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -156,7 +155,7 @@ class _CommentsList extends StatelessWidget {
                   size: 60,
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -285,7 +284,7 @@ class _CommentItem extends StatelessWidget {
                   height: 1.3,
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withOpacity(0.9),
+                  ).colorScheme.onSurface.withValues(alpha: 0.9),
                 ),
               ),
             ],
@@ -321,14 +320,15 @@ class _CommentMoreButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final currentUser = authProvider.currentUser;
+    final currentUserId = context.select(
+      (CommentsBloc bloc) => bloc.state.currentUserId,
+    );
 
     // ZIRHLI SAHİPLİK KONTROLÜ
     final bool isOwner =
-        currentUser != null &&
-        currentUser.id != 0 &&
-        currentUser.id.toString() == comment.userId.toString();
+        currentUserId != null &&
+        currentUserId != 0 &&
+        currentUserId.toString() == comment.userId.toString();
 
     // SAMSUNG ONE UI STİLİ POPUP MENU
     return PopupMenuButton<String>(

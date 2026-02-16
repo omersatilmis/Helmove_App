@@ -49,20 +49,21 @@ dependencies:
   image_picker: ^1.2.1
   connectivity_plus: ^7.0.0
   flutter_image_compress: ^2.4.0
-  path_provider: ^2.1.5
+
   cached_network_image: ^3.4.1
   signalr_netcore: ^1.4.4
 
   bloc: any
-  flutter_webrtc: ^1.3.0
-  permission_handler: ^12.0.1
   livekit_client: ^2.6.2
+  flutter_webrtc: ^1.3.0
+  permission_handler: ^11.3.1
+  audio_session: ^0.1.21
+  path_provider: ^2.1.3
   onesignal_flutter: ^5.0.0
   flutter_callkit_incoming: ^3.0.0
   uuid: ^4.5.1
+  rxdart: ^0.28.0
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   build_runner: ^2.4.10
   widgetbook_generator: ^3.6.0
 

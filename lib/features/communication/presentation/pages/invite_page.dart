@@ -53,7 +53,7 @@ class InvitePage extends StatelessWidget {
           create: (_) => sl<FriendshipListBloc>()..add(LoadMyFriendsEvent()),
         ),
         BlocProvider(create: (_) => sl<DiscoverBloc>()),
-        BlocProvider(create: (_) => sl<VoiceSessionBloc>()),
+        BlocProvider.value(value: sl<VoiceSessionBloc>()),
         BlocProvider(create: (_) => sl<GroupRideBloc>()),
       ],
       child: _InviteView(
@@ -167,7 +167,7 @@ class _InviteViewState extends State<_InviteView> {
                 '/communication/group-page',
                 extra: GroupRideArgs(
                   rideId: state.ride.id,
-                  voiceSessionId: state.voiceSessionId,
+                  sessionId: state.sessionId,
                   groupName: state.ride.title,
                   maxParticipants: state.ride.maxParticipants,
                   currentParticipants: 1,
@@ -449,7 +449,7 @@ class _InviteViewState extends State<_InviteView> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: colorScheme.primary.withOpacity(0.5),
+                    color: colorScheme.primary.withValues(alpha:0.5),
                     width: 1.5,
                   ),
                 ),

@@ -41,3 +41,12 @@ class DeleteCommentEvent extends CommentsEvent {
   @override
   List<Object> get props => [commentId, contentId];
 }
+
+class CommentsCurrentUserChangedEvent extends CommentsEvent {
+  final int? userId;
+
+  const CommentsCurrentUserChangedEvent(this.userId);
+
+  @override
+  List<Object> get props => userId == null ? const [] : [userId!];
+}

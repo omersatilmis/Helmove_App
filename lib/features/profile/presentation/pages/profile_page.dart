@@ -10,7 +10,6 @@ import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_in
 import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_tabs.dart';
 
 // 🔥 PROVIDER IMPORTLARI
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 
 // 🔥 FRIENDSHIP BLOC IMPORTLARI
@@ -61,16 +60,11 @@ class _ProfilePageState extends State<ProfilePage> {
     _scrollController.addListener(_handleScroll);
 
     // 🔥 INITIALIZE BLOCS IMMEDIATELY to avoid null crash in first build
-    final authProvider = context.read<AuthProvider>();
-    final myId = authProvider.currentUser?.id;
+    final profileProvider = context.read<ProfileProvider>();
+    final myId = profileProvider.currentUserId;
 
     // Kendi profilim mi diye kontrol et
-    bool isMe = false;
-    if (widget.userId == null) {
-      isMe = true;
-    } else if (myId != null && widget.userId == myId.toString()) {
-      isMe = true;
-    }
+    final bool isMe = profileProvider.isOwnProfileTarget(widget.userId);
 
     if (isMe) {
       // 🔥 Kendi profilimizse arkadaşlık istatistiklerini yükle
@@ -91,7 +85,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (isMe) {
+      if (isMe && myId != null) {
         context.read<ProfileProvider>().loadProfile();
       } else {
         final userIdInt = int.tryParse(widget.userId!);
@@ -328,19 +322,10 @@ class _ProfilePageState extends State<ProfilePage> {
     final topSafe = MediaQuery.of(context).padding.top;
 
     // 🔥 1. AuthProvider'dan BENİM ID'mi al
-    final authProvider = context.watch<AuthProvider>();
-    final myId = authProvider.currentUser?.id;
-
-    // 🔥 4. Kendi profilim mi kontrolü (Logic taşıdık)
-    bool isOwnProfile = false;
-    if (widget.userId == null) {
-      isOwnProfile = true;
-    } else if (myId != null && widget.userId == myId.toString()) {
-      isOwnProfile = true;
-    }
+    final profileProvider = context.watch<ProfileProvider>();
+    final isOwnProfile = profileProvider.isOwnProfileTarget(widget.userId);
 
     // 🔥 2. ProfileProvider'dan DOĞRU kullanıcıyı al
-    final profileProvider = context.watch<ProfileProvider>();
     // Eğer kendi profilimse 'profile', başkasıysa 'visitedProfile'
     final displayedUser = isOwnProfile
         ? profileProvider.profile
@@ -417,7 +402,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     style: AppTextStyles.bodySmall.copyWith(
                                       fontSize: 12,
                                       color: theme.colorScheme.onSurface
-                                          .withOpacity(0.6),
+                                          .withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ],

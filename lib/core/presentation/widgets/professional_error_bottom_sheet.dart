@@ -38,7 +38,7 @@ class ProfessionalErrorBottomSheet extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -60,7 +60,7 @@ class ProfessionalErrorBottomSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withOpacity(0.2),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -73,7 +73,7 @@ class ProfessionalErrorBottomSheet extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withOpacity(0.1),
+                  color: theme.colorScheme.error.withValues(alpha:0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -103,7 +103,7 @@ class ProfessionalErrorBottomSheet extends StatelessWidget {
               color: isDark ? const Color(0xFF2C2C2C) : Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                color: theme.colorScheme.outlineVariant.withValues(alpha:0.5),
               ),
             ),
             child: Column(

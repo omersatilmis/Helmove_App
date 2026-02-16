@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/login_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/core/theme/theme_provider.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/invite_page.dart';
 // Removed CallListenerWrapper import
 
@@ -23,7 +26,6 @@ import 'package:moto_comm_app_1/features/media/presentation/pages/prepare_media_
 import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_event.dart';
-import 'package:moto_comm_app_1/features/call/presentation/bloc/call_bloc.dart';
 
 // Drawer Sayfalarının Importları
 import 'package:moto_comm_app_1/features/profile/presentation/pages/profile_page.dart';
@@ -57,6 +59,18 @@ class PlaceholderScreen extends StatelessWidget {
 // -------------------------------------
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
+
+// Helper: Provider tree wrap et (sadece auth sayfaları için)
+Widget _wrapWithProviders(Widget child) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider.value(value: sl<AuthProvider>()),
+      ChangeNotifierProvider.value(value: sl<ThemeProvider>()),
+      ChangeNotifierProvider.value(value: sl<ProfileProvider>()),
+    ],
+    child: child,
+  );
+}
 
 // --- REFACTOR: Router'ı bir fonksiyon haline getirdik ---
 // Böylece AuthProvider'ı dinleyip yönlendirme yapabiliriz.
@@ -97,27 +111,30 @@ GoRouter createRouter(AuthProvider authProvider) {
 
     routes: [
       // --- 1. TAM EKRAN SAYFALAR ---
-      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => _wrapWithProviders(const LoginPage()),
+      ),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const RegisterPage(),
+        builder: (context, state) => _wrapWithProviders(const RegisterPage()),
       ),
 
       // Drawer içinden gidilen sayfalar
       GoRoute(
         path: '/profile',
-        builder: (context, state) => const ProfilePage(),
+        builder: (context, state) => _wrapWithProviders(const ProfilePage()),
       ),
       GoRoute(
         path: '/profile/:userId',
         builder: (context, state) {
           final userId = state.pathParameters['userId'];
-          return ProfilePage(userId: userId);
+          return _wrapWithProviders(ProfilePage(userId: userId));
         },
       ),
       GoRoute(
         path: '/edit-profile',
-        builder: (context, state) => const EditProfilePage(),
+        builder: (context, state) => _wrapWithProviders(const EditProfilePage()),
       ),
       GoRoute(path: '/plans', builder: (context, state) => const PlanPage()),
       GoRoute(
@@ -126,11 +143,11 @@ GoRouter createRouter(AuthProvider authProvider) {
       ),
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const SettingsPage(),
+        builder: (context, state) => _wrapWithProviders(const SettingsPage()),
       ),
       GoRoute(
         path: '/my-garage',
-        builder: (context, state) => const MyGaragePage(),
+        builder: (context, state) => _wrapWithProviders(const MyGaragePage()),
       ),
       GoRoute(path: '/help', builder: (context, state) => const HelpPage()),
 
@@ -215,7 +232,7 @@ GoRouter createRouter(AuthProvider authProvider) {
                           sl<GroupRideBloc>()
                             ..add(const LoadActiveGroupRidesEvent()),
                     ),
-                    BlocProvider(create: (context) => sl<VoiceSessionBloc>()),
+                    BlocProvider.value(value: sl<VoiceSessionBloc>()),
                   ],
                   child: const CommunicationPage(),
                 ),
@@ -245,10 +262,7 @@ GoRouter createRouter(AuthProvider authProvider) {
                           BlocProvider(
                             create: (context) => sl<GroupRideBloc>(),
                           ),
-                          BlocProvider(
-                            create: (context) => sl<VoiceSessionBloc>(),
-                          ),
-                          BlocProvider.value(value: sl<CallBloc>()),
+                          BlocProvider.value(value: sl<VoiceSessionBloc>()),
                         ],
                         child: GroupPage(data: args),
                       );
@@ -263,9 +277,7 @@ GoRouter createRouter(AuthProvider authProvider) {
                           BlocProvider(
                             create: (context) => sl<GroupRideBloc>(),
                           ),
-                          BlocProvider(
-                            create: (context) => sl<VoiceSessionBloc>(),
-                          ),
+                          BlocProvider.value(value: sl<VoiceSessionBloc>()),
                         ],
                         child: extra is Map
                             ? InvitePage(
@@ -284,10 +296,23 @@ GoRouter createRouter(AuthProvider authProvider) {
                   GoRoute(
                     path: 'group-settings',
                     builder: (context, state) {
-                      final args = state.extra is GroupRideArgs
-                          ? (state.extra as GroupRideArgs)
-                          : (state.extra as Map<String, dynamic>)['data']
-                                as GroupRideArgs;
+                      GroupRideArgs? args;
+                      if (state.extra is GroupRideArgs) {
+                        args = state.extra as GroupRideArgs;
+                      } else if (state.extra is Map<String, dynamic>) {
+                        final data = (state.extra as Map<String, dynamic>)['data'];
+                        if (data is GroupRideArgs) {
+                          args = data;
+                        }
+                      }
+
+                      if (args == null) {
+                        return const Scaffold(
+                          body: Center(
+                            child: Text('Grup ayarları yüklenemedi.'),
+                          ),
+                        );
+                      }
 
                       return BlocProvider(
                         create: (context) => sl<GroupRideBloc>(),

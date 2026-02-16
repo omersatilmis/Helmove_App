@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/services/app_session.dart';
+import '../../../auth/domain/usecases/get_current_user_id_use_case.dart';
 import '../../domain/usecases/add_comment_usecase.dart';
 import '../../domain/usecases/delete_comment_usecase.dart';
 import '../../domain/usecases/get_comments_usecase.dart';
@@ -9,15 +13,46 @@ class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
   final GetCommentsUseCase getComments;
   final AddCommentUseCase addComment;
   final DeleteCommentUseCase deleteComment;
+  final GetCurrentUserIdUseCase getCurrentUserIdUseCase;
+  final AppSession appSession;
+  StreamSubscription<int?>? _appSessionUserIdSubscription;
 
   CommentsBloc({
     required this.getComments,
     required this.addComment,
     required this.deleteComment,
+    required this.getCurrentUserIdUseCase,
+    required this.appSession,
   }) : super(const CommentsState()) {
     on<LoadCommentsEvent>(_onLoadComments);
     on<AddCommentEvent>(_onAddComment);
     on<DeleteCommentEvent>(_onDeleteComment);
+    on<CommentsCurrentUserChangedEvent>(_onCommentsCurrentUserChanged);
+
+    Future.microtask(_initializeCurrentUserBridge);
+  }
+
+  Future<void> _initializeCurrentUserBridge() async {
+    final userId = appSession.currentUserId ?? await getCurrentUserIdUseCase();
+    if (!isClosed) {
+      add(CommentsCurrentUserChangedEvent(userId));
+    }
+
+    _appSessionUserIdSubscription = appSession.currentUserIdStream.distinct().listen((userId) {
+      if (!isClosed) {
+        add(CommentsCurrentUserChangedEvent(userId));
+      }
+    });
+  }
+
+  void _onCommentsCurrentUserChanged(
+    CommentsCurrentUserChangedEvent event,
+    Emitter<CommentsState> emit,
+  ) {
+    if (state.currentUserId == event.userId) {
+      return;
+    }
+    emit(state.copyWith(currentUserId: event.userId));
   }
 
   Future<void> _onLoadComments(
@@ -125,5 +160,11 @@ class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
       },
       (_) {}, // Success
     );
+  }
+
+  @override
+  Future<void> close() {
+    _appSessionUserIdSubscription?.cancel();
+    return super.close();
   }
 }

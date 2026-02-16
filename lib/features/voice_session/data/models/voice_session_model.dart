@@ -13,12 +13,13 @@ class VoiceSessionModel extends VoiceSessionEntity {
     required super.roomName,
     required super.isActive,
     required super.createdAt,
-    super.groupRideId,
+    super.rideId,
     super.maxParticipants = 10,
     super.destination,
     super.ridingStyle,
     super.difficulty,
     required List<VoiceSessionParticipantModel> super.participants,
+    super.joinedCount = 0,
   });
 
   factory VoiceSessionModel.fromJson(Map<String, dynamic> json) {
@@ -42,7 +43,7 @@ class VoiceSessionModel extends VoiceSessionEntity {
       title: data['title'] ?? '',
       roomName: data['roomName'] ?? '',
       isActive: data['isActive'] ?? true,
-      groupRideId: data['groupRideId'],
+      rideId: data['rideId'],
       maxParticipants: data['maxParticipants'] ?? 10,
       destination: data['destination'],
       ridingStyle: data['ridingStyle'],
@@ -51,6 +52,7 @@ class VoiceSessionModel extends VoiceSessionEntity {
           ? DateTime.tryParse(data['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       participants: participantsList,
+      joinedCount: data['joinedCount'] ?? 0,
     );
   }
 

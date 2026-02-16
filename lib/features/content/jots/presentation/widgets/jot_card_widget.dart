@@ -22,7 +22,7 @@ class JotCardWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textPrimary = colorScheme.onSurface;
-    final textSecondary = colorScheme.onSurface.withOpacity(0.6);
+    final textSecondary = colorScheme.onSurface.withValues(alpha:0.6);
 
     final firstName = jot.firstName ?? jot.username ?? "Kullanıcı";
     final lastName = jot.lastName ?? "";
@@ -41,7 +41,7 @@ class JotCardWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: theme.dividerColor.withOpacity(0.2)),
+            bottom: BorderSide(color: theme.dividerColor.withValues(alpha:0.2)),
           ),
         ),
         child: Column(
@@ -82,7 +82,7 @@ class JotCardWidget extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: colorScheme.primary.withOpacity(0.1),
+                                color: colorScheme.primary.withValues(alpha:0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -141,7 +141,7 @@ class JotCardWidget extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   height: 1.4,
-                  color: textPrimary.withOpacity(0.9),
+                  color: textPrimary.withValues(alpha:0.9),
                 ),
               ),
             ),
@@ -215,7 +215,7 @@ class _ActionButton extends StatelessWidget {
     final theme = Theme.of(context);
     final color = isActive
         ? (activeColor ?? theme.primaryColor)
-        : theme.colorScheme.onSurface.withOpacity(0.5);
+        : theme.colorScheme.onSurface.withValues(alpha:0.5);
     final currentIcon = isActive ? (activeIcon ?? icon) : icon;
 
     return InkWell(

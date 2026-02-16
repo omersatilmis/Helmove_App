@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:provider/provider.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
-import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/post_entity.dart';
 
 class PostCardModern extends StatefulWidget {
   final PostEntity post;
+  final int? currentUserId;
   final VoidCallback? onDelete;
   final VoidCallback? onLike;
   final VoidCallback? onComment;
@@ -18,6 +17,7 @@ class PostCardModern extends StatefulWidget {
   const PostCardModern({
     super.key,
     required this.post,
+    this.currentUserId,
     this.onDelete,
     this.onLike,
     this.onComment,
@@ -61,22 +61,11 @@ class _PostCardModernState extends State<PostCardModern>
 
   @override
   Widget build(BuildContext context) {
-    // 1. ADIM: AuthProvider'dan mevcut kullanıcıyı al
-    final authProvider = context.watch<AuthProvider>();
-    final currentUser = authProvider.currentUser;
-
-    // 2. ADIM: Kesin sahiplik kontrolü (Zırhlı Mantık)
+    // 1. ADIM: State'ten gelen currentUserId ile sahiplik kontrolü
     final bool isOwner =
-        currentUser != null &&
-        currentUser.id != 0 &&
-        currentUser.id.toString() == widget.post.userId.toString();
-
-    debugPrint('--- Post Ownership Debug ---');
-    debugPrint('Post ID: ${widget.post.id}');
-    debugPrint('Current User ID: ${currentUser?.id}');
-    debugPrint('Post User ID: ${widget.post.userId}');
-    debugPrint('Is Owner: $isOwner');
-    debugPrint('---------------------------');
+      widget.currentUserId != null &&
+      widget.currentUserId != 0 &&
+      widget.currentUserId.toString() == widget.post.userId.toString();
 
     final bool hasMedia =
         widget.post.mediaUrl != null && widget.post.mediaUrl!.isNotEmpty;
@@ -93,7 +82,7 @@ class _PostCardModernState extends State<PostCardModern>
           color: AppColors.darkSurface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -146,8 +135,8 @@ class _PostCardModernState extends State<PostCardModern>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.5),
-                          Colors.black.withOpacity(1.0),
+                          Colors.black.withValues(alpha: 0.5),
+                          Colors.black.withValues(alpha: 1.0),
                         ],
                       ),
                     ),

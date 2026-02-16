@@ -6,6 +6,7 @@ import 'package:timeago/timeago.dart' as timeago;
 // Proje importların (Yolların doğru olduğundan emin ol)
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/unread_count_badge.dart';
 // AppTextStyles olduğunu varsayıyorum
 import '../bloc/notifications_bloc.dart';
 import '../bloc/notifications_event.dart';
@@ -187,7 +188,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
-              ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -227,6 +228,12 @@ class _NotificationItemModern extends StatelessWidget {
 
   const _NotificationItemModern({required this.notification});
 
+  void _deleteNotification(BuildContext context) {
+    context.read<NotificationsBloc>().add(
+      DeleteNotificationEvent(notification.id),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isUnread = !notification.isRead;
@@ -246,9 +253,9 @@ class _NotificationItemModern extends StatelessWidget {
         color: Colors.redAccent,
         child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
       ),
-      onDismissed: (direction) {
-        // Silme eventi eklenebilir
-        // context.read<NotificationsBloc>().add(DeleteNotificationEvent(notification.id));
+      confirmDismiss: (direction) async {
+        _deleteNotification(context);
+        return true;
       },
       child: InkWell(
         onTap: () => _handleNotificationTap(context),
@@ -399,9 +406,7 @@ class _NotificationItemModern extends StatelessWidget {
 
     if (effectiveSessionId != null) {
       // 1. Bildirimi sil (Optimistik)
-      context.read<NotificationsBloc>().add(
-        DeleteNotificationEvent(notification.id),
-      );
+      _deleteNotification(context);
 
       // 2. Gruba Katılma İsteği ve Navigasyon
       await _goToGroupPage(context, effectiveSessionId);
@@ -414,9 +419,7 @@ class _NotificationItemModern extends StatelessWidget {
 
   Future<void> _handleRejectInvite(BuildContext context) async {
     // Sadece bildirimi sil
-    context.read<NotificationsBloc>().add(
-      DeleteNotificationEvent(notification.id),
-    );
+    _deleteNotification(context);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -552,14 +555,9 @@ class _NotificationItemModern extends StatelessWidget {
 
   Widget _buildTrailingWidget() {
     if (!notification.isRead) {
-      return Container(
-        margin: const EdgeInsets.only(left: 12, top: 12),
-        width: 8,
-        height: 8,
-        decoration: const BoxDecoration(
-          color: AppColors.primary,
-          shape: BoxShape.circle,
-        ),
+      return const UnreadDotBadge(
+        color: AppColors.primary,
+        margin: EdgeInsets.only(left: 12, top: 12),
       );
     }
     return const SizedBox(width: 0);

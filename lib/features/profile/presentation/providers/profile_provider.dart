@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:moto_comm_app_1/features/profile/domain/entities/profile_entity.dart';
 import 'package:moto_comm_app_1/features/profile/domain/entities/motorcycle_entity.dart';
@@ -5,12 +6,29 @@ import 'package:moto_comm_app_1/features/profile/domain/repositories/profile_rep
 import 'package:moto_comm_app_1/core/utils/app_logger.dart';
 import 'package:moto_comm_app_1/core/network/network_service.dart';
 import 'package:moto_comm_app_1/core/utils/image_compressor.dart';
+import 'package:moto_comm_app_1/core/services/app_session.dart';
 
 /// ProfileProvider - Profil verilerini yönetir
 class ProfileProvider extends ChangeNotifier {
   final ProfileRepository _profileRepository;
+  final AppSession _appSession;
+  StreamSubscription<int?>? _sessionUserIdSubscription;
 
-  ProfileProvider(this._profileRepository);
+  ProfileProvider(this._profileRepository, this._appSession) {
+    _currentUserId = _appSession.currentUserId;
+    _sessionUserIdSubscription = _appSession.currentUserIdStream.distinct().listen((userId) {
+      if (_currentUserId == userId) {
+        return;
+      }
+      _currentUserId = userId;
+      if (userId == null) {
+        _profile = null;
+        _visitedProfile = null;
+        _motorcycles = [];
+      }
+      notifyListeners();
+    });
+  }
 
   // State
   bool _isLoading = false;
@@ -18,6 +36,7 @@ class ProfileProvider extends ChangeNotifier {
   ProfileEntity? _profile;
   ProfileEntity? _visitedProfile; // Başkasının profili
   List<MotorcycleEntity> _motorcycles = [];
+  int? _currentUserId;
 
   // Getters
   bool get isLoading => _isLoading;
@@ -25,6 +44,7 @@ class ProfileProvider extends ChangeNotifier {
   ProfileEntity? get profile => _profile;
   ProfileEntity? get visitedProfile => _visitedProfile;
   List<MotorcycleEntity> get motorcycles => _motorcycles;
+  int? get currentUserId => _currentUserId;
 
   // Helper getters (Sadece kendi profilim için)
   String get firstName => _profile?.firstName ?? '';
@@ -38,6 +58,18 @@ class ProfileProvider extends ChangeNotifier {
   String? get city => _profile?.city;
   String? get region => _profile?.region;
   bool get isLoggedIn => _profile != null;
+
+  bool isOwnProfileTarget(String? targetUserId) {
+    if (targetUserId == null) {
+      return _currentUserId != null;
+    }
+
+    if (_currentUserId == null) {
+      return false;
+    }
+
+    return targetUserId == _currentUserId.toString();
+  }
 
   /// Kendi profilimi yükler
   Future<void> loadProfile() async {
@@ -309,8 +341,15 @@ class ProfileProvider extends ChangeNotifier {
   /// Profili temizler (logout)
   void clearProfile() {
     _profile = null;
+    _visitedProfile = null;
     _motorcycles = [];
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _sessionUserIdSubscription?.cancel();
+    super.dispose();
   }
 
   // Yardımcı metodlar

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../../../../core/services/signalr_service.dart';
 import '../../domain/entities/notification_entity.dart';
@@ -89,6 +90,11 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         dataJson: data['dataJson']?.toString(),
       );
 
+      final alreadyExists = state.notifications.any((n) => n.id == newNotification.id);
+      if (alreadyExists) {
+        return;
+      }
+
       // Add to top of list and increment unread count
       emit(
         state.copyWith(
@@ -97,8 +103,8 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         ),
       );
     } catch (e, stack) {
-      print('❌ Notification Parse Error: $e');
-      print(stack);
+      debugPrint('❌ Notification Parse Error: $e');
+      debugPrint(stack.toString());
       // Hata durumunda UI'a bilgi verelim ama state'i bozmayalım
       emit(state.copyWith(errorMessage: 'Bildirim alınırken hata: $e'));
     }
@@ -140,8 +146,8 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       );
     } catch (e, stackTrace) {
       // Catch any unexpected exceptions to prevent crash
-      print('❌ NotificationsBloc Error: $e');
-      print('Stack trace: $stackTrace');
+      debugPrint('❌ NotificationsBloc Error: $e');
+      debugPrint('Stack trace: $stackTrace');
       emit(
         state.copyWith(
           status: NotificationsStatus.failure,
@@ -166,15 +172,41 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     MarkNotificationReadEvent event,
     Emitter<NotificationsState> emit,
   ) async {
-    // Optimistik Update
-    // Optimistik Update
-    // updatedNotifications değişkenini kaldırdık çünkü kullanılmıyordu.
-    // İleride Entity'e copyWith eklenirse o zaman kullanılabilir.
-
-    // Basitçe unread count'u 1 azaltabiliriz
-    if (state.unreadCount > 0) {
-      emit(state.copyWith(unreadCount: state.unreadCount - 1));
+    NotificationEntity? target;
+    for (final notification in state.notifications) {
+      if (notification.id == event.id) {
+        target = notification;
+        break;
+      }
     }
+
+    final updatedNotifications = state.notifications
+        .map(
+          (n) => n.id == event.id
+              ? NotificationEntity(
+                  id: n.id,
+                  title: n.title,
+                  message: n.message,
+                  isRead: true,
+                  createdAt: n.createdAt,
+                  type: n.type,
+                  relatedId: n.relatedId,
+                  senderId: n.senderId,
+                  senderUsername: n.senderUsername,
+                  senderProfileImage: n.senderProfileImage,
+                  dataJson: n.dataJson,
+                )
+              : n,
+        )
+        .toList();
+
+    final shouldDecrease = target != null && !target.isRead && state.unreadCount > 0;
+    emit(
+      state.copyWith(
+        notifications: updatedNotifications,
+        unreadCount: shouldDecrease ? state.unreadCount - 1 : state.unreadCount,
+      ),
+    );
 
     await markNotificationRead(event.id);
   }
@@ -201,11 +233,23 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     final previousNotifications = List<NotificationEntity>.from(
       state.notifications,
     );
+    NotificationEntity? deletedNotification;
+    for (final notification in state.notifications) {
+      if (notification.id == event.id) {
+        deletedNotification = notification;
+        break;
+      }
+    }
     final updatedList = state.notifications
         .where((n) => n.id != event.id)
         .toList();
 
-    emit(state.copyWith(notifications: updatedList));
+    final nextUnread =
+        (deletedNotification != null && !deletedNotification.isRead && state.unreadCount > 0)
+            ? state.unreadCount - 1
+            : state.unreadCount;
+
+    emit(state.copyWith(notifications: updatedList, unreadCount: nextUnread));
 
     // 2. API Call
     final result = await deleteNotification(event.id);
@@ -213,15 +257,17 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     // 3. Rollback on Failure
     result.fold(
       (failure) {
+        final rollbackUnread = previousNotifications.where((n) => !n.isRead).length;
         emit(
           state.copyWith(
             notifications: previousNotifications,
+            unreadCount: rollbackUnread,
             errorMessage: 'Bildirim silinemedi',
           ),
         );
       },
       (_) {
-        // Success, do nothing
+        add(GetUnreadCountEvent());
       },
     );
   }

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:rxdart/rxdart.dart';
+import '../../domain/enums/rtc_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/create_voice_session_usecase.dart';
@@ -7,11 +9,13 @@ import '../../domain/usecases/leave_voice_session_usecase.dart';
 import '../../domain/usecases/invite_to_voice_session_usecase.dart';
 import '../../domain/usecases/get_voice_session_details_usecase.dart';
 import '../../domain/usecases/get_my_voice_sessions_usecase.dart';
+import '../../../auth/domain/usecases/get_current_user_id_use_case.dart';
 import '../../domain/usecases/accept_voice_session_invitation_usecase.dart';
 import '../../../../core/services/signalr_service.dart';
-import '../../../../core/services/livekit_api.dart';
-import '../../../../core/services/livekit_room_service.dart';
+import '../../../../core/services/app_session.dart';
 import '../../../../core/services/permissions_service.dart';
+import '../../../intercom/domain/intercom_engine.dart';
+import '../../../intercom/domain/intercom_models.dart';
 import 'voice_session_event.dart';
 import 'voice_session_state.dart';
 
@@ -28,18 +32,17 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final InviteToVoiceSessionUseCase inviteToVoiceSessionUseCase;
   final GetVoiceSessionDetailsUseCase getVoiceSessionDetailsUseCase;
   final GetMyVoiceSessionsUseCase getMyVoiceSessionsUseCase;
+  final GetCurrentUserIdUseCase getCurrentUserIdUseCase;
   final AcceptVoiceSessionInvitationUseCase acceptVoiceSessionInvitationUseCase;
   final RejectVoiceSessionInvitationUseCase rejectVoiceSessionInvitationUseCase;
   final EndVoiceSessionUseCase endVoiceSessionUseCase;
+  final AppSession appSession;
   final SignalRService signalRService;
   final KickUserUseCase kickUserUseCase;
   final MuteUserUseCase muteUserUseCase;
   final TransferHostUseCase transferHostUseCase;
-
-  // LiveKit SFU (Faz 3)
-  final LiveKitApi liveKitApi;
-  final LiveKitRoomService liveKitRoomService;
   final PermissionsService permissionsService;
+  final IntercomEngine intercomEngine;
 
   StreamSubscription? _rideTerminatedSubscription;
   StreamSubscription? _rideCreatedSubscription;
@@ -49,11 +52,9 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   StreamSubscription? _hostChangedSubscription;
   StreamSubscription? _voiceSessionRefreshSubscription;
   StreamSubscription? _groupRideUpdatedSubscription;
+  StreamSubscription? _appSessionUserIdSubscription;
 
-  // LiveKit stream subscriptions
-  StreamSubscription? _lkConnectionSubscription;
-  StreamSubscription? _lkSpeakersSubscription;
-  StreamSubscription? _lkMicSubscription;
+  StreamSubscription? _intercomStateSubscription;
 
   VoiceSessionBloc({
     required this.createVoiceSessionUseCase,
@@ -62,30 +63,18 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.inviteToVoiceSessionUseCase,
     required this.getVoiceSessionDetailsUseCase,
     required this.getMyVoiceSessionsUseCase,
+    required this.getCurrentUserIdUseCase,
     required this.acceptVoiceSessionInvitationUseCase,
     required this.rejectVoiceSessionInvitationUseCase,
     required this.endVoiceSessionUseCase,
+    required this.appSession,
     required this.signalRService,
     required this.kickUserUseCase,
     required this.muteUserUseCase,
     required this.transferHostUseCase,
-    required this.liveKitApi,
-    required this.liveKitRoomService,
     required this.permissionsService,
+    required this.intercomEngine,
   }) : super(const VoiceSessionState()) {
-    // Listen to SignalR events
-    signalRService.setOnUserJoinedVoiceSession((userId, voiceSessionId) {
-      if (!isClosed) {
-        add(VoiceSessionParticipantJoinedEvent(userId, roomId: voiceSessionId));
-      }
-    });
-
-    signalRService.setOnUserLeftVoiceSession((userId, voiceSessionId) {
-      if (!isClosed) {
-        add(VoiceSessionParticipantLeftEvent(userId, roomId: voiceSessionId));
-      }
-    });
-
     // --- SignalR Broadcast Listeners for List Refresh ---
 
     // 1. Ride Terminated
@@ -113,14 +102,17 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     });
 
     // 3. User Joined
+    // 3. User Joined
     _userJoinedSubscription = signalRService.userJoinedStream.listen((userId) {
       try {
         if (!isClosed) {
           add(const GetMyVoiceSessionsEvent());
-          // Canlı oturum detaylarını da güncelle
-          if (state.session != null) {
-            add(GetVoiceSessionDetailsEvent(state.session!.id));
-          }
+          add(
+            VoiceSessionParticipantJoinedEvent(
+              userId,
+              roomId: state.session?.id.toString(),
+            ),
+          );
         }
       } catch (e) {
         // Bloc likely closed
@@ -128,14 +120,17 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     });
 
     // 4. User Left
+    // 4. User Left
     _userLeftSubscription = signalRService.userLeftStream.listen((userId) {
       try {
         if (!isClosed) {
           add(const GetMyVoiceSessionsEvent());
-          // Canlı oturum detaylarını da güncelle
-          if (state.session != null) {
-            add(GetVoiceSessionDetailsEvent(state.session!.id));
-          }
+          add(
+            VoiceSessionParticipantLeftEvent(
+              userId,
+              roomId: state.session?.id.toString(),
+            ),
+          );
         }
       } catch (e) {
         // Bloc likely closed
@@ -172,15 +167,33 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           }
         });
 
-    // Initialize SignalR
-    signalRService.init();
+    _appSessionUserIdSubscription = appSession.currentUserIdStream.distinct().listen((userId) {
+      if (!isClosed) {
+        add(AppSessionCurrentUserChangedEvent(userId));
+      }
+    });
+
+    _intercomStateSubscription = intercomEngine.state$.listen((intercomState) {
+      if (!isClosed) {
+        add(IntercomStateChangedEvent(intercomState));
+      }
+    });
+
+    // SignalR artık CallListenerService + AuthProvider tarafından
+    // merkezi olarak başlatılıyor. Bloc constructor'da tekrar init etmeye
+    // gerek yok — race condition'a yol açıyordu.
 
     on<CreateVoiceSessionEvent>(_onCreateVoiceSession);
     on<JoinVoiceSessionEvent>(_onJoinVoiceSession);
     on<LeaveVoiceSessionEvent>(_onLeaveVoiceSession);
     on<InviteUsersEvent>(_onInviteUsers);
     on<GetVoiceSessionDetailsEvent>(_onGetVoiceSessionDetails);
-    on<GetMyVoiceSessionsEvent>(_onGetMyVoiceSessions);
+    on<GetMyVoiceSessionsEvent>(
+      _onGetMyVoiceSessions,
+      transformer: (events, mapper) => events
+          .debounceTime(const Duration(milliseconds: 300))
+          .asyncExpand(mapper),
+    );
     on<AcceptVoiceSessionInviteEvent>(_onAcceptVoiceSessionInvite);
 
     // New Handlers
@@ -190,18 +203,16 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     on<TransferHostEvent>(_onTransferHost);
     on<VoiceSessionHostChanged>(_onHostChanged);
 
-    // LiveKit event handlers (Faz 3)
     on<ConnectToLiveKitEvent>(_onConnectToLiveKit);
     on<DisconnectFromLiveKitEvent>(_onDisconnectFromLiveKit);
     on<ToggleMicrophoneEvent>(_onToggleMicrophone);
-    on<LiveKitMicStateChangedEvent>(_onLiveKitMicStateChanged);
-    on<LiveKitConnectionChangedEvent>(_onLiveKitConnectionChanged);
-    on<ActiveSpeakersChangedEvent>(_onActiveSpeakersChanged);
+    on<IntercomStateChangedEvent>(_onIntercomStateChanged);
+    on<AppSessionCurrentUserChangedEvent>(_onAppSessionCurrentUserChanged);
 
     on<VoiceSessionParticipantJoinedEvent>((event, emit) {
       if (state.status == VoiceSessionStatus.detailsLoaded &&
           state.session != null) {
-        final currentSessionId = state.session.id;
+        final currentSessionId = state.session!.id;
 
         if (event.roomId != null) {
           if (event.roomId == currentSessionId.toString()) {
@@ -215,7 +226,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     on<VoiceSessionParticipantLeftEvent>((event, emit) {
       if (state.status == VoiceSessionStatus.detailsLoaded &&
           state.session != null) {
-        final currentSessionId = state.session.id;
+        final currentSessionId = state.session!.id;
 
         if (event.roomId != null) {
           if (event.roomId == currentSessionId.toString()) {
@@ -309,15 +320,10 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     // 1. UI Loading (but transient)
     emit(state.copyWith(status: VoiceSessionStatus.loading));
 
-    // 2. PROACTIVE DISCONNECT: Kill LiveKit immediately to free audio/resources
-    // Fire & Forget style or awaited but inside a try-catch so it doesn't block backend logic
     try {
-      debugPrint(
-        "🚀 [VoiceSessionBloc] Forcefully disconnecting LiveKit before API call...",
-      );
-      await _disconnectLiveKitInternal(); // Helper method for clean disconnect
+      await intercomEngine.detachSession(stopAudio: true);
     } catch (e) {
-      debugPrint("⚠️ [VoiceSessionBloc] LiveKit disconnect warning: $e");
+      debugPrint("⚠️ [VoiceSessionBloc] Intercom detach warning: $e");
     }
 
     // 3. Backend Call
@@ -363,14 +369,6 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     );
   }
 
-  /// Helper to cleaner disconnect logic
-  Future<void> _disconnectLiveKitInternal() async {
-    _lkConnectionSubscription?.cancel();
-    _lkSpeakersSubscription?.cancel();
-    _lkMicSubscription?.cancel();
-    await liveKitRoomService.disconnect();
-  }
-
   Future<void> _onInviteUsers(
     InviteUsersEvent event,
     Emitter<VoiceSessionState> emit,
@@ -402,6 +400,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     GetVoiceSessionDetailsEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    await _ensureCurrentUserId(emit);
+
     // Sadece ilk yüklemede loading gösterelim, refreshlerde mevcut data kalsın
     if (state.session == null) {
       emit(state.copyWith(status: VoiceSessionStatus.loading));
@@ -417,12 +417,57 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       ),
       (session) async {
         await signalRService.joinVoiceSessionGroup(session.id.toString());
+        // Gruptan ayrılan veya reddeden kişileri listeden çıkarıyoruz ki
+        // tekrar davet edilebilsinler (UI'da invite butonu aktif olsun).
+        final activeParticipants = session.participants.where((p) {
+          return p.status != 'Left' && p.status != 'Rejected';
+        }).toList();
+
+        final updatedSession = session.copyWith(
+          participants: activeParticipants,
+        );
+
         emit(
           state.copyWith(
             status: VoiceSessionStatus.detailsLoaded,
-            session: session,
+            session: updatedSession,
           ),
         );
+
+        final currentUserId = state.currentUserId ?? await _ensureCurrentUserId(emit);
+        if (currentUserId != null) {
+          final intercomParticipants = activeParticipants
+              .where((p) =>
+                  p.status == 'Joined' ||
+                  p.status == 'Accepted' ||
+                  p.status == 'Disconnected')
+              .map(
+                (p) => IntercomParticipant(
+                  userId: p.userId,
+                  displayName:
+                      '${p.firstName ?? ''} ${p.lastName ?? ''}'.trim(),
+                  isLocal: p.userId == currentUserId,
+                  isSpeaking: state.activeSpeakers
+                      .contains(p.userId.toString()),
+                ),
+              )
+              .toList();
+
+          final activeIds = intercomParticipants
+              .map((participant) => participant.userId)
+              .toList();
+
+          await intercomEngine.attachSession(
+            IntercomSessionContext(
+              sessionId: session.id,
+              roomName: session.roomName,
+              hostUserId: session.hostUserId,
+              localUserId: currentUserId,
+              activeParticipantUserIds: activeIds,
+              participants: intercomParticipants,
+            ),
+          );
+        }
       },
     );
   }
@@ -431,6 +476,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     GetMyVoiceSessionsEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    await _ensureCurrentUserId(emit);
+
     emit(state.copyWith(status: VoiceSessionStatus.loading));
     final result = await getMyVoiceSessionsUseCase();
     result.fold(
@@ -447,6 +494,18 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         ),
       ),
     );
+  }
+
+  Future<int?> _ensureCurrentUserId(Emitter<VoiceSessionState> emit) async {
+    if (state.currentUserId != null) {
+      return state.currentUserId;
+    }
+
+    final userId = await getCurrentUserIdUseCase();
+    if (userId != null && !isClosed) {
+      emit(state.copyWith(currentUserId: userId));
+    }
+    return userId;
   }
 
   Future<void> _onAcceptVoiceSessionInvite(
@@ -543,9 +602,35 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   ) async {
     if (state.status == VoiceSessionStatus.detailsLoaded &&
         state.session != null) {
-      final currentSessionId = state.session.id;
+      final currentSessionId = state.session!.id;
       add(GetVoiceSessionDetailsEvent(currentSessionId));
     }
+  }
+
+  Future<void> _onAppSessionCurrentUserChanged(
+    AppSessionCurrentUserChangedEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    if (state.currentUserId == event.userId) {
+      return;
+    }
+
+    if (event.userId == null) {
+      await intercomEngine.detachSession(stopAudio: true);
+      emit(
+        state.copyWith(
+          currentUserId: null,
+          session: null,
+          mySessions: const [],
+          activeSpeakers: const [],
+          isLiveKitConnected: false,
+          isMicOn: false,
+        ),
+      );
+      return;
+    }
+
+    emit(state.copyWith(currentUserId: event.userId));
   }
 
   @override
@@ -557,140 +642,51 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     _hostChangedSubscription?.cancel();
     _voiceSessionRefreshSubscription?.cancel();
     _groupRideUpdatedSubscription?.cancel();
-    // LiveKit cleanup
-    _lkConnectionSubscription?.cancel();
-    _lkSpeakersSubscription?.cancel();
-    _lkMicSubscription?.cancel();
-    liveKitRoomService.disconnect();
+    _appSessionUserIdSubscription?.cancel();
+    _intercomStateSubscription?.cancel();
     return super.close();
   }
 
   // ============================================================
-  // LiveKit SFU Handlers (Faz 3)
+  // Intercom handlers
   // ============================================================
 
   Future<void> _onConnectToLiveKit(
     ConnectToLiveKitEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
-    try {
-      debugPrint(
-        '🎙️ [VoiceSessionBloc] Fetching LiveKit token for room: ${event.roomName}',
-      );
-
-      // 1. Backend'den token al
-      final tokenData = await liveKitApi.getToken(
-        roomName: event.roomName,
-        displayName: event.displayName,
-      );
-
-      final token = tokenData['token'] ?? '';
-      final url = tokenData['url'] ?? '';
-
-      if (token.isEmpty || url.isEmpty) {
-        emit(state.copyWith(liveKitError: 'LiveKit token alınamadı'));
-        return;
-      }
-
-      // 2. LiveKit room'a bağlan
-      debugPrint('🎙️ [VoiceSessionBloc] Connecting to LiveKit: $url');
-      await liveKitRoomService.connect(url, token);
-
-      // 3. Stream'leri dinle
-      _lkConnectionSubscription?.cancel();
-      _lkConnectionSubscription = liveKitRoomService.connectionStateStream
-          .listen((state) {
-            if (!isClosed) {
-              add(LiveKitConnectionChangedEvent(state.name));
-            }
-          });
-
-      _lkSpeakersSubscription?.cancel();
-      _lkSpeakersSubscription = liveKitRoomService.activeSpeakersStream.listen((
-        speakers,
-      ) {
-        if (!isClosed) {
-          final ids = speakers.map((s) => s.identity).toList();
-          add(ActiveSpeakersChangedEvent(ids));
-        }
-      });
-
-      _lkMicSubscription?.cancel();
-      _lkMicSubscription = liveKitRoomService.isMicEnabledStream.listen((
-        enabled,
-      ) {
-        if (!isClosed) {
-          add(LiveKitMicStateChangedEvent(enabled));
-        }
-      });
-
-      // State'i güncelle - Session verisi korunur!
-      emit(
-        state.copyWith(
-          isLiveKitConnected: true,
-          isMicOn: liveKitRoomService.isMicrophoneEnabled,
-          liveKitError: null,
-        ),
-      );
-
-      debugPrint('✅ [VoiceSessionBloc] LiveKit connected successfully');
-    } catch (e) {
-      debugPrint('❌ [VoiceSessionBloc] LiveKit connection failed: $e');
-      emit(
-        state.copyWith(
-          liveKitError: 'LiveKit bağlantı hatası: $e',
-          isLiveKitConnected: false,
-        ),
-      );
-    }
+    await intercomEngine.forceSwitchToSfu(reason: 'manual');
   }
 
   Future<void> _onDisconnectFromLiveKit(
     DisconnectFromLiveKitEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
-    _lkConnectionSubscription?.cancel();
-    _lkSpeakersSubscription?.cancel();
-    _lkMicSubscription?.cancel();
-    await liveKitRoomService.disconnect();
-
-    emit(state.copyWith(isLiveKitConnected: false, activeSpeakers: []));
-    debugPrint('👋 [VoiceSessionBloc] LiveKit disconnected');
+    await intercomEngine.detachSession(stopAudio: true);
   }
 
   Future<void> _onToggleMicrophone(
     ToggleMicrophoneEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
-    await liveKitRoomService.toggleMicrophone();
-    // emit is handled by the stream listener -> _onLiveKitMicStateChanged
+    await intercomEngine.toggleMic();
   }
 
-  void _onLiveKitMicStateChanged(
-    LiveKitMicStateChangedEvent event,
+  void _onIntercomStateChanged(
+    IntercomStateChangedEvent event,
     Emitter<VoiceSessionState> emit,
   ) {
-    if (state.isMicOn != event.isEnabled) {
-      emit(state.copyWith(isMicOn: event.isEnabled));
-    }
-  }
+    final intercom = event.intercomState;
+    final isSfu = intercom.transport == IntercomTransport.sfu ||
+        intercom.rtcStatus == RtcConnectionStatus.sfuConnected;
 
-  void _onLiveKitConnectionChanged(
-    LiveKitConnectionChangedEvent event,
-    Emitter<VoiceSessionState> emit,
-  ) {
-    debugPrint(
-      '📡 [VoiceSessionBloc] LiveKit connection: ${event.connectionState}',
+    emit(
+      state.copyWith(
+        rtcStatus: intercom.rtcStatus,
+        isMicOn: intercom.micEnabled,
+        activeSpeakers: intercom.activeSpeakerIds,
+        isLiveKitConnected: isSfu,
+      ),
     );
-    if (event.connectionState == 'disconnected') {
-      emit(state.copyWith(isLiveKitConnected: false, activeSpeakers: []));
-    }
-  }
-
-  void _onActiveSpeakersChanged(
-    ActiveSpeakersChangedEvent event,
-    Emitter<VoiceSessionState> emit,
-  ) {
-    emit(state.copyWith(activeSpeakers: event.speakerIdentities));
   }
 }

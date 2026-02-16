@@ -66,7 +66,7 @@ class _ProfileAboutTabState extends State<ProfileAboutTab>
               const AboutSection(),
 
               const SizedBox(height: 40),
-              Divider(color: theme.dividerColor.withOpacity(0.5)),
+              Divider(color: theme.dividerColor.withValues(alpha:0.5)),
               const SizedBox(height: 20),
 
               // 2. BÖLÜM: Garaj Başlığı

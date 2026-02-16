@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/widgets/unread_count_badge.dart';
 import '../bloc/conversations/conversations_bloc.dart';
 import '../bloc/conversations/conversations_event.dart';
 import '../bloc/conversations/conversations_state.dart';
@@ -105,7 +106,7 @@ class ConversationsView extends StatelessWidget {
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(1.0),
                 child: Container(
-                  color: theme.dividerColor.withOpacity(0.05),
+                  color: theme.dividerColor.withValues(alpha: 0.05),
                   height: 1.0,
                 ),
               ),
@@ -137,13 +138,13 @@ class ConversationsView extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primary.withOpacity(0.05),
+                                  color: colorScheme.primary.withValues(alpha: 0.05),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   Icons.chat_bubble_outline_rounded,
                                   size: 48,
-                                  color: colorScheme.primary.withOpacity(0.5),
+                                  color: colorScheme.primary.withValues(alpha: 0.5),
                                 ),
                               ),
                               const SizedBox(height: 24),
@@ -183,7 +184,7 @@ class ConversationsView extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
+                              color: Colors.black.withValues(alpha: 0.02),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -227,7 +228,7 @@ class ConversationsView extends StatelessWidget {
                                       CircleAvatar(
                                         radius: 30,
                                         backgroundColor: colorScheme.primary
-                                            .withOpacity(0.1),
+                                          .withValues(alpha: 0.1),
                                         backgroundImage:
                                             conversation.profilePictureUrl !=
                                                 null
@@ -306,9 +307,7 @@ class ConversationsView extends StatelessWidget {
                                                                 .onSurface
                                                           : colorScheme
                                                                 .onSurface
-                                                                .withOpacity(
-                                                                  0.9,
-                                                                ),
+                                                                .withValues(alpha: 0.9),
                                                     ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -361,50 +360,9 @@ class ConversationsView extends StatelessWidget {
                                               ),
                                             ),
                                             if (isUnread)
-                                              Container(
-                                                margin: const EdgeInsets.only(
-                                                  left: 8,
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: colorScheme.primary,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: colorScheme.primary
-                                                          .withOpacity(0.3),
-                                                      blurRadius: 4,
-                                                      offset: const Offset(
-                                                        0,
-                                                        2,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                constraints:
-                                                    const BoxConstraints(
-                                                      minWidth: 20,
-                                                    ),
-                                                child: Center(
-                                                  child: Text(
-                                                    conversation.unreadCount > 9
-                                                        ? '9+'
-                                                        : conversation
-                                                              .unreadCount
-                                                              .toString(),
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
+                                              UnreadCountBadge.message(
+                                                count: conversation.unreadCount,
+                                                scheme: colorScheme,
                                               ),
                                           ],
                                         ),

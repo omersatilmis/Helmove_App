@@ -134,10 +134,10 @@ class _AppInputFieldState extends State<AppInputField> {
             helperText: widget.helperText,
 
             labelStyle: TextStyle(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha:0.7),
             ),
             hintStyle: TextStyle(
-              color: theme.colorScheme.onSurface.withOpacity(0.4),
+              color: theme.colorScheme.onSurface.withValues(alpha:0.4),
             ),
 
             errorStyle: TextStyle(fontSize: 12, color: theme.colorScheme.error),
@@ -154,7 +154,7 @@ class _AppInputFieldState extends State<AppInputField> {
                     ? Icon(
                         widget.leadingIcon,
                         size: 20,
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        color: theme.colorScheme.onSurface.withValues(alpha:0.7),
                       )
                     : null),
 
@@ -203,7 +203,7 @@ class _AppInputFieldState extends State<AppInputField> {
           _obscureText
               ? Icons.visibility_outlined
               : Icons.visibility_off_outlined,
-          color: theme.colorScheme.onSurface.withOpacity(0.6),
+          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
         ),
         onPressed: () {
           setState(() {
@@ -218,7 +218,7 @@ class _AppInputFieldState extends State<AppInputField> {
         child: Icon(
           widget.trailingIcon,
           size: 20,
-          color: theme.colorScheme.onSurface.withOpacity(0.6),
+          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
         ),
       );
     }
@@ -298,10 +298,10 @@ class _AppInputFieldState extends State<AppInputField> {
   // 🔥 Dropdown renginin aynısı
   Color _fillColor(ThemeData theme) {
     if (!widget.enabled) {
-      return theme.colorScheme.surfaceContainerLow.withOpacity(0.2);
+      return theme.colorScheme.surfaceContainerLow.withValues(alpha:0.2);
     }
     // Senin beğendiğin renk kodu
-    return theme.colorScheme.surfaceContainerLow.withOpacity(0.5);
+    return theme.colorScheme.surfaceContainerLow.withValues(alpha:0.5);
   }
 
   // 🔥 Border rengi de outline.opacity(0.1) yapıldı
@@ -309,7 +309,7 @@ class _AppInputFieldState extends State<AppInputField> {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(widget.radius),
       borderSide: BorderSide(
-        color: theme.colorScheme.outline.withOpacity(0.1),
+        color: theme.colorScheme.outline.withValues(alpha:0.1),
         width: 1,
       ),
     );
@@ -319,7 +319,7 @@ class _AppInputFieldState extends State<AppInputField> {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(widget.radius),
       borderSide: BorderSide(
-        color: theme.colorScheme.primary.withOpacity(0.8),
+        color: theme.colorScheme.primary.withValues(alpha:0.8),
         width: 1.5,
       ),
     );
@@ -336,7 +336,7 @@ class _AppInputFieldState extends State<AppInputField> {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(widget.radius),
       borderSide: BorderSide(
-        color: theme.colorScheme.onSurface.withOpacity(0.05),
+        color: theme.colorScheme.onSurface.withValues(alpha:0.05),
       ),
     );
   }

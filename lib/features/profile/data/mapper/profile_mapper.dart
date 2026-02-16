@@ -43,7 +43,7 @@ class ProfileMapper {
     );
   }
 
-  /// List<MotorcycleDto> → List<MotorcycleEntity>
+  /// List&lt;MotorcycleDto&gt; → List&lt;MotorcycleEntity&gt;
   static List<MotorcycleEntity> toMotorcycleEntityList(
     List<MotorcycleDto> dtos,
   ) {

@@ -37,7 +37,11 @@ class NetworkModule {
     return EnvConfig.localDeviceBaseUrl;
   }
 
-  static Future<Dio> provideDio(AuthLocalDataSource localDataSource) async {
+  static Future<Dio> provideDio(
+    AuthLocalDataSource localDataSource, {
+    Future<void> Function()? onAuthInvalidated,
+    Future<void> Function(String token)? onTokenRefreshed,
+  }) async {
     final baseUrl = await getBaseUrl();
 
     final dio = Dio(
@@ -65,7 +69,15 @@ class NetworkModule {
       ),
     );
 
-    dio.interceptors.add(AuthInterceptor(dio, refreshDio, localDataSource));
+    dio.interceptors.add(
+      AuthInterceptor(
+        dio,
+        refreshDio,
+        localDataSource,
+        onAuthInvalidated,
+        onTokenRefreshed,
+      ),
+    );
 
     dio.interceptors.add(
       LogInterceptor(

@@ -4,8 +4,12 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/core/services/message_signalr_service.dart';
-import 'package:moto_comm_app_1/features/messages/data/datasources/message_remote_data_source.dart';
 import 'package:moto_comm_app_1/core/services/signalr_service.dart';
+import 'package:moto_comm_app_1/features/messages/domain/usecases/get_conversations_usecase.dart';
+import 'package:moto_comm_app_1/core/usecases/usecase.dart';
+import 'package:moto_comm_app_1/core/widgets/unread_count_badge.dart';
+import 'package:moto_comm_app_1/features/notification/domain/usecases/get_unread_count_usecase.dart'
+  as notif_unread;
 
 // 🔥 DİKKAT: Drawer'ı dışarıdan kontrol etmek için bu import şart!
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
@@ -22,8 +26,8 @@ class HomePageWithDrawer extends StatefulWidget {
 
 class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   late String _visorMessage;
-  bool _hasUnreadMessages = false;
-  bool _hasUnreadNotifications = false;
+  int _unreadConversationCount = 0;
+  int _unreadNotificationCount = 0;
   StreamSubscription? _messageSubscription;
   StreamSubscription? _readSubscription;
   StreamSubscription? _notificationSubscription;
@@ -37,24 +41,21 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
       context.read<ProfileProvider>().loadProfile();
     });
 
-    // Uygulama açıldığında okunmamış mesaj sayısını kontrol et
-    _checkUnreadMessages();
+    // Uygulama açıldığında okunmamış sohbet sayısını kontrol et
+    _checkUnreadConversations();
+    _checkUnreadNotifications();
 
     // SignalR üzerinden gelen mesajları dinle
     try {
       final messageService = GetIt.I<MessageSignalRService>();
       // Stream yapısı sayesinde diğer dinleyicileri (örn: Chat sayfası) bozmadan dinliyoruz
       _messageSubscription = messageService.onDirectMessageReceived.listen((message) {
-        if (mounted && !_hasUnreadMessages) {
-          setState(() {
-            _hasUnreadMessages = true;
-          });
-        }
+        _checkUnreadConversations();
       });
 
       // Mesajlar okunduğunda (MessagesRead) sayıyı tekrar kontrol et
       _readSubscription = messageService.onMessagesRead.listen((_) {
-        _checkUnreadMessages();
+        _checkUnreadConversations();
       });
 
     } catch (e) {
@@ -65,9 +66,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     try {
       final signalRService = GetIt.I<SignalRService>();
       _notificationSubscription = signalRService.notificationReceivedStream.listen((_) {
-        if (mounted && !_hasUnreadNotifications) {
-          setState(() => _hasUnreadNotifications = true);
-        }
+        _checkUnreadNotifications();
       });
     } catch (e) {
       debugPrint("SignalRService bağlantı hatası: $e");
@@ -82,18 +81,34 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     super.dispose();
   }
 
-  Future<void> _checkUnreadMessages() async {
+  Future<void> _checkUnreadConversations() async {
     try {
-      // MessageRemoteDataSource'u GetIt üzerinden alıyoruz
-      final messageDataSource = GetIt.I<MessageRemoteDataSource>();
-      final count = await messageDataSource.getUnreadCount();
+      final getConversations = GetIt.I<GetConversationsUseCase>();
+      final conversations = await getConversations();
+      final count = conversations.where((c) => c.unreadCount > 0).length;
       if (mounted) {
         setState(() {
-          _hasUnreadMessages = count > 0;
+          _unreadConversationCount = count;
         });
       }
     } catch (e) {
-      debugPrint("Okunmamış mesaj sayısı alınamadı: $e");
+      debugPrint("Okunmamış sohbet sayısı alınamadı: $e");
+    }
+  }
+
+  Future<void> _checkUnreadNotifications() async {
+    try {
+      final useCase = GetIt.I<notif_unread.GetUnreadCountUseCase>();
+      final result = await useCase(NoParams());
+      result.fold((_) {}, (count) {
+        if (mounted) {
+          setState(() {
+            _unreadNotificationCount = count;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint("Okunmamış bildirim sayısı alınamadı: $e");
     }
   }
 
@@ -124,7 +139,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withOpacity(0.08),
+              colorScheme.primary.withValues(alpha: 0.08),
               colorScheme.surface,
               colorScheme.surface,
             ],
@@ -164,7 +179,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
                           style: AppTextStyles.regular.copyWith(
                             fontSize: 13,
                             fontWeight: FontWeight.w300,
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                         Text(
@@ -195,23 +210,18 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
                     color: theme.colorScheme.onSurface,
                   ),
                   onPressed: () {
-                    setState(() {
-                      _hasUnreadMessages = false;
+                    context.push('/messages').then((_) {
+                      _checkUnreadConversations();
                     });
-                    context.push('/messages');
                   },
                 ),
-                if (_hasUnreadMessages)
+                if (_unreadConversationCount > 0)
                   Positioned(
-                    right: 10,
-                    top: 10,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.orange,
-                        shape: BoxShape.circle,
-                      ),
+                    right: 7,
+                    top: 8,
+                    child: UnreadCountBadge.messageIcon(
+                      count: _unreadConversationCount,
+                      scheme: theme.colorScheme,
                     ),
                   ),
               ],
@@ -227,21 +237,18 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
                     color: theme.colorScheme.onSurface,
                   ),
                   onPressed: () {
-                    setState(() => _hasUnreadNotifications = false);
-                    context.push('/notifications');
+                    context.push('/notifications').then((_) {
+                      _checkUnreadNotifications();
+                    });
                   },
                 ),
-                if (_hasUnreadNotifications)
+                if (_unreadNotificationCount > 0)
                   Positioned(
-                    right: 10,
-                    top: 10,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
+                    right: 7,
+                    top: 8,
+                    child: UnreadCountBadge.notificationIcon(
+                      count: _unreadNotificationCount,
+                      scheme: theme.colorScheme,
                     ),
                   ),
               ],
@@ -259,17 +266,17 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
               decoration: BoxDecoration(
                 // Glow (Parlama) Efekti: BoxShadow ile neon bir hava veriyoruz
                 color: isDark
-                    ? colorScheme.primary.withOpacity(0.08)
-                    : colorScheme.primary.withOpacity(0.05),
+                    ? colorScheme.primary.withValues(alpha: 0.08)
+                    : colorScheme.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: colorScheme.primary.withOpacity(0.15),
+                  color: colorScheme.primary.withValues(alpha: 0.15),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.primary.withOpacity(
-                      isDark ? 0.08 : 0.03,
+                    color: colorScheme.primary.withValues(
+                      alpha: isDark ? 0.08 : 0.03,
                     ),
                     blurRadius: 15,
                     spreadRadius: 1,
@@ -290,7 +297,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
                       _visorMessage,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontStyle: FontStyle.italic,
-                        color: colorScheme.onSurfaceVariant.withOpacity(0.9),
+                        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
                         fontSize: 12,
                         letterSpacing: 0.3,
                       ),

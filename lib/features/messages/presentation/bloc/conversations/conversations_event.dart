@@ -28,3 +28,7 @@ class MarkConversationReadEvent extends ConversationsEvent {
   @override
   List<Object> get props => [otherUserId];
 }
+
+class SyncConversationsRealtimeEvent extends ConversationsEvent {
+  const SyncConversationsRealtimeEvent();
+}

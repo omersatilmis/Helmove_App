@@ -23,11 +23,11 @@ class LoadActiveGroupRidesEvent extends GroupRideEvent {
 
 class DeleteGroupRideEvent extends GroupRideEvent {
   final int rideId;
-  final int? voiceSessionId;
-  const DeleteGroupRideEvent(this.rideId, {this.voiceSessionId});
+  final int? sessionId;
+  const DeleteGroupRideEvent(this.rideId, {this.sessionId});
 
   @override
-  List<Object?> get props => [rideId, voiceSessionId];
+  List<Object?> get props => [rideId, sessionId];
 }
 
 class LeaveGroupRideEvent extends GroupRideEvent {

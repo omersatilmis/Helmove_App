@@ -87,12 +87,12 @@ class _GlassInputFieldState extends State<GlassInputField> {
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
                   // Yarı saydam arka plan rengi
-                  color: colorScheme.surfaceContainerLow.withOpacity(0.5),
+                  color: colorScheme.surfaceContainerLow.withValues(alpha:0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _isFocused
                         ? colorScheme.primary
-                        : colorScheme.outline.withOpacity(0.2),
+                        : colorScheme.outline.withValues(alpha:0.2),
                     width: _isFocused ? 1.5 : 1,
                   ),
                 ),
@@ -110,7 +110,7 @@ class _GlassInputFieldState extends State<GlassInputField> {
                     hintText: widget.hintText,
                     filled: false,
                     hintStyle: AppTextStyles.bodyLarge.copyWith(
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                      color: colorScheme.onSurfaceVariant.withValues(alpha:0.4),
                     ),
                     prefixIcon: widget.prefixIcon != null
                         ? Icon(

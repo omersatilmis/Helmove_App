@@ -36,13 +36,13 @@ class AppFrostedButton extends StatelessWidget {
               decoration: BoxDecoration(
                 // Renkleri biraz daha soft ve modern ayarladım
                 color: isDark
-                    ? const Color(0xFF28140A).withOpacity(0.5)
-                    : Colors.white.withOpacity(0.6),
+                    ? const Color(0xFF28140A).withValues(alpha:0.5)
+                    : Colors.white.withValues(alpha:0.6),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isDark
-                      ? Colors.white.withOpacity(0.2)
-                      : Colors.black.withOpacity(0.1),
+                      ? Colors.white.withValues(alpha:0.2)
+                      : Colors.black.withValues(alpha:0.1),
                   width: 1.0,
                 ),
               ),
@@ -94,8 +94,8 @@ class AppFrostedTextButton extends StatelessWidget {
     final effectiveBgColor =
         backgroundColor ??
         (isDark
-            ? Colors.white.withOpacity(0.1)
-            : Colors.black.withOpacity(0.05));
+            ? Colors.white.withValues(alpha:0.1)
+            : Colors.black.withValues(alpha:0.05));
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
@@ -115,7 +115,7 @@ class AppFrostedTextButton extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
                 side: BorderSide(
-                  color: effectiveTextColor.withOpacity(0.1),
+                  color: effectiveTextColor.withValues(alpha:0.1),
                   width: 1,
                 ),
               ),

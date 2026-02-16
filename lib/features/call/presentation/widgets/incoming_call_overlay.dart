@@ -110,13 +110,13 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha:0.5),
                     blurRadius: 30,
                     spreadRadius: 5,
                   ),
                 ],
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha:0.1),
                   width: 1,
                 ),
               ),
@@ -249,9 +249,9 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                             height: 48,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(14),
-                              color: Colors.red.withOpacity(0.15),
+                              color: Colors.red.withValues(alpha:0.15),
                               border: Border.all(
-                                color: Colors.red.withOpacity(0.3),
+                                color: Colors.red.withValues(alpha:0.3),
                               ),
                             ),
                             child: const Center(
@@ -309,7 +309,7 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                                 BoxShadow(
                                   color: const Color(
                                     0xFF22C55E,
-                                  ).withOpacity(0.3),
+                                  ).withValues(alpha:0.3),
                                   blurRadius: 12,
                                 ),
                               ],

@@ -160,7 +160,7 @@ class _GroupSettingsState extends State<GroupSettings> {
     context.read<GroupRideBloc>().add(
       DeleteGroupRideEvent(
         widget.data.rideId,
-        voiceSessionId: widget.data.voiceSessionId,
+        sessionId: widget.data.sessionId,
       ),
     );
   }
@@ -182,7 +182,7 @@ class _GroupSettingsState extends State<GroupSettings> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              colorScheme.primary.withOpacity(0.08),
+              colorScheme.primary.withValues(alpha:0.08),
               colorScheme.surface,
               colorScheme.surface,
             ],
@@ -397,7 +397,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                                     text: "Sonlandır",
                                     height: 52,
                                     backgroundColor: colorScheme.error
-                                        .withOpacity(0.1),
+                                        .withValues(alpha:0.1),
                                     textColor: colorScheme.error,
                                     onPressed: _onDelete,
                                     isLoading: state is GroupRideLoading,
@@ -409,7 +409,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                                     text: "Güncelle",
                                     height: 52,
                                     backgroundColor: colorScheme.primary
-                                        .withOpacity(0.1),
+                                        .withValues(alpha:0.1),
                                     textColor: colorScheme.primary,
                                     onPressed: _onUpdate,
                                     isLoading: state is GroupRideLoading,

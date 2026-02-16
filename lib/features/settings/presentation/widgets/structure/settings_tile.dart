@@ -51,7 +51,7 @@ class SettingsTile extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: effectiveIconColor.withOpacity(
+            color: effectiveIconColor.withValues(alpha:
               0.1,
             ), // Hafif transparan zemin
             shape: BoxShape.circle,

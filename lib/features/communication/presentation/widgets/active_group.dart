@@ -40,10 +40,10 @@ class ActiveGroupCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             // Arka plan: Dropdown ve Inputlar ile uyumlu cam efekti
-            color: colorScheme.surfaceContainerLow.withOpacity(0.15),
+            color: colorScheme.surfaceContainerLow.withValues(alpha:0.15),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: colorScheme.outline.withOpacity(0.1),
+              color: colorScheme.outline.withValues(alpha:0.1),
               width: 1,
             ),
           ),
@@ -151,10 +151,10 @@ class ActiveGroupCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh.withOpacity(0.5),
+        color: colorScheme.surfaceContainerHigh.withValues(alpha:0.5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: colorScheme.outline.withOpacity(0.05),
+          color: colorScheme.outline.withValues(alpha:0.05),
           width: 1,
         ),
       ),

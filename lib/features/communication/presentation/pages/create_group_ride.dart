@@ -99,7 +99,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              colorScheme.primary.withOpacity(0.08),
+              colorScheme.primary.withValues(alpha:0.08),
               colorScheme.surface,
               colorScheme.surface,
             ],

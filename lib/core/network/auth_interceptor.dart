@@ -9,6 +9,8 @@ class AuthInterceptor extends Interceptor {
   final Dio _dio;
   final Dio _refreshDio;
   final AuthLocalDataSource _localDataSource;
+  final Future<void> Function()? _onAuthInvalidated;
+  final Future<void> Function(String token)? _onTokenRefreshed;
 
   Future<void>? _refreshInFlight;
 
@@ -16,6 +18,8 @@ class AuthInterceptor extends Interceptor {
     this._dio,
     this._refreshDio,
     this._localDataSource,
+    this._onAuthInvalidated,
+    this._onTokenRefreshed,
   );
 
   @override
@@ -64,6 +68,12 @@ class AuthInterceptor extends Interceptor {
     } catch (_) {
       // If refresh fails, clear auth so UI can route to login.
       await _localDataSource.clearAuthData();
+      final onAuthInvalidated = _onAuthInvalidated;
+      if (onAuthInvalidated != null) {
+        try {
+          await onAuthInvalidated();
+        } catch (_) {}
+      }
       return super.onError(err, handler);
     }
   }
@@ -117,6 +127,12 @@ class AuthInterceptor extends Interceptor {
 
       await _localDataSource.saveToken(access);
       await _localDataSource.saveRefreshToken(newRefresh);
+      final onTokenRefreshed = _onTokenRefreshed;
+      if (onTokenRefreshed != null) {
+        try {
+          await onTokenRefreshed(access);
+        } catch (_) {}
+      }
 
       completer.complete();
     } catch (e) {

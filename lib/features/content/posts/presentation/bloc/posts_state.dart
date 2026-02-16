@@ -6,6 +6,7 @@ enum PostsStatus { initial, loading, success, failure }
 class PostsState extends Equatable {
   final PostsStatus status;
   final List<PostEntity> posts;
+  final int? currentUserId;
   final bool hasReachedMax; // Keep for backward compatibility or UI checks
   final bool hasNextPage;
   final String? errorMessage;
@@ -14,6 +15,7 @@ class PostsState extends Equatable {
   const PostsState({
     this.status = PostsStatus.initial,
     this.posts = const [],
+    this.currentUserId,
     this.hasReachedMax = false,
     this.hasNextPage = true,
     this.errorMessage,
@@ -23,6 +25,7 @@ class PostsState extends Equatable {
   PostsState copyWith({
     PostsStatus? status,
     List<PostEntity>? posts,
+    int? currentUserId,
     bool? hasReachedMax,
     bool? hasNextPage,
     String? errorMessage,
@@ -31,6 +34,7 @@ class PostsState extends Equatable {
     return PostsState(
       status: status ?? this.status,
       posts: posts ?? this.posts,
+      currentUserId: currentUserId ?? this.currentUserId,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       hasNextPage: hasNextPage ?? this.hasNextPage,
       errorMessage: errorMessage ?? this.errorMessage,
@@ -42,6 +46,7 @@ class PostsState extends Equatable {
   List<Object?> get props => [
     status,
     posts,
+    currentUserId,
     hasReachedMax,
     hasNextPage,
     errorMessage,

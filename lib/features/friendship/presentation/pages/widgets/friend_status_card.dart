@@ -50,7 +50,7 @@ class FriendStatusCard extends StatelessWidget {
         // Sadece alt tarafa ince bir çizgi (Instagram/Twitter tarzı)
         border: Border(
           bottom: BorderSide(
-            color: theme.dividerColor.withOpacity(0.1),
+            color: theme.dividerColor.withValues(alpha:0.1),
             width: 1,
           ),
         ),
@@ -102,7 +102,7 @@ class FriendStatusCard extends StatelessWidget {
                             "@$username",
                             style: AppTextStyles.medium.copyWith(
                               fontSize: 13,
-                              color: colorScheme.onSurface.withOpacity(0.5),
+                              color: colorScheme.onSurface.withValues(alpha:0.5),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -114,7 +114,7 @@ class FriendStatusCard extends StatelessWidget {
                             " • $statusInfo",
                             style: AppTextStyles.medium.copyWith(
                               fontSize: 12,
-                              color: colorScheme.onSurface.withOpacity(0.4),
+                              color: colorScheme.onSurface.withValues(alpha:0.4),
                             ),
                           ),
                         ],
@@ -158,7 +158,7 @@ class FriendStatusCard extends StatelessWidget {
             IconButton(
               onPressed: onOptionsTap,
               icon: Icon(Icons.delete),
-              color: colorScheme.onSurface.withOpacity(0.6),
+              color: colorScheme.onSurface.withValues(alpha:0.6),
               iconSize: 22,
               tooltip: "Sil",
               constraints: const BoxConstraints(),
@@ -185,7 +185,7 @@ class FriendStatusCard extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            color: colorScheme.surfaceContainerHighest.withValues(alpha:0.5),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -212,7 +212,7 @@ class FriendStatusCard extends StatelessWidget {
                 child: Icon(
                   Icons.close_rounded,
                   size: 20,
-                  color: colorScheme.error.withOpacity(0.8),
+                  color: colorScheme.error.withValues(alpha:0.8),
                 ),
               ),
             ),

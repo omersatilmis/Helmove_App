@@ -25,7 +25,7 @@ class AppButtonFrostedMin extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(
+            color: Colors.black.withValues(alpha:
               0.25,
             ), // Resim üzerinde kontrast için koyu zemin
             shape: BoxShape.circle,

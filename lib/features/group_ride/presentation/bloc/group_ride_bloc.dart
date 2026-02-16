@@ -155,10 +155,10 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
       (ride) async {
         // 2. Voice Session is now automatically created by the Backend.
         // We just need to check if we have the ID.
-        if (ride.voiceSessionId != null) {
+        if (ride.sessionId != null) {
           // Join SignalR Group for specific updates
           await signalRService.joinVoiceSessionGroup(ride.id.toString());
-          emit(GroupRideCreatedSync(ride, ride.voiceSessionId!));
+          emit(GroupRideCreatedSync(ride, ride.sessionId!));
         } else {
           // Fallback if backend didn't create it (shouldn't happen with new logic)
           emit(

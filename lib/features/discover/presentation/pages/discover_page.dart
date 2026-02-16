@@ -69,7 +69,7 @@ class _DiscoverViewState extends State<_DiscoverView> {
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(
                     context,
-                  ).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  ).colorScheme.onSurfaceVariant.withValues(alpha:0.5),
                 ),
                 child: const Text("Ara"),
               ),

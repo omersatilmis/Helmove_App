@@ -15,8 +15,6 @@ import '../widgets/active_group.dart';
 import '../widgets/nearby_group.dart';
 import '../widgets/rider_card.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../../features/auth/data/datasources/auth_local_data_source.dart';
 
 class CommunicationPage extends StatefulWidget {
   const CommunicationPage({super.key});
@@ -28,90 +26,17 @@ class CommunicationPage extends StatefulWidget {
 class _CommunicationPageState extends State<CommunicationPage> {
   List<VoiceSessionEntity> _mySessions = [];
   bool _isLoadingSessions = true;
-  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    _loadCurrentUser();
     _loadMySessions();
-  }
-
-  Future<void> _loadCurrentUser() async {
-    final authLocal = sl<AuthLocalDataSource>();
-    final userId = await authLocal.getUserId();
-    if (mounted) {
-      setState(() {
-        _currentUserId = userId;
-      });
-    }
   }
 
   void _loadMySessions() {
     context.read<VoiceSessionBloc>().add(const GetMyVoiceSessionsEvent());
   }
 
-  // --- MODERATION ACTIONS ---
-  void _kickUser(int targetUserId, String userName, int sessionId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Kullanıcıyı At'),
-        content: Text('$userName adlı kullanıcıyı atmak istiyor musunuz?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<VoiceSessionBloc>().add(
-                KickUserEvent(sessionId, targetUserId),
-              );
-            },
-            child: const Text('At', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _muteUser(int targetUserId, String userName, int sessionId) {
-    context.read<VoiceSessionBloc>().add(
-      MuteUserEvent(sessionId, targetUserId),
-    );
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$userName susturuldu')));
-  }
-
-  void _transferHost(int targetUserId, String userName, int sessionId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Liderlik Devret'),
-        content: Text(
-          '$userName adlı kullanıcıya liderliği devretmek istiyor musunuz?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<VoiceSessionBloc>().add(
-                TransferHostEvent(sessionId, targetUserId),
-              );
-            },
-            child: const Text('Devret', style: TextStyle(color: Colors.amber)),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +59,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withOpacity(0.08),
+              colorScheme.primary.withValues(alpha: 0.08),
               colorScheme.surface,
               colorScheme.surface,
             ],
@@ -242,27 +167,27 @@ class _CommunicationPageState extends State<CommunicationPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // Refresh button
-                            GestureDetector(
-                              onTap: _loadMySessions,
-                              child: Icon(
+                            IconButton(
+                              icon: Icon(
                                 Icons.refresh,
-                                color: colorScheme.onSurfaceVariant,
+                                color: colorScheme.onSurface,
                                 size: 20,
                               ),
+                              tooltip: 'Refresh',
+                              onPressed: _loadMySessions,
                             ),
                           ],
                         ),
                         // --- SOS Acil Durum Butonu ---
                         GestureDetector(
                           onTap: () {
-                            print("SOS Gönderildi!");
+                            debugPrint("SOS Gönderildi!");
                           },
                           child: Container(
                             width: 60,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: colorScheme.error.withOpacity(0.15),
+                              color: colorScheme.error.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: colorScheme.error,
@@ -270,7 +195,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: colorScheme.error.withOpacity(0.3),
+                                  color: colorScheme.error.withValues(alpha: 0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -304,7 +229,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                       children: [
                         Icon(
                           Icons.signal_cellular_alt,
-                          color: colorScheme.onSurface.withOpacity(0.6),
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -360,6 +285,10 @@ class _CommunicationPageState extends State<CommunicationPage> {
   }
 
   Widget _buildActiveSessionCard(ColorScheme colorScheme) {
+    final currentUserId = context.select<VoiceSessionBloc, int?>(
+      (bloc) => bloc.state.currentUserId,
+    );
+
     if (_isLoadingSessions) {
       return Center(
         child: Padding(
@@ -378,10 +307,10 @@ class _CommunicationPageState extends State<CommunicationPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow.withOpacity(0.08),
+              color: colorScheme.surfaceContainerLow.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: colorScheme.outline.withOpacity(0.2),
+                color: colorScheme.outline.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -403,7 +332,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                 Text(
                   'Yeni bir oda oluşturun veya davet bekleyin',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -435,8 +364,8 @@ class _CommunicationPageState extends State<CommunicationPage> {
       isActive: activeSession.isActive,
       onOpenPressed: () async {
         final args = GroupRideArgs(
-          rideId: activeSession.groupRideId ?? activeSession.id,
-          voiceSessionId: activeSession.id,
+          rideId: activeSession.rideId ?? activeSession.id,
+          sessionId: activeSession.id,
           groupName: activeSession.title,
           maxParticipants: activeSession.maxParticipants,
           currentParticipants: activeSession.activeParticipantCount,
@@ -462,12 +391,11 @@ class _CommunicationPageState extends State<CommunicationPage> {
       },
       riderCards: participants.map((p) {
         final isConnected = p.status == 'Joined' || p.status == 'Accepted';
-        final isMe = p.userId == _currentUserId;
+        final isMe = p.userId == currentUserId;
 
         // Viewer Role Determination
         RiderRole viewerRole = RiderRole.participant;
-        if (_currentUserId != null &&
-            activeSession.hostUserId == _currentUserId) {
+        if (currentUserId != null && activeSession.hostUserId == currentUserId) {
           viewerRole = RiderRole.organizer;
         }
 
@@ -490,27 +418,9 @@ class _CommunicationPageState extends State<CommunicationPage> {
           isMe: isMe,
           role: targetRole,
           viewerRole: viewerRole,
-          onKickUser: (viewerRole == RiderRole.organizer && !isMe)
-              ? () => _kickUser(
-                  p.userId,
-                  p.firstName ?? 'Kullanıcı',
-                  activeSession.id,
-                )
-              : null,
-          onMuteUser: (viewerRole == RiderRole.organizer && !isMe)
-              ? () => _muteUser(
-                  p.userId,
-                  p.firstName ?? 'Kullanıcı',
-                  activeSession.id,
-                )
-              : null,
-          onTransferHost: (viewerRole == RiderRole.organizer && !isMe)
-              ? () => _transferHost(
-                  p.userId,
-                  p.firstName ?? 'Kullanıcı',
-                  activeSession.id,
-                )
-              : null,
+          onKickUser: null,
+          onMuteUser: null,
+          onTransferHost: null,
         );
       }).toList(),
     );
@@ -537,12 +447,12 @@ class _CommunicationPageState extends State<CommunicationPage> {
             height: 85,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: glassTint.withOpacity(0.15),
+              color: glassTint.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: glassTint.withOpacity(0.3), width: 1),
+              border: Border.all(color: glassTint.withValues(alpha: 0.3), width: 1),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

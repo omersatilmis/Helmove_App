@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../../core/services/app_session.dart';
+import '../../../../auth/domain/usecases/get_current_user_id_use_case.dart';
 import '../../domain/usecases/delete_post_usecase.dart';
 import '../../domain/usecases/get_feed_usecase.dart';
 import '../../domain/usecases/get_user_posts_usecase.dart';
@@ -14,17 +18,48 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
   final GetUserPostsUseCase getUserPosts;
   final DeletePostUseCase deletePost;
   final LikePostUseCase likePost;
+  final GetCurrentUserIdUseCase getCurrentUserIdUseCase;
+  final AppSession appSession;
+  StreamSubscription<int?>? _appSessionUserIdSubscription;
 
   PostsBloc({
     required this.getFeed,
     required this.getUserPosts,
     required this.deletePost,
     required this.likePost,
+    required this.getCurrentUserIdUseCase,
+    required this.appSession,
   }) : super(const PostsState()) {
     on<GetFeedEvent>(_onGetFeed);
     on<GetUserPostsEvent>(_onGetUserPosts);
     on<DeletePostEvent>(_onDeletePost);
     on<LikePostEvent>(_onLikePost);
+    on<PostsCurrentUserChangedEvent>(_onPostsCurrentUserChanged);
+
+    Future.microtask(_initializeCurrentUserBridge);
+  }
+
+  Future<void> _initializeCurrentUserBridge() async {
+    final userId = appSession.currentUserId ?? await getCurrentUserIdUseCase();
+    if (!isClosed) {
+      add(PostsCurrentUserChangedEvent(userId));
+    }
+
+    _appSessionUserIdSubscription = appSession.currentUserIdStream.distinct().listen((userId) {
+      if (!isClosed) {
+        add(PostsCurrentUserChangedEvent(userId));
+      }
+    });
+  }
+
+  void _onPostsCurrentUserChanged(
+    PostsCurrentUserChangedEvent event,
+    Emitter<PostsState> emit,
+  ) {
+    if (state.currentUserId == event.userId) {
+      return;
+    }
+    emit(state.copyWith(currentUserId: event.userId));
   }
 
   Future<void> _onGetFeed(GetFeedEvent event, Emitter<PostsState> emit) async {
@@ -227,5 +262,11 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
         ),
       );
     }
+  }
+
+  @override
+  Future<void> close() {
+    _appSessionUserIdSubscription?.cancel();
+    return super.close();
   }
 }

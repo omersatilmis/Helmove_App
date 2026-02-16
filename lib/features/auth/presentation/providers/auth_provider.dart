@@ -1,23 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/auth_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../profile/domain/repositories/profile_repository.dart'; // Import added
 import '../../../../core/services/notification_service.dart'; // Import added
 import '../../../../core/utils/app_logger.dart';
-import '../../../../core/services/signalr_service.dart';
+import '../../../../core/services/app_session.dart';
 import '../../../../core/di/injection_container.dart' as di;
-import '../../../../core/di/injection_container.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
   final ProfileRepository _profileRepository;
   final NotificationService _notificationService; // Dependency added
+  final AppSession _appSession;
+  StreamSubscription<int?>? _appSessionUserIdSubscription;
 
   AuthProvider(
     this._authRepository,
     this._profileRepository,
     this._notificationService, // Constructor updated
-  );
+    this._appSession,
+  ) {
+    _appSessionUserIdSubscription = _appSession.currentUserIdStream.distinct().listen((userId) {
+      if (userId == null && _currentUser != null) {
+        _currentUser = null;
+        notifyListeners();
+      }
+    });
+  }
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -36,15 +47,14 @@ class AuthProvider extends ChangeNotifier {
     try {
       final authEntity = await _authRepository.login(email, password);
       _currentUser = authEntity;
+      _appSession.updateSession(
+        currentUserId: authEntity.id,
+        currentUser: authEntity,
+        token: authEntity.token,
+      );
 
       // OneSignal Login
       await _notificationService.login(authEntity.id.toString());
-
-      try {
-        await sl<SignalRService>().init();
-      } catch (e) {
-        AppLogger.error("SignalR init failed on login: $e");
-      }
 
       _setLoading(false);
       return true;
@@ -133,6 +143,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _authRepository.logout();
       _currentUser = null; // Kullanıcı bilgisini temizle
+      _appSession.clearSession();
 
       // OneSignal Logout
       await _notificationService.logout();
@@ -158,6 +169,11 @@ class AuthProvider extends ChangeNotifier {
 
         if (persistedUser != null && persistedUser.id != 0) {
           _currentUser = persistedUser;
+          _appSession.updateSession(
+            currentUserId: persistedUser.id,
+            currentUser: persistedUser,
+            token: persistedUser.token,
+          );
           // IMPORTANT: notifyListeners() skipped here because this is often called during build or navigation
         } else {
           // 2. If local storage is empty or invalid, fetch from API
@@ -184,6 +200,12 @@ class AuthProvider extends ChangeNotifier {
                 _currentUser!.username,
               );
 
+              _appSession.updateSession(
+                currentUserId: _currentUser!.id,
+                currentUser: _currentUser,
+                token: _currentUser!.token,
+              );
+
               // Ensure OneSignal is logged in
               await _notificationService.login(_currentUser!.id.toString());
             }
@@ -192,16 +214,10 @@ class AuthProvider extends ChangeNotifier {
           }
         }
       }
-
-      // Ensure SignalR is initialized whenever we are logged in
-      try {
-        sl<SignalRService>().init();
-      } catch (e) {
-        AppLogger.error("SignalR init failed on auth check: $e");
-      }
     } else {
       if (_currentUser != null) {
         _currentUser = null;
+        _appSession.clearSession();
         notifyListeners();
       }
     }
@@ -222,5 +238,11 @@ class AuthProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _appSessionUserIdSubscription?.cancel();
+    super.dispose();
   }
 }

@@ -119,6 +119,7 @@ class _FeedViewState extends State<FeedView> {
 
                 return PostCardModern(
                   post: post,
+                  currentUserId: state.currentUserId,
                   onDelete: () {
                     _postsBloc.add(DeletePostEvent(post.id));
                   },

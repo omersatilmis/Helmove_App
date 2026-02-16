@@ -5,19 +5,17 @@ import 'package:signalr_netcore/signalr_client.dart';
 import '../network/network_module.dart';
 import '../utils/app_logger.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
+import 'models/signalr_payloads.dart';
 
 class SignalRService {
   HubConnection? _hubConnection;
   String? _resolvedBaseUrl;
   final AuthLocalDataSource authLocalDataSource;
 
-  SignalRService(this.authLocalDataSource);
+  /// Race-condition guard: eş zamanlı init() çağrılarını engeller.
+  Completer<void>? _initCompleter;
 
-  // Callbacks - Voice Session oriented naming
-  Function(String userId, String? voiceSessionId)? _onUserJoinedVoiceSession;
-  Function(String userId, String? voiceSessionId)? _onUserLeftVoiceSession;
-  Function(String userId, dynamic locationData)? _onRideLocationUpdate;
-  // Previously: Function(String? rideId)? _onRideTerminated;
+  SignalRService(this.authLocalDataSource);
 
   // Broadcast Streams
   final _rideTerminatedController = StreamController<String?>.broadcast();
@@ -28,35 +26,43 @@ class SignalRService {
       StreamController<Map<String, dynamic>>.broadcast();
   final _groupRideUpdatedController = StreamController<String>.broadcast();
   final _notificationReceivedController = StreamController<dynamic>.broadcast();
+  final _rideLocationUpdateController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   // ============================================================
   // P2P CALL SIGNALING STREAMS
   // ============================================================
   final _incomingCallController =
-      StreamController<Map<String, dynamic>>.broadcast();
-  final _callAcceptedController = StreamController<String>.broadcast();
+      StreamController<CallRequestPayload>.broadcast();
+  final _callAcceptedController =
+      StreamController<CallAcceptedPayload>.broadcast();
   final _callRejectedController =
-      StreamController<Map<String, dynamic>>.broadcast();
-    final _callEndedController =
-      StreamController<Map<String, dynamic>>.broadcast();
-  final _offerController = StreamController<Map<String, dynamic>>.broadcast();
-  final _answerController = StreamController<Map<String, dynamic>>.broadcast();
+      StreamController<CallRejectedPayload>.broadcast();
+  final _callEndedController = StreamController<CallEndedPayload>.broadcast();
+  final _offerController = StreamController<SdpPayload>.broadcast();
+  final _answerController = StreamController<SdpPayload>.broadcast();
   final _iceCandidateController =
-      StreamController<Map<String, dynamic>>.broadcast();
+      StreamController<IceCandidatePayload>.broadcast();
   final _callRequestFailedController = StreamController<String>.broadcast();
   final _callActionFailedController = StreamController<String>.broadcast();
   final _signalDeliveryFailedController = StreamController<String>.broadcast();
+    final _headlessCallRequestController =
+      StreamController<CallRequestPayload>.broadcast();
+    final _headlessCallAcceptedController =
+      StreamController<CallAcceptedPayload>.broadcast();
+    final _headlessCallEndedController =
+      StreamController<CallEndedPayload>.broadcast();
 
-  Stream<Map<String, dynamic>> get incomingCallStream =>
+  Stream<CallRequestPayload> get incomingCallStream =>
       _incomingCallController.stream;
-  Stream<String> get callAcceptedStream => _callAcceptedController.stream;
-  Stream<Map<String, dynamic>> get callRejectedStream =>
+  Stream<CallAcceptedPayload> get callAcceptedStream =>
+      _callAcceptedController.stream;
+  Stream<CallRejectedPayload> get callRejectedStream =>
       _callRejectedController.stream;
-    Stream<Map<String, dynamic>> get callEndedStream =>
-      _callEndedController.stream;
-  Stream<Map<String, dynamic>> get offerStream => _offerController.stream;
-  Stream<Map<String, dynamic>> get answerStream => _answerController.stream;
-  Stream<Map<String, dynamic>> get iceCandidateStream =>
+  Stream<CallEndedPayload> get callEndedStream => _callEndedController.stream;
+  Stream<SdpPayload> get offerStream => _offerController.stream;
+  Stream<SdpPayload> get answerStream => _answerController.stream;
+  Stream<IceCandidatePayload> get iceCandidateStream =>
       _iceCandidateController.stream;
   Stream<String> get callRequestFailedStream =>
       _callRequestFailedController.stream;
@@ -64,6 +70,12 @@ class SignalRService {
       _callActionFailedController.stream;
   Stream<String> get signalDeliveryFailedStream =>
       _signalDeliveryFailedController.stream;
+    Stream<CallRequestPayload> get headlessCallRequestStream =>
+      _headlessCallRequestController.stream;
+    Stream<CallAcceptedPayload> get headlessCallAcceptedStream =>
+      _headlessCallAcceptedController.stream;
+    Stream<CallEndedPayload> get headlessCallEndedStream =>
+      _headlessCallEndedController.stream;
 
   Stream<String?> get rideTerminatedStream => _rideTerminatedController.stream;
   Stream<void> get rideCreatedStream => _rideCreatedController.stream;
@@ -75,24 +87,42 @@ class SignalRService {
       _groupRideUpdatedController.stream;
   Stream<dynamic> get notificationReceivedStream =>
       _notificationReceivedController.stream;
+  Stream<Map<String, dynamic>> get rideLocationUpdateStream =>
+      _rideLocationUpdateController.stream;
 
   final _voiceSessionRefreshController = StreamController<int>.broadcast();
   Stream<int> get voiceSessionRefreshStream =>
       _voiceSessionRefreshController.stream;
 
   // Active Voice Session Context
-  String? _activeVoiceSessionId;
+  String? _activeSessionId;
 
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
+  String? get connectionId => _hubConnection?.connectionId;
+
+  Future<int?> get currentUserId => authLocalDataSource.getUserId();
 
   Future<void> init() async {
-    final token = await authLocalDataSource.getToken();
-    if (token == null || token.trim().isEmpty) {
-      AppLogger.warning("SignalR Init Failed: No Token");
+    // Guard: Eğer zaten init süreci devam ediyorsa, aynı Future'ı döndür.
+    if (_initCompleter != null) {
+      return _initCompleter!.future;
+    }
+
+    // Zaten bağlıysa tekrar init etme.
+    if (_hubConnection != null &&
+        _hubConnection!.state != HubConnectionState.Disconnected) {
       return;
     }
 
+    _initCompleter = Completer<void>();
+
     try {
+      final token = await authLocalDataSource.getToken();
+      if (token == null || token.trim().isEmpty) {
+        AppLogger.warning("SignalR Init Failed: No Token");
+        return;
+      }
+
       _resolvedBaseUrl ??= await NetworkModule.getBaseUrl();
       final hubUrl = "${_resolvedBaseUrl!}callhub";
 
@@ -120,6 +150,9 @@ class SignalRService {
       await start();
     } catch (e) {
       AppLogger.error("SignalR Init Error", e);
+    } finally {
+      _initCompleter?.complete();
+      _initCompleter = null;
     }
   }
 
@@ -129,15 +162,9 @@ class SignalRService {
     _hubConnection!.on("UserJoinedVoiceSession", (arguments) {
       if (arguments != null && arguments.isNotEmpty) {
         final userId = arguments[0] as String;
-        final voiceSessionId = arguments.length > 1
-            ? arguments[1] as String?
-            : null;
+        final sessionId = arguments.length > 1 ? arguments[1] as String? : null;
         AppLogger.info(
-          "SignalR: User Joined Voice Session -> $userId (Session: ${voiceSessionId ?? _activeVoiceSessionId})",
-        );
-        _onUserJoinedVoiceSession?.call(
-          userId,
-          voiceSessionId ?? _activeVoiceSessionId,
+          "SignalR: User Joined Voice Session -> $userId (Session: ${sessionId ?? _activeSessionId})",
         );
         _userJoinedController.add(userId);
       }
@@ -146,15 +173,9 @@ class SignalRService {
     _hubConnection!.on("UserLeftVoiceSession", (arguments) {
       if (arguments != null && arguments.isNotEmpty) {
         final userId = arguments[0] as String;
-        final voiceSessionId = arguments.length > 1
-            ? arguments[1] as String?
-            : null;
+        final sessionId = arguments.length > 1 ? arguments[1] as String? : null;
         AppLogger.info(
-          "SignalR: User Left Voice Session -> $userId (Session: ${voiceSessionId ?? _activeVoiceSessionId})",
-        );
-        _onUserLeftVoiceSession?.call(
-          userId,
-          voiceSessionId ?? _activeVoiceSessionId,
+          "SignalR: User Left Voice Session -> $userId (Session: ${sessionId ?? _activeSessionId})",
         );
         _userLeftController.add(userId);
       }
@@ -174,7 +195,15 @@ class SignalRService {
         final userId = _asString(arguments[0]);
         if (userId == null || userId.isEmpty) return;
         final data = arguments[1];
-        _onRideLocationUpdate?.call(userId, data);
+        if (data is Map) {
+          _rideLocationUpdateController.add({
+            'userId': userId,
+            ...Map<String, dynamic>.from(data),
+          });
+        } else {
+          // Fallback if data structure is different, or wrap it
+          _rideLocationUpdateController.add({'userId': userId, 'data': data});
+        }
       }
     });
 
@@ -272,11 +301,13 @@ class SignalRService {
         AppLogger.info(
           "SignalR: Gelen arama <- $callerId (Name: $callerDisplayName, CallId: $callId)",
         );
-        _incomingCallController.add({
-          'callerId': callerId,
-          'callerDisplayName': callerDisplayName,
-          'callId': callId,
-        });
+        _incomingCallController.add(
+          CallRequestPayload(
+            callerId: callerId,
+            callerDisplayName: callerDisplayName,
+            callId: callId,
+          ),
+        );
       } else {
         AppLogger.warning(
           "SignalR: ReceiveCallRequest received but arguments are null or empty!",
@@ -316,7 +347,9 @@ class SignalRService {
         AppLogger.info(
           "SignalR: Arama kabul edildi <- acceptedBy=$acceptedByUserId target=${targetUserId ?? '-'}",
         );
-        _callAcceptedController.add(acceptedByUserId);
+        _callAcceptedController.add(
+          CallAcceptedPayload(actorId: acceptedByUserId, targetUserId: targetUserId),
+        );
       }
     });
 
@@ -355,12 +388,13 @@ class SignalRService {
         AppLogger.info(
           "SignalR: Arama reddedildi <- rejectedBy=$rejectedByUserId target=${targetUserId ?? '-'}",
         );
-        _callRejectedController.add({
-          'targetUserId': rejectedByUserId,
-          'rejectedByUserId': rejectedByUserId,
-          'targetUserIdOriginal': targetUserId,
-          'reason': reason,
-        });
+        _callRejectedController.add(
+          CallRejectedPayload(
+            actorId: rejectedByUserId,
+            targetUserId: targetUserId,
+            reason: reason,
+          ),
+        );
       }
     });
 
@@ -396,10 +430,13 @@ class SignalRService {
         AppLogger.info(
           "SignalR: Arama sonlandirildi <- endedBy=$endedByUserId target=${targetUserId ?? '-'}",
         );
-        _callEndedController.add({
-          'endedByUserId': endedByUserId,
-          'targetUserId': targetUserId,
-        });
+        _callEndedController.add(
+          CallEndedPayload(
+            actorId: endedByUserId,
+            targetUserId: targetUserId,
+            reason: null, // Basic CallEnded doesn't usually carry reason
+          ),
+        );
       }
     });
 
@@ -465,7 +502,7 @@ class SignalRService {
       AppLogger.info(
         "SignalR: SDP Offer alindi <- $callerId (len=$sdpLen head=${_sdpHead(sdp)})",
       );
-      _offerController.add({'callerId': callerId, 'sdp': sdp});
+      _offerController.add(SdpPayload(userId: callerId, sdp: sdp));
     });
 
     _hubConnection!.on("ReceiveAnswer", (arguments) {
@@ -512,7 +549,7 @@ class SignalRService {
       AppLogger.info(
         "SignalR: SDP Answer alindi <- $targetUserId (len=$sdpLen head=${_sdpHead(sdp)})",
       );
-      _answerController.add({'targetUserId': targetUserId, 'sdp': sdp});
+      _answerController.add(SdpPayload(userId: targetUserId, sdp: sdp));
     });
 
     _hubConnection!.on("ReceiveIceCandidate", (arguments) {
@@ -539,12 +576,101 @@ class SignalRService {
         final candidate = _asString(parsed['candidate']);
         if (candidate == null || candidate.isEmpty) return;
 
-        _iceCandidateController.add({
-          'fromUserId': fromUserId,
-          'candidate': candidate,
-          'sdpMid': _asString(parsed['sdpMid']),
-          'sdpMLineIndex': _asInt(parsed['sdpMLineIndex']),
-        });
+        _iceCandidateController.add(
+          IceCandidatePayload(
+            fromUserId: fromUserId,
+            candidate: candidate,
+            sdpMid: _asString(parsed['sdpMid']),
+            sdpMLineIndex: _asInt(parsed['sdpMLineIndex']),
+          ),
+        );
+      }
+    });
+
+    _hubConnection!.on("ReceiveHeadlessCallRequest", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        String? callerId;
+
+        if (arguments[0] is Map) {
+          final payload = Map<String, dynamic>.from(arguments[0] as Map);
+          callerId = _readActorId(payload);
+        } else {
+          callerId = _asString(arguments[0]);
+        }
+
+        if (callerId == null || callerId.isEmpty) return;
+
+        AppLogger.info("SignalR: ReceiveHeadlessCallRequest <- actorId=$callerId");
+        _headlessCallRequestController.add(
+          CallRequestPayload(callerId: callerId),
+        );
+      }
+    });
+
+    _hubConnection!.on("HeadlessCallAccepted", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        String? actorId;
+        String? targetUserId;
+
+        if (arguments[0] is Map) {
+          final payload = Map<String, dynamic>.from(arguments[0] as Map);
+          actorId = _readActorId(payload);
+          targetUserId = _readString(payload, const [
+            'targetUserId',
+            'TargetUserId',
+            'receiverId',
+            'ReceiverId',
+          ]);
+        } else {
+          actorId = _asString(arguments[0]);
+          targetUserId = arguments.length > 1 ? _asString(arguments[1]) : null;
+        }
+
+        if (actorId == null || actorId.isEmpty) return;
+
+        AppLogger.info(
+          "SignalR: HeadlessCallAccepted <- actorId=$actorId target=${targetUserId ?? '-'}",
+        );
+        _headlessCallAcceptedController.add(
+          CallAcceptedPayload(actorId: actorId, targetUserId: targetUserId),
+        );
+      }
+    });
+
+    _hubConnection!.on("HeadlessCallEnded", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        String? actorId;
+        String? targetUserId;
+        String? reason;
+
+        if (arguments[0] is Map) {
+          final payload = Map<String, dynamic>.from(arguments[0] as Map);
+          actorId = _readActorId(payload);
+          targetUserId = _readString(payload, const [
+            'targetUserId',
+            'TargetUserId',
+            'receiverId',
+            'ReceiverId',
+          ]);
+          reason = _readString(payload, const ['reason', 'Reason']);
+        } else {
+          actorId = _asString(arguments[0]);
+          targetUserId = arguments.length > 1 ? _asString(arguments[1]) : null;
+          reason = arguments.length > 2 ? _asString(arguments[2]) : null;
+        }
+
+        if (actorId == null || actorId.isEmpty) return;
+
+        AppLogger.info(
+          "SignalR: HeadlessCallEnded <- actorId=$actorId target=${targetUserId ?? '-'} reason=${reason ?? '-'}",
+        );
+        _headlessCallEndedController.add(
+          CallEndedPayload(
+            actorId: actorId,
+            targetUserId: targetUserId,
+            reason: reason,
+          ),
+        );
       }
     });
   }
@@ -557,6 +683,31 @@ class SignalRService {
       if (text != null) return text;
     }
     return null;
+  }
+
+  String? _readActorId(Map<String, dynamic> data) {
+    return _readString(data, const [
+      'actorId',
+      'ActorId',
+      'acceptedBy',
+      'AcceptedBy',
+      'acceptedByUserId',
+      'AcceptedByUserId',
+      'rejectedBy',
+      'RejectedBy',
+      'rejectedByUserId',
+      'RejectedByUserId',
+      'endedBy',
+      'EndedBy',
+      'endedByUserId',
+      'EndedByUserId',
+      'callerId',
+      'CallerId',
+      'fromUserId',
+      'FromUserId',
+      'userId',
+      'UserId',
+    ]);
   }
 
   int? _readInt(Map<String, dynamic> data, List<String> keys) {
@@ -717,31 +868,25 @@ class SignalRService {
 
   // --- Actions ---
 
-  Future<void> joinVoiceSessionGroup(String voiceSessionId) async {
+  Future<void> joinVoiceSessionGroup(String sessionId) async {
     if (!isConnected) return;
     try {
-      await _hubConnection!.invoke(
-        "JoinVoiceSessionGroup",
-        args: [voiceSessionId],
-      );
-      _activeVoiceSessionId = voiceSessionId;
-      AppLogger.info("Joined Voice Session Group: $voiceSessionId");
+      await _hubConnection!.invoke("JoinVoiceSessionGroup", args: [sessionId]);
+      _activeSessionId = sessionId;
+      AppLogger.info("Joined Voice Session Group: $sessionId");
     } catch (e) {
       AppLogger.error("Error joining voice session group", e);
     }
   }
 
-  Future<void> leaveVoiceSessionGroup(String voiceSessionId) async {
+  Future<void> leaveVoiceSessionGroup(String sessionId) async {
     if (!isConnected) return;
     try {
-      await _hubConnection!.invoke(
-        "LeaveVoiceSessionGroup",
-        args: [voiceSessionId],
-      );
-      if (_activeVoiceSessionId == voiceSessionId) {
-        _activeVoiceSessionId = null;
+      await _hubConnection!.invoke("LeaveVoiceSessionGroup", args: [sessionId]);
+      if (_activeSessionId == sessionId) {
+        _activeSessionId = null;
       }
-      AppLogger.info("Left Voice Session Group: $voiceSessionId");
+      AppLogger.info("Left Voice Session Group: $sessionId");
     } catch (e) {
       AppLogger.error("Error leaving voice session group", e);
     }
@@ -807,6 +952,40 @@ class SignalRService {
       );
     } catch (e) {
       AppLogger.error("SignalR: Arama sonlandÃƒâ€Ã‚Â±rma hatasÃƒâ€Ã‚Â±", e);
+    }
+  }
+
+  /// Headless Arama İsteği (RTC Orchestrator için)
+  Future<void> sendHeadlessCallRequest(String targetUserId) async {
+    if (!isConnected) return;
+    try {
+      await _hubConnection!.invoke(
+        "SendHeadlessCallRequest",
+        args: [targetUserId],
+      );
+      AppLogger.info(
+        "SignalR: Headless arama isteği gönderildi -> $targetUserId",
+      );
+    } catch (e) {
+      AppLogger.error("SignalR: Headless arama hatası", e);
+    }
+  }
+
+  Future<void> acceptHeadlessCall(String targetUserId) async {
+    if (!isConnected) return;
+    try {
+      await _hubConnection!.invoke("AcceptHeadlessCall", args: [targetUserId]);
+    } catch (e) {
+      AppLogger.error("SignalR: Headless kabul hatası", e);
+    }
+  }
+
+  Future<void> endHeadlessCall(String targetUserId) async {
+    if (!isConnected) return;
+    try {
+      await _hubConnection!.invoke("EndHeadlessCall", args: [targetUserId]);
+    } catch (e) {
+      AppLogger.error("SignalR: Headless sonlandırma hatası", e);
     }
   }
 
@@ -993,18 +1172,6 @@ class SignalRService {
   }
 
   // --- Listeners Setters ---
-
-  void setOnUserJoinedVoiceSession(
-    Function(String userId, String? voiceSessionId) callback,
-  ) {
-    _onUserJoinedVoiceSession = callback;
-  }
-
-  void setOnUserLeftVoiceSession(
-    Function(String userId, String? voiceSessionId) callback,
-  ) {
-    _onUserLeftVoiceSession = callback;
-  }
 
   // DEPRECATED: Use rideTerminatedStream instead
   // void setOnRideTerminated(Function(String? rideId)? callback) {

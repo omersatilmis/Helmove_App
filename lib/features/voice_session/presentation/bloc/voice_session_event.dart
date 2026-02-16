@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../data/dto/create_voice_session_request_dto.dart';
 import '../../data/dto/invite_users_request_dto.dart';
+import '../../../intercom/domain/intercom_models.dart';
 
 abstract class VoiceSessionEvent extends Equatable {
   const VoiceSessionEvent();
@@ -164,4 +165,76 @@ class ActiveSpeakersChangedEvent extends VoiceSessionEvent {
   const ActiveSpeakersChangedEvent(this.speakerIdentities);
   @override
   List<Object?> get props => [speakerIdentities];
+}
+
+// ============================================================
+// Headless P2P Events (RTC Orchestrator)
+// ============================================================
+
+class HandleHeadlessCallRequestEvent extends VoiceSessionEvent {
+  final String callerId;
+  const HandleHeadlessCallRequestEvent(this.callerId);
+  @override
+  List<Object?> get props => [callerId];
+}
+
+class HandleHeadlessCallAcceptedEvent extends VoiceSessionEvent {
+  final String userId;
+  const HandleHeadlessCallAcceptedEvent(this.userId);
+  @override
+  List<Object?> get props => [userId];
+}
+
+class HandleHeadlessCallEndedEvent extends VoiceSessionEvent {
+  final String userId;
+  const HandleHeadlessCallEndedEvent(this.userId);
+  @override
+  List<Object?> get props => [userId];
+}
+
+class HandleHeadlessOfferEvent extends VoiceSessionEvent {
+  final String callerId;
+  final String sdp;
+  const HandleHeadlessOfferEvent(this.callerId, this.sdp);
+  @override
+  List<Object?> get props => [callerId, sdp];
+}
+
+class HandleHeadlessAnswerEvent extends VoiceSessionEvent {
+  final String targetUserId;
+  final String sdp;
+  const HandleHeadlessAnswerEvent(this.targetUserId, this.sdp);
+  @override
+  List<Object?> get props => [targetUserId, sdp];
+}
+
+class HandleHeadlessIceCandidateEvent extends VoiceSessionEvent {
+  final String fromUserId;
+  final dynamic candidateData;
+  const HandleHeadlessIceCandidateEvent(this.fromUserId, this.candidateData);
+  @override
+  List<Object?> get props => [fromUserId, candidateData];
+}
+
+/// Internal event: 5-second debounce timer expired for P2P/SFU decision.
+/// Fired by the orchestrator after waiting to see if more participants join.
+class RtcDebounceExpiredEvent extends VoiceSessionEvent {
+  const RtcDebounceExpiredEvent();
+}
+
+class AppSessionCurrentUserChangedEvent extends VoiceSessionEvent {
+  final int? userId;
+  const AppSessionCurrentUserChangedEvent(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class IntercomStateChangedEvent extends VoiceSessionEvent {
+  final IntercomState intercomState;
+
+  const IntercomStateChangedEvent(this.intercomState);
+
+  @override
+  List<Object?> get props => [intercomState];
 }
