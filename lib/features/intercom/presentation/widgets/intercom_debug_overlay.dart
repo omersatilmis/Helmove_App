@@ -55,8 +55,8 @@ class _IntercomDebugOverlayState extends State<IntercomDebugOverlay> {
         alignment: Alignment.topRight,
         child: Container(
           margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.all(10),
-          width: 320,
+          padding: EdgeInsets.all(_collapsed ? 6 : 10),
+          width: _collapsed ? 36 : 320,
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.75),
             borderRadius: BorderRadius.circular(12),
@@ -93,15 +93,18 @@ class _IntercomDebugOverlayState extends State<IntercomDebugOverlay> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: _collapsed
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Intercom',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+            if (!_collapsed)
+              const Text(
+                'Intercom',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
             IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),

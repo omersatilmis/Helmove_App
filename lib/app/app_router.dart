@@ -245,18 +245,23 @@ GoRouter createRouter(AuthProvider authProvider) {
                   GoRoute(
                     path: 'group-page', // başında / yok dikkat
                     builder: (context, state) {
-                      final args = state.extra is GroupRideArgs
-                          ? (state.extra as GroupRideArgs)
-                          : const GroupRideArgs(
-                              rideId: 0,
-                              groupName: "Weekend Riders",
-                              maxParticipants: 8,
-                              currentParticipants: 4,
-                              sessionDuration: "01:19",
-                              privacy: "Public",
-                              destination: "Abant Gölü",
-                              ridingStyle: "Sakin Sürüş",
-                            );
+                      GroupRideArgs? args;
+                      if (state.extra is GroupRideArgs) {
+                        args = state.extra as GroupRideArgs;
+                      } else if (state.extra is Map<String, dynamic>) {
+                        args = GroupRideArgs.fromMap(
+                          state.extra as Map<String, dynamic>,
+                        );
+                      }
+
+                      if (args == null || args.rideId <= 0) {
+                        return const Scaffold(
+                          body: Center(
+                            child: Text('Geçerli grup bilgisi bulunamadı.'),
+                          ),
+                        );
+                      }
+
                       return MultiBlocProvider(
                         providers: [
                           BlocProvider(

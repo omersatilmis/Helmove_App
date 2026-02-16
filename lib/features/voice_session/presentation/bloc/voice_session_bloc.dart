@@ -51,6 +51,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   StreamSubscription? _userLeftSubscription;
   StreamSubscription? _hostChangedSubscription;
   StreamSubscription? _voiceSessionRefreshSubscription;
+  StreamSubscription? _userForceRemovedSubscription;
   StreamSubscription? _groupRideUpdatedSubscription;
   StreamSubscription? _appSessionUserIdSubscription;
 
@@ -102,7 +103,6 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     });
 
     // 3. User Joined
-    // 3. User Joined
     _userJoinedSubscription = signalRService.userJoinedStream.listen((userId) {
       try {
         if (!isClosed) {
@@ -120,7 +120,6 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     });
 
     // 4. User Left
-    // 4. User Left
     _userLeftSubscription = signalRService.userLeftStream.listen((userId) {
       try {
         if (!isClosed) {
@@ -137,8 +136,6 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       }
     });
 
-    // ... (lines 135-336 unchanged) ...
-
     // 5. Host Changed
     _hostChangedSubscription = signalRService.hostChangedStream.listen((data) {
       if (!isClosed) {
@@ -153,10 +150,19 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
             // Refresh session list for CommunicationPage
             add(const GetMyVoiceSessionsEvent());
 
-            // Always refresh session details — GroupPage listens for this
-            add(GetVoiceSessionDetailsEvent(sessionId));
+            // Refresh details only for currently opened session to avoid
+            // cross-session state churn and unnecessary API calls.
+            if (state.session?.id == sessionId) {
+              add(GetVoiceSessionDetailsEvent(sessionId));
+            }
           }
         });
+
+    _userForceRemovedSubscription = signalRService.userForceRemovedStream.listen((sessionId) {
+      if (!isClosed) {
+        add(VoiceSessionForceRemovedEvent(sessionId));
+      }
+    });
 
     // 7. Group Ride Updated (Name/Desc changes)
     _groupRideUpdatedSubscription = signalRService.groupRideUpdatedStream
@@ -237,6 +243,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         }
       }
     });
+    on<VoiceSessionForceRemovedEvent>(_onVoiceSessionForceRemoved);
   }
 
   Future<void> _onCreateVoiceSession(
@@ -533,12 +540,16 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           message: failure.message,
         ),
       ),
-      (_) => emit(
-        state.copyWith(
-          status: VoiceSessionStatus.inviteAccepted,
-          sessionId: event.sessionId,
-        ),
-      ),
+      (_) {
+        emit(
+          state.copyWith(
+            status: VoiceSessionStatus.inviteAccepted,
+            sessionId: event.sessionId,
+          ),
+        );
+        add(JoinVoiceSessionEvent(event.sessionId));
+        add(GetVoiceSessionDetailsEvent(event.sessionId));
+      },
     );
   }
 
@@ -607,6 +618,40 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     }
   }
 
+  Future<void> _onVoiceSessionForceRemoved(
+    VoiceSessionForceRemovedEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    final currentSessionId = state.session?.id;
+
+    if (currentSessionId != event.sessionId) {
+      add(const GetMyVoiceSessionsEvent());
+      return;
+    }
+
+    try {
+      await intercomEngine.detachSession(stopAudio: true);
+    } catch (e) {
+      debugPrint('⚠️ [VoiceSessionBloc] Force remove detach warning: $e');
+    }
+
+    await signalRService.leaveVoiceSessionGroup(event.sessionId.toString());
+
+    emit(
+      state.copyWith(
+        status: VoiceSessionStatus.left,
+        sessionId: event.sessionId,
+        message: event.reason ?? 'Oturumdan çıkarıldınız',
+        activeSpeakers: [],
+        isLiveKitConnected: false,
+        isMicOn: false,
+        session: null,
+      ),
+    );
+
+    add(const GetMyVoiceSessionsEvent());
+  }
+
   Future<void> _onAppSessionCurrentUserChanged(
     AppSessionCurrentUserChangedEvent event,
     Emitter<VoiceSessionState> emit,
@@ -641,6 +686,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     _userLeftSubscription?.cancel();
     _hostChangedSubscription?.cancel();
     _voiceSessionRefreshSubscription?.cancel();
+    _userForceRemovedSubscription?.cancel();
     _groupRideUpdatedSubscription?.cancel();
     _appSessionUserIdSubscription?.cancel();
     _intercomStateSubscription?.cancel();

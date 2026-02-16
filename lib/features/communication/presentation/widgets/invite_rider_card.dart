@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
 
+enum InviteStatus {
+  none,
+  pending,
+  accepted,
+  rejected,
+}
+
 class InviteRiderCard extends StatelessWidget {
   final String firstName;
   final String lastName;
@@ -8,6 +15,7 @@ class InviteRiderCard extends StatelessWidget {
   final String profileImageUrl;
   final bool isFriend;
   final bool isSelected;
+  final InviteStatus inviteStatus;
   final VoidCallback onInviteTap;
   final VoidCallback onFriendshipTap;
 
@@ -19,6 +27,7 @@ class InviteRiderCard extends StatelessWidget {
     required this.profileImageUrl,
     required this.isFriend,
     required this.isSelected,
+    this.inviteStatus = InviteStatus.none,
     required this.onInviteTap,
     required this.onFriendshipTap,
   });
@@ -100,15 +109,8 @@ class InviteRiderCard extends StatelessWidget {
 
                     const SizedBox(width: 8),
 
-                    // Davet/Ekleme Butonu
-                    _buildActionButton(
-                      icon: isSelected ? Icons.close : Icons.add,
-                      color: isSelected
-                          ? colorScheme.error
-                          : colorScheme.primary,
-                      onTap: onInviteTap,
-                      tooltip: isSelected ? "Kaldır" : "Ekle",
-                    ),
+                    // Davet Durumu / Davet Butonu
+                    _buildInviteAction(colorScheme),
                   ],
                 ),
               ],
@@ -117,6 +119,31 @@ class InviteRiderCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildInviteAction(ColorScheme colorScheme) {
+    switch (inviteStatus) {
+      case InviteStatus.pending:
+        return _buildStatusIcon(
+          icon: Icons.hourglass_top,
+          color: Colors.amber,
+          tooltip: "Davet gönderildi",
+        );
+      case InviteStatus.accepted:
+        return _buildStatusIcon(
+          icon: Icons.check_circle,
+          color: Colors.greenAccent,
+          tooltip: "Davet kabul edildi",
+        );
+      case InviteStatus.rejected:
+      case InviteStatus.none:
+        return _buildActionButton(
+          icon: isSelected ? Icons.close : Icons.add,
+          color: isSelected ? colorScheme.error : colorScheme.primary,
+          onTap: onInviteTap,
+          tooltip: isSelected ? "Kaldır" : "Davet Gönder",
+        );
+    }
   }
 
   // RiderCard'dan kopyalanan aksiyon butonu yapısı
@@ -128,6 +155,24 @@ class InviteRiderCard extends StatelessWidget {
   }) {
     return IconButton(
       onPressed: onTap,
+      icon: Icon(icon, color: color, size: 22),
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
+      constraints: const BoxConstraints(),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
+  Widget _buildStatusIcon({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+  }) {
+    return IconButton(
+      onPressed: null,
       icon: Icon(icon, color: color, size: 22),
       tooltip: tooltip,
       visualDensity: VisualDensity.compact,

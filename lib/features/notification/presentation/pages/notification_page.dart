@@ -14,18 +14,26 @@ import '../bloc/notifications_state.dart';
 import '../../domain/entities/notification_entity.dart';
 import 'dart:convert';
 import 'package:go_router/go_router.dart';
+import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
+import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
+import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_event.dart';
+import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_state.dart';
 // import 'package:moto_comm_app_1/features/communication/domain/entities/group_ride_data.dart';
-import 'package:moto_comm_app_1/features/voice_session/domain/repositories/voice_session_repository.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => sl<NotificationsBloc>()
-        ..add(const GetNotificationsEvent())
-        ..add(GetUnreadCountEvent()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => sl<NotificationsBloc>()
+            ..add(const GetNotificationsEvent())
+            ..add(GetUnreadCountEvent()),
+        ),
+        BlocProvider.value(value: sl<VoiceSessionBloc>()),
+      ],
       child: const _NotificationsView(),
     );
   }
@@ -83,7 +91,20 @@ class _NotificationsViewState extends State<_NotificationsView> {
         ? const Color(0xFF121212)
         : const Color(0xFFF5F5F5);
 
-    return Scaffold(
+    return BlocListener<VoiceSessionBloc, VoiceSessionState>(
+      listenWhen: (previous, current) =>
+          previous.status != current.status || previous.message != current.message,
+      listener: (context, state) {
+        if (state.status == VoiceSessionStatus.error && state.message != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message!),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
         title: Text(
@@ -174,6 +195,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
             ),
           );
         },
+      ),
       ),
     );
   }
@@ -459,30 +481,25 @@ class _NotificationItemModern extends StatelessWidget {
   }
 
   Future<void> _goToGroupPage(BuildContext context, int sessionId) async {
-    // Burada repository çağrısı yapmak yerine sayfaya gidince Bloc oradan halletsin mi?
-    // Mevcut kod repository çağrısı yapıyor. Koruyalım.
-    try {
-      final voiceSessionRepository = sl<VoiceSessionRepository>();
-      await voiceSessionRepository.acceptInvitation(sessionId);
-      debugPrint('✅ Davet kabul edildi API çağrısı: $sessionId');
-    } catch (e) {
-      debugPrint('⚠️ Davet kabul hatası (belki zaten kabul edilmiş): $e');
+    final voiceBloc = context.read<VoiceSessionBloc>();
+    if (!voiceBloc.isClosed) {
+      voiceBloc.add(AcceptVoiceSessionInviteEvent(sessionId));
     }
 
-    // Navigasyon
-    final dummyData = {
-      'id': sessionId,
-      'groupName':
+    final groupArgs = GroupRideArgs(
+      rideId: notification.groupRideId ?? sessionId,
+      sessionId: sessionId,
+      groupName:
           notification.groupName ??
-          "${notification.senderUsername ?? 'Arkadaş'} Daveti", // Entity getter kullandık
-      'maxParticipants': 10,
-      'privacy': "Private",
-      'destination': "Bilinmiyor",
-      'ridingStyle': "Bilinmiyor",
-    };
+          "${notification.senderUsername ?? 'Arkadaş'} Daveti",
+      maxParticipants: 10,
+      privacy: "Private",
+      destination: "Bilinmiyor",
+      ridingStyle: "Bilinmiyor",
+    );
 
     if (!context.mounted) return;
-    context.go('/communication/group-page', extra: dummyData);
+    context.go('/communication/group-page', extra: groupArgs);
   }
 
   // Avatar ve Köşesindeki İkon

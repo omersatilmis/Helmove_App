@@ -11,7 +11,10 @@ import 'package:moto_comm_app_1/core/services/signalr_service.dart';
 import 'group_ride_event.dart';
 import 'group_ride_state.dart';
 
+import 'package:rxdart/rxdart.dart';
+
 class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
+  // ... existing fields ...
   final CreateGroupRideUseCase createGroupRideUseCase;
   final DeleteGroupRideUseCase deleteGroupRideUseCase;
   final GetActiveGroupRidesUseCase getActiveGroupRidesUseCase;
@@ -38,7 +41,12 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     required this.updateGroupRideUseCase,
   }) : super(GroupRideInitial()) {
     on<CreateGroupRideEvent>(_onCreateGroupRide);
-    on<LoadActiveGroupRidesEvent>(_onLoadActiveGroupRides);
+    on<LoadActiveGroupRidesEvent>(
+      _onLoadActiveGroupRides,
+      transformer: (events, mapper) => events
+          .debounceTime(const Duration(milliseconds: 300))
+          .asyncExpand(mapper),
+    );
     on<DeleteGroupRideEvent>(_onDeleteGroupRide);
     on<LeaveGroupRideEvent>(_onLeaveGroupRide);
 

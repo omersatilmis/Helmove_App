@@ -115,6 +115,7 @@ class IntercomEngineImpl implements IntercomEngine {
   @override
   Future<void> stop() async {
     await _stopAllAudio();
+    _cancelTimers();
     _cancelReconnectWorkflow();
     _context = null;
     _emitState(
@@ -260,9 +261,7 @@ class IntercomEngineImpl implements IntercomEngine {
         state == IntercomLifecycleState.detached ||
         state == IntercomLifecycleState.hidden) {
       await _stopAllAudio();
-      _enterReconnecting(
-        reason: 'lifecycle.${state.name}',
-      );
+      _enterReconnecting(reason: 'lifecycle.${state.name}');
     }
   }
 
@@ -276,9 +275,7 @@ class IntercomEngineImpl implements IntercomEngine {
     );
 
     if (!online) {
-      _enterReconnecting(
-        reason: 'connectivity.offline',
-      );
+      _enterReconnecting(reason: 'connectivity.offline');
       return;
     }
 
@@ -335,9 +332,7 @@ class IntercomEngineImpl implements IntercomEngine {
       }
 
       if (state.name == 'reconnecting') {
-        _enterReconnecting(
-          reason: 'livekit.reconnecting',
-        );
+        _enterReconnecting(reason: 'livekit.reconnecting');
         return;
       }
 
@@ -513,7 +508,9 @@ class IntercomEngineImpl implements IntercomEngine {
 
     if (context.activeCount >= 3) {
       _disconnectSfuWhenP2pConnected = false;
-      await _switchToSfu(reason: IntercomDecisionReason.threeOrMoreParticipantsSfu);
+      await _switchToSfu(
+        reason: IntercomDecisionReason.threeOrMoreParticipantsSfu,
+      );
       return;
     }
 
@@ -570,6 +567,9 @@ class IntercomEngineImpl implements IntercomEngine {
     final context = _context;
     if (context == null) return;
 
+    // Safety check: if stopped or disposed
+    if (!_started) return;
+
     _emitDecision(
       IntercomDecision(
         target: IntercomTransport.sfu,
@@ -591,13 +591,24 @@ class IntercomEngineImpl implements IntercomEngine {
       manualReason: manualReason,
     );
 
-    _disconnectP2pWhenSfuConnected =
-        previousTransport == IntercomTransport.p2p;
+    _disconnectP2pWhenSfuConnected = previousTransport == IntercomTransport.p2p;
 
-    final permissionsOk = await permissionsService.ensureVoiceSessionPermissions(
-      requestLocation: false,
-    );
+    final permissionsOk = await permissionsService
+        .ensureVoiceSessionPermissions(requestLocation: false);
     if (!permissionsOk) {
+      // Robustness: If we are already in P2P, don't break the call.
+      // Just log warning and stay in P2P.
+      if (previousTransport == IntercomTransport.p2p) {
+        _emitTelemetry(
+          IntercomTelemetryEvent.now(
+            command: IntercomCommand.forceSwitchToSfu,
+            name: 'switch_aborted_permissions_denied',
+            data: {'reason': 'permission_denied_keeping_p2p'},
+          ),
+        );
+        return;
+      }
+
       _emitFailure(
         const IntercomFailure(
           code: IntercomFailureCode.permissionsDenied,
@@ -638,6 +649,8 @@ class IntercomEngineImpl implements IntercomEngine {
       _completeSwitchTelemetry(IntercomTransport.sfu);
     } catch (e, stack) {
       _emitSwitchFailureTelemetry(IntercomTransport.sfu);
+      // If we failed to switch to SFU, we try to recover or stay in P2P if possible?
+      // For now, standard error handling:
       _enterReconnecting(
         reason: 'switch_to_sfu_failed',
         failure: IntercomFailure(
@@ -679,8 +692,7 @@ class IntercomEngineImpl implements IntercomEngine {
       manualReason: manualReason,
     );
 
-    _disconnectSfuWhenP2pConnected =
-        previousTransport == IntercomTransport.sfu;
+    _disconnectSfuWhenP2pConnected = previousTransport == IntercomTransport.sfu;
 
     _emitState(
       _state.copyWith(
@@ -775,7 +787,8 @@ class IntercomEngineImpl implements IntercomEngine {
 
   Future<void> _prepareWebRtcForOffer() async {
     final ice = await liveKitApi.getIceServers();
-    final servers = (ice['iceServers'] as List?)?.cast<Map<String, dynamic>>() ??
+    final servers =
+        (ice['iceServers'] as List?)?.cast<Map<String, dynamic>>() ??
         const <Map<String, dynamic>>[];
 
     await webRTCService.stopAll();
@@ -828,7 +841,8 @@ class IntercomEngineImpl implements IntercomEngine {
           IntercomTelemetryKeys.activeParticipantCount:
               decision.activeParticipantCount,
           if (decision.delayApplied != null)
-            IntercomTelemetryKeys.delayMs: decision.delayApplied!.inMilliseconds,
+            IntercomTelemetryKeys.delayMs:
+                decision.delayApplied!.inMilliseconds,
         },
       ),
     );
@@ -858,10 +872,7 @@ class IntercomEngineImpl implements IntercomEngine {
     );
   }
 
-  void _enterReconnecting({
-    required String reason,
-    IntercomFailure? failure,
-  }) {
+  void _enterReconnecting({required String reason, IntercomFailure? failure}) {
     _emitState(
       _state.copyWith(
         phase: IntercomPhase.reconnecting,
@@ -927,9 +938,7 @@ class IntercomEngineImpl implements IntercomEngine {
         IntercomTelemetryEvent.now(
           command: IntercomCommand.onConnectivityChanged,
           name: IntercomTelemetryNames.reconnectRecovered,
-          data: {
-            IntercomTelemetryKeys.retryAttempt: _reconnectAttempt,
-          },
+          data: {IntercomTelemetryKeys.retryAttempt: _reconnectAttempt},
         ),
       );
       _cancelReconnectWorkflow();
@@ -1032,6 +1041,10 @@ class IntercomEngineImpl implements IntercomEngine {
     _p2pDebounceTimer?.cancel();
     _sfuToP2pTimer?.cancel();
     _reconnectRetryTimer?.cancel();
+
+    _p2pDebounceTimer = null;
+    _sfuToP2pTimer = null;
+    _reconnectRetryTimer = null;
   }
 
   void _startReconnectTtl() {

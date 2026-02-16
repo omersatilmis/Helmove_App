@@ -72,6 +72,50 @@ class PermissionsService {
     return true;
   }
 
+  bool _startupRequestDone = false;
+
+  /// Called at app startup (Home Page) to request all necessary permissions at once.
+  /// Returns [true] if essential permissions (Mic, Bluetooth, Notification) are granted.
+  Future<bool> requestAllStartupPermissions() async {
+    if (_startupRequestDone) {
+      AppLogger.info(
+        'PermissionsService: Startup permissions already requested. Skipping.',
+      );
+      return true;
+    }
+    _startupRequestDone = true;
+
+    // We request Location only if needed, but for startup we focus on communication.
+    // Spec: Mic, Bluetooth, Notification.
+    final permissions = <Permission>[
+      Permission.microphone,
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+      Permission.notification,
+    ];
+
+    AppLogger.info('PermissionsService: Requesting startup permissions...');
+    final results = await _requestPermissions(permissions);
+
+    final micOk = _isGranted(results[Permission.microphone]);
+    final btConnectOk = _isGranted(results[Permission.bluetoothConnect]);
+    // BluetoothScan is often optional for simple HFP but good to have.
+    final notificationOk = _isGranted(results[Permission.notification]);
+
+    final allOk = micOk && btConnectOk && notificationOk;
+
+    if (!allOk) {
+      AppLogger.warning(
+        'PermissionsService: Startup permissions incomplete. '
+        'mic=$micOk btConnect=$btConnectOk notification=$notificationOk',
+      );
+    } else {
+      AppLogger.info('PermissionsService: All startup permissions granted.');
+    }
+
+    return allOk;
+  }
+
   Future<Map<Permission, PermissionStatus>> _requestPermissions(
     List<Permission> permissions,
   ) async {

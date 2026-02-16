@@ -19,7 +19,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       );
       return Right(result);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -29,7 +30,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       final result = await remoteDataSource.getSession(id);
       return Right(result);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -39,7 +41,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       final result = await remoteDataSource.getMySessions();
       return Right(result);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -49,7 +52,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.inviteUsers(id, request as InviteUsersRequestDto);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -59,7 +63,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.acceptInvitation(id);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -69,7 +74,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.rejectInvitation(id);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -79,7 +85,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.joinSession(id);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -89,7 +96,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.leaveSession(id);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -99,7 +107,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.endSession(id);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -112,7 +121,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.kickUser(sessionId, targetUserId);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -125,7 +135,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.muteUser(sessionId, targetUserId);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 
@@ -138,7 +149,8 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
       await remoteDataSource.transferHost(sessionId, newHostId);
       return const Right(unit);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
     }
   }
 }

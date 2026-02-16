@@ -23,6 +23,8 @@ import '../../../discover/presentation/bloc/discover_state.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
+import '../../../voice_session/domain/entities/voice_session_entity.dart';
+import '../../../voice_session/domain/entities/voice_session_participant_entity.dart';
 import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
 import '../../../group_ride/presentation/bloc/group_ride_event.dart';
 import '../../../group_ride/presentation/bloc/group_ride_state.dart';
@@ -85,6 +87,16 @@ class _InviteViewState extends State<_InviteView> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.sessionId != null) {
+      context.read<VoiceSessionBloc>().add(
+        GetVoiceSessionDetailsEvent(widget.sessionId!),
+      );
+    }
+  }
+
   void _toggleRider(FriendUserEntity rider) {
     HapticFeedback.lightImpact();
     setState(() {
@@ -118,6 +130,9 @@ class _InviteViewState extends State<_InviteView> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final session = context.select<VoiceSessionBloc, VoiceSessionEntity?>(
+      (bloc) => bloc.state.session,
+    );
 
     return MultiBlocListener(
       listeners: [
@@ -317,8 +332,8 @@ class _InviteViewState extends State<_InviteView> {
                       // KULLANICI LİSTESİ (Expanded ile kalan alanı kaplar)
                       Expanded(
                         child: _isSearching
-                            ? _buildSearchResults()
-                            : _buildFriendsList(),
+                            ? _buildSearchResults(session)
+                            : _buildFriendsList(session),
                       ),
                     ],
                   ),
@@ -507,7 +522,7 @@ class _InviteViewState extends State<_InviteView> {
     );
   }
 
-  Widget _buildSearchResults() {
+  Widget _buildSearchResults(VoiceSessionEntity? session) {
     return BlocBuilder<DiscoverBloc, DiscoverState>(
       builder: (context, state) {
         if (state is DiscoverLoading) {
@@ -519,14 +534,18 @@ class _InviteViewState extends State<_InviteView> {
           if (results.isEmpty) {
             return const Center(child: Text("Sonuç bulunamadı."));
           }
-          return _buildRiderList(results, isFriendshipFixed: false);
+          return _buildRiderList(
+            results,
+            isFriendshipFixed: false,
+            session: session,
+          );
         }
         return const Center(child: Text("Aramak için 'Ara' butonuna basın"));
       },
     );
   }
 
-  Widget _buildFriendsList() {
+  Widget _buildFriendsList(VoiceSessionEntity? session) {
     return BlocBuilder<FriendshipListBloc, FriendshipListState>(
       builder: (context, state) {
         if (state is FriendshipListLoading) {
@@ -538,7 +557,11 @@ class _InviteViewState extends State<_InviteView> {
           if (friends.isEmpty) {
             return const Center(child: Text("Henüz arkadaşınız yok."));
           }
-          return _buildRiderList(friends, isFriendshipFixed: true);
+          return _buildRiderList(
+            friends,
+            isFriendshipFixed: true,
+            session: session,
+          );
         }
         return const SizedBox.shrink();
       },
@@ -548,6 +571,7 @@ class _InviteViewState extends State<_InviteView> {
   Widget _buildRiderList(
     List<FriendUserEntity> riders, {
     required bool isFriendshipFixed,
+    required VoiceSessionEntity? session,
   }) {
     // Liste scroll edilebilir, footer sabit olduğu için bottom padding'e gerek yok (Container padding'i var)
     return ListView.builder(
@@ -557,6 +581,7 @@ class _InviteViewState extends State<_InviteView> {
       itemBuilder: (context, index) {
         final rider = riders[index];
         final isSelected = _selectedRiders.any((r) => r.userId == rider.userId);
+        final inviteStatus = _resolveInviteStatus(rider.userId, session);
 
         return InviteRiderCard(
           firstName: rider.firstName ?? "",
@@ -565,10 +590,39 @@ class _InviteViewState extends State<_InviteView> {
           profileImageUrl: rider.profilePictureUrl ?? "",
           isFriend: isFriendshipFixed,
           isSelected: isSelected,
+          inviteStatus: inviteStatus,
           onInviteTap: () => _toggleRider(rider),
           onFriendshipTap: () {},
         );
       },
     );
+  }
+
+  InviteStatus _resolveInviteStatus(
+    int userId,
+    VoiceSessionEntity? session,
+  ) {
+    final participants = session?.participants ?? const [];
+    VoiceSessionParticipantEntity? matched;
+    for (final participant in participants) {
+      if (participant.userId == userId) {
+        matched = participant;
+        break;
+      }
+    }
+
+    switch (matched?.status) {
+      case 'Invited':
+        return InviteStatus.pending;
+      case 'Accepted':
+      case 'Joined':
+      case 'Disconnected':
+        return InviteStatus.accepted;
+      case 'Rejected':
+      case 'Left':
+        return InviteStatus.rejected;
+      default:
+        return InviteStatus.none;
+    }
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,22 +28,100 @@ class _CommunicationPageState extends State<CommunicationPage> {
   List<VoiceSessionEntity> _mySessions = [];
   bool _isLoadingSessions = true;
 
+  bool _isPendingInviteForCurrentUser(
+    VoiceSessionEntity session,
+    int? currentUserId,
+  ) {
+    if (currentUserId == null) return false;
+    return session.participants.any(
+      (participant) =>
+          participant.userId == currentUserId &&
+          participant.status == 'Invited',
+    );
+  }
+
+  DateTime? _lastLoadTime;
+  Timer? _throttleTimer;
+  bool _pendingRefresh = false;
+
   @override
   void initState() {
     super.initState();
     _loadMySessions();
   }
 
-  void _loadMySessions() {
-    context.read<VoiceSessionBloc>().add(const GetMyVoiceSessionsEvent());
+  @override
+  void dispose() {
+    _throttleTimer?.cancel();
+    super.dispose();
   }
 
+  void _loadMySessions() {
+    if (!mounted) return;
+    final bloc = context.read<VoiceSessionBloc>();
+    if (bloc.isClosed) return;
+
+    // 1. Guard: Loading check
+    if (bloc.state.status == VoiceSessionStatus.loading) {
+      debugPrint(
+        "⚠️ [CommunicationPage] Refresh ignored: Bloc is already loading.",
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    const throttleDuration = Duration(seconds: 2);
+
+    // 2. Throttle check
+    if (_lastLoadTime != null) {
+      final difference = now.difference(_lastLoadTime!);
+      if (difference < throttleDuration) {
+        // Hysteresis: Mark as pending and schedule if not already scheduled
+        debugPrint(
+          "⏳ [CommunicationPage] Refresh throttled. Scheduled for later.",
+        );
+        _pendingRefresh = true;
+
+        if (_throttleTimer == null || !_throttleTimer!.isActive) {
+          final remaining = throttleDuration - difference;
+          _throttleTimer = Timer(remaining, () {
+            if (mounted && _pendingRefresh) {
+              _executeLoadSessions();
+              _pendingRefresh = false;
+            }
+          });
+        }
+        return;
+      }
+    }
+
+    // 3. Execute
+    _executeLoadSessions();
+  }
+
+  void _executeLoadSessions() {
+    if (!mounted) return;
+    final bloc = context.read<VoiceSessionBloc>();
+    if (bloc.isClosed) return;
+
+    debugPrint("🚀 [CommunicationPage] Sending GetMyVoiceSessionsEvent...");
+    _lastLoadTime = DateTime.now();
+    bloc.add(const GetMyVoiceSessionsEvent());
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final currentUserId = context.select<VoiceSessionBloc, int?>(
+      (bloc) => bloc.state.currentUserId,
+    );
+    final pendingInviteCount = _mySessions
+        .where(
+          (session) => _isPendingInviteForCurrentUser(session, currentUserId),
+        )
+        .length;
 
     // Dinamik arka plan gradyanı
     final backgroundGradient = isDark
@@ -195,7 +274,9 @@ class _CommunicationPageState extends State<CommunicationPage> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: colorScheme.error.withValues(alpha: 0.3),
+                                  color: colorScheme.error.withValues(
+                                    alpha: 0.3,
+                                  ),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -218,6 +299,47 @@ class _CommunicationPageState extends State<CommunicationPage> {
                     ),
 
                     const SizedBox(height: 16),
+
+                    if (pendingInviteCount > 0) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: colorScheme.primary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.mark_email_unread_outlined,
+                              size: 18,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '$pendingInviteCount pending invite${pendingInviteCount > 1 ? 's' : ''}',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => context.push('/notifications'),
+                              child: const Text('Open'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
 
                     // --- 3. ACTIVE GROUP KARTI (VoiceSession'dan yüklenir) ---
                     _buildActiveSessionCard(colorScheme),
@@ -369,7 +491,6 @@ class _CommunicationPageState extends State<CommunicationPage> {
           groupName: activeSession.title,
           maxParticipants: activeSession.maxParticipants,
           currentParticipants: activeSession.activeParticipantCount,
-          organizerId: activeSession.hostUserId,
         );
         final result = await context.push<bool>(
           '/communication/group-page',
@@ -386,7 +507,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
           await Future.delayed(const Duration(milliseconds: 1500));
           if (mounted) _loadMySessions();
         } else {
-          _loadMySessions();
+          if (mounted) _loadMySessions();
         }
       },
       riderCards: participants.map((p) {
@@ -395,14 +516,15 @@ class _CommunicationPageState extends State<CommunicationPage> {
 
         // Viewer Role Determination
         RiderRole viewerRole = RiderRole.participant;
-        if (currentUserId != null && activeSession.hostUserId == currentUserId) {
-          viewerRole = RiderRole.organizer;
+        if (currentUserId != null &&
+            activeSession.hostUserId == currentUserId) {
+          viewerRole = RiderRole.host;
         }
 
         // Target Role Determination
         RiderRole targetRole = RiderRole.participant;
         if (p.userId == activeSession.hostUserId) {
-          targetRole = RiderRole.organizer;
+          targetRole = RiderRole.host;
         }
 
         return RiderCard(
@@ -449,7 +571,10 @@ class _CommunicationPageState extends State<CommunicationPage> {
             decoration: BoxDecoration(
               color: glassTint.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: glassTint.withValues(alpha: 0.3), width: 1),
+              border: Border.all(
+                color: glassTint.withValues(alpha: 0.3),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),

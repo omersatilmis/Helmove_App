@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -39,6 +41,9 @@ class _GroupPageState extends State<GroupPage> {
   RtcConnectionStatus _rtcStatus = RtcConnectionStatus.disconnected;
   bool _isMicOn = true;
   Set<String> _activeSpeakers = {};
+  Timer? _disconnectGuardTimer;
+  int _disconnectCountdown = 60;
+  bool _disconnectGuardActive = false;
 
   @override
   void initState() {
@@ -60,31 +65,46 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   void _loadSessionDetails() {
+    if (!mounted) return;
+    final sessionId = widget.data.sessionId;
+    if (sessionId == null || sessionId <= 0) {
+      setState(() => _isLoadingSession = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Geçerli ses oturumu bulunamadı.')),
+      );
+      return;
+    }
+
     setState(() => _isLoadingSession = true);
-    context.read<VoiceSessionBloc>().add(
-      GetVoiceSessionDetailsEvent(widget.data.sessionId ?? widget.data.rideId),
-    );
+    final voiceBloc = context.read<VoiceSessionBloc>();
+    if (voiceBloc.isClosed) return;
+    voiceBloc.add(GetVoiceSessionDetailsEvent(sessionId));
   }
 
   void _loadRideDetails() {
+    if (!mounted) return;
     setState(() => _isLoadingRide = true);
-    context.read<GroupRideBloc>().add(
-      LoadGroupRideDetailsEvent(widget.data.rideId),
-    );
+    final rideBloc = context.read<GroupRideBloc>();
+    if (rideBloc.isClosed) return;
+    rideBloc.add(LoadGroupRideDetailsEvent(widget.data.rideId));
   }
 
   void _handleInvite() {
-    context.push(
-      '/communication/invite',
-      extra: widget.data.rideId,
-    );
+    final sessionId = widget.data.sessionId;
+    if (sessionId == null || sessionId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Davet için geçerli ses oturumu bulunamadı.'),
+        ),
+      );
+      return;
+    }
+
+    context.push('/communication/invite', extra: sessionId);
   }
 
   void _handleOpenSettings() {
-    context.push(
-      '/communication/group-settings',
-      extra: widget.data,
-    );
+    context.push('/communication/group-settings', extra: widget.data);
   }
 
   void _handleBack() {
@@ -96,10 +116,103 @@ class _GroupPageState extends State<GroupPage> {
     _loadSessionDetails();
   }
 
-  void _handleToggleMic() {
-    context.read<VoiceSessionBloc>().add(
-          const ToggleMicrophoneEvent(),
+  int? _validatedSessionId({bool showMessage = false}) {
+    final sessionId = widget.data.sessionId;
+    final isValid = sessionId != null && sessionId > 0;
+    if (!isValid && showMessage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Geçerli ses oturumu bulunamadı.')),
+      );
+    }
+    return isValid ? sessionId : null;
+  }
+
+  void _cancelDisconnectGuard({bool resetCounter = true}) {
+    _disconnectGuardTimer?.cancel();
+    _disconnectGuardTimer = null;
+    if (resetCounter) {
+      setState(() {
+        _disconnectGuardActive = false;
+        _disconnectCountdown = 60;
+      });
+    } else {
+      setState(() => _disconnectGuardActive = false);
+    }
+  }
+
+  bool _shouldStartDisconnectGuard(VoiceSessionState state) {
+    final activeParticipants =
+        _sessionDetails?.participants
+            .where(
+              (participant) =>
+                  participant.status == 'Joined' ||
+                  participant.status == 'Accepted' ||
+                  participant.status == 'Disconnected',
+            )
+            .length ??
+        0;
+
+    if (activeParticipants <= 1) {
+      return false;
+    }
+
+    return state.rtcStatus == RtcConnectionStatus.reconnecting ||
+        state.rtcStatus == RtcConnectionStatus.disconnected;
+  }
+
+  void _startDisconnectGuard() {
+    if (_disconnectGuardActive) return;
+
+    setState(() {
+      _disconnectGuardActive = true;
+      _disconnectCountdown = 60;
+    });
+
+    _disconnectGuardTimer?.cancel();
+    _disconnectGuardTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_disconnectCountdown <= 1) {
+        timer.cancel();
+        _cancelDisconnectGuard();
+
+        final sessionId = _validatedSessionId();
+        if (sessionId == null) return;
+        final voiceBloc = context.read<VoiceSessionBloc>();
+        if (voiceBloc.isClosed) return;
+
+        voiceBloc.add(LeaveVoiceSessionEvent(sessionId));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Bağlantı uzun süre kesildi. Oturumdan çıkarıldınız.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
         );
+        return;
+      }
+
+      setState(() => _disconnectCountdown -= 1);
+    });
+  }
+
+  void _syncDisconnectGuard(VoiceSessionState state) {
+    if (_shouldStartDisconnectGuard(state)) {
+      _startDisconnectGuard();
+      return;
+    }
+
+    if (_disconnectGuardActive) {
+      _cancelDisconnectGuard();
+    }
+  }
+
+  void _handleToggleMic() {
+    context.read<VoiceSessionBloc>().add(const ToggleMicrophoneEvent());
   }
 
   bool _isCurrentUserHost(int? currentUserId) {
@@ -109,27 +222,36 @@ class _GroupPageState extends State<GroupPage> {
 
   // --- UI ACTIONS ---
   void _kickUser(int targetUserId, String userName) {
+    final sessionId = _validatedSessionId(showMessage: true);
+    if (sessionId == null) return;
+
     GroupPageActions.kickUser(
       context: context,
-      sessionId: widget.data.sessionId ?? widget.data.rideId,
+      sessionId: sessionId,
       targetUserId: targetUserId,
       userName: userName,
     );
   }
 
   void _muteUser(int targetUserId, String userName) {
+    final sessionId = _validatedSessionId(showMessage: true);
+    if (sessionId == null) return;
+
     GroupPageActions.muteUser(
       context: context,
-      sessionId: widget.data.sessionId ?? widget.data.rideId,
+      sessionId: sessionId,
       targetUserId: targetUserId,
       userName: userName,
     );
   }
 
   void _transferHost(int targetUserId, String userName) {
+    final sessionId = _validatedSessionId(showMessage: true);
+    if (sessionId == null) return;
+
     GroupPageActions.transferHost(
       context: context,
-      sessionId: widget.data.sessionId ?? widget.data.rideId,
+      sessionId: sessionId,
       targetUserId: targetUserId,
       userName: userName,
     );
@@ -192,6 +314,7 @@ class _GroupPageState extends State<GroupPage> {
                 _sessionDetails = state.session;
                 _isLoadingSession = false;
               });
+              _syncDisconnectGuard(state);
             }
 
             // 2. Error handling
@@ -208,6 +331,7 @@ class _GroupPageState extends State<GroupPage> {
 
             // 3. Left Session
             if (state.status == VoiceSessionStatus.left) {
+              _cancelDisconnectGuard();
               if (context.mounted) {
                 if (Navigator.of(context).canPop()) {
                   context.pop(true);
@@ -242,6 +366,7 @@ class _GroupPageState extends State<GroupPage> {
               _isMicOn = state.isMicOn;
               _activeSpeakers = state.activeSpeakers.toSet();
             });
+            _syncDisconnectGuard(state);
 
             // 6. LiveKit Error
             if (state.liveKitError != null) {
@@ -282,9 +407,17 @@ class _GroupPageState extends State<GroupPage> {
             } else if (state is GroupRideTerminated) {
               // 1. Leave Voice Session
               if (widget.data.sessionId != null && widget.data.sessionId! > 0) {
-                context.read<VoiceSessionBloc>().add(
-                  LeaveVoiceSessionEvent(widget.data.sessionId!),
-                );
+                final voiceBloc = context.read<VoiceSessionBloc>();
+                if (!voiceBloc.isClosed) {
+                  voiceBloc.add(LeaveVoiceSessionEvent(widget.data.sessionId!));
+                }
+              } else {
+                if (!context.mounted) return;
+                if (Navigator.of(context).canPop()) {
+                  context.pop(true);
+                } else {
+                  context.go('/communication');
+                }
               }
               // 2. Show Info
               ScaffoldMessenger.of(context).showSnackBar(
@@ -295,17 +428,20 @@ class _GroupPageState extends State<GroupPage> {
                   backgroundColor: Colors.orange,
                 ),
               );
-
-              if (context.mounted) {
-                // Navigate to Homepage to ensure clean state
-                context.go('/homepage');
-              }
             } else if (state is GroupRideDeleted) {
               // 1. Leave Voice Session
               if (widget.data.sessionId != null && widget.data.sessionId! > 0) {
-                context.read<VoiceSessionBloc>().add(
-                  LeaveVoiceSessionEvent(widget.data.sessionId!),
-                );
+                final voiceBloc = context.read<VoiceSessionBloc>();
+                if (!voiceBloc.isClosed) {
+                  voiceBloc.add(LeaveVoiceSessionEvent(widget.data.sessionId!));
+                }
+              } else {
+                if (!context.mounted) return;
+                if (Navigator.of(context).canPop()) {
+                  context.pop(true);
+                } else {
+                  context.go('/communication');
+                }
               }
               // 2. Show Info
               ScaffoldMessenger.of(context).showSnackBar(
@@ -316,11 +452,6 @@ class _GroupPageState extends State<GroupPage> {
                   backgroundColor: Colors.redAccent,
                 ),
               );
-              // 3. Navigate Away
-              if (context.mounted) {
-                // Navigate to Homepage to ensure clean state
-                context.go('/homepage');
-              }
             } else if (state is GroupRideFailure) {
               setState(() => _isLoadingRide = false);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -343,6 +474,40 @@ class _GroupPageState extends State<GroupPage> {
           body: SafeArea(
             child: Column(
               children: [
+                if (_disconnectGuardActive)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.errorContainer.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: colorScheme.error.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.wifi_off,
+                          size: 18,
+                          color: colorScheme.onErrorContainer,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Bağlantı zayıf, tekrar bağlanılıyor... ($_disconnectCountdown)',
+                            style: TextStyle(
+                              color: colorScheme.onErrorContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(20.0),
@@ -361,6 +526,7 @@ class _GroupPageState extends State<GroupPage> {
                         ),
                         GroupParticipantsSection(
                           data: widget.data,
+                          organizerId: _rideDetails?.organizerId,
                           sessionDetails: _sessionDetails,
                           isLoadingSession: _isLoadingSession,
                           currentUserId: currentUserId,
@@ -387,5 +553,11 @@ class _GroupPageState extends State<GroupPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _disconnectGuardTimer?.cancel();
+    super.dispose();
   }
 }

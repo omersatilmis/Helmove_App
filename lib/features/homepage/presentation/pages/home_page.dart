@@ -9,13 +9,16 @@ import 'package:moto_comm_app_1/features/messages/domain/usecases/get_conversati
 import 'package:moto_comm_app_1/core/usecases/usecase.dart';
 import 'package:moto_comm_app_1/core/widgets/unread_count_badge.dart';
 import 'package:moto_comm_app_1/features/notification/domain/usecases/get_unread_count_usecase.dart'
-  as notif_unread;
+    as notif_unread;
 
 // 🔥 DİKKAT: Drawer'ı dışarıdan kontrol etmek için bu import şart!
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
 import 'package:moto_comm_app_1/features/content/posts/presentation/pages/feed_page.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/core/services/permissions_service.dart' as di;
+import 'package:moto_comm_app_1/core/di/injection_container.dart'
+    as di_container;
 
 class HomePageWithDrawer extends StatefulWidget {
   const HomePageWithDrawer({super.key});
@@ -45,11 +48,16 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     _checkUnreadConversations();
     _checkUnreadNotifications();
 
+    // Startup Permissions Request
+    _requestStartupPermissions();
+
     // SignalR üzerinden gelen mesajları dinle
     try {
       final messageService = GetIt.I<MessageSignalRService>();
       // Stream yapısı sayesinde diğer dinleyicileri (örn: Chat sayfası) bozmadan dinliyoruz
-      _messageSubscription = messageService.onDirectMessageReceived.listen((message) {
+      _messageSubscription = messageService.onDirectMessageReceived.listen((
+        message,
+      ) {
         _checkUnreadConversations();
       });
 
@@ -57,7 +65,6 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
       _readSubscription = messageService.onMessagesRead.listen((_) {
         _checkUnreadConversations();
       });
-
     } catch (e) {
       debugPrint("MessageSignalRService bağlantı hatası: $e");
     }
@@ -65,9 +72,10 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     // Genel bildirimleri dinle (SignalRService)
     try {
       final signalRService = GetIt.I<SignalRService>();
-      _notificationSubscription = signalRService.notificationReceivedStream.listen((_) {
-        _checkUnreadNotifications();
-      });
+      _notificationSubscription = signalRService.notificationReceivedStream
+          .listen((_) {
+            _checkUnreadNotifications();
+          });
     } catch (e) {
       debugPrint("SignalRService bağlantı hatası: $e");
     }
@@ -109,6 +117,38 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
       });
     } catch (e) {
       debugPrint("Okunmamış bildirim sayısı alınamadı: $e");
+    }
+  }
+
+  Future<void> _requestStartupPermissions() async {
+    try {
+      final permissionsService = GetIt.I<di.PermissionsService>();
+      final granted = await permissionsService.requestAllStartupPermissions();
+
+      if (!granted && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Tam sesli sohbet deneyimi için Mikrofon ve Bluetooth izinleri gereklidir.',
+            ),
+            padding: const EdgeInsets.all(16),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Ayarlar',
+              textColor: Colors.white,
+              onPressed: () {
+                // openAppSettings() is from permission_handler, but we might not have direct access here easily
+                // without importing the package. For now, just a prompt.
+                // Ideally: AppSettings.openAppSettings();
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Startup permissions error: $e");
     }
   }
 
@@ -179,7 +219,9 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
                           style: AppTextStyles.regular.copyWith(
                             fontSize: 13,
                             fontWeight: FontWeight.w300,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                         ),
                         Text(
@@ -297,7 +339,9 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
                       _visorMessage,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontStyle: FontStyle.italic,
-                        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
+                        color: colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.9,
+                        ),
                         fontSize: 12,
                         letterSpacing: 0.3,
                       ),

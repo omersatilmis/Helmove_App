@@ -8,6 +8,7 @@ import 'package:moto_comm_app_1/features/voice_session/domain/entities/voice_ses
 
 class GroupParticipantsSection extends StatelessWidget {
   final GroupRideArgs data;
+  final int? organizerId;
   final VoiceSessionEntity? sessionDetails;
   final bool isLoadingSession;
   final int? currentUserId;
@@ -23,6 +24,7 @@ class GroupParticipantsSection extends StatelessWidget {
   const GroupParticipantsSection({
     super.key,
     required this.data,
+    this.organizerId,
     required this.sessionDetails,
     required this.isLoadingSession,
     required this.currentUserId,
@@ -111,12 +113,12 @@ class GroupParticipantsSection extends StatelessWidget {
     if (participants.isEmpty) return _buildEmptyState(context);
 
     final hostId = sessionDetails?.hostUserId;
-    final organizerId = data.organizerId;
+    final effectiveOrganizerId = organizerId ?? data.organizerId;
 
     RiderRole viewerRole = RiderRole.participant;
     if (currentUserId != null &&
-        organizerId != null &&
-        currentUserId == organizerId) {
+        effectiveOrganizerId != null &&
+        currentUserId == effectiveOrganizerId) {
       viewerRole = RiderRole.organizer;
     } else if (currentUserId != null && hostId == currentUserId) {
       viewerRole = RiderRole.host;
@@ -128,7 +130,7 @@ class GroupParticipantsSection extends StatelessWidget {
         final isMe = p.userId == currentUserId;
 
         RiderRole role = RiderRole.participant;
-        if (organizerId != null && p.userId == organizerId) {
+        if (effectiveOrganizerId != null && p.userId == effectiveOrganizerId) {
           role = RiderRole.organizer;
         } else if (hostId != null && p.userId == hostId) {
           role = RiderRole.host;

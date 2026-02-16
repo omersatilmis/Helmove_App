@@ -91,8 +91,10 @@ class SignalRService {
       _rideLocationUpdateController.stream;
 
   final _voiceSessionRefreshController = StreamController<int>.broadcast();
+  final _userForceRemovedController = StreamController<int>.broadcast();
   Stream<int> get voiceSessionRefreshStream =>
       _voiceSessionRefreshController.stream;
+  Stream<int> get userForceRemovedStream => _userForceRemovedController.stream;
 
   // Active Voice Session Context
   String? _activeSessionId;
@@ -231,6 +233,14 @@ class SignalRService {
         AppLogger.info("SignalR: VoiceSession Refresh -> $sessionId");
         _voiceSessionRefreshController.add(sessionId);
       }
+    });
+
+    _hubConnection!.on("UserForceRemoved", (arguments) {
+      if (arguments == null || arguments.isEmpty) return;
+      final sessionId = _asInt(arguments[0]);
+      if (sessionId == null) return;
+      AppLogger.info("SignalR: User Force Removed -> $sessionId");
+      _userForceRemovedController.add(sessionId);
     });
 
     _hubConnection!.on("GroupRideUpdated", (arguments) {

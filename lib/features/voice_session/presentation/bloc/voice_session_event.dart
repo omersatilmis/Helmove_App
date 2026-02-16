@@ -88,6 +88,16 @@ class VoiceSessionParticipantLeftEvent extends VoiceSessionEvent {
   List<Object?> get props => [userId, roomId];
 }
 
+class VoiceSessionForceRemovedEvent extends VoiceSessionEvent {
+  final int sessionId;
+  final String? reason;
+
+  const VoiceSessionForceRemovedEvent(this.sessionId, {this.reason});
+
+  @override
+  List<Object?> get props => [sessionId, reason];
+}
+
 class KickUserEvent extends VoiceSessionEvent {
   final int sessionId;
   final int targetUserId;
