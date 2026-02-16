@@ -624,7 +624,9 @@ void _registerFeatureSingletons() {
 
   // Bloc
   if (!sl.isRegistered<DiscoverBloc>()) {
-    sl.registerFactory(() => DiscoverBloc(searchUsers: sl<SearchUsersUseCase>()));
+    sl.registerFactory(
+      () => DiscoverBloc(searchUsers: sl<SearchUsersUseCase>()),
+    );
   }
 
   // Media Feature
@@ -759,12 +761,7 @@ void _registerFeatureSingletons() {
     sl.registerLazySingleton(() => SubscribeUseCase(sl()));
   }
   if (!sl.isRegistered<SubscriptionBloc>()) {
-    sl.registerFactory(
-      () => SubscriptionBloc(
-        getPlans: sl(),
-        subscribe: sl(),
-      ),
-    );
+    sl.registerFactory(() => SubscriptionBloc(getPlans: sl(), subscribe: sl()));
   }
 
   // ────────────────────────────────────────────────────────
@@ -837,9 +834,7 @@ void _registerFeatureSingletons() {
     sl.registerLazySingleton(() => GetFriendshipStatusUseCase(sl()));
   }
   if (!sl.isRegistered<FriendshipStatusBloc>()) {
-    sl.registerFactory(
-      () => FriendshipStatusBloc(getFriendshipStatus: sl()),
-    );
+    sl.registerFactory(() => FriendshipStatusBloc(getFriendshipStatus: sl()));
   }
 
   // ────────────────────────────────────────────────────────
@@ -932,10 +927,7 @@ void _registerFeatureSingletons() {
   }
   if (!sl.isRegistered<CreatePostCubit>()) {
     sl.registerFactory(
-      () => CreatePostCubit(
-        createPost: sl(),
-        uploadImage: sl(),
-      ),
+      () => CreatePostCubit(createPost: sl(), uploadImage: sl()),
     );
   }
 }
@@ -971,7 +963,9 @@ Future<void> init() async {
   sl.registerSingleton<Dio>(dio);
 
   sl.registerLazySingleton(() => SignalRService(sl<AuthLocalDataSource>()));
-  sl.registerLazySingleton(() => RealTimeService(sl<AppSession>(), sl<SignalRService>()));
+  sl.registerLazySingleton(
+    () => RealTimeService(sl<AppSession>(), sl<SignalRService>()),
+  );
   sl.registerLazySingleton(
     () => MessageSignalRService(sl<AuthLocalDataSource>()),
   );
@@ -1086,6 +1080,7 @@ Future<void> init() async {
       signalRService: sl(),
       permissionsService: sl(),
       intercomEngine: sl(),
+      callKitIncomingService: sl(),
     ),
   );
 
@@ -1121,6 +1116,7 @@ Future<void> init() async {
       endCallUseCase: sl(),
       getPendingCallsUseCase: sl(),
       permissionsService: sl(),
+      callKitIncomingService: sl(),
     ),
   );
 }

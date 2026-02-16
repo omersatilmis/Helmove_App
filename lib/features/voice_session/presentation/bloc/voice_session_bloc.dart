@@ -11,6 +11,7 @@ import '../../domain/usecases/get_voice_session_details_usecase.dart';
 import '../../domain/usecases/get_my_voice_sessions_usecase.dart';
 import '../../../auth/domain/usecases/get_current_user_id_use_case.dart';
 import '../../domain/usecases/accept_voice_session_invitation_usecase.dart';
+import '../../../../core/services/callkit_incoming_service.dart';
 import '../../../../core/services/signalr_service.dart';
 import '../../../../core/services/app_session.dart';
 import '../../../../core/services/permissions_service.dart';
@@ -38,11 +39,14 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final EndVoiceSessionUseCase endVoiceSessionUseCase;
   final AppSession appSession;
   final SignalRService signalRService;
+  final CallKitIncomingService callKitIncomingService; // Added
   final KickUserUseCase kickUserUseCase;
   final MuteUserUseCase muteUserUseCase;
   final TransferHostUseCase transferHostUseCase;
   final PermissionsService permissionsService;
   final IntercomEngine intercomEngine;
+
+  String? _activeCallKitId;
 
   StreamSubscription? _rideTerminatedSubscription;
   StreamSubscription? _rideCreatedSubscription;
@@ -70,6 +74,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.endVoiceSessionUseCase,
     required this.appSession,
     required this.signalRService,
+    required this.callKitIncomingService, // Added
     required this.kickUserUseCase,
     required this.muteUserUseCase,
     required this.transferHostUseCase,
@@ -158,11 +163,12 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           }
         });
 
-    _userForceRemovedSubscription = signalRService.userForceRemovedStream.listen((sessionId) {
-      if (!isClosed) {
-        add(VoiceSessionForceRemovedEvent(sessionId));
-      }
-    });
+    _userForceRemovedSubscription = signalRService.userForceRemovedStream
+        .listen((sessionId) {
+          if (!isClosed) {
+            add(VoiceSessionForceRemovedEvent(sessionId));
+          }
+        });
 
     // 7. Group Ride Updated (Name/Desc changes)
     _groupRideUpdatedSubscription = signalRService.groupRideUpdatedStream
@@ -173,11 +179,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           }
         });
 
-    _appSessionUserIdSubscription = appSession.currentUserIdStream.distinct().listen((userId) {
-      if (!isClosed) {
-        add(AppSessionCurrentUserChangedEvent(userId));
-      }
-    });
+    _appSessionUserIdSubscription = appSession.currentUserIdStream
+        .distinct()
+        .listen((userId) {
+          if (!isClosed) {
+            add(AppSessionCurrentUserChangedEvent(userId));
+          }
+        });
 
     _intercomStateSubscription = intercomEngine.state$.listen((intercomState) {
       if (!isClosed) {
@@ -273,6 +281,19 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       ),
       (sessionId) async {
         await signalRService.joinVoiceSessionGroup(sessionId.toString());
+
+        // START CALLKIT
+        final uuid = callKitIncomingService.generateCallKitId();
+        _activeCallKitId = uuid;
+        await callKitIncomingService.startOutboundCall(
+          uuid: uuid,
+          handle: "Grup Sürüşü",
+          nameCaller: event.request.roomName ?? "Grup Sürüşü",
+        );
+        // Mark connected immediately as we are creating the room
+        await Future.delayed(const Duration(milliseconds: 500));
+        await callKitIncomingService.markConnected(uuid);
+
         emit(
           state.copyWith(
             status: VoiceSessionStatus.created,
@@ -310,6 +331,18 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       ),
       (_) async {
         await signalRService.joinVoiceSessionGroup(event.sessionId.toString());
+
+        // START CALLKIT
+        final uuid = callKitIncomingService.generateCallKitId();
+        _activeCallKitId = uuid;
+        await callKitIncomingService.startOutboundCall(
+          uuid: uuid,
+          handle: "Grup Sürüşü",
+          nameCaller: "Grup Sürüşü",
+        );
+        await Future.delayed(const Duration(milliseconds: 500));
+        await callKitIncomingService.markConnected(uuid);
+
         emit(
           state.copyWith(
             status: VoiceSessionStatus.joined,
@@ -326,6 +359,12 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   ) async {
     // 1. UI Loading (but transient)
     emit(state.copyWith(status: VoiceSessionStatus.loading));
+
+    // END CALLKIT
+    if (_activeCallKitId != null) {
+      await callKitIncomingService.endCall(_activeCallKitId!);
+      _activeCallKitId = null;
+    }
 
     try {
       await intercomEngine.detachSession(stopAudio: true);
@@ -441,21 +480,25 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           ),
         );
 
-        final currentUserId = state.currentUserId ?? await _ensureCurrentUserId(emit);
+        final currentUserId =
+            state.currentUserId ?? await _ensureCurrentUserId(emit);
         if (currentUserId != null) {
           final intercomParticipants = activeParticipants
-              .where((p) =>
-                  p.status == 'Joined' ||
-                  p.status == 'Accepted' ||
-                  p.status == 'Disconnected')
+              .where(
+                (p) =>
+                    p.status == 'Joined' ||
+                    p.status == 'Accepted' ||
+                    p.status == 'Disconnected',
+              )
               .map(
                 (p) => IntercomParticipant(
                   userId: p.userId,
-                  displayName:
-                      '${p.firstName ?? ''} ${p.lastName ?? ''}'.trim(),
+                  displayName: '${p.firstName ?? ''} ${p.lastName ?? ''}'
+                      .trim(),
                   isLocal: p.userId == currentUserId,
-                  isSpeaking: state.activeSpeakers
-                      .contains(p.userId.toString()),
+                  isSpeaking: state.activeSpeakers.contains(
+                    p.userId.toString(),
+                  ),
                 ),
               )
               .toList();
@@ -637,6 +680,12 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
     await signalRService.leaveVoiceSessionGroup(event.sessionId.toString());
 
+    // END CALLKIT
+    if (_activeCallKitId != null) {
+      await callKitIncomingService.endCall(_activeCallKitId!);
+      _activeCallKitId = null;
+    }
+
     emit(
       state.copyWith(
         status: VoiceSessionStatus.left,
@@ -662,6 +711,12 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
     if (event.userId == null) {
       await intercomEngine.detachSession(stopAudio: true);
+
+      // END CALLKIT
+      if (_activeCallKitId != null) {
+        await callKitIncomingService.endCall(_activeCallKitId!);
+        _activeCallKitId = null;
+      }
       emit(
         state.copyWith(
           currentUserId: null,
@@ -723,7 +778,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) {
     final intercom = event.intercomState;
-    final isSfu = intercom.transport == IntercomTransport.sfu ||
+    final isSfu =
+        intercom.transport == IntercomTransport.sfu ||
         intercom.rtcStatus == RtcConnectionStatus.sfuConnected;
 
     emit(

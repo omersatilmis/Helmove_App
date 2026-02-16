@@ -127,16 +127,25 @@ class _GroupPageState extends State<GroupPage> {
     return isValid ? sessionId : null;
   }
 
+  Timer? _gracePeriodTimer;
+
   void _cancelDisconnectGuard({bool resetCounter = true}) {
+    _gracePeriodTimer?.cancel();
+    _gracePeriodTimer = null;
     _disconnectGuardTimer?.cancel();
     _disconnectGuardTimer = null;
+
     if (resetCounter) {
-      setState(() {
-        _disconnectGuardActive = false;
-        _disconnectCountdown = 60;
-      });
+      if (mounted) {
+        setState(() {
+          _disconnectGuardActive = false;
+          _disconnectCountdown = 60;
+        });
+      }
     } else {
-      setState(() => _disconnectGuardActive = false);
+      if (mounted) {
+        setState(() => _disconnectGuardActive = false);
+      }
     }
   }
 
@@ -161,42 +170,51 @@ class _GroupPageState extends State<GroupPage> {
   }
 
   void _startDisconnectGuard() {
-    if (_disconnectGuardActive) return;
+    // If already active or grace period is running, do nothing
+    if (_disconnectGuardActive || _gracePeriodTimer != null) return;
 
-    setState(() {
-      _disconnectGuardActive = true;
-      _disconnectCountdown = 60;
-    });
+    // Start grace period (e.g. 5 seconds)
+    _gracePeriodTimer = Timer(const Duration(seconds: 5), () {
+      _gracePeriodTimer = null; // Timer finished
+      if (!mounted) return;
 
-    _disconnectGuardTimer?.cancel();
-    _disconnectGuardTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
+      setState(() {
+        _disconnectGuardActive = true;
+        _disconnectCountdown = 60;
+      });
 
-      if (_disconnectCountdown <= 1) {
-        timer.cancel();
-        _cancelDisconnectGuard();
+      _disconnectGuardTimer?.cancel();
+      _disconnectGuardTimer = Timer.periodic(const Duration(seconds: 1), (
+        timer,
+      ) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
 
-        final sessionId = _validatedSessionId();
-        if (sessionId == null) return;
-        final voiceBloc = context.read<VoiceSessionBloc>();
-        if (voiceBloc.isClosed) return;
+        if (_disconnectCountdown <= 1) {
+          timer.cancel();
+          _cancelDisconnectGuard();
 
-        voiceBloc.add(LeaveVoiceSessionEvent(sessionId));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Bağlantı uzun süre kesildi. Oturumdan çıkarıldınız.',
+          final sessionId = _validatedSessionId();
+          if (sessionId == null) return;
+          final voiceBloc = context.read<VoiceSessionBloc>();
+          if (voiceBloc.isClosed) return;
+
+          voiceBloc.add(LeaveVoiceSessionEvent(sessionId));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Bağlantı uzun süre kesildi. Oturumdan çıkarıldınız.',
+              ),
+              backgroundColor: Colors.orange,
             ),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
+          );
+          return;
+        }
 
-      setState(() => _disconnectCountdown -= 1);
+        setState(() => _disconnectCountdown -= 1);
+      });
     });
   }
 
@@ -206,7 +224,8 @@ class _GroupPageState extends State<GroupPage> {
       return;
     }
 
-    if (_disconnectGuardActive) {
+    // Connection recovered: cancel everything
+    if (_disconnectGuardActive || _gracePeriodTimer != null) {
       _cancelDisconnectGuard();
     }
   }
@@ -557,6 +576,7 @@ class _GroupPageState extends State<GroupPage> {
 
   @override
   void dispose() {
+    _gracePeriodTimer?.cancel();
     _disconnectGuardTimer?.cancel();
     super.dispose();
   }

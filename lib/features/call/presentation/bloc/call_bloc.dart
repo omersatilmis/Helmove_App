@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
+import '../../../../core/services/callkit_incoming_service.dart'; // Added
 import '../../../../core/services/signalr_service.dart';
 import '../../../../core/services/webrtc_service.dart';
 import '../../../../core/services/permissions_service.dart';
@@ -21,6 +22,9 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   final RejectCallUseCase rejectCallUseCase;
   final EndCallUseCase endCallUseCase;
   final GetPendingCallsUseCase getPendingCallsUseCase;
+  final CallKitIncomingService callKitIncomingService; // Added
+
+  String? _activeCallKitId;
 
   int? _remoteUserId;
   int? _currentCallId;
@@ -64,6 +68,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     required this.rejectCallUseCase,
     required this.endCallUseCase,
     required this.getPendingCallsUseCase,
+    required this.callKitIncomingService, // Added
   }) : super(const CallInitial()) {
     on<CallRequested>(_onCallRequested);
     on<CallIncomingReceived>(_onCallIncomingReceived);
@@ -265,6 +270,15 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       final result = await sendCallRequestUseCase.execute(request);
       _currentCallId = result.callId;
 
+      // START CALLKIT
+      final uuid = callKitIncomingService.generateCallKitId();
+      _activeCallKitId = uuid;
+      await callKitIncomingService.startOutboundCall(
+        uuid: uuid,
+        handle: event.targetDisplayName ?? "Kullanıcı",
+        nameCaller: event.targetDisplayName ?? "Sesli Arama",
+      );
+
       // Backend REST zaten istegi olusturuyor; yine de Hub uzerinden
       // explicit call request gondererek SignalR routing/state tarafini saglama al.
       try {
@@ -387,6 +401,15 @@ class CallBloc extends Bloc<CallEvent, CallState> {
         if (_currentCallId != null) {
           await acceptCallUseCase.execute(_currentCallId!);
         }
+
+        // START CALLKIT (Incoming answered)
+        final uuid = callKitIncomingService.generateCallKitId();
+        _activeCallKitId = uuid;
+        await callKitIncomingService.startOutboundCall(
+          uuid: uuid,
+          handle: "Sesli Arama",
+          nameCaller: "Sesli Arama",
+        );
 
         emit(CallConnecting(remoteUserId: remoteUserId));
         _cancelOutgoingTimeout();
@@ -711,6 +734,12 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       _cancelOutgoingTimeout();
       _cancelConnectingTimeout();
       _startCallTimer();
+
+      // MARK CONNECTED
+      if (_activeCallKitId != null) {
+        await callKitIncomingService.markConnected(_activeCallKitId!);
+      }
+
       emit(CallActive(remoteUserId: remoteUserId));
       return;
     }
@@ -948,6 +977,12 @@ class CallBloc extends Bloc<CallEvent, CallState> {
         } catch (e) {
           AppLogger.warning('CallBloc: safe end SignalR EndCall failed: $e');
         }
+      }
+
+      // END CALLKIT
+      if (_activeCallKitId != null) {
+        await callKitIncomingService.endCall(_activeCallKitId!);
+        _activeCallKitId = null;
       }
     }
   }

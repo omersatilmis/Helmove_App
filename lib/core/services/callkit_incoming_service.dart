@@ -209,9 +209,34 @@ class CallKitIncomingService {
     );
   }
 
+  Future<void> startOutboundCall({
+    required String uuid,
+    required String handle,
+    String? nameCaller,
+  }) async {
+    final params = CallKitParams(
+      id: uuid,
+      nameCaller: nameCaller ?? handle,
+      handle: handle,
+      type: 1, // 1 for outgoing
+      extra: <String, dynamic>{'userId': handle},
+      ios: const IOSParams(handleType: 'generic'),
+      android: const AndroidParams(
+        isCustomNotification: true,
+        isShowLogo: false,
+        isShowCallID: false,
+        ringtonePath: 'system_ringtone_default',
+        backgroundColor: '#0955fa',
+        backgroundUrl: 'assets/test.png',
+        actionColor: '#4CAF50',
+      ),
+    );
+    await FlutterCallkitIncoming.startCall(params);
+  }
+
   Future<void> endCall(String callKitId) async {
     if (callKitId.trim().isEmpty) return;
-    
+
     // İYİLEŞTİRME: CallKit arayüzünü kapatmadan önce native tarafa bildir.
     // Bu, kilit ekranındaki aramanın takılı kalmasını önler.
     await FlutterCallkitIncoming.endCall(callKitId);

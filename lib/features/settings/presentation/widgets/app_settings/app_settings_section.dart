@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:moto_comm_app_1/core/services/webrtc_service.dart';
+import 'package:moto_comm_app_1/core/services/audio_orchestrator_service.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_event.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
@@ -32,6 +33,11 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   String _mapType = "Normal";
   bool _trafficEnabled = false;
 
+  // Yeni Ayarlar
+  AudioMixingMode _musicMode = AudioMixingMode.auto;
+  // ignore: unused_field
+  bool _preferWiredMic = false; // UI'da gizli, ama logic hook var
+
   // Ses Kalitesi Seçenekleri (Key -> Label)
   final Map<String, String> _qualityOptions = {
     'low': "Düşük (16 kbps) - Veri Tasarrufu",
@@ -50,19 +56,29 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   Future<void> _loadSavedSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Kayıtlı ayarları oku
       final savedTheme = prefs.getString('theme_mode');
       final savedLanguage = prefs.getString('language');
       final savedQualityKey = prefs.getString('audio_quality_key');
+      final savedMusicMode = prefs.getString('audio_mixing_mode');
+      final savedWiredMic = prefs.getBool('prefer_wired_mic');
 
       if (mounted) {
         setState(() {
           if (savedTheme != null) _themeMode = savedTheme;
           if (savedLanguage != null) _language = savedLanguage;
           if (savedQualityKey != null) {
-            _audioQuality = _qualityOptions[savedQualityKey] ?? _qualityOptions['medium']!;
+            _audioQuality =
+                _qualityOptions[savedQualityKey] ?? _qualityOptions['medium']!;
           }
+          if (savedMusicMode != null) {
+            _musicMode = AudioMixingMode.values.firstWhere(
+              (e) => e.name == savedMusicMode,
+              orElse: () => AudioMixingMode.auto,
+            );
+          }
+          if (savedWiredMic != null) _preferWiredMic = savedWiredMic;
         });
 
         if (savedQualityKey != null) {
@@ -78,7 +94,7 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   void _updateWebRTCServiceWithKey(String qualityKey) {
     try {
       if (!GetIt.I.isRegistered<WebRTCService>()) return;
-      
+
       final service = GetIt.I<WebRTCService>();
       CallAudioQuality qualityEnum = CallAudioQuality.medium;
 
@@ -103,12 +119,24 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
 
   String _getKeyFromLabel(String label) {
     return _qualityOptions.entries
-        .firstWhere((e) => e.value == label, orElse: () => const MapEntry('medium', ''))
+        .firstWhere(
+          (e) => e.value == label,
+          orElse: () => const MapEntry('medium', ''),
+        )
         .key;
+  }
+
+  Future<void> _updateMusicMode(AudioMixingMode mode) async {
+    setState(() => _musicMode = mode);
+    if (GetIt.I.isRegistered<AudioOrchestratorService>()) {
+      await GetIt.I<AudioOrchestratorService>().setAudioMixingMode(mode);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -131,7 +159,6 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                   setState(() => _themeMode = val);
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setString('theme_mode', val);
-                  // Not: Uygulamanın anlık tema değişimi için main.dart veya ThemeBloc'un bu değeri dinlemesi gerekir.
                 },
               ),
             ),
@@ -220,31 +247,123 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
           ],
         ),
 
-        // 5. SES & MEDYA
+        // 5. SES & MEDYA (YENİLENEN KISIM)
         SettingsExpansionTile(
           icon: Icons.volume_up_rounded,
           title: "Ses & Medya",
           children: [
-            SettingsActionTile(
-              title: "Ses Kalitesi",
-              value: _audioQuality,
-              icon: Icons.equalizer_rounded,
-              onTap: () => showSettingsBottomSheet(
-                context,
-                "Ses Kalitesi",
-                _qualityOptions.values.toList(),
-                (val) async {
-                  setState(() => _audioQuality = val);
-                  final qualityKey = _getKeyFromLabel(val);
-                  // 1. Kalıcı olarak kaydet
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('audio_quality_key', qualityKey);
-                  // 2. Servisi anlık güncelle
-                  _updateWebRTCServiceWithKey(qualityKey);
-                  context.read<SettingsBloc>().add(const UpdateAudioEvent());
-                },
+            // SES KALİTESİ KISMI
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Ses Kalitesi",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  InkWell(
+                    onTap: () => showSettingsBottomSheet(
+                      context,
+                      "Ses Kalitesi",
+                      _qualityOptions.values.toList(),
+                      (val) async {
+                        setState(() => _audioQuality = val);
+                        final qualityKey = _getKeyFromLabel(val);
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('audio_quality_key', qualityKey);
+                        _updateWebRTCServiceWithKey(qualityKey);
+                        context.read<SettingsBloc>().add(
+                          const UpdateAudioEvent(),
+                        );
+                      },
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceVariant.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _audioQuality,
+                              style: TextStyle(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+
+            const Divider(height: 24, indent: 16, endIndent: 16),
+
+            // ARKA PLANDA MÜZİK KISMI
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Arka Planda Müzik",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildMusicOption(
+                    title: "Otomatik",
+                    subtitle: "Konuşurken kısılır",
+                    value: AudioMixingMode.auto,
+                    groupValue: _musicMode,
+                    onChanged: _updateMusicMode,
+                  ),
+                  _buildMusicOption(
+                    title: "Açık",
+                    subtitle: "Müzik devamlı kısıktır",
+                    value: AudioMixingMode.always,
+                    groupValue: _musicMode,
+                    onChanged: _updateMusicMode,
+                  ),
+                  _buildMusicOption(
+                    title: "Kapalı",
+                    subtitle: "Müzik sesinde değişim olmaz",
+                    value: AudioMixingMode.off,
+                    groupValue: _musicMode,
+                    onChanged: _updateMusicMode,
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 16, indent: 16, endIndent: 16),
+
             SettingsSwitchTile(
               title: "Gürültü Engelleme",
               subtitle: "Rüzgar sesini azaltır",
@@ -296,6 +415,54 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildMusicOption({
+    required String title,
+    required String subtitle,
+    required AudioMixingMode value,
+    required AudioMixingMode groupValue,
+    required Function(AudioMixingMode) onChanged,
+  }) {
+    final isSelected = value == groupValue;
+    return InkWell(
+      onTap: () => onChanged(value),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Row(
+          children: [
+            Radio<AudioMixingMode>(
+              value: value,
+              groupValue: groupValue,
+              onChanged: (val) {
+                if (val != null) onChanged(val);
+              },
+              visualDensity: VisualDensity.compact,
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
