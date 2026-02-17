@@ -291,7 +291,9 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                         horizontal: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceVariant.withOpacity(0.3),
+                        color: colorScheme.surfaceVariant.withValues(
+                          alpha: 0.3,
+                        ),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: colorScheme.outlineVariant),
                       ),
