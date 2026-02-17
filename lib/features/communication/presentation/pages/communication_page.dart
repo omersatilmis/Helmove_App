@@ -532,8 +532,9 @@ class _CommunicationPageState extends State<CommunicationPage> {
           lastName: p.lastName ?? '',
           profileImageUrl:
               p.profileImage ?? 'https://i.pravatar.cc/150?u=${p.userId}',
-          batteryLevel: isConnected ? 90 : 0,
-          signalLevel: isConnected ? 100 : 0,
+          phoneBatteryLevel: p.phoneBatteryLevel,
+          intercomBatteryLevel: p.intercomBatteryLevel,
+          signalStrength: p.signalStrength,
           isMicOn: isConnected,
           isSpeaking: isConnected,
           isConnected: isConnected,

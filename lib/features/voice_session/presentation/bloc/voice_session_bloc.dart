@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import '../../domain/enums/rtc_state.dart';
+import '../../domain/entities/voice_session_participant_entity.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/create_voice_session_usecase.dart';
@@ -15,6 +17,7 @@ import '../../../../core/services/callkit_incoming_service.dart';
 import '../../../../core/services/signalr_service.dart';
 import '../../../../core/services/app_session.dart';
 import '../../../../core/services/permissions_service.dart';
+import '../../../../core/services/audio_orchestrator_service.dart';
 import '../../../intercom/domain/intercom_engine.dart';
 import '../../../intercom/domain/intercom_models.dart';
 import 'voice_session_event.dart';
@@ -39,12 +42,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final EndVoiceSessionUseCase endVoiceSessionUseCase;
   final AppSession appSession;
   final SignalRService signalRService;
-  final CallKitIncomingService callKitIncomingService; // Added
+  final CallKitIncomingService callKitIncomingService;
   final KickUserUseCase kickUserUseCase;
   final MuteUserUseCase muteUserUseCase;
   final TransferHostUseCase transferHostUseCase;
   final PermissionsService permissionsService;
   final IntercomEngine intercomEngine;
+  final AudioOrchestratorService audioOrchestratorService;
 
   String? _activeCallKitId;
 
@@ -60,6 +64,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   StreamSubscription? _appSessionUserIdSubscription;
 
   StreamSubscription? _intercomStateSubscription;
+  StreamSubscription? _participantStatusUpdatedSubscription;
 
   VoiceSessionBloc({
     required this.createVoiceSessionUseCase,
@@ -74,12 +79,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.endVoiceSessionUseCase,
     required this.appSession,
     required this.signalRService,
-    required this.callKitIncomingService, // Added
+    required this.callKitIncomingService,
     required this.kickUserUseCase,
     required this.muteUserUseCase,
     required this.transferHostUseCase,
     required this.permissionsService,
     required this.intercomEngine,
+    required this.audioOrchestratorService,
   }) : super(const VoiceSessionState()) {
     // --- SignalR Broadcast Listeners for List Refresh ---
 
@@ -193,6 +199,14 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       }
     });
 
+    _participantStatusUpdatedSubscription = signalRService
+        .participantStatusUpdatedStream
+        .listen((payload) {
+          if (!isClosed) {
+            add(ParticipantStatusUpdatedEvent(payload));
+          }
+        });
+
     // SignalR artık CallListenerService + AuthProvider tarafından
     // merkezi olarak başlatılıyor. Bloc constructor'da tekrar init etmeye
     // gerek yok — race condition'a yol açıyordu.
@@ -222,6 +236,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     on<ToggleMicrophoneEvent>(_onToggleMicrophone);
     on<IntercomStateChangedEvent>(_onIntercomStateChanged);
     on<AppSessionCurrentUserChangedEvent>(_onAppSessionCurrentUserChanged);
+    on<ParticipantStatusUpdatedEvent>(_onParticipantStatusUpdated);
 
     on<VoiceSessionParticipantJoinedEvent>((event, emit) {
       if (state.status == VoiceSessionStatus.detailsLoaded &&
@@ -661,6 +676,49 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     }
   }
 
+  void _onParticipantStatusUpdated(
+    ParticipantStatusUpdatedEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) {
+    if (state.session == null) return;
+
+    final currentParticipants = state.session!.participants;
+    final index = currentParticipants.indexWhere(
+      (p) => p.userId == event.payload.userId,
+    );
+
+    if (index != -1) {
+      final participant = currentParticipants[index];
+      final updatedParticipant = VoiceSessionParticipantEntity(
+        userId: participant.userId,
+        username: participant.username,
+        firstName: participant.firstName,
+        lastName: participant.lastName,
+        profileImage: participant.profileImage,
+        status: participant.status,
+        joinedAt: participant.joinedAt,
+        phoneBatteryLevel:
+            event.payload.phoneBatteryLevel ?? participant.phoneBatteryLevel,
+        intercomBatteryLevel:
+            event.payload.intercomBatteryLevel ??
+            participant.intercomBatteryLevel,
+        signalStrength:
+            event.payload.signalStrength ?? participant.signalStrength,
+      );
+
+      final updatedParticipants = List<VoiceSessionParticipantEntity>.from(
+        currentParticipants,
+      );
+      updatedParticipants[index] = updatedParticipant;
+
+      final updatedSession = state.session!.copyWith(
+        participants: updatedParticipants,
+      );
+
+      emit(state.copyWith(session: updatedSession));
+    }
+  }
+
   Future<void> _onVoiceSessionForceRemoved(
     VoiceSessionForceRemovedEvent event,
     Emitter<VoiceSessionState> emit,
@@ -734,17 +792,18 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   }
 
   @override
-  Future<void> close() {
-    _rideTerminatedSubscription?.cancel();
-    _rideCreatedSubscription?.cancel();
-    _userJoinedSubscription?.cancel();
-    _userLeftSubscription?.cancel();
-    _hostChangedSubscription?.cancel();
-    _voiceSessionRefreshSubscription?.cancel();
-    _userForceRemovedSubscription?.cancel();
-    _groupRideUpdatedSubscription?.cancel();
-    _appSessionUserIdSubscription?.cancel();
-    _intercomStateSubscription?.cancel();
+  Future<void> close() async {
+    await _rideTerminatedSubscription?.cancel();
+    await _rideCreatedSubscription?.cancel();
+    await _userJoinedSubscription?.cancel();
+    await _userLeftSubscription?.cancel();
+    await _hostChangedSubscription?.cancel();
+    await _voiceSessionRefreshSubscription?.cancel();
+    await _userForceRemovedSubscription?.cancel();
+    await _groupRideUpdatedSubscription?.cancel();
+    await _appSessionUserIdSubscription?.cancel();
+    await _intercomStateSubscription?.cancel();
+    await _participantStatusUpdatedSubscription?.cancel();
     return super.close();
   }
 

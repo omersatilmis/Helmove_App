@@ -10,6 +10,11 @@ class VoiceSessionParticipantEntity extends Equatable {
   final String status; // Invited, Accepted, Joined, Left, Rejected
   final DateTime? joinedAt;
 
+  // Real-time metrics
+  final int? phoneBatteryLevel;
+  final int? intercomBatteryLevel;
+  final int? signalStrength;
+
   const VoiceSessionParticipantEntity({
     required this.userId,
     this.username,
@@ -18,6 +23,9 @@ class VoiceSessionParticipantEntity extends Equatable {
     this.profileImage,
     required this.status,
     this.joinedAt,
+    this.phoneBatteryLevel,
+    this.intercomBatteryLevel,
+    this.signalStrength,
   });
 
   /// Kullanıcının görünen adı
@@ -41,5 +49,13 @@ class VoiceSessionParticipantEntity extends Equatable {
   bool get isInRoom => status == 'Joined' || status == 'Disconnected';
 
   @override
-  List<Object?> get props => [userId, username, status, joinedAt];
+  List<Object?> get props => [
+    userId,
+    username,
+    status,
+    joinedAt,
+    phoneBatteryLevel,
+    intercomBatteryLevel,
+    signalStrength,
+  ];
 }

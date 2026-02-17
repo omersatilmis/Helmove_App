@@ -11,8 +11,9 @@ class RiderCard extends StatelessWidget {
   final String firstName;
   final String lastName;
   final String profileImageUrl;
-  final int batteryLevel;
-  final int signalLevel;
+  final int? phoneBatteryLevel;
+  final int? intercomBatteryLevel;
+  final int? signalStrength;
 
   // Durumlar
   final bool isMicOn;
@@ -37,8 +38,9 @@ class RiderCard extends StatelessWidget {
     required this.firstName,
     required this.lastName,
     required this.profileImageUrl,
-    this.batteryLevel = 100,
-    this.signalLevel = 100,
+    this.phoneBatteryLevel,
+    this.intercomBatteryLevel,
+    this.signalStrength,
     this.isMicOn = false,
     this.isSpeaking = false,
     this.isFriend = false,
@@ -61,8 +63,8 @@ class RiderCard extends StatelessWidget {
     // ESKİ RENK MANTIĞI: Arkaplan Rengi (SurfaceContainerLow + Opacity)
     // Kendi kartımız ise çok hafif bir vurgu (Primary Tint) alabilir ama orijinali bozmadan.
     Color cardColor = isMe
-        ? colorScheme.primary.withValues(alpha:0.08)
-        : colorScheme.surfaceContainerLow.withValues(alpha:0.9);
+        ? colorScheme.primary.withValues(alpha: 0.08)
+        : colorScheme.surfaceContainerLow.withValues(alpha: 0.9);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(20), // ESKİ: 20px radius korundu
@@ -74,8 +76,8 @@ class RiderCard extends StatelessWidget {
           border: Border.all(
             // Konuşuyorsa çerçeve parlasın, değilse silik outline
             color: isSpeaking
-                ? Colors.greenAccent.withValues(alpha:0.6)
-                : colorScheme.outline.withValues(alpha:0.1),
+                ? Colors.greenAccent.withValues(alpha: 0.6)
+                : colorScheme.outline.withValues(alpha: 0.1),
             width: isSpeaking ? 2 : 1,
           ),
         ),
@@ -131,7 +133,9 @@ class RiderCard extends StatelessWidget {
                         children: [
                           _buildMinimalInfo(
                             Icons.signal_cellular_alt,
-                            isConnected ? "$signalLevel%" : "---",
+                            (isConnected && signalStrength != null)
+                                ? "$signalStrength%"
+                                : "---",
                             isConnected
                                 ? Colors.greenAccent
                                 : colorScheme.error,
@@ -140,10 +144,21 @@ class RiderCard extends StatelessWidget {
                           const SizedBox(width: 10),
                           _buildMinimalInfo(
                             Icons.battery_std,
-                            "$batteryLevel%",
-                            colorScheme.onSurfaceVariant.withValues(alpha:0.7),
+                            phoneBatteryLevel != null
+                                ? "$phoneBatteryLevel%"
+                                : "--%",
+                            colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                             theme,
                           ),
+                          if (intercomBatteryLevel != null) ...[
+                            const SizedBox(width: 10),
+                            _buildMinimalInfo(
+                              Icons.headset_mic,
+                              "$intercomBatteryLevel%",
+                              colorScheme.primary.withValues(alpha: 0.8),
+                              theme,
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -163,7 +178,7 @@ class RiderCard extends StatelessWidget {
                         icon: isMicOn ? Icons.mic : Icons.mic_off,
                         color: isMicOn
                             ? Colors.greenAccent
-                            : colorScheme.error.withValues(alpha:0.8),
+                            : colorScheme.error.withValues(alpha: 0.8),
                         onTap: onMicPressed,
                         tooltip: "Mikrofon",
                       )
@@ -174,8 +189,8 @@ class RiderCard extends StatelessWidget {
                           isMicOn ? Icons.mic : Icons.mic_off,
                           size: 20,
                           color: isMicOn
-                              ? Colors.greenAccent.withValues(alpha:0.7)
-                              : colorScheme.error.withValues(alpha:0.6),
+                              ? Colors.greenAccent.withValues(alpha: 0.7)
+                              : colorScheme.error.withValues(alpha: 0.6),
                         ),
                       ),
 
@@ -296,7 +311,7 @@ class RiderCard extends StatelessWidget {
         Text(
           text,
           style: AppTextStyles.bodySmall.copyWith(
-            color: theme.colorScheme.onSurfaceVariant.withValues(alpha:0.8),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),

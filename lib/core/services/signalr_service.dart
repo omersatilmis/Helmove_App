@@ -46,11 +46,11 @@ class SignalRService {
   final _callRequestFailedController = StreamController<String>.broadcast();
   final _callActionFailedController = StreamController<String>.broadcast();
   final _signalDeliveryFailedController = StreamController<String>.broadcast();
-    final _headlessCallRequestController =
+  final _headlessCallRequestController =
       StreamController<CallRequestPayload>.broadcast();
-    final _headlessCallAcceptedController =
+  final _headlessCallAcceptedController =
       StreamController<CallAcceptedPayload>.broadcast();
-    final _headlessCallEndedController =
+  final _headlessCallEndedController =
       StreamController<CallEndedPayload>.broadcast();
 
   Stream<CallRequestPayload> get incomingCallStream =>
@@ -70,11 +70,11 @@ class SignalRService {
       _callActionFailedController.stream;
   Stream<String> get signalDeliveryFailedStream =>
       _signalDeliveryFailedController.stream;
-    Stream<CallRequestPayload> get headlessCallRequestStream =>
+  Stream<CallRequestPayload> get headlessCallRequestStream =>
       _headlessCallRequestController.stream;
-    Stream<CallAcceptedPayload> get headlessCallAcceptedStream =>
+  Stream<CallAcceptedPayload> get headlessCallAcceptedStream =>
       _headlessCallAcceptedController.stream;
-    Stream<CallEndedPayload> get headlessCallEndedStream =>
+  Stream<CallEndedPayload> get headlessCallEndedStream =>
       _headlessCallEndedController.stream;
 
   Stream<String?> get rideTerminatedStream => _rideTerminatedController.stream;
@@ -95,6 +95,11 @@ class SignalRService {
   Stream<int> get voiceSessionRefreshStream =>
       _voiceSessionRefreshController.stream;
   Stream<int> get userForceRemovedStream => _userForceRemovedController.stream;
+
+  final _participantStatusUpdatedController =
+      StreamController<ParticipantStatusPayload>.broadcast();
+  Stream<ParticipantStatusPayload> get participantStatusUpdatedStream =>
+      _participantStatusUpdatedController.stream;
 
   // Active Voice Session Context
   String? _activeSessionId;
@@ -259,6 +264,17 @@ class SignalRService {
       }
     });
 
+    _hubConnection!.on("ParticipantStatusUpdated", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        if (arguments[0] is Map) {
+          final payload = Map<String, dynamic>.from(arguments[0] as Map);
+          _participantStatusUpdatedController.add(
+            ParticipantStatusPayload.fromMap(payload),
+          );
+        }
+      }
+    });
+
     // ============================================================
     // P2P CALL SIGNALING HANDLERS
     // ============================================================
@@ -358,7 +374,10 @@ class SignalRService {
           "SignalR: Arama kabul edildi <- acceptedBy=$acceptedByUserId target=${targetUserId ?? '-'}",
         );
         _callAcceptedController.add(
-          CallAcceptedPayload(actorId: acceptedByUserId, targetUserId: targetUserId),
+          CallAcceptedPayload(
+            actorId: acceptedByUserId,
+            targetUserId: targetUserId,
+          ),
         );
       }
     });
@@ -610,7 +629,9 @@ class SignalRService {
 
         if (callerId == null || callerId.isEmpty) return;
 
-        AppLogger.info("SignalR: ReceiveHeadlessCallRequest <- actorId=$callerId");
+        AppLogger.info(
+          "SignalR: ReceiveHeadlessCallRequest <- actorId=$callerId",
+        );
         _headlessCallRequestController.add(
           CallRequestPayload(callerId: callerId),
         );

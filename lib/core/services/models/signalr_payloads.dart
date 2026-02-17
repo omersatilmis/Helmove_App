@@ -32,11 +32,7 @@ class CallRejectedPayload {
   final String? targetUserId;
   final String? reason;
 
-  CallRejectedPayload({
-    required this.actorId,
-    this.targetUserId,
-    this.reason,
-  });
+  CallRejectedPayload({required this.actorId, this.targetUserId, this.reason});
 
   String get rejectedByUserId => actorId;
 }
@@ -120,4 +116,29 @@ String? _readString(Map<String, dynamic> data, List<String> keys) {
     return text;
   }
   return null;
+}
+
+class ParticipantStatusPayload {
+  final int userId;
+  final int? phoneBatteryLevel;
+  final int? intercomBatteryLevel;
+  final int? signalStrength;
+
+  ParticipantStatusPayload({
+    required this.userId,
+    this.phoneBatteryLevel,
+    this.intercomBatteryLevel,
+    this.signalStrength,
+  });
+
+  factory ParticipantStatusPayload.fromMap(Map<String, dynamic> map) {
+    return ParticipantStatusPayload(
+      userId: map['userId'] is int
+          ? map['userId']
+          : int.tryParse(map['userId'].toString()) ?? 0,
+      phoneBatteryLevel: map['phoneBatteryLevel'],
+      intercomBatteryLevel: map['intercomBatteryLevel'],
+      signalStrength: map['signalStrength'],
+    );
+  }
 }

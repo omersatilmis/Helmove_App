@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import '../../data/dto/create_voice_session_request_dto.dart';
 import '../../data/dto/invite_users_request_dto.dart';
 import '../../../intercom/domain/intercom_models.dart';
+import '../../../../core/services/models/signalr_payloads.dart';
 
 abstract class VoiceSessionEvent extends Equatable {
   const VoiceSessionEvent();
@@ -247,4 +248,16 @@ class IntercomStateChangedEvent extends VoiceSessionEvent {
 
   @override
   List<Object?> get props => [intercomState];
+}
+
+class ParticipantStatusUpdatedEvent extends VoiceSessionEvent {
+  final ParticipantStatusPayload payload;
+  const ParticipantStatusUpdatedEvent(this.payload);
+  @override
+  List<Object?> get props => [
+    payload.userId,
+    payload.phoneBatteryLevel,
+    payload.intercomBatteryLevel,
+    payload.signalStrength,
+  ];
 }

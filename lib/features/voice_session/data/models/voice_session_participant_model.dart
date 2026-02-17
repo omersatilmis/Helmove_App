@@ -9,6 +9,9 @@ class VoiceSessionParticipantModel extends VoiceSessionParticipantEntity {
     super.profileImage,
     required super.status,
     super.joinedAt,
+    super.phoneBatteryLevel,
+    super.intercomBatteryLevel,
+    super.signalStrength,
   });
 
   factory VoiceSessionParticipantModel.fromJson(Map<String, dynamic> json) {
@@ -44,6 +47,9 @@ class VoiceSessionParticipantModel extends VoiceSessionParticipantEntity {
       joinedAt: json['joinedAt'] != null
           ? DateTime.tryParse(json['joinedAt'])
           : null,
+      phoneBatteryLevel: json['phoneBatteryLevel'],
+      intercomBatteryLevel: json['intercomBatteryLevel'],
+      signalStrength: json['signalStrength'],
     );
   }
 
@@ -52,6 +58,9 @@ class VoiceSessionParticipantModel extends VoiceSessionParticipantEntity {
       'userId': userId,
       'status': status,
       'joinedAt': joinedAt?.toIso8601String(),
+      'phoneBatteryLevel': phoneBatteryLevel,
+      'intercomBatteryLevel': intercomBatteryLevel,
+      'signalStrength': signalStrength,
     };
   }
 }

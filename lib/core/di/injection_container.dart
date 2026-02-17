@@ -1081,6 +1081,7 @@ Future<void> init() async {
       permissionsService: sl(),
       intercomEngine: sl(),
       callKitIncomingService: sl(),
+      audioOrchestratorService: sl(),
     ),
   );
 

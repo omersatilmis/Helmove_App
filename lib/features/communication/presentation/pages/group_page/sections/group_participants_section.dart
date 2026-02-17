@@ -14,7 +14,7 @@ class GroupParticipantsSection extends StatelessWidget {
   final int? currentUserId;
   final bool showSettingsButton;
   final Set<String> activeSpeakers;
-    final VoidCallback onRefresh;
+  final VoidCallback onRefresh;
   final VoidCallback onInvite;
   final VoidCallback onSettings;
   final void Function(int targetUserId, String userName) onKickUser;
@@ -88,9 +88,7 @@ class GroupParticipantsSection extends StatelessWidget {
         if (isLoadingSession)
           const Padding(
             padding: EdgeInsets.all(20.0),
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: Center(child: CircularProgressIndicator()),
           )
         else
           _buildParticipantList(context),
@@ -143,22 +141,23 @@ class GroupParticipantsSection extends StatelessWidget {
             lastName: p.lastName ?? '',
             profileImageUrl:
                 p.profileImage ?? 'https://i.pravatar.cc/150?u=${p.userId}',
-            batteryLevel: isConnected ? 90 : 0,
-            signalLevel: isConnected ? 100 : 0,
+            phoneBatteryLevel: p.phoneBatteryLevel,
+            intercomBatteryLevel: p.intercomBatteryLevel,
+            signalStrength: p.signalStrength,
             isMicOn: isConnected,
-            isSpeaking: activeSpeakers.contains(
-              p.userId.toString(),
-            ),
+            isSpeaking: activeSpeakers.contains(p.userId.toString()),
             isConnected: isConnected,
             isMe: isMe,
             role: role,
             viewerRole: viewerRole,
-            onKickUser: ((viewerRole == RiderRole.organizer ||
+            onKickUser:
+                ((viewerRole == RiderRole.organizer ||
                         viewerRole == RiderRole.host) &&
                     !isMe)
                 ? () => onKickUser(p.userId, p.firstName ?? 'Kullanıcı')
                 : null,
-            onMuteUser: ((viewerRole == RiderRole.organizer ||
+            onMuteUser:
+                ((viewerRole == RiderRole.organizer ||
                         viewerRole == RiderRole.host) &&
                     !isMe)
                 ? () => onMuteUser(p.userId, p.firstName ?? 'Kullanıcı')
