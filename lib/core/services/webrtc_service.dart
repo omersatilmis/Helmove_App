@@ -1,14 +1,7 @@
 import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:moto_comm_app_1/core/constants/audio_bitrate.dart';
 import '../utils/app_logger.dart';
-
-/// Ses kalitesi seçenekleri
-enum CallAudioQuality {
-  low, // 16 kbps (Veri Tasarrufu - Düşük Bant Genişliği)
-  medium, // 32 kbps (Dengeli - Varsayılan / WhatsApp Benzeri)
-  high, // 48 kbps (Yüksek Kalite - WiFi önerilir)
-  ultra, // 64 kbps (En Yüksek Kalite - Sadece çok iyi bağlantılar için)
-}
 
 /// P2P (Mode A) 1v1 arama iÃ§in WebRTC motoru.
 ///
@@ -32,7 +25,7 @@ class WebRTCService {
   MediaStream? _localStream;
   MediaStream? _remoteStream;
   final List<RTCIceCandidate> _pendingCandidates = [];
-  int _currentBitrate = 32000; // Varsayılan: Medium
+  int _currentBitrate = AudioBitrate.medium; // Varsayılan: Medium
 
   // ============================================================
   // STREAMS â€” UI KatmanÄ±na veri aktarÄ±mÄ±
@@ -84,6 +77,7 @@ class WebRTCService {
   MediaStream? get remoteStream => _remoteStream;
 
   bool _isMicEnabled = true;
+  bool _noiseSuppressionEnabled = true;
 
   // ============================================================
   // INITIALIZATION
@@ -279,9 +273,11 @@ class WebRTCService {
         'googEchoCancellation': true,
         'googEchoCancellation2': true,
         'googDAEchoCancellation': true, // Donanım tabanlı AEC
-        'noiseSuppression': true, // Gürültü engelleme
-        'googNoiseSuppression': true, // Google gürültü bastırma
-        'googNoiseReduction': true, // Ekstra gürültü azaltma
+        'noiseSuppression': _noiseSuppressionEnabled, // Gürültü engelleme
+        'googNoiseSuppression':
+            _noiseSuppressionEnabled, // Google gürültü bastırma
+        'googNoiseReduction':
+            _noiseSuppressionEnabled, // Ekstra gürültü azaltma
         'autoGainControl': true, // Otomatik ses seviyesi
         'googAutoGainControl': true,
         'googHighpassFilter': true,
@@ -316,6 +312,7 @@ class WebRTCService {
   }
 
   /// Mikrofonu belirli bir duruma set eder
+  /// Mikrofonu belirli bir duruma set eder
   void setMicrophoneEnabled(bool enabled) {
     if (_localStream == null) return;
 
@@ -324,7 +321,22 @@ class WebRTCService {
       track.enabled = enabled;
     }
 
-    AppLogger.info('WebRTC: Mikrofon â†’ ${enabled ? "aÃ§Ä±k" : "kapalÄ±"}');
+    AppLogger.info(
+      'WebRTC: Mikrofon \u2192 ${enabled ? "a\u00e7\u0131k" : "kapal\u0131"}',
+    );
+  }
+
+  /// Uzak sesi (gelen sesi) aç/kapat (Playback Mute)
+  /// Overlap sırasında yankıyı önlemek için kullanılır.
+  void setRemoteAudioEnabled(bool enabled) {
+    if (_remoteStream == null) return;
+
+    for (final track in _remoteStream!.getAudioTracks()) {
+      track.enabled = enabled;
+    }
+    AppLogger.info(
+      'WebRTC: Remote Audio \u2192 ${enabled ? "UNMUTED" : "MUTED"}',
+    );
   }
 
   /// Hoparlör / Ahize geçişi (UI'dan çağrılabilir)
@@ -333,26 +345,108 @@ class WebRTCService {
     AppLogger.info('WebRTC: Ses çıkışı -> ${enable ? "Hoparlör" : "Ahize"}');
   }
 
-  /// Ses kalitesini ayarlar (Low/Medium/High).
-  /// Bu ayar bir sonraki SDP oluşturma işleminde (yeni arama) geçerli olur.
-  void setAudioQuality(CallAudioQuality quality) {
-    switch (quality) {
-      case CallAudioQuality.low:
-        _currentBitrate = 16000;
-        break;
-      case CallAudioQuality.medium:
-        _currentBitrate = 32000;
-        break;
-      case CallAudioQuality.high:
-        _currentBitrate = 48000;
-        break;
-      case CallAudioQuality.ultra:
-        _currentBitrate = 64000;
-        break;
-    }
+  /// Ses ayarlarını dinamik olarak güncelle (Gürültü engelleme vb.)
+  Future<void> updateAudioSettings({required bool noiseSuppression}) async {
+    _noiseSuppressionEnabled = noiseSuppression;
+
+    if (_localStream == null || _peerConnection == null) return;
+
     AppLogger.info(
-      'WebRTC: Ses kalitesi ayarlandı -> $quality ($_currentBitrate bps)',
+      'WebRTC: Ses ayarları güncelleniyor: noiseSuppression=$noiseSuppression',
     );
+
+    // Mevcut stream'i ve track'leri temizleyip yeni ayarlarla yeniden başlatıyoruz.
+    // "Motoru yeniden başlatmak" mantığına en uygun ve stabil yöntem budur.
+    final wasMicEnabled = _isMicEnabled;
+
+    try {
+      // 1. Mevcut track'leri durdur
+      for (final track in _localStream!.getTracks()) {
+        await track.stop();
+      }
+      _localStream = null;
+
+      // 2. Yeni stream'i başlat (Yeni constraints ile)
+      await startLocalStream();
+
+      // 3. Mikrofon durumunu koru
+      setMicrophoneEnabled(wasMicEnabled);
+
+      AppLogger.info('WebRTC: Ses ayarları başarıyla uygulandı.');
+    } catch (e) {
+      AppLogger.error('WebRTC: Ses ayarları güncellenirken hata oluştu', e);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // KALDIRILDI: setAudioQuality(CallAudioQuality) ve CallAudioQuality enum
+  // Bitrate yönetimi artık tek noktadan: AdaptiveBitrateController
+  // üzerinden yapılıyor. Tavan (ceiling) değişiklikleri:
+  //   Settings → IntercomEngine.onAudioSettingsChanged()
+  //     → AdaptiveBitrateController.updateCeilingFromKey()
+  //       → bitrate$ → WebRTCService.setBitrate() / LiveKit.updateBitrate()
+  // ──────────────────────────────────────────────────────────────────
+
+  /// Adaptif bitrate controller tarafından çağrılır.
+  /// Mevcut bağlantıda bitrate'i değiştirmek için SDP renegotiation yapar.
+  /// [bps] — hedef bitrate (örn: 16000, 32000, 48000).
+  Future<void> setBitrate(int bps) async {
+    _currentBitrate = bps;
+    AppLogger.info('WebRTC: Adaptive bitrate -> $bps bps');
+
+    // Aktif bağlantı varsa SDP renegotiation yap
+    final pc = _peerConnection;
+    if (pc == null) return;
+
+    try {
+      // Sender üzerinden maxBitrate ayarla (SDP renegotiation yerine daha hafif)
+      final senders = await pc.getSenders();
+      for (final sender in senders) {
+        if (sender.track?.kind == 'audio') {
+          final params = sender.parameters;
+          if (params.encodings != null && params.encodings!.isNotEmpty) {
+            params.encodings![0].maxBitrate = bps;
+            await sender.setParameters(params);
+            AppLogger.info('WebRTC: Sender bitrate updated -> $bps bps');
+          }
+        }
+      }
+    } catch (e) {
+      AppLogger.error('WebRTC: setBitrate failed', e);
+    }
+  }
+
+  /// Ağ değişiminde (WiFi → 4G) ICE bağlantısını yeniden başlatır.
+  /// Mevcut oturumu bozmadan yeni ICE candidate'ler üretir.
+  Future<RTCSessionDescription?> restartIce() async {
+    final pc = _peerConnection;
+    if (pc == null) {
+      AppLogger.warning('WebRTC: restartIce called but no peer connection');
+      return null;
+    }
+
+    AppLogger.info('WebRTC: ICE Restart başlatılıyor...');
+
+    try {
+      final offerConstraints = <String, dynamic>{
+        'mandatory': {
+          'OfferToReceiveAudio': true,
+          'OfferToReceiveVideo': false,
+          'IceRestart': true,
+        },
+      };
+
+      final offer = await pc.createOffer(offerConstraints);
+      final optimizedSdp = _optimizeSdp(offer.sdp!);
+      final optimizedOffer = RTCSessionDescription(optimizedSdp, offer.type);
+
+      await pc.setLocalDescription(optimizedOffer);
+      AppLogger.info('WebRTC: ICE Restart offer oluşturuldu');
+      return optimizedOffer;
+    } catch (e) {
+      AppLogger.error('WebRTC: ICE Restart failed', e);
+      return null;
+    }
   }
 
   // ============================================================
@@ -703,6 +797,9 @@ class WebRTCService {
   Future<void> stopAll() async {
     await dispose();
   }
+
+  /// Mevcut bitrate değerini döner (adaptif sistem için).
+  int get currentBitrate => _currentBitrate;
 
   /// SDP (Session Description Protocol) içeriğini manipüle ederek
   /// Opus ses codec'ini düşük gecikme için optimize eder.
