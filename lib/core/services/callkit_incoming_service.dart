@@ -170,6 +170,15 @@ class CallKitIncomingService {
       },
     );
 
+    // [FIX] Permission Centralization:
+    // Don't request permissions here. It causes prompts on Login Screen.
+    // Moved to HomePage -> PermissionsService logic if needed,
+    // or simply relied on permission_handler's Permission.notification.
+    // await _requestAndroidPermissions();
+  }
+
+  // Public method to be called from PermissionsService or HomePage if needed
+  Future<void> requestPermissions() async {
     await _requestAndroidPermissions();
   }
 
