@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
 
-enum InviteStatus {
-  none,
-  pending,
-  accepted,
-  rejected,
-}
+enum InviteStatus { none, pending, accepted, rejected }
 
 class InviteRiderCard extends StatelessWidget {
   final String firstName;
@@ -44,10 +39,10 @@ class InviteRiderCard extends StatelessWidget {
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerLow.withValues(alpha:0.9),
+            color: colorScheme.surfaceContainerLow.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: colorScheme.outline.withValues(alpha:0.1),
+              color: colorScheme.outline.withValues(alpha: 0.1),
               width: 1,
             ),
           ),
@@ -61,7 +56,7 @@ class InviteRiderCard extends StatelessWidget {
                   radius: 22,
                   backgroundImage: NetworkImage(profileImageUrl),
                   backgroundColor: colorScheme.surfaceContainerHigh,
-                  onBackgroundImageError: (_, __) =>
+                  onBackgroundImageError: (_, _) =>
                       Icon(Icons.person, color: colorScheme.onSurface),
                 ),
                 const SizedBox(width: 12),
@@ -86,7 +81,9 @@ class InviteRiderCard extends StatelessWidget {
                       Text(
                         "@$username",
                         style: AppTextStyles.bodySmall.copyWith(
-                          color: colorScheme.onSurfaceVariant.withValues(alpha:0.7),
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.7,
+                          ),
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
