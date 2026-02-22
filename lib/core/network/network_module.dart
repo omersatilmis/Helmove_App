@@ -32,6 +32,9 @@ class NetworkModule {
         return EnvConfig.iosSimulatorBaseUrl;
       }
       return EnvConfig.localDeviceBaseUrl;
+    } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      // Desktop platforms usually prefer localhost for local development
+      return EnvConfig.webBaseUrl;
     }
 
     return EnvConfig.localDeviceBaseUrl;
