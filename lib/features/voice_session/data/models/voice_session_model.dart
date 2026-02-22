@@ -23,6 +23,12 @@ class VoiceSessionModel extends VoiceSessionEntity {
   });
 
   factory VoiceSessionModel.fromJson(Map<String, dynamic> json) {
+    int? parseNullableInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      return int.tryParse(value.toString());
+    }
+
     // Handle nested 'data' wrapper if present
     final data = json.containsKey('data') ? json['data'] : json;
 
@@ -34,8 +40,8 @@ class VoiceSessionModel extends VoiceSessionEntity {
         [];
 
     return VoiceSessionModel(
-      id: data['id'] ?? 0,
-      hostUserId: data['hostUserId'] ?? 0,
+      id: parseNullableInt(data['id']) ?? 0,
+      hostUserId: parseNullableInt(data['hostUserId']) ?? 0,
       hostUsername: host?['username'],
       hostFirstName: host?['firstName'],
       hostLastName: host?['lastName'],
@@ -43,8 +49,8 @@ class VoiceSessionModel extends VoiceSessionEntity {
       title: data['title'] ?? '',
       roomName: data['roomName'] ?? '',
       isActive: data['isActive'] ?? true,
-      rideId: data['rideId'],
-      maxParticipants: data['maxParticipants'] ?? 10,
+      rideId: parseNullableInt(data['rideId'] ?? data['groupRideId']),
+      maxParticipants: parseNullableInt(data['maxParticipants']) ?? 10,
       destination: data['destination'],
       ridingStyle: data['ridingStyle'],
       difficulty: data['difficulty'],
@@ -52,7 +58,7 @@ class VoiceSessionModel extends VoiceSessionEntity {
           ? DateTime.tryParse(data['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       participants: participantsList,
-      joinedCount: data['joinedCount'] ?? 0,
+      joinedCount: parseNullableInt(data['joinedCount']) ?? 0,
     );
   }
 

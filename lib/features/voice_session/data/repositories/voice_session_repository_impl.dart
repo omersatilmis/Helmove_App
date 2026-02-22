@@ -141,6 +141,48 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
   }
 
   @override
+  Future<Either<Failure, Unit>> kickParticipant(
+    int rideId,
+    int targetUserId,
+  ) async {
+    try {
+      await remoteDataSource.kickParticipant(rideId, targetUserId);
+      return const Right(unit);
+    } catch (e) {
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> promoteParticipant(
+    int rideId,
+    int targetUserId,
+  ) async {
+    try {
+      await remoteDataSource.promoteParticipant(rideId, targetUserId);
+      return const Right(unit);
+    } catch (e) {
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> demoteParticipant(
+    int rideId,
+    int targetUserId,
+  ) async {
+    try {
+      await remoteDataSource.demoteParticipant(rideId, targetUserId);
+      return const Right(unit);
+    } catch (e) {
+      final message = e.toString().replaceAll('Exception: ', '');
+      return Left(ServerFailure(message));
+    }
+  }
+
+  @override
   Future<Either<Failure, Unit>> transferHost(
     int sessionId,
     int newHostId,

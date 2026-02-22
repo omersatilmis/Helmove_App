@@ -2,9 +2,10 @@ import 'package:equatable/equatable.dart';
 import 'voice_session_participant_entity.dart';
 
 /// Sesli sohbet oturumu entity'si
+/// hostUserId = Captain (sesli oturumun lideri) kullanıcı ID'si
 class VoiceSessionEntity extends Equatable {
   final int id;
-  final int hostUserId;
+  final int hostUserId; // Captain ID (Backend field adı: hostUserId)
   final String? hostUsername;
   final String? hostFirstName;
   final String? hostLastName;
@@ -81,13 +82,16 @@ class VoiceSessionEntity extends Equatable {
     );
   }
 
-  /// Host'un görünen adı
+  /// Captain'in (oturum liderinin) görünen adı
   String get hostDisplayName {
     if (hostFirstName != null && hostLastName != null) {
       return '$hostFirstName $hostLastName';
     }
     return hostUsername ?? 'Bilinmeyen';
   }
+
+  /// Alias: Captain display name
+  String get captainDisplayName => hostDisplayName;
 
   /// Aktif katılımcı sayısı (Joined, Accepted veya Disconnected status)
   /// Disconnected: Odada ama bağlantısı kopmuş olanlar da sayılır.
