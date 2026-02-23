@@ -8,6 +8,7 @@ import 'package:moto_comm_app_1/features/plan/presentation/widgets/plan_model.da
 import 'package:moto_comm_app_1/features/plan/presentation/widgets/premium_plan_card.dart';
 import 'package:moto_comm_app_1/features/plan/presentation/widgets/plan_tab_selector.dart';
 import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
+import 'package:moto_comm_app_1/core/utils/app_logger.dart';
 import '../bloc/subscription_bloc.dart';
 import '../bloc/subscription_event.dart';
 import '../bloc/subscription_state.dart';
@@ -153,10 +154,10 @@ class _PlanViewState extends State<_PlanView> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha:0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha:0.2),
+                    color: AppColors.primary.withValues(alpha: 0.2),
                     blurRadius: 100,
                     spreadRadius: 20,
                   ),
@@ -254,7 +255,7 @@ class _PlanViewState extends State<_PlanView> {
                                       //     transactionId: 'dummy_id',
                                       //   ),
                                       // );
-                                      print("Satın al: ${plan.title}");
+                                      AppLogger.info("Satın al: ${plan.title}");
                                     },
                                   ),
                                 );

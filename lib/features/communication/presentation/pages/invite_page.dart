@@ -34,18 +34,23 @@ import '../../../group_ride/presentation/models/group_ride_args.dart';
 // --- LOCAL WIDGETS ---
 import '../widgets/invite_rider_card.dart';
 
-class InvitePage extends StatelessWidget {
-  final bool isFromCreateGroup;
-  final dynamic
-  groupData; // Changed to dynamic to preserve UI without GroupRideData entity
-  final int? sessionId; // Mevcut odaya davet için
+import '../../../../core/navigation/base_navigation_args.dart';
+import '../../../../core/mixins/navigation_guard_mixin.dart';
+import '../models/invite_args.dart';
 
-  const InvitePage({
-    super.key,
-    this.isFromCreateGroup = false,
-    this.groupData,
-    this.sessionId,
-  });
+class InvitePage extends StatefulWidget {
+  final InviteArgs args;
+
+  const InvitePage({super.key, required this.args});
+
+  @override
+  State<InvitePage> createState() => _InvitePageState();
+}
+
+class _InvitePageState extends State<InvitePage>
+    with NavigationGuardMixin<InvitePage> {
+  @override
+  BaseNavigationArgs? get args => widget.args;
 
   @override
   Widget build(BuildContext context) {
@@ -56,27 +61,17 @@ class InvitePage extends StatelessWidget {
         ),
         BlocProvider(create: (_) => sl<DiscoverBloc>()),
         BlocProvider.value(value: sl<VoiceSessionBloc>()),
-        BlocProvider(create: (_) => sl<GroupRideBloc>()),
+        BlocProvider.value(value: context.read<GroupRideBloc>()),
       ],
-      child: _InviteView(
-        isFromCreateGroup: isFromCreateGroup,
-        groupData: groupData,
-        sessionId: sessionId,
-      ),
+      child: _InviteView(args: widget.args),
     );
   }
 }
 
 class _InviteView extends StatefulWidget {
-  final bool isFromCreateGroup;
-  final dynamic groupData;
-  final int? sessionId;
+  final InviteArgs args;
 
-  const _InviteView({
-    required this.isFromCreateGroup,
-    this.groupData,
-    this.sessionId,
-  });
+  const _InviteView({required this.args});
 
   @override
   State<_InviteView> createState() => _InviteViewState();
@@ -90,9 +85,9 @@ class _InviteViewState extends State<_InviteView> {
   @override
   void initState() {
     super.initState();
-    if (widget.sessionId != null) {
+    if (widget.args.sessionId > 0) {
       context.read<VoiceSessionBloc>().add(
-        GetVoiceSessionDetailsEvent(widget.sessionId!),
+        GetVoiceSessionDetailsEvent(widget.args.sessionId),
       );
     }
   }
@@ -350,7 +345,7 @@ class _InviteViewState extends State<_InviteView> {
                               rideState is GroupRideLoading ||
                               vsState.status == VoiceSessionStatus.loading;
                           return AppFrostedTextButton(
-                            text: widget.isFromCreateGroup
+                            text: widget.args.isFromCreateGroup
                                 ? "Grubu Kur"
                                 : "Kişileri Davet Et",
                             isLoading: isLoading,
@@ -363,27 +358,34 @@ class _InviteViewState extends State<_InviteView> {
                             onPressed: isLoading
                                 ? null
                                 : () {
-                                    if (widget.isFromCreateGroup &&
-                                        widget.groupData != null) {
+                                    if (widget.args.isFromCreateGroup &&
+                                        widget.args.groupData != null) {
                                       // ... (Log omitted for brevity)
                                       // ... (CreateGroupRideRequestDto building omitted)
                                       final request = CreateGroupRideRequestDto(
                                         title:
-                                            widget.groupData["groupName"] ??
+                                            widget
+                                                .args
+                                                .groupData!["groupName"] ??
                                             "Yeni Grup",
                                         description:
-                                            (widget.groupData["description"]
+                                            (widget
+                                                    .args
+                                                    .groupData!["description"]
                                                     ?.toString()
                                                     .isNotEmpty ??
                                                 false)
-                                            ? widget.groupData["description"]
+                                            ? widget
+                                                  .args
+                                                  .groupData!["description"]
                                             : "belirlenmedi",
                                         maxParticipants:
                                             widget
-                                                .groupData["maxParticipants"] ??
+                                                .args
+                                                .groupData!["maxParticipants"] ??
                                             10,
                                         privacy:
-                                            widget.groupData["privacy"] ??
+                                            widget.args.groupData!["privacy"] ??
                                             "Public",
                                         startDateTime: DateTime.now(),
                                         endDateTime: DateTime.now().add(
@@ -393,15 +395,21 @@ class _InviteViewState extends State<_InviteView> {
                                         startLatitude: 0,
                                         startLongitude: 0,
                                         endLocation:
-                                            widget.groupData["destination"] ??
+                                            widget
+                                                .args
+                                                .groupData!["destination"] ??
                                             "Hedef Belirtilmedi",
                                         endLatitude: 0,
                                         endLongitude: 0,
                                         difficulty:
-                                            widget.groupData["difficulty"] ??
+                                            widget
+                                                .args
+                                                .groupData!["difficulty"] ??
                                             "Beginner",
                                         ridingStyle:
-                                            widget.groupData["ridingStyle"] ??
+                                            widget
+                                                .args
+                                                .groupData!["ridingStyle"] ??
                                             "Sakin",
                                         invitedUserIds: _selectedRiders
                                             .map((e) => e.userId)
@@ -411,10 +419,10 @@ class _InviteViewState extends State<_InviteView> {
                                       context.read<GroupRideBloc>().add(
                                         CreateGroupRideEvent(request),
                                       );
-                                    } else if (widget.sessionId != null &&
+                                    } else if (widget.args.sessionId > 0 &&
                                         _selectedRiders.isNotEmpty) {
                                       debugPrint(
-                                        "📨 [VoiceSession] Davet event'i gönderiliyor. SessionID: ${widget.sessionId}",
+                                        "📨 [VoiceSession] Davet event'i gönderiliyor. SessionID: ${widget.args.sessionId}",
                                       );
                                       final request = InviteUsersRequestDto(
                                         userIds: _selectedRiders
@@ -423,7 +431,7 @@ class _InviteViewState extends State<_InviteView> {
                                       );
                                       context.read<VoiceSessionBloc>().add(
                                         InviteUsersEvent(
-                                          widget.sessionId!,
+                                          widget.args.sessionId,
                                           request,
                                         ),
                                       );
@@ -464,7 +472,7 @@ class _InviteViewState extends State<_InviteView> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: colorScheme.primary.withValues(alpha:0.5),
+                    color: colorScheme.primary.withValues(alpha: 0.5),
                     width: 1.5,
                   ),
                 ),
@@ -598,10 +606,7 @@ class _InviteViewState extends State<_InviteView> {
     );
   }
 
-  InviteStatus _resolveInviteStatus(
-    int userId,
-    VoiceSessionEntity? session,
-  ) {
+  InviteStatus _resolveInviteStatus(int userId, VoiceSessionEntity? session) {
     final participants = session?.participants ?? const [];
     VoiceSessionParticipantEntity? matched;
     for (final participant in participants) {

@@ -5,6 +5,7 @@ import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_event.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_state.dart';
@@ -13,6 +14,8 @@ import '../../../../features/auth/domain/repositories/auth_repository.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../features/group_ride/data/dto/create_group_ride_request_dto.dart';
 import '../../../../features/group_ride/domain/entities/group_ride_entity.dart';
+import '../../../../core/navigation/base_navigation_args.dart';
+import '../../../../core/mixins/navigation_guard_mixin.dart';
 
 class GroupSettings extends StatefulWidget {
   final GroupRideArgs data;
@@ -24,7 +27,11 @@ class GroupSettings extends StatefulWidget {
   State<GroupSettings> createState() => _GroupSettingsState();
 }
 
-class _GroupSettingsState extends State<GroupSettings> {
+class _GroupSettingsState extends State<GroupSettings>
+    with NavigationGuardMixin<GroupSettings> {
+  @override
+  BaseNavigationArgs? get args => widget.data;
+
   // Kontrolcüler
   late TextEditingController _groupNameController;
   late TextEditingController _destinationController;
@@ -35,7 +42,10 @@ class _GroupSettingsState extends State<GroupSettings> {
   late String selectedDifficulty;
   late String selectedRidingStyle;
   late String selectedMaxParticipantsKey;
-  bool isOrganizer = false;
+
+  // Permissions
+  bool canEdit = false;
+  bool canDelete = false;
 
   // Katılımcı Seçenekleri (Map)
   final Map<String, int> participantOptions = {
@@ -81,14 +91,27 @@ class _GroupSettingsState extends State<GroupSettings> {
 
   Future<void> _checkPermission() async {
     final user = await sl<AuthRepository>().getPersistedUser();
-    if (mounted) {
-      setState(() {
-        isOrganizer =
-            (user != null &&
-            widget.data.organizerId != null &&
-            user.id == widget.data.organizerId);
-      });
+    if (user == null || !mounted) return;
+
+    // 1. Admin = Organizer of the GroupRide
+    final bool isAdmin =
+        (widget.data.organizerId != null && user.id == widget.data.organizerId);
+
+    // 2. Captain/Host = hostUserId of the VoiceSession
+    bool isHost = false;
+    try {
+      final vsState = context.read<VoiceSessionBloc>().state;
+      if (vsState.session != null) {
+        isHost = vsState.session!.hostUserId == user.id;
+      }
+    } catch (_) {
+      // VoiceSessionBloc not available in tree — skip
     }
+
+    setState(() {
+      canEdit = isAdmin || isHost;
+      canDelete = isAdmin || isHost;
+    });
   }
 
   @override
@@ -124,7 +147,7 @@ class _GroupSettingsState extends State<GroupSettings> {
 
   // Güncelleme İşlemi
   void _onUpdate() {
-    if (!isOrganizer) return;
+    if (!canEdit) return;
 
     FocusManager.instance.primaryFocus?.unfocus();
 
@@ -182,7 +205,7 @@ class _GroupSettingsState extends State<GroupSettings> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              colorScheme.primary.withValues(alpha:0.08),
+              colorScheme.primary.withValues(alpha: 0.08),
               colorScheme.surface,
               colorScheme.surface,
             ],
@@ -272,7 +295,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                           controller: _groupNameController,
                           hint: "Grup Adı",
                           leadingIcon: Icons.group,
-                          enabled: isOrganizer,
+                          enabled: canEdit,
                         ),
                         const SizedBox(height: 16),
 
@@ -293,7 +316,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                                 subtitle: "Herkes katılabilir",
                                 icon: Icons.public,
                                 isSelected: selectedPrivacy == 'Public',
-                                onTap: isOrganizer
+                                onTap: canEdit
                                     ? () => setState(
                                         () => selectedPrivacy = 'Public',
                                       )
@@ -307,7 +330,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                                 subtitle: "Sadece davetliler",
                                 icon: Icons.lock_outline,
                                 isSelected: selectedPrivacy == 'Private',
-                                onTap: isOrganizer
+                                onTap: canEdit
                                     ? () => setState(
                                         () => selectedPrivacy = 'Private',
                                       )
@@ -325,7 +348,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                           controller: _destinationController,
                           hint: "Örn: Abant Gölü",
                           leadingIcon: Icons.map,
-                          enabled: isOrganizer,
+                          enabled: canEdit,
                         ),
                         const SizedBox(height: 16),
 
@@ -339,7 +362,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                                 title: selectedRidingStyle,
                                 icon: Icons.two_wheeler,
                                 options: ['Sakin', 'Tour', 'Viraj', 'Sehir'],
-                                onSelected: isOrganizer
+                                onSelected: canEdit
                                     ? (val) => setState(
                                         () => selectedRidingStyle = val,
                                       )
@@ -357,7 +380,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                                   'Advanced',
                                   'Expert',
                                 ],
-                                onSelected: isOrganizer
+                                onSelected: canEdit
                                     ? (val) => setState(
                                         () => selectedDifficulty = val,
                                       )
@@ -376,15 +399,15 @@ class _GroupSettingsState extends State<GroupSettings> {
                           hint: "Sürüş hakkında açıklama...",
                           leadingIcon: Icons.description,
                           maxLines: 3,
-                          enabled: isOrganizer,
+                          enabled: canEdit,
                         ),
                         const SizedBox(height: 30),
                       ]),
                     ),
                   ),
 
-                  // --- 3. Butonlar (Sadece Organizer ise) ---
-                  if (isOrganizer)
+                  // --- 3. Butonlar ---
+                  if (canEdit || canDelete)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -393,15 +416,17 @@ class _GroupSettingsState extends State<GroupSettings> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: AppFrostedTextButton(
-                                    text: "Sonlandır",
-                                    height: 52,
-                                    backgroundColor: colorScheme.error
-                                        .withValues(alpha:0.1),
-                                    textColor: colorScheme.error,
-                                    onPressed: _onDelete,
-                                    isLoading: state is GroupRideLoading,
-                                  ),
+                                  child: canDelete
+                                      ? AppFrostedTextButton(
+                                          text: "Sonlandır",
+                                          height: 52,
+                                          backgroundColor: colorScheme.error
+                                              .withValues(alpha: 0.1),
+                                          textColor: colorScheme.error,
+                                          onPressed: _onDelete,
+                                          isLoading: state is GroupRideLoading,
+                                        )
+                                      : const SizedBox(),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -409,7 +434,7 @@ class _GroupSettingsState extends State<GroupSettings> {
                                     text: "Güncelle",
                                     height: 52,
                                     backgroundColor: colorScheme.primary
-                                        .withValues(alpha:0.1),
+                                        .withValues(alpha: 0.1),
                                     textColor: colorScheme.primary,
                                     onPressed: _onUpdate,
                                     isLoading: state is GroupRideLoading,
@@ -427,8 +452,8 @@ class _GroupSettingsState extends State<GroupSettings> {
                       ),
                     ),
 
-                  // Eğer Organizer değilse de bottom padding ekle
-                  if (!isOrganizer)
+                  // Eğer yetkili değilse de bottom padding ekle
+                  if (!canEdit)
                     SliverToBoxAdapter(
                       child: SizedBox(
                         height: MediaQuery.of(context).padding.bottom + 80,
@@ -461,7 +486,7 @@ class _GroupSettingsState extends State<GroupSettings> {
           items: participantOptions.keys.map((String key) {
             return DropdownMenuItem<String>(value: key, child: Text(key));
           }).toList(),
-          onChanged: isOrganizer
+          onChanged: canEdit
               ? (newValue) {
                   if (newValue != null) {
                     setState(() => selectedMaxParticipantsKey = newValue);
@@ -550,7 +575,7 @@ class _GroupSettingsState extends State<GroupSettings> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return PopupMenuButton<String>(
-      enabled: isOrganizer,
+      enabled: canEdit,
       onSelected: onSelected,
       color: colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

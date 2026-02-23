@@ -55,6 +55,13 @@ class WebRTCService {
   Stream<RTCIceGatheringState> get iceGatheringState$ =>
       _iceGatheringStateController.stream;
 
+  // [NEW] Connection Quality Stream
+  final _connectionQualityController = StreamController<String>.broadcast();
+  Stream<String> get connectionQualityStream =>
+      _connectionQualityController.stream;
+  Timer? _statsTimer;
+  int _poorQualityCount = 0;
+
   // ============================================================
   // GETTERS
   // ============================================================
@@ -128,9 +135,9 @@ class WebRTCService {
     _peerConnection = await createPeerConnection(configuration, constraints);
     _registerPeerConnectionCallbacks();
 
-    // İYİLEŞTİRME: Varsayılan olarak sesi ahizeye (Earpiece) yönlendir.
-    // Bu, "WhatsApp gibi" profesyonel bir deneyim için şarttır.
-    await Helper.setSpeakerphoneOn(false);
+    // İYİLEŞTİRME: Varsayılan olarak sesi hoparlöre (Speaker) yönlendir.
+    // Motosiklet interkom deneyimi için hoparlör kullanımı şarttır.
+    await Helper.setSpeakerphoneOn(true);
 
     AppLogger.info('WebRTC: PeerConnection oluÅŸturuldu.');
   }
@@ -199,6 +206,9 @@ class WebRTCService {
   void _registerPeerConnectionCallbacks() {
     final pc = _peerConnection;
     if (pc == null) return;
+
+    // Start Stats Polling
+    _startStatsTimer();
 
     // ICE Candidate Ã¼retildiÄŸinde â†’ SignalR ile karÅŸÄ± tarafa gÃ¶nderilecek
     pc.onIceCandidate = (RTCIceCandidate candidate) {
@@ -832,5 +842,49 @@ class WebRTCService {
 
     // fmtp satırı varsa değiştir
     return sdp.replaceAll(fmtpRegex, newParams);
+  }
+
+  // [NEW] Stats Tracking for Seamless Fallback
+  void _startStatsTimer() {
+    _statsTimer?.cancel();
+    _statsTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      final pc = _peerConnection;
+      if (pc == null ||
+          pc.connectionState !=
+              RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+        return;
+      }
+
+      try {
+        final stats = await pc.getStats();
+        bool isPoor = false;
+
+        for (final stat in stats) {
+          if (stat.type == 'inbound-rtp' && stat.values['kind'] == 'audio') {
+            final packetLoss = stat.values['packetsLost'] ?? 0;
+            final jitter = stat.values['jitter'] ?? 0;
+
+            // Basit Kalite Algoritmasi
+            if (packetLoss > 50 || jitter > 0.05) {
+              // 50ms jitter veya asiri kayip
+              isPoor = true;
+            }
+          }
+        }
+
+        if (isPoor) {
+          _poorQualityCount++;
+          if (_poorQualityCount >= 3) {
+            _connectionQualityController.add('POOR');
+            _poorQualityCount = 0; // Sifirla, surekli tetiklemesin
+          }
+        } else {
+          _poorQualityCount = 0; // Bir iyi raporda sayaci sifirla
+          _connectionQualityController.add('GOOD');
+        }
+      } catch (e) {
+        // Stats error ignored
+      }
+    });
   }
 }

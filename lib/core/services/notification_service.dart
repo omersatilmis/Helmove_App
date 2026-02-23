@@ -20,8 +20,10 @@ class NotificationService {
 
       await _callKitIncomingService.initialize();
 
-      final permission = await OneSignal.Notifications.requestPermission(true);
-      AppLogger.info('NotificationService: permission=$permission');
+      // [FIX] Permission Centralization:
+      // Don't request here. HomePage will handle it.
+      // final permission = await OneSignal.Notifications.requestPermission(true);
+      // AppLogger.info('NotificationService: permission=$permission');
 
       OneSignal.Notifications.addClickListener((event) async {
         final data = event.notification.additionalData;

@@ -26,7 +26,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
       }
       throw Exception('Invalid response format');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -36,7 +36,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
       final response = await _dio.get('/api/voice-sessions/$id');
       return VoiceSessionModel.fromJson(response.data);
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -49,7 +49,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
           : (response.data ?? []);
       return dataList.map((json) => VoiceSessionModel.fromJson(json)).toList();
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -58,7 +58,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$id/invite', data: request.toJson());
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -67,7 +67,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$id/accept');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -76,7 +76,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$id/reject');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -85,7 +85,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$id/join');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -94,7 +94,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$id/leave');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -103,7 +103,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$id/end');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -112,7 +112,34 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$sessionId/kick/$targetUserId');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<void> kickParticipant(int rideId, int targetUserId) async {
+    try {
+      await _dio.post('/api/GroupRide/$rideId/kick/$targetUserId');
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<void> promoteParticipant(int rideId, int targetUserId) async {
+    try {
+      await _dio.post('/api/GroupRide/$rideId/promote/$targetUserId');
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<void> demoteParticipant(int rideId, int targetUserId) async {
+    try {
+      await _dio.post('/api/GroupRide/$rideId/demote/$targetUserId');
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -121,7 +148,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$sessionId/mute/$targetUserId');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
@@ -130,7 +157,7 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
     try {
       await _dio.post('/api/voice-sessions/$sessionId/transfer/$newHostId');
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 

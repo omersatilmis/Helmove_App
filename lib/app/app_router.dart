@@ -1,15 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/login_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
-import 'package:moto_comm_app_1/core/theme/theme_provider.dart';
-import 'package:moto_comm_app_1/features/communication/presentation/pages/invite_page.dart';
+import 'package:moto_comm_app_1/features/communication/presentation/models/invite_args.dart';
+import '../../features/communication/presentation/pages/invite_page.dart';
+import 'package:moto_comm_app_1/core/widgets/app_bloc_listener.dart'; // Import AppBlocListener
 // Removed CallListenerWrapper import
 
 // 🔥 YENİ SAYFALARIN IMPORTLARI
@@ -39,6 +39,8 @@ import 'package:moto_comm_app_1/features/settings/presentation/pages/my_garage_p
 // Homepage den girilen sayfaların Importları
 import 'package:moto_comm_app_1/features/messages/presentation/pages/messages_page.dart';
 import 'package:moto_comm_app_1/features/notification/presentation/pages/notification_page.dart';
+import 'package:moto_comm_app_1/core/services/version_service.dart';
+import 'package:moto_comm_app_1/core/presentation/pages/force_update_page.dart';
 
 // Profile Jots Tabından açılan sayfa
 import 'package:moto_comm_app_1/features/content/jots/presentation/pages/create_jot_page.dart';
@@ -60,32 +62,69 @@ class PlaceholderScreen extends StatelessWidget {
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
-// Helper: Provider tree wrap et (sadece auth sayfaları için)
-Widget _wrapWithProviders(Widget child) {
-  return MultiProvider(
-    providers: [
-      ChangeNotifierProvider.value(value: sl<AuthProvider>()),
-      ChangeNotifierProvider.value(value: sl<ThemeProvider>()),
-      ChangeNotifierProvider.value(value: sl<ProfileProvider>()),
-    ],
-    child: child,
-  );
-}
-
 // --- REFACTOR: Router'ı bir fonksiyon haline getirdik ---
 // Böylece AuthProvider'ı dinleyip yönlendirme yapabiliriz.
 
 GoRouter createRouter(AuthProvider authProvider) {
+  int? parseRouteInt(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    return int.tryParse(raw);
+  }
+
+  GroupRideArgs? resolveGroupRideArgs(GoRouterState state) {
+    final extraArgs = GroupRideArgs.fromExtra(state.extra);
+    if (extraArgs != null) {
+      final hasAnyValidId =
+          extraArgs.rideId > 0 || ((extraArgs.sessionId ?? 0) > 0);
+      if (hasAnyValidId) {
+        return extraArgs;
+      }
+    }
+
+    final rideId =
+        parseRouteInt(state.pathParameters['rideId']) ??
+        parseRouteInt(state.uri.queryParameters['rideId']);
+    final sessionId =
+        parseRouteInt(state.pathParameters['sessionId']) ??
+        parseRouteInt(state.uri.queryParameters['sessionId']);
+
+    if ((rideId ?? 0) <= 0 && (sessionId ?? 0) <= 0) {
+      return null;
+    }
+
+    final effectiveRideId = (rideId != null && rideId > 0)
+        ? rideId
+        : (sessionId ?? 0);
+    final nameCandidate = state.uri.queryParameters['groupName']?.trim();
+
+    return GroupRideArgs(
+      rideId: effectiveRideId,
+      sessionId: sessionId,
+      groupName: (nameCandidate == null || nameCandidate.isEmpty)
+          ? 'Grup Sürüşü'
+          : nameCandidate,
+    );
+  }
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
+    refreshListenable: authProvider,
     initialLocation: '/homepage',
 
-    // AuthProvider'ı dinle: Oturum durumu değişince yönlendir
-    refreshListenable: authProvider,
-
+    // Unified Redirect Guard (Version Check + Auth)
     redirect: (context, state) async {
-      // 1. Kullanıcı giriş yapmış mı?
-      // Senkron kontrol (UI için hızlı)
+      // 1. Force Update Check (Highest Priority)
+      final versionService = sl<VersionService>();
+      final isUpdateRequired = await versionService.isUpdateRequired();
+
+      final isForceUpdating = state.uri.toString() == '/force-update';
+
+      if (isUpdateRequired && !isForceUpdating) {
+        return '/force-update';
+      }
+
+      // 2. Auth Logic
+      // Kullanıcı giriş yapmış mı?
       bool isLoggedIn = authProvider.isAuthenticated;
 
       // Eğer senkron kontrolde giriş yoksa, asenkron (local token) kontrol et
@@ -97,7 +136,7 @@ GoRouter createRouter(AuthProvider authProvider) {
       final isRegistering = state.uri.toString() == '/register';
 
       if (!isLoggedIn) {
-        if (!isLoggingIn && !isRegistering) {
+        if (!isLoggingIn && !isRegistering && !isForceUpdating) {
           return '/login';
         }
       } else {
@@ -110,31 +149,36 @@ GoRouter createRouter(AuthProvider authProvider) {
     },
 
     routes: [
-      // --- 1. TAM EKRAN SAYFALAR ---
       GoRoute(
-        path: '/login',
-        builder: (context, state) => _wrapWithProviders(const LoginPage()),
+        path: '/force-update',
+        builder: (context, state) => const ForceUpdatePage(),
       ),
+
+      // --- 1. TAM EKRAN SAYFALAR ---
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(
         path: '/register',
-        builder: (context, state) => _wrapWithProviders(const RegisterPage()),
+        builder: (context, state) => const RegisterPage(),
       ),
 
       // Drawer içinden gidilen sayfalar
       GoRoute(
         path: '/profile',
-        builder: (context, state) => _wrapWithProviders(const ProfilePage()),
+        builder: (context, state) => const ProfilePage(),
       ),
       GoRoute(
         path: '/profile/:userId',
         builder: (context, state) {
           final userId = state.pathParameters['userId'];
-          return _wrapWithProviders(ProfilePage(userId: userId));
+          if (userId == null || userId.isEmpty) {
+            return const ProfilePage();
+          }
+          return ProfilePage(userId: userId);
         },
       ),
       GoRoute(
         path: '/edit-profile',
-        builder: (context, state) => _wrapWithProviders(const EditProfilePage()),
+        builder: (context, state) => const EditProfilePage(),
       ),
       GoRoute(path: '/plans', builder: (context, state) => const PlanPage()),
       GoRoute(
@@ -143,11 +187,11 @@ GoRouter createRouter(AuthProvider authProvider) {
       ),
       GoRoute(
         path: '/settings',
-        builder: (context, state) => _wrapWithProviders(const SettingsPage()),
+        builder: (context, state) => const SettingsPage(),
       ),
       GoRoute(
         path: '/my-garage',
-        builder: (context, state) => _wrapWithProviders(const MyGaragePage()),
+        builder: (context, state) => const MyGaragePage(),
       ),
       GoRoute(path: '/help', builder: (context, state) => const HelpPage()),
 
@@ -181,8 +225,14 @@ GoRouter createRouter(AuthProvider authProvider) {
 
       GoRoute(
         path: '/prepare_media',
+        redirect: (context, state) {
+          if (state.extra == null || state.extra is! File) {
+            return '/homepage';
+          }
+          return null;
+        },
         builder: (context, state) {
-          final file = state.extra as dynamic;
+          final file = state.extra as File;
           return PrepareMediaPage(imageFile: file);
         },
       ),
@@ -190,7 +240,19 @@ GoRouter createRouter(AuthProvider authProvider) {
       // --- 2. BOTTOM BARLI SAYFALAR ---
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          return BottomBarWrapper(navigationShell: navigationShell);
+          // Provide GLOBAL Blocs here so they persist across tabs
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (context) =>
+                    sl<GroupRideBloc>()..add(const LoadActiveGroupRidesEvent()),
+              ),
+              BlocProvider.value(value: sl<VoiceSessionBloc>()),
+            ],
+            child: AppBlocListener(
+              child: BottomBarWrapper(navigationShell: navigationShell),
+            ),
+          );
         },
         branches: [
           // Şube 1: Ana Sayfa
@@ -225,17 +287,7 @@ GoRouter createRouter(AuthProvider authProvider) {
             routes: [
               GoRoute(
                 path: '/communication',
-                builder: (context, state) => MultiBlocProvider(
-                  providers: [
-                    BlocProvider(
-                      create: (context) =>
-                          sl<GroupRideBloc>()
-                            ..add(const LoadActiveGroupRidesEvent()),
-                    ),
-                    BlocProvider.value(value: sl<VoiceSessionBloc>()),
-                  ],
-                  child: const CommunicationPage(),
-                ),
+                builder: (context, state) => const CommunicationPage(),
                 routes: [
                   GoRoute(
                     path: 'create-group-ride',
@@ -244,85 +296,72 @@ GoRouter createRouter(AuthProvider authProvider) {
                   // GroupPage'i buraya 'child' (alt rota) olarak ekle
                   GoRoute(
                     path: 'group-page', // başında / yok dikkat
+                    redirect: (context, state) {
+                      final args = resolveGroupRideArgs(state);
+                      if (args == null) {
+                        return '/communication';
+                      }
+                      return null;
+                    },
                     builder: (context, state) {
-                      GroupRideArgs? args;
-                      if (state.extra is GroupRideArgs) {
-                        args = state.extra as GroupRideArgs;
-                      } else if (state.extra is Map<String, dynamic>) {
-                        args = GroupRideArgs.fromMap(
-                          state.extra as Map<String, dynamic>,
-                        );
+                      final args = resolveGroupRideArgs(state)!;
+                      return GroupPage(data: args);
+                    },
+                  ),
+                  GoRoute(
+                    path: 'group-page/:rideId',
+                    redirect: (context, state) {
+                      final args = resolveGroupRideArgs(state);
+                      if (args == null) {
+                        return '/communication';
                       }
-
-                      if (args == null || args.rideId <= 0) {
-                        return const Scaffold(
-                          body: Center(
-                            child: Text('Geçerli grup bilgisi bulunamadı.'),
-                          ),
-                        );
+                      return null;
+                    },
+                    builder: (context, state) {
+                      final args = resolveGroupRideArgs(state)!;
+                      return GroupPage(data: args);
+                    },
+                  ),
+                  GoRoute(
+                    path: 'group-page/session/:sessionId',
+                    redirect: (context, state) {
+                      final args = resolveGroupRideArgs(state);
+                      if (args == null) {
+                        return '/communication';
                       }
-
-                      return MultiBlocProvider(
-                        providers: [
-                          BlocProvider(
-                            create: (context) => sl<GroupRideBloc>(),
-                          ),
-                          BlocProvider.value(value: sl<VoiceSessionBloc>()),
-                        ],
-                        child: GroupPage(data: args),
-                      );
+                      return null;
+                    },
+                    builder: (context, state) {
+                      final args = resolveGroupRideArgs(state)!;
+                      return GroupPage(data: args);
                     },
                   ),
                   GoRoute(
                     path: 'invite',
+                    redirect: (context, state) {
+                      final args = InviteArgs.fromExtra(state.extra);
+                      if (args == null || !args.isValid) {
+                        return '/communication';
+                      }
+                      return null;
+                    },
                     builder: (context, state) {
-                      final extra = state.extra;
-                      return MultiBlocProvider(
-                        providers: [
-                          BlocProvider(
-                            create: (context) => sl<GroupRideBloc>(),
-                          ),
-                          BlocProvider.value(value: sl<VoiceSessionBloc>()),
-                        ],
-                        child: extra is Map
-                            ? InvitePage(
-                                isFromCreateGroup: true,
-                                groupData: extra,
-                              )
-                            : extra is int
-                            ? InvitePage(
-                                isFromCreateGroup: false,
-                                sessionId: extra,
-                              )
-                            : const InvitePage(isFromCreateGroup: false),
-                      );
+                      final args = InviteArgs.fromExtra(state.extra)!;
+                      return InvitePage(args: args);
                     },
                   ),
                   GoRoute(
                     path: 'group-settings',
+                    redirect: (context, state) {
+                      final args = GroupRideArgs.fromExtra(state.extra);
+                      if (args == null || !args.isValid) {
+                        return '/communication';
+                      }
+                      return null;
+                    },
                     builder: (context, state) {
-                      GroupRideArgs? args;
-                      if (state.extra is GroupRideArgs) {
-                        args = state.extra as GroupRideArgs;
-                      } else if (state.extra is Map<String, dynamic>) {
-                        final data = (state.extra as Map<String, dynamic>)['data'];
-                        if (data is GroupRideArgs) {
-                          args = data;
-                        }
-                      }
-
-                      if (args == null) {
-                        return const Scaffold(
-                          body: Center(
-                            child: Text('Grup ayarları yüklenemedi.'),
-                          ),
-                        );
-                      }
-
-                      return BlocProvider(
-                        create: (context) => sl<GroupRideBloc>(),
-                        child: GroupSettings(data: args),
-                      );
+                      final args = GroupRideArgs.fromExtra(state.extra)!;
+                      return GroupSettings(data: args);
                     },
                   ),
                 ],

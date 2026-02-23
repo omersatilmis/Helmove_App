@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:moto_comm_app_1/core/constants/audio_bitrate.dart';
 
 /// LiveKit SFU room bağlantı yönetimi.
 /// Ses iletişimi için room'a bağlanma, mikrofon kontrolü ve participant
@@ -17,6 +18,8 @@ class LiveKitRoomService {
   final _activeSpeakersController =
       StreamController<List<Participant>>.broadcast();
   final _isMicEnabledController = StreamController<bool>.broadcast();
+  final _qualityController =
+      StreamController<Map<String, ConnectionQuality>>.broadcast();
 
   /// Room bağlantı durumu stream'i.
   Stream<ConnectionState> get connectionStateStream =>
@@ -33,6 +36,10 @@ class LiveKitRoomService {
   /// Mikrofon durumu stream'i.
   Stream<bool> get isMicEnabledStream => _isMicEnabledController.stream;
 
+  /// Katılımcı bağlantı kalitesi stream'i (Identity -> Quality).
+  Stream<Map<String, ConnectionQuality>> get qualityStream =>
+      _qualityController.stream;
+
   /// Bağlı mı?
   bool get isConnected => _room?.connectionState == ConnectionState.connected;
 
@@ -46,7 +53,8 @@ class LiveKitRoomService {
   /// LiveKit room'a bağlan.
   /// [url] — LiveKit sunucu WebSocket URL'i (backend'den gelir).
   /// [token] — JWT token (backend'den gelir).
-  Future<void> connect(String url, String token) async {
+  /// [maxBitrate] — Başlangıç ses yayın kalitesi (opsiyonel, default: medium).
+  Future<void> connect(String url, String token, {int? maxBitrate}) async {
     // Önceki bağlantıyı temizle
     await disconnect();
 
@@ -54,10 +62,12 @@ class LiveKitRoomService {
 
     // Room oluştur
     _room = Room(
-      roomOptions: const RoomOptions(
+      roomOptions: RoomOptions(
         // Sadece ses — video yok
         defaultAudioPublishOptions: AudioPublishOptions(
-          encoding: AudioEncoding(maxBitrate: 20000),
+          encoding: AudioEncoding(
+            maxBitrate: maxBitrate ?? AudioBitrate.medium,
+          ),
           dtx: true,
         ),
         defaultVideoPublishOptions: VideoPublishOptions(
@@ -138,6 +148,73 @@ class LiveKitRoomService {
     _emitMicState();
   }
 
+  /// [NEW] Tüm uzak katılımcıların sesini aç/kapat (Playback Mute).
+  /// Overlap sırasında yankıyı önlemek için kullanılır.
+  void setIncomingAudioEnabled(bool enabled) {
+    if (_room == null) return;
+
+    for (final participant in _room!.remoteParticipants.values) {
+      for (final publication in participant.audioTrackPublications) {
+        // Track'i mute/unmute et (Subscription'ı kapatmak yerine sesi kısıyoruz/kapatıyoruz)
+        publication.track?.mediaStreamTrack.enabled = enabled;
+      }
+    }
+    debugPrint(
+      '🔇 [LiveKitRoomService] Incoming Audio \u2192 ${enabled ? "UNMUTED" : "MUTED"}',
+    );
+  }
+
+  /// Ses ayarlarını dinamik olarak güncelle (Gürültü engelleme vb.)
+  Future<void> updateAudioSettings({required bool noiseSuppression}) async {
+    if (_localParticipant == null) return;
+
+    debugPrint(
+      '🎙️ [LiveKitRoomService] Updating audio settings: noiseSuppression=$noiseSuppression',
+    );
+
+    // LiveKit'te capture ayarlarını güncellemek için mikrofonu yeni seçeneklerle tekrar set ediyoruz.
+    // Mevcut durumu koruyarak sadece ayarları değiştiriyoruz.
+    final currentEnabled = _localParticipant!.isMicrophoneEnabled();
+    await _localParticipant!.setMicrophoneEnabled(
+      currentEnabled,
+      audioCaptureOptions: AudioCaptureOptions(
+        echoCancellation: true,
+        noiseSuppression: noiseSuppression,
+        autoGainControl: true,
+      ),
+    );
+  }
+
+  /// Adaptif bitrate controller tarafından çağrılır.
+  /// Aktif oturumda ses track'inin bitrate'ini dinamik olarak günceller.
+  /// [bps] — hedef bitrate (örn: 16000, 32000).
+  Future<void> updateBitrate(int bps) async {
+    if (_localParticipant == null || _room == null) return;
+
+    debugPrint('🎙️ [LiveKitRoomService] Updating bitrate -> $bps bps');
+
+    try {
+      // Mevcut audio track'in publish options'ını güncelle
+      for (final pub in _localParticipant!.audioTrackPublications) {
+        final track = pub.track;
+        if (track != null) {
+          await _localParticipant!.publishAudioTrack(
+            track,
+            publishOptions: AudioPublishOptions(
+              encoding: AudioEncoding(maxBitrate: bps),
+              dtx: true,
+            ),
+          );
+          debugPrint(
+            '🎙️ [LiveKitRoomService] Audio track bitrate updated -> $bps bps',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ [LiveKitRoomService] updateBitrate failed: $e');
+    }
+  }
+
   /// Mikrofon şu an açık mı?
   bool get isMicrophoneEnabled =>
       _localParticipant?.isMicrophoneEnabled() ?? false;
@@ -191,6 +268,7 @@ class LiveKitRoomService {
     await _participantsController.close();
     await _activeSpeakersController.close();
     await _isMicEnabledController.close();
+    await _qualityController.close();
     debugPrint('🧹 [LiveKitRoomService] Disposed');
   }
 }

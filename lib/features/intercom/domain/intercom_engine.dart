@@ -52,7 +52,13 @@ abstract class IntercomEngine {
 
   /// Optional hooks.
   Future<void> onLifecycleChanged(IntercomLifecycleState state);
-  Future<void> onConnectivityChanged({required bool online});
+  Future<void> onConnectivityChanged({
+    required bool online,
+    String? networkType,
+  });
+
+  /// Notify engine that global audio settings (Noise Suppression, etc) have changed.
+  Future<void> onAudioSettingsChanged();
 
   /// Releases resources permanently.
   Future<void> dispose();

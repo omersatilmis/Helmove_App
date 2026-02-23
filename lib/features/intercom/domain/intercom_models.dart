@@ -7,11 +7,7 @@ import 'intercom_failure.dart';
 /// Transport layer chosen by the engine.
 /// - [p2p] uses WebRTC directly.
 /// - [sfu] uses LiveKit (SFU).
-enum IntercomTransport {
-  none,
-  p2p,
-  sfu,
-}
+enum IntercomTransport { none, p2p, sfu }
 
 /// High-level phase of the engine.
 /// This is UI/analytics friendly; it intentionally does not expose implementation details.
@@ -27,13 +23,7 @@ enum IntercomPhase {
 
 /// Lifecycle signal abstracted away from Flutter's AppLifecycleState.
 /// This keeps the engine API stable and testable.
-enum IntercomLifecycleState {
-  resumed,
-  inactive,
-  paused,
-  detached,
-  hidden,
-}
+enum IntercomLifecycleState { resumed, inactive, paused, detached, hidden }
 
 @immutable
 class IntercomPolicy {
@@ -55,7 +45,7 @@ class IntercomPolicy {
   final Duration participantChurnDebounce;
 
   const IntercomPolicy({
-    this.p2pDecisionDelay = const Duration(seconds: 5),
+    this.p2pDecisionDelay = const Duration(milliseconds: 500),
     this.sfuToP2pDelay = const Duration(seconds: 10),
     this.reconnectTtl = const Duration(seconds: 60),
     this.participantChurnDebounce = const Duration(milliseconds: 350),
@@ -77,19 +67,43 @@ class IntercomStartOptions {
   });
 }
 
+enum IntercomConnectionQuality { unknown, excellent, good, poor, lost }
+
 @immutable
 class IntercomParticipant {
   final int userId;
   final String? displayName;
   final bool isLocal;
   final bool isSpeaking;
+  final bool isRemoteMuted;
+  final IntercomConnectionQuality connectionQuality;
 
   const IntercomParticipant({
     required this.userId,
     this.displayName,
     required this.isLocal,
     this.isSpeaking = false,
+    this.isRemoteMuted = false,
+    this.connectionQuality = IntercomConnectionQuality.unknown,
   });
+
+  IntercomParticipant copyWith({
+    int? userId,
+    String? displayName,
+    bool? isLocal,
+    bool? isSpeaking,
+    bool? isRemoteMuted,
+    IntercomConnectionQuality? connectionQuality,
+  }) {
+    return IntercomParticipant(
+      userId: userId ?? this.userId,
+      displayName: displayName ?? this.displayName,
+      isLocal: isLocal ?? this.isLocal,
+      isSpeaking: isSpeaking ?? this.isSpeaking,
+      isRemoteMuted: isRemoteMuted ?? this.isRemoteMuted,
+      connectionQuality: connectionQuality ?? this.connectionQuality,
+    );
+  }
 }
 
 /// Minimal context required by the engine to orchestrate transports.
@@ -215,6 +229,7 @@ enum IntercomCommand {
   stopAll,
   onLifecycleChanged,
   onConnectivityChanged,
+  onAudioSettingsChanged,
 }
 
 /// Canonical telemetry event names.
@@ -269,12 +284,7 @@ abstract final class IntercomTelemetryKeys {
   static const String retryAttempt = 'retryAttempt';
 }
 
-enum IntercomTelemetryLevel {
-  debug,
-  info,
-  warning,
-  error,
-}
+enum IntercomTelemetryLevel { debug, info, warning, error }
 
 @immutable
 class IntercomTelemetryEvent {

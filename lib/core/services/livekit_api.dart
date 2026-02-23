@@ -17,6 +17,7 @@ class LiveKitApi {
   /// Returns: `{token: String, url: String}`
   Future<Map<String, String>> getToken({
     required String roomName,
+    required String identity,
     String? displayName,
     int ttlMinutes = 360,
   }) async {
@@ -25,6 +26,7 @@ class LiveKitApi {
         '/api/livekit/token',
         data: {
           'roomName': roomName,
+          'identity': identity,
           'displayName': displayName,
           'ttlMinutes': ttlMinutes,
         },

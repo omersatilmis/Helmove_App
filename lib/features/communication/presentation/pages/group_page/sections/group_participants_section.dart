@@ -4,7 +4,9 @@ import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/widgets/rider_card.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
+import 'package:moto_comm_app_1/features/intercom/domain/intercom_models.dart';
 import 'package:moto_comm_app_1/features/voice_session/domain/entities/voice_session_entity.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/entities/group_role.dart';
 
 class GroupParticipantsSection extends StatelessWidget {
   final GroupRideArgs data;
@@ -14,12 +16,17 @@ class GroupParticipantsSection extends StatelessWidget {
   final int? currentUserId;
   final bool showSettingsButton;
   final Set<String> activeSpeakers;
+  final Map<int, IntercomConnectionQuality> participantQualities;
+  final bool isCurrentUserMicOn;
+  final VoidCallback onToggleMic;
   final VoidCallback onRefresh;
   final VoidCallback onInvite;
   final VoidCallback onSettings;
   final void Function(int targetUserId, String userName) onKickUser;
   final void Function(int targetUserId, String userName) onMuteUser;
   final void Function(int targetUserId, String userName) onTransferHost;
+  final void Function(int targetUserId, String userName) onPromote;
+  final void Function(int targetUserId, String userName) onDemote;
 
   const GroupParticipantsSection({
     super.key,
@@ -30,12 +37,17 @@ class GroupParticipantsSection extends StatelessWidget {
     required this.currentUserId,
     required this.showSettingsButton,
     required this.activeSpeakers,
+    this.participantQualities = const {},
+    required this.isCurrentUserMicOn,
+    required this.onToggleMic,
     required this.onRefresh,
     required this.onInvite,
     required this.onSettings,
     required this.onKickUser,
     required this.onMuteUser,
     required this.onTransferHost,
+    required this.onPromote,
+    required this.onDemote,
   });
 
   @override
@@ -110,16 +122,25 @@ class GroupParticipantsSection extends StatelessWidget {
 
     if (participants.isEmpty) return _buildEmptyState(context);
 
-    final hostId = sessionDetails?.hostUserId;
-    final effectiveOrganizerId = organizerId ?? data.organizerId;
+    final hostId = sessionDetails?.hostUserId; // Captain ID
+    final effectiveOrganizerId = organizerId ?? data.organizerId; // Admin ID
 
-    RiderRole viewerRole = RiderRole.participant;
-    if (currentUserId != null &&
-        effectiveOrganizerId != null &&
-        currentUserId == effectiveOrganizerId) {
-      viewerRole = RiderRole.organizer;
-    } else if (currentUserId != null && hostId == currentUserId) {
-      viewerRole = RiderRole.host;
+    // Current user'ın role'ünü participant listesinden al
+    GroupRole viewerRole = GroupRole.rider;
+    if (currentUserId != null) {
+      final currentParticipant = participants
+          .where((p) => p.userId == currentUserId)
+          .firstOrNull;
+      if (currentParticipant != null) {
+        viewerRole = currentParticipant.role;
+      } else {
+        // Fallback: organizerId = admin, hostId = captain
+        if (effectiveOrganizerId != null && currentUserId == effectiveOrganizerId) {
+          viewerRole = GroupRole.admin;
+        } else if (hostId == currentUserId) {
+          viewerRole = GroupRole.captain;
+        }
+      }
     }
 
     return Column(
@@ -127,12 +148,9 @@ class GroupParticipantsSection extends StatelessWidget {
         final isConnected = p.status == 'Joined' || p.status == 'Accepted';
         final isMe = p.userId == currentUserId;
 
-        RiderRole role = RiderRole.participant;
-        if (effectiveOrganizerId != null && p.userId == effectiveOrganizerId) {
-          role = RiderRole.organizer;
-        } else if (hostId != null && p.userId == hostId) {
-          role = RiderRole.host;
-        }
+        final role = p.role;
+        final quality =
+            participantQualities[p.userId] ?? IntercomConnectionQuality.unknown;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -144,26 +162,41 @@ class GroupParticipantsSection extends StatelessWidget {
             phoneBatteryLevel: p.phoneBatteryLevel,
             intercomBatteryLevel: p.intercomBatteryLevel,
             signalStrength: p.signalStrength,
-            isMicOn: isConnected,
+            connectionQuality: quality,
+            isMicOn: isMe ? isCurrentUserMicOn : false,
             isSpeaking: activeSpeakers.contains(p.userId.toString()),
             isConnected: isConnected,
             isMe: isMe,
+            isRemoteMuted: p.isRemoteMuted,
             role: role,
             viewerRole: viewerRole,
+            onMicPressed: isMe ? onToggleMic : null,
             onKickUser:
-                ((viewerRole == RiderRole.organizer ||
-                        viewerRole == RiderRole.host) &&
+                ((viewerRole == GroupRole.admin ||
+                        viewerRole == GroupRole.captain) &&
                     !isMe)
                 ? () => onKickUser(p.userId, p.firstName ?? 'Kullanıcı')
                 : null,
             onMuteUser:
-                ((viewerRole == RiderRole.organizer ||
-                        viewerRole == RiderRole.host) &&
+                ((viewerRole == GroupRole.admin ||
+                        viewerRole == GroupRole.captain) &&
                     !isMe)
                 ? () => onMuteUser(p.userId, p.firstName ?? 'Kullanıcı')
                 : null,
-            onTransferHost: (viewerRole == RiderRole.organizer && !isMe)
+            onTransferHost: (viewerRole == GroupRole.admin && !isMe)
                 ? () => onTransferHost(p.userId, p.firstName ?? 'Kullanıcı')
+                : null,
+            onPromote:
+                (viewerRole == GroupRole.admin &&
+                    p.role == GroupRole.rider &&
+                    !isMe)
+                ? () => onPromote(p.userId, p.firstName ?? 'Kullanıcı')
+                : null,
+            onDemote:
+                (viewerRole == GroupRole.admin &&
+                    p.role == GroupRole.captain &&
+                    !isMe)
+                ? () => onDemote(p.userId, p.firstName ?? 'Kullanıcı')
                 : null,
           ),
         );

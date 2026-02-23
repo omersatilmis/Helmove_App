@@ -16,6 +16,9 @@ abstract class VoiceSessionRemoteDataSource {
 
   // Extra moderator methods
   Future<void> kickUser(int sessionId, int targetUserId);
+  Future<void> kickParticipant(int rideId, int targetUserId);
+  Future<void> promoteParticipant(int rideId, int targetUserId);
+  Future<void> demoteParticipant(int rideId, int targetUserId);
   Future<void> muteUser(int sessionId, int targetUserId);
   Future<void> transferHost(int sessionId, int newHostId);
 }
@@ -73,6 +76,21 @@ class VoiceSessionRemoteDataSourceImpl implements VoiceSessionRemoteDataSource {
   @override
   Future<void> kickUser(int sessionId, int targetUserId) async {
     return await _api.kickUser(sessionId, targetUserId);
+  }
+
+  @override
+  Future<void> kickParticipant(int rideId, int targetUserId) async {
+    return await _api.kickParticipant(rideId, targetUserId);
+  }
+
+  @override
+  Future<void> promoteParticipant(int rideId, int targetUserId) async {
+    return await _api.promoteParticipant(rideId, targetUserId);
+  }
+
+  @override
+  Future<void> demoteParticipant(int rideId, int targetUserId) async {
+    return await _api.demoteParticipant(rideId, targetUserId);
   }
 
   @override

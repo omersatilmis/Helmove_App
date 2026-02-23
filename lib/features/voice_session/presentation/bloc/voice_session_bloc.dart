@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import '../../domain/enums/rtc_state.dart';
+import '../../domain/entities/voice_session_entity.dart';
 import '../../domain/entities/voice_session_participant_entity.dart';
 
 import 'package:flutter/foundation.dart';
@@ -14,12 +15,15 @@ import '../../domain/usecases/get_my_voice_sessions_usecase.dart';
 import '../../../auth/domain/usecases/get_current_user_id_use_case.dart';
 import '../../domain/usecases/accept_voice_session_invitation_usecase.dart';
 import '../../../../core/services/callkit_incoming_service.dart';
+import '../../../../core/services/communication_realtime_bus.dart';
+import '../../../../core/services/communication_refresh_coordinator.dart';
 import '../../../../core/services/signalr_service.dart';
 import '../../../../core/services/app_session.dart';
 import '../../../../core/services/permissions_service.dart';
 import '../../../../core/services/audio_orchestrator_service.dart';
 import '../../../intercom/domain/intercom_engine.dart';
 import '../../../intercom/domain/intercom_models.dart';
+import '../../../intercom/domain/intercom_failure.dart';
 import 'voice_session_event.dart';
 import 'voice_session_state.dart';
 
@@ -28,6 +32,9 @@ import '../../domain/usecases/end_voice_session_usecase.dart';
 import '../../domain/usecases/kick_user_usecase.dart';
 import '../../domain/usecases/mute_user_usecase.dart';
 import '../../domain/usecases/transfer_host_usecase.dart';
+import '../../domain/usecases/promote_participant_usecase.dart';
+import '../../domain/usecases/demote_participant_usecase.dart';
+import '../../domain/usecases/kick_participant_usecase.dart';
 
 class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final CreateVoiceSessionUseCase createVoiceSessionUseCase;
@@ -42,6 +49,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final EndVoiceSessionUseCase endVoiceSessionUseCase;
   final AppSession appSession;
   final SignalRService signalRService;
+  final CommunicationRealtimeBus realtimeBus;
+  final CommunicationRefreshCoordinator refreshCoordinator;
   final CallKitIncomingService callKitIncomingService;
   final KickUserUseCase kickUserUseCase;
   final MuteUserUseCase muteUserUseCase;
@@ -49,22 +58,30 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final PermissionsService permissionsService;
   final IntercomEngine intercomEngine;
   final AudioOrchestratorService audioOrchestratorService;
+  final PromoteParticipantUseCase promoteParticipantUseCase;
+  final DemoteParticipantUseCase demoteParticipantUseCase;
+  final KickParticipantUseCase kickParticipantUseCase;
 
   String? _activeCallKitId;
 
-  StreamSubscription? _rideTerminatedSubscription;
-  StreamSubscription? _rideCreatedSubscription;
-  StreamSubscription? _userJoinedSubscription;
-
-  StreamSubscription? _userLeftSubscription;
-  StreamSubscription? _hostChangedSubscription;
-  StreamSubscription? _voiceSessionRefreshSubscription;
-  StreamSubscription? _userForceRemovedSubscription;
-  StreamSubscription? _groupRideUpdatedSubscription;
+  StreamSubscription? _realtimeSubscription;
+  StreamSubscription? _refreshSubscription;
   StreamSubscription? _appSessionUserIdSubscription;
+  StreamSubscription? _errorSubscription;
 
   StreamSubscription? _intercomStateSubscription;
-  StreamSubscription? _participantStatusUpdatedSubscription;
+  Timer? _syncTimer;
+
+  bool _isLeaveInFlight = false;
+  int? _leaveInFlightSessionId;
+  bool _notFoundLocked = false;
+  static const Duration _voiceDetailsForwardThrottle = Duration(
+    milliseconds: 450,
+  );
+  final Map<int, DateTime> _lastVoiceDetailsForwardAt = <int, DateTime>{};
+  
+  // Version Conflict Resolution: Session version tracking
+  final Map<int, int> _lastSessionVersions = <int, int>{};
 
   VoiceSessionBloc({
     required this.createVoiceSessionUseCase,
@@ -79,6 +96,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.endVoiceSessionUseCase,
     required this.appSession,
     required this.signalRService,
+    required this.realtimeBus,
+    required this.refreshCoordinator,
     required this.callKitIncomingService,
     required this.kickUserUseCase,
     required this.muteUserUseCase,
@@ -86,104 +105,154 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.permissionsService,
     required this.intercomEngine,
     required this.audioOrchestratorService,
+    required this.promoteParticipantUseCase,
+    required this.demoteParticipantUseCase,
+    required this.kickParticipantUseCase,
   }) : super(const VoiceSessionState()) {
-    // --- SignalR Broadcast Listeners for List Refresh ---
+    _realtimeSubscription = realtimeBus.events.listen((event) {
+      if (isClosed) return;
+      if (_notFoundLocked) return;
 
-    // 1. Ride Terminated
-    _rideTerminatedSubscription = signalRService.rideTerminatedStream.listen((
-      rideId,
-    ) {
-      try {
-        if (!isClosed) {
-          add(const GetMyVoiceSessionsEvent());
-        }
-      } catch (e) {
-        // Bloc likely closed
+      if (event is RideTerminatedRealtimeEvent) {
+        add(RideTerminatedVoiceSessionEvent(event.rideId.toString()));
+        return;
       }
-    });
 
-    // 2. Ride Created
-    _rideCreatedSubscription = signalRService.rideCreatedStream.listen((_) {
-      try {
-        if (!isClosed) {
-          add(const GetMyVoiceSessionsEvent());
-        }
-      } catch (e) {
-        // Bloc likely closed
+      if (event is RideCreatedRealtimeEvent) {
+        refreshCoordinator.requestVoiceSessionsRefresh(
+          reason: 'rt_ride_created',
+        );
+        return;
       }
-    });
 
-    // 3. User Joined
-    _userJoinedSubscription = signalRService.userJoinedStream.listen((userId) {
-      try {
-        if (!isClosed) {
-          add(const GetMyVoiceSessionsEvent());
-          add(
-            VoiceSessionParticipantJoinedEvent(
-              userId,
-              roomId: state.session?.id.toString(),
-            ),
+      if (event is GroupRideUpdatedRealtimeEvent) {
+        final activeSessionId = state.session?.id;
+        if (activeSessionId != null) {
+          refreshCoordinator.requestVoiceSessionDetailsRefresh(
+            activeSessionId,
+            reason: 'rt_ride_updated',
+          );
+        } else {
+          refreshCoordinator.requestVoiceSessionsRefresh(
+            reason: 'rt_ride_updated',
           );
         }
-      } catch (e) {
-        // Bloc likely closed
+        return;
       }
-    });
 
-    // 4. User Left
-    _userLeftSubscription = signalRService.userLeftStream.listen((userId) {
-      try {
-        if (!isClosed) {
-          add(const GetMyVoiceSessionsEvent());
-          add(
-            VoiceSessionParticipantLeftEvent(
-              userId,
-              roomId: state.session?.id.toString(),
-            ),
+      if (event is UserJoinedVoiceSessionRealtimeEvent) {
+        add(
+          VoiceSessionMembershipDeltaEvent(
+            sessionId: event.sessionId,
+            userId: event.userId,
+            nextStatus: 'Joined',
+            version: event.version,
+          ),
+        );
+        return;
+      }
+
+      if (event is UserLeftVoiceSessionRealtimeEvent) {
+        add(
+          VoiceSessionMembershipDeltaEvent(
+            sessionId: event.sessionId,
+            userId: event.userId,
+            nextStatus: 'Left',
+            version: event.version,
+          ),
+        );
+        return;
+      }
+
+      if (event is UserDisconnectedVoiceSessionRealtimeEvent) {
+        add(
+          VoiceSessionMembershipDeltaEvent(
+            sessionId: event.sessionId,
+            userId: event.userId,
+            nextStatus: 'Disconnected',
+            version: event.version,
+          ),
+        );
+        return;
+      }
+
+      if (event is HostChangedRealtimeEvent) {
+        add(VoiceSessionHostChanged(event.data));
+        return;
+      }
+
+      if (event is VoiceSessionRefreshRealtimeEvent) {
+        // Smart Refresh Priority: reason'a göre aksiyon al
+        final reason = event.reason ?? 'unknown';
+        final needsFullRefresh = _shouldTriggerFullRefresh(reason);
+
+        if (state.session?.id == event.sessionId && event.sessionId > 0) {
+          if (needsFullRefresh) {
+            refreshCoordinator.requestVoiceSessionDetailsRefresh(
+              event.sessionId,
+              reason: 'rt_voice_refresh:$reason',
+            );
+          }
+          // Membership changes (user_joined, user_left, user_disconnected)
+          // already handled by delta events, no full refresh needed
+        } else {
+          refreshCoordinator.requestVoiceSessionsRefresh(
+            reason: 'rt_voice_refresh:$reason',
           );
         }
-      } catch (e) {
-        // Bloc likely closed
+        return;
+      }
+
+      if (event is UserForceRemovedRealtimeEvent) {
+        add(VoiceSessionForceRemovedEvent(event.sessionId));
+        return;
+      }
+
+      if (event is ParticipantStatusUpdatedRealtimeEvent) {
+        add(ParticipantStatusUpdatedEvent(event.payload));
+        return;
+      }
+
+      if (event is UserMuteStateChangedRealtimeEvent) {
+        add(UserMuteStateChangedEvent(event.payload));
       }
     });
 
-    // 5. Host Changed
-    _hostChangedSubscription = signalRService.hostChangedStream.listen((data) {
-      if (!isClosed) {
-        add(VoiceSessionHostChanged(data));
+    _refreshSubscription = refreshCoordinator.requests.listen((request) {
+      if (isClosed) return;
+      if (_notFoundLocked) return;
+
+      if (request.target == CommunicationRefreshTarget.voiceSessions) {
+        add(GetMyVoiceSessionsEvent(force: request.force));
+        return;
+      }
+
+      if (request.target == CommunicationRefreshTarget.voiceSessionDetails) {
+        final sessionId = request.sessionId;
+        if (sessionId != null && sessionId > 0) {
+          if (!request.force && _shouldThrottleVoiceDetailsForward(sessionId)) {
+            return;
+          }
+          add(GetVoiceSessionDetailsEvent(sessionId, force: request.force));
+        }
+        return;
+      }
+
+      if (request.target == CommunicationRefreshTarget.reconnectInvalidation) {
+        add(const GetMyVoiceSessionsEvent(force: true));
+        final activeSessionId = state.session?.id;
+        if (activeSessionId != null) {
+          add(GetVoiceSessionDetailsEvent(activeSessionId, force: true));
+        }
       }
     });
 
-    // 6. Voice Session Refresh (Accept/Reject updates)
-    _voiceSessionRefreshSubscription = signalRService.voiceSessionRefreshStream
-        .listen((sessionId) {
-          if (!isClosed) {
-            // Refresh session list for CommunicationPage
-            add(const GetMyVoiceSessionsEvent());
-
-            // Refresh details only for currently opened session to avoid
-            // cross-session state churn and unnecessary API calls.
-            if (state.session?.id == sessionId) {
-              add(GetVoiceSessionDetailsEvent(sessionId));
-            }
-          }
-        });
-
-    _userForceRemovedSubscription = signalRService.userForceRemovedStream
-        .listen((sessionId) {
-          if (!isClosed) {
-            add(VoiceSessionForceRemovedEvent(sessionId));
-          }
-        });
-
-    // 7. Group Ride Updated (Name/Desc changes)
-    _groupRideUpdatedSubscription = signalRService.groupRideUpdatedStream
-        .listen((rideId) {
-          if (!isClosed) {
-            // Refresh session list
-            add(const GetMyVoiceSessionsEvent());
-          }
-        });
+    _errorSubscription = refreshCoordinator.errors.listen((event) {
+      if (isClosed) return;
+      if (event.category != RealtimeErrorCategory.notFound) return;
+      if (event.source != RealtimeStateCoordinator.sourceVoiceSession) return;
+      add(VoiceSessionNotFoundDetectedEvent(event.message));
+    });
 
     _appSessionUserIdSubscription = appSession.currentUserIdStream
         .distinct()
@@ -198,28 +267,22 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         add(IntercomStateChangedEvent(intercomState));
       }
     });
-
-    _participantStatusUpdatedSubscription = signalRService
-        .participantStatusUpdatedStream
-        .listen((payload) {
-          if (!isClosed) {
-            add(ParticipantStatusUpdatedEvent(payload));
-          }
-        });
-
-    // SignalR artık CallListenerService + AuthProvider tarafından
-    // merkezi olarak başlatılıyor. Bloc constructor'da tekrar init etmeye
-    // gerek yok — race condition'a yol açıyordu.
-
+    // SignalR init is managed centrally by CallListenerService/AuthProvider.`r`n
     on<CreateVoiceSessionEvent>(_onCreateVoiceSession);
     on<JoinVoiceSessionEvent>(_onJoinVoiceSession);
     on<LeaveVoiceSessionEvent>(_onLeaveVoiceSession);
+    on<EndVoiceSessionEvent>(_onEndVoiceSession);
     on<InviteUsersEvent>(_onInviteUsers);
-    on<GetVoiceSessionDetailsEvent>(_onGetVoiceSessionDetails);
+    on<GetVoiceSessionDetailsEvent>(
+      _onGetVoiceSessionDetails,
+      transformer: (events, mapper) => events
+          .debounceTime(const Duration(milliseconds: 500))
+          .asyncExpand(mapper),
+    );
     on<GetMyVoiceSessionsEvent>(
       _onGetMyVoiceSessions,
       transformer: (events, mapper) => events
-          .debounceTime(const Duration(milliseconds: 300))
+          .debounceTime(const Duration(milliseconds: 500))
           .asyncExpand(mapper),
     );
     on<AcceptVoiceSessionInviteEvent>(_onAcceptVoiceSessionInvite);
@@ -229,6 +292,9 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     on<MuteUserEvent>(_onMuteUser);
 
     on<TransferHostEvent>(_onTransferHost);
+    on<PromoteParticipantEvent>(_onPromoteParticipant);
+    on<DemoteParticipantEvent>(_onDemoteParticipant);
+    on<KickParticipantEvent>(_onKickParticipant);
     on<VoiceSessionHostChanged>(_onHostChanged);
 
     on<ConnectToLiveKitEvent>(_onConnectToLiveKit);
@@ -237,44 +303,243 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     on<IntercomStateChangedEvent>(_onIntercomStateChanged);
     on<AppSessionCurrentUserChangedEvent>(_onAppSessionCurrentUserChanged);
     on<ParticipantStatusUpdatedEvent>(_onParticipantStatusUpdated);
+    on<UserMuteStateChangedEvent>(_onUserMuteStateChanged);
+    on<ClearSessionDataEvent>(_onClearSessionData);
+    on<VoiceSessionNotFoundDetectedEvent>(_onVoiceSessionNotFoundDetected);
 
-    on<VoiceSessionParticipantJoinedEvent>((event, emit) {
-      if (state.status == VoiceSessionStatus.detailsLoaded &&
-          state.session != null) {
-        final currentSessionId = state.session!.id;
-
-        if (event.roomId != null) {
-          if (event.roomId == currentSessionId.toString()) {
-            add(GetVoiceSessionDetailsEvent(currentSessionId));
-          }
-        } else {
-          add(GetVoiceSessionDetailsEvent(currentSessionId));
-        }
-      }
-    });
-    on<VoiceSessionParticipantLeftEvent>((event, emit) {
-      if (state.status == VoiceSessionStatus.detailsLoaded &&
-          state.session != null) {
-        final currentSessionId = state.session!.id;
-
-        if (event.roomId != null) {
-          if (event.roomId == currentSessionId.toString()) {
-            add(GetVoiceSessionDetailsEvent(currentSessionId));
-          }
-        } else {
-          add(GetVoiceSessionDetailsEvent(currentSessionId));
-        }
-      }
-    });
     on<VoiceSessionForceRemovedEvent>(_onVoiceSessionForceRemoved);
+    on<RideTerminatedVoiceSessionEvent>(_onRideTerminatedVoiceSession);
+    on<VoiceSessionMembershipDeltaEvent>(_onVoiceSessionMembershipDelta);
+    on<TeardownVoiceSessionLocalEvent>(_onTeardownVoiceSessionLocal);
+  }
+
+  bool _shouldThrottleVoiceDetailsForward(int sessionId) {
+    final now = DateTime.now();
+    final last = _lastVoiceDetailsForwardAt[sessionId];
+    if (last != null && now.difference(last) < _voiceDetailsForwardThrottle) {
+      debugPrint(
+        '[Realtime-F2][VoiceSessionBloc] Throttled details refresh for session $sessionId',
+      );
+      return true;
+    }
+    _lastVoiceDetailsForwardAt[sessionId] = now;
+    return false;
+  }
+
+  void _onVoiceSessionMembershipDelta(
+    VoiceSessionMembershipDeltaEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) {
+    final patched = _applyMembershipPatch(
+      sessionId: event.sessionId,
+      userId: event.userId,
+      nextStatus: event.nextStatus,
+      version: event.version,
+      emit: emit,
+    );
+    if (!patched) {
+      refreshCoordinator.requestVoiceSessionsRefresh(
+        reason: 'rt_membership_patch_miss',
+      );
+      if (state.session?.id == event.sessionId) {
+        refreshCoordinator.requestVoiceSessionDetailsRefresh(
+          event.sessionId,
+          reason: 'rt_membership_patch_miss',
+        );
+      }
+    }
+  }
+
+  /// Determines whether a status counts as "in the room" for joinedCount.
+  bool _isActiveStatus(String status) {
+    return status == 'Joined' ||
+        status == 'Accepted' ||
+        status == 'Disconnected';
+  }
+
+  bool _applyMembershipPatch({
+    required int sessionId,
+    required String userId,
+    required String nextStatus,
+    required int? version,
+    required Emitter<VoiceSessionState> emit,
+  }) {
+    final eventVersionLabel = version?.toString() ?? '-';
+    final parsedUserId = int.tryParse(userId);
+    if (parsedUserId == null) {
+      debugPrint('[Realtime-F2][Bloc] Skipping patch: invalid userId=$userId');
+      return false;
+    }
+
+    // ── Version Conflict Resolution ──
+    if (version != null) {
+      final lastVersion = _lastSessionVersions[sessionId];
+      
+      if (lastVersion != null) {
+        // Eski event geldi → skip
+        if (version < lastVersion) {
+          debugPrint(
+            '[Realtime-F2][Bloc] Skipping old event: '
+            'session=$sessionId version=$version < lastVersion=$lastVersion',
+          );
+          return false;
+        }
+        
+        // Version gap detected → force refresh
+        if (version > lastVersion + 1) {
+          debugPrint(
+            '[Realtime-F2][Bloc] Version gap detected: '
+            'session=$sessionId lastVersion=$lastVersion → newVersion=$version. '
+            'Triggering force refresh.',
+          );
+          add(GetVoiceSessionDetailsEvent(sessionId, force: true));
+          _lastSessionVersions[sessionId] = version;
+          return false; // Patch skip, refresh yapacak
+        }
+      }
+      
+      // Version güncelle
+      _lastSessionVersions[sessionId] = version;
+    }
+
+    var changed = false;
+
+    // ── 1. state.session (Aktif oturum detayı) Yamala ──
+    VoiceSessionEntity? patchedCurrentSession = state.session;
+    final currentSession = state.session;
+    if (currentSession != null && currentSession.id == sessionId) {
+      final patchedParticipants = List<VoiceSessionParticipantEntity>.from(
+        currentSession.participants,
+      );
+
+      var participantStatusChanged = false;
+
+      final participantIndex = patchedParticipants.indexWhere(
+        (p) => p.userId == parsedUserId,
+      );
+
+      if (participantIndex != -1) {
+        final participant = patchedParticipants[participantIndex];
+        // İdempotent Guard: Zaten hedef statüdeyse atla (duplicate event)
+        if (participant.status == nextStatus) {
+          debugPrint(
+            '[Realtime-F2][Bloc] Duplicate patch skipped: '
+            'user=$userId already $nextStatus in session=$sessionId v$eventVersionLabel',
+          );
+        } else {
+          patchedParticipants[participantIndex] = participant.copyWith(
+            status: nextStatus,
+          );
+          participantStatusChanged = true;
+          changed = true;
+        }
+      } else if (nextStatus == 'Joined') {
+        // Katılımcı listede yok ama join event geldi → placeholder ekle
+        patchedParticipants.add(
+          VoiceSessionParticipantEntity(userId: parsedUserId, status: 'Joined'),
+        );
+        participantStatusChanged = true;
+        changed = true;
+        debugPrint(
+          '[Realtime-F2][Bloc] Added missing participant $userId to session=$sessionId',
+        );
+      }
+
+      // joinedCount'u sadece gerçek bir statü değişikliği olduğunda güncelle
+      var nextJoinedCount = currentSession.joinedCount;
+      if (participantStatusChanged && participantIndex != -1) {
+        final oldStatus = currentSession.participants[participantIndex].status;
+        final wasActive = _isActiveStatus(oldStatus);
+        final isActive = _isActiveStatus(nextStatus);
+        if (wasActive && !isActive) {
+          nextJoinedCount = nextJoinedCount > 0 ? nextJoinedCount - 1 : 0;
+        } else if (!wasActive && isActive) {
+          nextJoinedCount += 1;
+        }
+        // Disconnected → Disconnected veya Joined → Joined gibi durumlarda count değişmez
+      } else if (participantStatusChanged) {
+        // Yeni eklenen katılımcı (placeholder)
+        if (_isActiveStatus(nextStatus)) {
+          nextJoinedCount += 1;
+        }
+      }
+
+      patchedCurrentSession = currentSession.copyWith(
+        participants: patchedParticipants,
+        joinedCount: nextJoinedCount,
+      );
+      if (participantStatusChanged) {
+        changed = true;
+      }
+    }
+
+    // ── 2. mySessions listesi yamalama ──
+    List<VoiceSessionEntity>? patchedMySessions;
+    final mySessions = state.mySessions;
+    if (mySessions != null) {
+      patchedMySessions = mySessions.map((session) {
+        if (session.id != sessionId) return session;
+
+        // mySessions'taki katılımcı statüsünü de kontrol et (idempotent)
+
+        final existingParticipant = session.participants
+            .where((p) => p.userId == parsedUserId)
+            .firstOrNull;
+
+        if (existingParticipant != null &&
+            existingParticipant.status == nextStatus) {
+          // Zaten hedef statüde → joinedCount değişmesin
+          return session;
+        }
+
+        changed = true;
+        var nextJoinedCount = session.joinedCount;
+        final oldStatus = existingParticipant?.status ?? '';
+        final wasActive = _isActiveStatus(oldStatus);
+        final isActive = _isActiveStatus(nextStatus);
+        if (wasActive && !isActive) {
+          nextJoinedCount = nextJoinedCount > 0 ? nextJoinedCount - 1 : 0;
+        } else if (!wasActive && isActive) {
+          nextJoinedCount += 1;
+        }
+        return session.copyWith(joinedCount: nextJoinedCount);
+      }).toList();
+    }
+
+    if (!changed) {
+      return false;
+    }
+
+    emit(
+      state.copyWith(
+        session: patchedCurrentSession,
+        mySessions: patchedMySessions ?? state.mySessions,
+      ),
+    );
+    debugPrint(
+      '[Realtime-F2][Bloc] Applying patch $nextStatus for user=$userId session=$sessionId v$eventVersionLabel',
+    );
+    return true;
   }
 
   Future<void> _onCreateVoiceSession(
     CreateVoiceSessionEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    // Singleton Session Guard: Aktif bir oturumdayken yeni grup oluşturulamaz
+    if (state.activeSession != null) {
+      emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message:
+              'Zaten aktif bir sürüştesiniz. Yeni grup oluşturmak için önce mevcut sürüşten ayrılın.',
+        ),
+      );
+      return;
+    }
+
     final permissionsOk = await permissionsService
-        .ensureVoiceSessionPermissions(requestLocation: true);
+        .ensureVoiceSessionPermissions(requestLocation: false);
     if (!permissionsOk) {
       emit(
         state.copyWith(
@@ -302,8 +567,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         _activeCallKitId = uuid;
         await callKitIncomingService.startOutboundCall(
           uuid: uuid,
-          handle: "Grup Sürüşü",
-          nameCaller: event.request.roomName ?? "Grup Sürüşü",
+          handle: "Grup SÃ¼rÃ¼ÅŸÃ¼",
+          nameCaller: event.request.roomName ?? "Grup SÃ¼rÃ¼ÅŸÃ¼",
         );
         // Mark connected immediately as we are creating the room
         await Future.delayed(const Duration(milliseconds: 500));
@@ -315,6 +580,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
             sessionId: sessionId,
           ),
         );
+        _startSyncTimer();
       },
     );
   }
@@ -324,7 +590,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     final permissionsOk = await permissionsService
-        .ensureVoiceSessionPermissions(requestLocation: true);
+        .ensureVoiceSessionPermissions(requestLocation: false);
     if (!permissionsOk) {
       emit(
         state.copyWith(
@@ -352,8 +618,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         _activeCallKitId = uuid;
         await callKitIncomingService.startOutboundCall(
           uuid: uuid,
-          handle: "Grup Sürüşü",
-          nameCaller: "Grup Sürüşü",
+          handle: "Grup SÃ¼rÃ¼ÅŸÃ¼",
+          nameCaller: "Grup SÃ¼rÃ¼ÅŸÃ¼",
         );
         await Future.delayed(const Duration(milliseconds: 500));
         await callKitIncomingService.markConnected(uuid);
@@ -361,9 +627,10 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.joined,
-            message: "Odaya başarıyla katılındı",
+            message: "Odaya baÅŸarÄ±yla katÄ±lÄ±ndÄ±",
           ),
         );
+        _startSyncTimer();
       },
     );
   }
@@ -372,62 +639,138 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     LeaveVoiceSessionEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
-    // 1. UI Loading (but transient)
-    emit(state.copyWith(status: VoiceSessionStatus.loading));
-
-    // END CALLKIT
-    if (_activeCallKitId != null) {
-      await callKitIncomingService.endCall(_activeCallKitId!);
-      _activeCallKitId = null;
+    if (_isLeaveInFlight && _leaveInFlightSessionId == event.sessionId) {
+      debugPrint(
+        "⚠️ [VoiceSessionBloc] Duplicate leave ignored for session ${event.sessionId}",
+      );
+      return;
     }
+
+    if (state.status == VoiceSessionStatus.left &&
+        state.sessionId == event.sessionId) {
+      return;
+    }
+
+    _isLeaveInFlight = true;
+    _leaveInFlightSessionId = event.sessionId;
 
     try {
-      await intercomEngine.detachSession(stopAudio: true);
-    } catch (e) {
-      debugPrint("⚠️ [VoiceSessionBloc] Intercom detach warning: $e");
+      // ── Optimistic UI: Anında UI'ı güncelle, spinner yok ──
+      // mySessions'dan bu session'ı çıkar
+      final optimisticMySessions = state.mySessions
+          ?.where((s) => s.id != event.sessionId)
+          .toList();
+
+      emit(
+        state.copyWith(
+          status: VoiceSessionStatus.left,
+          sessionId: event.sessionId,
+          message: "Oturumdan ayrılınıyor...",
+          activeSpeakers: [],
+          isLiveKitConnected: false,
+          isMicOn: false,
+          session: null,
+          mySessions: optimisticMySessions,
+          activeSessionOverride: () => null, // activeSession'ı sıfırla
+        ),
+      );
+
+      _stopSyncTimer();
+
+      // ── Arka planda temizlik ve API çağrısı ──
+      await _teardownLocalSession(
+        sessionId: event.sessionId,
+        leaveSignalRGroup: false,
+      );
+
+      final result = await leaveVoiceSessionUseCase(event.sessionId);
+
+      await result.fold(
+        (failure) async {
+          debugPrint(
+            "❌ [VoiceSessionBloc] Backend leave failed (UI already updated): ${failure.message}",
+          );
+          // UI zaten güncellendi, sadece SignalR temizliği yap
+          await signalRService.leaveVoiceSessionGroup(
+            event.sessionId.toString(),
+          );
+        },
+        (_) async {
+          await signalRService.leaveVoiceSessionGroup(
+            event.sessionId.toString(),
+          );
+          // Başarılı — sessizce mesajı güncelle
+          emit(state.copyWith(message: "Oturumdan başarıyla ayrıldınız"));
+        },
+      );
+    } finally {
+      _isLeaveInFlight = false;
+      _leaveInFlightSessionId = null;
     }
+  }
 
-    // 3. Backend Call
-    final result = await leaveVoiceSessionUseCase(event.sessionId);
+  Future<void> _onEndVoiceSession(
+    EndVoiceSessionEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    try {
+      emit(state.copyWith(status: VoiceSessionStatus.loading));
 
-    // 4. Handle Result with OPTIMISTIC LEAVE
-    // Even if backend fails (e.g. timeout), we MUST let the user leave the screen.
-    await result.fold(
-      (failure) async {
-        debugPrint(
-          "❌ [VoiceSessionBloc] Backend API failed, but forcing UI leave: ${failure.message}",
-        );
+      // 1. Teardown local session first (stop audio, etc.)
+      await _teardownLocalSession(
+        sessionId: event.sessionId,
+        leaveSignalRGroup:
+            false, // Will be handled by SignalR service call below
+      );
 
-        // Clean up SignalR anyway
-        await signalRService.leaveVoiceSessionGroup(event.sessionId.toString());
+      // 2. Call Backend to End Session
+      final result = await endVoiceSessionUseCase(event.sessionId);
 
-        emit(
-          state.copyWith(
-            status: VoiceSessionStatus.left, // FORCE LEFT
-            sessionId: event.sessionId,
-            message: "Oturumdan ayrıldınız (Sunucu: ${failure.message})",
-            activeSpeakers: [],
-            isLiveKitConnected: false,
-            isMicOn: false,
-            session: null, // Clear session data
-          ),
-        );
-      },
-      (_) async {
-        await signalRService.leaveVoiceSessionGroup(event.sessionId.toString());
-        emit(
-          state.copyWith(
-            status: VoiceSessionStatus.left,
-            sessionId: event.sessionId,
-            message: "Oturumdan başarıyla ayrıldınız",
-            activeSpeakers: [],
-            isLiveKitConnected: false,
-            isMicOn: false,
-            session: null, // Clear session data
-          ),
-        );
-      },
-    );
+      await result.fold(
+        (failure) async {
+          // Force UI update even if backend fails
+          emit(
+            state.copyWith(
+              status: VoiceSessionStatus.left,
+              sessionId: event.sessionId,
+              message: "Oturum sonlandırıldı (Hata: ${failure.message})",
+              activeSpeakers: [],
+              isLiveKitConnected: false,
+              isMicOn: false,
+              session: null,
+            ),
+          );
+          _stopSyncTimer();
+        },
+        (_) async {
+          // 3. Notify SignalR (End Group)
+          // Note: Backend might handle this, but explicit call ensures client consistency
+          // However, SignalRService usually has methods for 'leave', not 'end'.
+          // 'leaveVoiceSessionGroup' is sufficient to stop receiving updates.
+          await signalRService.leaveVoiceSessionGroup(
+            event.sessionId.toString(),
+          );
+
+          emit(
+            state.copyWith(
+              status: VoiceSessionStatus.left,
+              sessionId: event.sessionId,
+              message: "Oturum başarıyla sonlandırıldı",
+              activeSpeakers: [],
+              isLiveKitConnected: false,
+              isMicOn: false,
+              session: null,
+            ),
+          );
+          _stopSyncTimer();
+        },
+      );
+    } catch (e) {
+      debugPrint("❌ [VoiceSessionBloc] End session error: $e");
+      emit(
+        state.copyWith(status: VoiceSessionStatus.error, message: e.toString()),
+      );
+    }
   }
 
   Future<void> _onInviteUsers(
@@ -451,7 +794,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (_) => emit(
         state.copyWith(
           status: VoiceSessionStatus.inviteSent,
-          message: "Davetler başarıyla gönderildi",
+          message: "Davetler baÅŸarÄ±yla gÃ¶nderildi",
         ),
       ),
     );
@@ -461,103 +804,206 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     GetVoiceSessionDetailsEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    if (_notFoundLocked && !event.force) {
+      return;
+    }
+
     await _ensureCurrentUserId(emit);
 
-    // Sadece ilk yüklemede loading gösterelim, refreshlerde mevcut data kalsın
+    // Sadece ilk yÃ¼klemede loading gÃ¶sterelim, refreshlerde mevcut data kalsÄ±n
     if (state.session == null) {
       emit(state.copyWith(status: VoiceSessionStatus.loading));
     }
 
-    final result = await getVoiceSessionDetailsUseCase(event.sessionId);
-    await result.fold(
-      (failure) async => emit(
-        state.copyWith(
-          status: VoiceSessionStatus.error,
-          message: failure.message,
-        ),
-      ),
-      (session) async {
-        await signalRService.joinVoiceSessionGroup(session.id.toString());
-        // Gruptan ayrılan veya reddeden kişileri listeden çıkarıyoruz ki
-        // tekrar davet edilebilsinler (UI'da invite butonu aktif olsun).
-        final activeParticipants = session.participants.where((p) {
-          return p.status != 'Left' && p.status != 'Rejected';
-        }).toList();
+    // â”€â”€ Race-Condition Retry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Davet edilen kiÅŸi gruba katÄ±lÄ±nca hemen bu sayfa aÃ§Ä±lÄ±yor,
+    // ama backend join/invite iÅŸlemi henÃ¼z tamamlanmamÄ±ÅŸ olabiliyor.
+    // Retry ile IntercomEngine.attachSession'Ä±n mutlaka Ã§alÄ±ÅŸmasÄ±nÄ±
+    // saÄŸlÄ±yoruz â€” yoksa P2P headless call yanÄ±tsÄ±z kalÄ±r.
+    const maxRetries = 3;
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
+      final result = await refreshCoordinator.runVoiceSessionDetails(
+        event.sessionId,
+        () => getVoiceSessionDetailsUseCase(event.sessionId),
+        // First call uses in-flight dedup; retries bypass cache to ensure a real retry.
+        force: event.force || attempt > 0,
+        // Phase 5 scope: in-flight dedup only, no throttle cache yet.
+        throttleWindow: Duration.zero,
+      );
+      final isSuccess = result.fold((_) => false, (_) => true);
 
-        final updatedSession = session.copyWith(
-          participants: activeParticipants,
-        );
+      if (isSuccess) {
+        await result.fold((_) async {}, (session) async {
+          final activeParticipants = session.participants.where((p) {
+            return p.status != 'Left' && p.status != 'Rejected';
+          }).toList();
 
-        emit(
-          state.copyWith(
-            status: VoiceSessionStatus.detailsLoaded,
-            session: updatedSession,
-          ),
-        );
+          final updatedSession = session.copyWith(
+            participants: activeParticipants,
+          );
 
-        final currentUserId =
-            state.currentUserId ?? await _ensureCurrentUserId(emit);
-        if (currentUserId != null) {
-          final intercomParticipants = activeParticipants
-              .where(
-                (p) =>
-                    p.status == 'Joined' ||
-                    p.status == 'Accepted' ||
-                    p.status == 'Disconnected',
-              )
-              .map(
-                (p) => IntercomParticipant(
-                  userId: p.userId,
-                  displayName: '${p.firstName ?? ''} ${p.lastName ?? ''}'
-                      .trim(),
-                  isLocal: p.userId == currentUserId,
-                  isSpeaking: state.activeSpeakers.contains(
-                    p.userId.toString(),
-                  ),
-                ),
-              )
-              .toList();
+          // mySessions listesindeki ilgili session'ı da güncelle
+          // böylece activeSession (mySessions'dan türetilen) her zaman güncel kalır.
+          final syncedMySessions = state.mySessions?.map((s) {
+                  return s.id == updatedSession.id ? updatedSession : s;
+                }).toList();
 
-          final activeIds = intercomParticipants
-              .map((participant) => participant.userId)
-              .toList();
-
-          await intercomEngine.attachSession(
-            IntercomSessionContext(
-              sessionId: session.id,
-              roomName: session.roomName,
-              hostUserId: session.hostUserId,
-              localUserId: currentUserId,
-              activeParticipantUserIds: activeIds,
-              participants: intercomParticipants,
+          emit(
+            state.copyWith(
+              status: VoiceSessionStatus.detailsLoaded,
+              session: updatedSession,
+              mySessions: syncedMySessions,
             ),
           );
-        }
-      },
-    );
+
+          final currentUserId =
+              state.currentUserId ?? await _ensureCurrentUserId(emit);
+          if (currentUserId != null) {
+            final intercomParticipants = activeParticipants
+                .where(
+                  (p) =>
+                      p.status == 'Joined' ||
+                      p.status == 'Accepted' ||
+                      p.status == 'Disconnected',
+                )
+                .map(
+                  (p) => IntercomParticipant(
+                    userId: p.userId,
+                    displayName: '${p.firstName ?? ''} ${p.lastName ?? ''}'
+                        .trim(),
+                    isLocal: p.userId == currentUserId,
+                    isSpeaking: state.activeSpeakers.contains(
+                      p.userId.toString(),
+                    ),
+                  ),
+                )
+                .toList();
+
+            final activeIds = intercomParticipants
+                .map((participant) => participant.userId)
+                .toList();
+
+            await intercomEngine.attachSession(
+              IntercomSessionContext(
+                sessionId: session.id,
+                roomName: session.roomName,
+                hostUserId: session.hostUserId,
+                localUserId: currentUserId,
+                activeParticipantUserIds: activeIds,
+                participants: intercomParticipants,
+              ),
+            );
+
+            // [FIX] Admin CallKit: admin creates group ride which
+            // implicitly creates a voice session server-side. They
+            // never go through Create/JoinVoiceSessionEvent, so
+            // CallKit was never started. Start it here if missing.
+            if (_activeCallKitId == null) {
+              final uuid = callKitIncomingService.generateCallKitId();
+              _activeCallKitId = uuid;
+              await callKitIncomingService.startOutboundCall(
+                uuid: uuid,
+                handle: "Grup SÃ¼rÃ¼ÅŸÃ¼",
+                nameCaller: session.title,
+              );
+              await Future.delayed(const Duration(milliseconds: 500));
+              await callKitIncomingService.markConnected(uuid);
+            }
+          }
+        });
+        return; // BaÅŸarÄ±lÄ± â†’ Ã§Ä±k
+      }
+
+      final maybeFailure = result.fold((failure) => failure, (_) => null);
+      if (maybeFailure != null && _isNotFoundFailure(maybeFailure.message)) {
+        refreshCoordinator.reportNotFound(
+          message: 'Grup artık mevcut değil',
+          source: RealtimeStateCoordinator.sourceVoiceSession,
+          dedupKey: 'voice_session_404:${event.sessionId}',
+        );
+        return;
+      }
+
+      // Son deneme â†’ hatayÄ± gÃ¶ster
+      if (attempt == maxRetries) {
+        result.fold(
+          (failure) => emit(
+            state.copyWith(
+              status: VoiceSessionStatus.error,
+              message: failure.message,
+            ),
+          ),
+          (_) {},
+        );
+        return;
+      }
+
+      // Exponential backoff: 1s, 2s, 4s
+      await Future.delayed(Duration(seconds: 1 << attempt));
+    }
   }
 
   Future<void> _onGetMyVoiceSessions(
     GetMyVoiceSessionsEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    if (_notFoundLocked && !event.force) {
+      return;
+    }
+
     await _ensureCurrentUserId(emit);
 
-    emit(state.copyWith(status: VoiceSessionStatus.loading));
-    final result = await getMyVoiceSessionsUseCase();
+    final hasActiveSession = state.session != null;
+    if (!hasActiveSession) {
+      emit(state.copyWith(status: VoiceSessionStatus.loading));
+    }
+
+    final result = await refreshCoordinator.runVoiceSessions(
+      () => getMyVoiceSessionsUseCase(),
+      force: event.force,
+      // 4s cooldown to reduce repeated list-fetch bursts.
+      throttleWindow: const Duration(seconds: 4),
+    );
     result.fold(
-      (failure) => emit(
-        state.copyWith(
-          status: VoiceSessionStatus.error,
-          message: failure.message,
-        ),
-      ),
-      (sessions) => emit(
-        state.copyWith(
-          status: VoiceSessionStatus.mySessionsLoaded,
-          mySessions: sessions,
-        ),
-      ),
+      (failure) {
+        if (_isNotFoundFailure(failure.message)) {
+          refreshCoordinator.reportNotFound(
+            message: 'Grup artık mevcut değil',
+            source: RealtimeStateCoordinator.sourceVoiceSession,
+            dedupKey: 'voice_sessions_404',
+          );
+          return;
+        }
+
+        // Keep in-session UX stable: background list refresh errors should not
+        // force the whole voice state into error while call is alive.
+        if (hasActiveSession) {
+          debugPrint(
+            "âš ï¸ [VoiceSessionBloc] Non-blocking my-sessions refresh error: ${failure.message}",
+          );
+          return;
+        }
+
+        emit(
+          state.copyWith(
+            status: VoiceSessionStatus.error,
+            message: failure.message,
+          ),
+        );
+      },
+      (sessions) {
+        if (hasActiveSession) {
+          emit(state.copyWith(mySessions: sessions));
+          return;
+        }
+
+        emit(
+          state.copyWith(
+            status: VoiceSessionStatus.mySessionsLoaded,
+            mySessions: sessions,
+          ),
+        );
+      },
     );
   }
 
@@ -577,8 +1023,20 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     AcceptVoiceSessionInviteEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    // Singleton Session Guard: Aktif bir oturumdayken yeni davet kabul edilemez
+    if (state.activeSession != null) {
+      emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message:
+              'Zaten aktif bir sürüştesiniz. Daveti kabul etmek için önce mevcut sürüşten ayrılın.',
+        ),
+      );
+      return;
+    }
+
     final permissionsOk = await permissionsService
-        .ensureVoiceSessionPermissions(requestLocation: true);
+        .ensureVoiceSessionPermissions(requestLocation: false);
     if (!permissionsOk) {
       emit(
         state.copyWith(
@@ -589,24 +1047,52 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       return;
     }
 
-    emit(state.copyWith(status: VoiceSessionStatus.loading));
-    final result = await acceptVoiceSessionInvitationUseCase(event.sessionId);
-    result.fold(
-      (failure) => emit(
-        state.copyWith(
-          status: VoiceSessionStatus.error,
-          message: failure.message,
-        ),
+    // ── Optimistic UI: Snapshot al, hemen güncelle ──
+    final snapshot = state;
+
+    // mySessions'taki davetin statüsünü hemen 'Accepted' yap
+    final optimisticMySessions = state.mySessions?.map((session) {
+      if (session.id != event.sessionId) return session;
+      final currentUserId = state.currentUserId;
+      if (currentUserId == null) return session;
+      final updatedParticipants = session.participants.map((p) {
+        if (p.userId == currentUserId && p.status == 'Invited') {
+          return p.copyWith(status: 'Accepted');
+        }
+        return p;
+      }).toList();
+      return session.copyWith(participants: updatedParticipants);
+    }).toList();
+
+    emit(
+      state.copyWith(
+        status: VoiceSessionStatus.inviteAccepted,
+        sessionId: event.sessionId,
+        mySessions: optimisticMySessions,
       ),
-      (_) {
+    );
+
+    // ── Arka planda API çağrısı ──
+    final result = await acceptVoiceSessionInvitationUseCase(event.sessionId);
+    await result.fold(
+      (failure) async {
+        // ── Rollback: API başarısız → eski state'e dön ──
+        debugPrint(
+          "❌ [VoiceSessionBloc] Accept API failed, rolling back: ${failure.message}",
+        );
         emit(
-          state.copyWith(
-            status: VoiceSessionStatus.inviteAccepted,
-            sessionId: event.sessionId,
+          snapshot.copyWith(
+            status: VoiceSessionStatus.error,
+            message: failure.message,
           ),
         );
+      },
+      (_) async {
+        // Başarılı — devamında gerekli event zincirini tetikle
+        add(const GetMyVoiceSessionsEvent(force: true));
         add(JoinVoiceSessionEvent(event.sessionId));
-        add(GetVoiceSessionDetailsEvent(event.sessionId));
+        add(GetVoiceSessionDetailsEvent(event.sessionId, force: true));
+        _startSyncTimer();
       },
     );
   }
@@ -620,12 +1106,14 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "Kullanıcı atılamadı: ${failure.message}",
+          message: "KullanÄ±cÄ± atÄ±lamadÄ±: ${failure.message}",
         ),
       ),
       (_) {
         add(GetVoiceSessionDetailsEvent(event.sessionId));
-        emit(state.copyWith(message: "Kullanıcı atıldı")); // Transient message
+        emit(
+          state.copyWith(message: "KullanÄ±cÄ± atÄ±ldÄ±"),
+        ); // Transient message
       },
     );
   }
@@ -639,10 +1127,10 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "Kullanıcı susturulamadı: ${failure.message}",
+          message: "KullanÄ±cÄ± susturulamadÄ±: ${failure.message}",
         ),
       ),
-      (_) => emit(state.copyWith(message: "Kullanıcı susturuldu")),
+      (_) => emit(state.copyWith(message: "KullanÄ±cÄ± susturuldu")),
     );
   }
 
@@ -655,12 +1143,84 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "Host devredilemedi: ${failure.message}",
+          message: "Captain devredilemedi: ${failure.message}",
         ),
       ),
       (_) {
         add(GetVoiceSessionDetailsEvent(event.sessionId));
-        emit(state.copyWith(message: "Host yetkisi devredildi"));
+        emit(state.copyWith(message: "Captain yetkisi devredildi"));
+      },
+    );
+  }
+
+  Future<void> _onPromoteParticipant(
+    PromoteParticipantEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    final result = await promoteParticipantUseCase(
+      event.rideId,
+      event.targetUserId,
+    );
+    result.fold(
+      (failure) => emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message: "RÃ¼tbe yÃ¼kseltilemedi: ${failure.message}",
+        ),
+      ),
+      (_) {
+        if (state.session != null) {
+          add(GetVoiceSessionDetailsEvent(state.session!.id));
+        }
+        emit(state.copyWith(message: "KullanÄ±cÄ± rÃ¼tbesi yÃ¼kseltildi"));
+      },
+    );
+  }
+
+  Future<void> _onDemoteParticipant(
+    DemoteParticipantEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    final result = await demoteParticipantUseCase(
+      event.rideId,
+      event.targetUserId,
+    );
+    result.fold(
+      (failure) => emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message: "RÃ¼tbe dÃ¼ÅŸÃ¼rÃ¼lemedi: ${failure.message}",
+        ),
+      ),
+      (_) {
+        if (state.session != null) {
+          add(GetVoiceSessionDetailsEvent(state.session!.id));
+        }
+        emit(state.copyWith(message: "KullanÄ±cÄ± rÃ¼tbesi dÃ¼ÅŸÃ¼rÃ¼ldÃ¼"));
+      },
+    );
+  }
+
+  Future<void> _onKickParticipant(
+    KickParticipantEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    final result = await kickParticipantUseCase(
+      event.rideId,
+      event.targetUserId,
+    );
+    result.fold(
+      (failure) => emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message: "KullanÄ±cÄ± gruptan atÄ±lamadÄ±: ${failure.message}",
+        ),
+      ),
+      (_) {
+        if (state.session != null) {
+          add(GetVoiceSessionDetailsEvent(state.session!.id));
+        }
+        emit(state.copyWith(message: "KullanÄ±cÄ± gruptan atÄ±ldÄ±"));
       },
     );
   }
@@ -704,6 +1264,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
             participant.intercomBatteryLevel,
         signalStrength:
             event.payload.signalStrength ?? participant.signalStrength,
+        isRemoteMuted: event.payload.isRemoteMuted ?? participant.isRemoteMuted,
       );
 
       final updatedParticipants = List<VoiceSessionParticipantEntity>.from(
@@ -716,6 +1277,51 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       );
 
       emit(state.copyWith(session: updatedSession));
+
+      // EÄŸer lokal kullanÄ±cÄ± ise IntercomEngine'i gÃ¼ncelle
+      if (participant.userId == state.currentUserId &&
+          event.payload.isRemoteMuted != null) {
+        if (event.payload.isRemoteMuted!) {
+          intercomEngine.setMicEnabled(false);
+        }
+      }
+    }
+  }
+
+  Future<void> _onUserMuteStateChanged(
+    UserMuteStateChangedEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    if (state.session == null) return;
+
+    final currentParticipants = state.session!.participants;
+    final index = currentParticipants.indexWhere(
+      (p) => p.userId == event.payload.targetUserId,
+    );
+
+    if (index != -1) {
+      final participant = currentParticipants[index];
+      final updatedParticipant = participant.copyWith(
+        isRemoteMuted: event.payload.isMuted,
+      );
+
+      final updatedParticipants = List<VoiceSessionParticipantEntity>.from(
+        currentParticipants,
+      );
+      updatedParticipants[index] = updatedParticipant;
+
+      final updatedSession = state.session!.copyWith(
+        participants: updatedParticipants,
+      );
+
+      emit(state.copyWith(session: updatedSession));
+
+      // EÄŸer lokal kullanÄ±cÄ± ise IntercomEngine'i gÃ¼ncelle
+      if (participant.userId == state.currentUserId) {
+        if (event.payload.isMuted) {
+          intercomEngine.setMicEnabled(false);
+        }
+      }
     }
   }
 
@@ -726,37 +1332,85 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     final currentSessionId = state.session?.id;
 
     if (currentSessionId != event.sessionId) {
-      add(const GetMyVoiceSessionsEvent());
+      refreshCoordinator.requestVoiceSessionsRefresh(
+        reason: 'voice_force_removed',
+      );
       return;
     }
 
-    try {
-      await intercomEngine.detachSession(stopAudio: true);
-    } catch (e) {
-      debugPrint('⚠️ [VoiceSessionBloc] Force remove detach warning: $e');
-    }
-
-    await signalRService.leaveVoiceSessionGroup(event.sessionId.toString());
-
-    // END CALLKIT
-    if (_activeCallKitId != null) {
-      await callKitIncomingService.endCall(_activeCallKitId!);
-      _activeCallKitId = null;
-    }
+    await _teardownLocalSession(sessionId: event.sessionId);
 
     emit(
       state.copyWith(
         status: VoiceSessionStatus.left,
         sessionId: event.sessionId,
         message: event.reason ?? 'Oturumdan çıkarıldınız',
-        activeSpeakers: [],
+        activeSpeakers: const [],
         isLiveKitConnected: false,
         isMicOn: false,
         session: null,
+        participantQualities: const {},
+        rtcStatus: RtcConnectionStatus.disconnected,
       ),
     );
 
-    add(const GetMyVoiceSessionsEvent());
+    refreshCoordinator.requestVoiceSessionsRefresh(
+      reason: 'voice_force_removed',
+    );
+  }
+
+  Future<void> _onRideTerminatedVoiceSession(
+    RideTerminatedVoiceSessionEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    final activeSession = state.session;
+    if (activeSession == null) {
+      return;
+    }
+
+    final terminatedRideId = int.tryParse(event.rideId ?? '');
+    final activeRideId = activeSession.rideId;
+
+    if (terminatedRideId == null ||
+        activeRideId == null ||
+        activeRideId != terminatedRideId) {
+      return;
+    }
+
+    await _teardownLocalSession(sessionId: activeSession.id);
+
+    emit(
+      state.copyWith(
+        status: VoiceSessionStatus.left,
+        sessionId: activeSession.id,
+        message: 'Grup sürüşü sonlandırıldı. Oturum kapatıldı.',
+        activeSpeakers: const [],
+        isLiveKitConnected: false,
+        isMicOn: false,
+        session: null,
+        participantQualities: const {},
+        rtcStatus: RtcConnectionStatus.disconnected,
+      ),
+    );
+  }
+
+  Future<void> _onTeardownVoiceSessionLocal(
+    TeardownVoiceSessionLocalEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    final resolvedSessionId =
+        event.sessionId ?? state.session?.id ?? state.sessionId;
+    await _teardownLocalSession(sessionId: resolvedSessionId);
+
+    emit(
+      state.copyWith(
+        activeSpeakers: const [],
+        isLiveKitConnected: false,
+        isMicOn: false,
+        participantQualities: const {},
+        rtcStatus: RtcConnectionStatus.disconnected,
+      ),
+    );
   }
 
   Future<void> _onAppSessionCurrentUserChanged(
@@ -768,13 +1422,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     }
 
     if (event.userId == null) {
-      await intercomEngine.detachSession(stopAudio: true);
-
-      // END CALLKIT
-      if (_activeCallKitId != null) {
-        await callKitIncomingService.endCall(_activeCallKitId!);
-        _activeCallKitId = null;
-      }
+      await _teardownLocalSession(sessionId: state.session?.id);
       emit(
         state.copyWith(
           currentUserId: null,
@@ -783,6 +1431,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           activeSpeakers: const [],
           isLiveKitConnected: false,
           isMicOn: false,
+          participantQualities: const {},
+          rtcStatus: RtcConnectionStatus.disconnected,
         ),
       );
       return;
@@ -791,20 +1441,75 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     emit(state.copyWith(currentUserId: event.userId));
   }
 
+  Future<void> _teardownLocalSession({
+    int? sessionId,
+    bool leaveSignalRGroup = true,
+  }) async {
+    try {
+      await intercomEngine.detachSession(stopAudio: true);
+    } catch (e) {
+      debugPrint('⚠️ [VoiceSessionBloc] Intercom teardown warning: $e');
+    }
+
+    if (leaveSignalRGroup && sessionId != null && sessionId > 0) {
+      try {
+        await signalRService.leaveVoiceSessionGroup(sessionId.toString());
+      } catch (e) {
+        debugPrint('⚠️ [VoiceSessionBloc] SignalR leave warning: $e');
+      }
+    }
+
+    if (_activeCallKitId != null) {
+      try {
+        await callKitIncomingService.endCall(_activeCallKitId!);
+      } catch (e) {
+        debugPrint('⚠️ [VoiceSessionBloc] CallKit end warning: $e');
+      } finally {
+        _activeCallKitId = null;
+      }
+    }
+  }
+
   @override
   Future<void> close() async {
-    await _rideTerminatedSubscription?.cancel();
-    await _rideCreatedSubscription?.cancel();
-    await _userJoinedSubscription?.cancel();
-    await _userLeftSubscription?.cancel();
-    await _hostChangedSubscription?.cancel();
-    await _voiceSessionRefreshSubscription?.cancel();
-    await _userForceRemovedSubscription?.cancel();
-    await _groupRideUpdatedSubscription?.cancel();
+    _duckingHysteresisTimer?.cancel();
+    _syncTimer?.cancel();
+    await _realtimeSubscription?.cancel();
+    await _refreshSubscription?.cancel();
+    await _errorSubscription?.cancel();
     await _appSessionUserIdSubscription?.cancel();
     await _intercomStateSubscription?.cancel();
-    await _participantStatusUpdatedSubscription?.cancel();
     return super.close();
+  }
+
+  bool _isNotFoundFailure(String message) {
+    final normalized = message.toLowerCase();
+    return normalized.contains('404') ||
+        normalized.contains('not found') ||
+        normalized.contains('bulunamad');
+  }
+
+  Future<void> _onVoiceSessionNotFoundDetected(
+    VoiceSessionNotFoundDetectedEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    _notFoundLocked = true;
+    _stopSyncTimer();
+    await _teardownLocalSession(sessionId: state.session?.id);
+    emit(
+      state.copyWith(
+        status: VoiceSessionStatus.left,
+        session: null,
+        activeSpeakers: const [],
+        isLiveKitConnected: false,
+        isMicOn: false,
+        participantQualities: const {},
+        rtcStatus: RtcConnectionStatus.disconnected,
+        message: event.message.isEmpty
+            ? 'Grup artık mevcut değil. Güvenli çıkış yapıldı.'
+            : event.message,
+      ),
+    );
   }
 
   // ============================================================
@@ -841,13 +1546,126 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         intercom.transport == IntercomTransport.sfu ||
         intercom.rtcStatus == RtcConnectionStatus.sfuConnected;
 
+    // [NEW] Handle Permission Failure from Intercom Engine
+    if (intercom.lastFailure?.code == IntercomFailureCode.permissionsDenied) {
+      emit(
+        state.copyWith(
+          status: VoiceSessionStatus.error,
+          message: 'Mikrofon izni gerekli', // Detected by VoiceStabilityHandler
+          rtcStatus: intercom.rtcStatus,
+          isMicOn: false, // Force mic off on permission failure
+          activeSpeakers: intercom.activeSpeakerIds,
+          isLiveKitConnected: isSfu,
+        ),
+      );
+      return;
+    }
+
+    // Update state based on intercom changes
     emit(
       state.copyWith(
         rtcStatus: intercom.rtcStatus,
-        isMicOn: intercom.micEnabled,
+        isMicOn: intercom.micEnabled, // Restore original mic state
         activeSpeakers: intercom.activeSpeakerIds,
         isLiveKitConnected: isSfu,
       ),
     );
+  }
+
+  Timer? _duckingHysteresisTimer;
+
+  void _handleSmartDucking(List<String> activeSpeakerIds) {
+    final mode = audioOrchestratorService.currentMixingMode;
+
+    if (mode == AudioMixingMode.off) return;
+
+    if (mode == AudioMixingMode.always) {
+      // In 'always' mode, ducking is managed by manageAudioFocus (on/off).
+      // But we call startDucking just in case we are in the session.
+      audioOrchestratorService.startDucking();
+      return;
+    }
+
+    if (mode == AudioMixingMode.auto) {
+      if (activeSpeakerIds.isNotEmpty) {
+        // Someone is speaking -> Duck immediately
+        _duckingHysteresisTimer?.cancel();
+        _duckingHysteresisTimer = null;
+        audioOrchestratorService.startDucking();
+      } else {
+        // Silence -> Stop ducking after a short delay (Hysteresis)
+        _duckingHysteresisTimer ??= Timer(
+          const Duration(milliseconds: 1000),
+          () {
+            audioOrchestratorService.stopDucking();
+            _duckingHysteresisTimer = null;
+          },
+        );
+      }
+    }
+  }
+
+  Future<void> _onClearSessionData(
+    ClearSessionDataEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    _notFoundLocked = false;
+    emit(const VoiceSessionState());
+  }
+
+  void _startSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+      if (isClosed) {
+        timer.cancel();
+        return;
+      }
+      final activeSessionId = state.session?.id;
+      if (activeSessionId != null && activeSessionId > 0) {
+        add(GetVoiceSessionDetailsEvent(activeSessionId, force: true));
+        debugPrint(
+          '[Realtime-F2][Bloc] Running periodic background sync for session: $activeSessionId',
+        );
+      } else {
+        _stopSyncTimer();
+      }
+    });
+  }
+
+  void _stopSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+  }
+
+  /// Smart Refresh Priority: Reason'a göre full refresh gerekip gerekmediğini belirler
+  bool _shouldTriggerFullRefresh(String reason) {
+    // Membership değişiklikleri zaten delta event'lerle handle ediliyor
+    // Sadece yapısal değişiklikler için full refresh gerekli
+    const membershipReasons = [
+      'user_joined',
+      'user_left',
+      'user_disconnected',
+      'user_reconnected',
+    ];
+
+    if (membershipReasons.contains(reason)) {
+      return false; // Delta event yeterli
+    }
+
+    // Yapısal değişiklikler için full refresh gerekli
+    const structuralReasons = [
+      'host_changed',
+      'session_settings_updated',
+      'session_ended',
+      'participant_promoted',
+      'participant_demoted',
+    ];
+
+    if (structuralReasons.contains(reason)) {
+      return true;
+    }
+
+    // Bilinmeyen reason'lar için güvenli tarafta kal: refresh yap
+    return true;
   }
 }

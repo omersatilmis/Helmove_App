@@ -1,4 +1,6 @@
-class GroupRideArgs {
+import '/core/navigation/base_navigation_args.dart';
+
+class GroupRideArgs extends BaseNavigationArgs {
   final int rideId;
   final int? sessionId;
   final String groupName;
@@ -19,6 +21,7 @@ class GroupRideArgs {
   final double? endLatitude;
   final double? endLongitude;
   final int? organizerId;
+  final bool forceBackToCommunication;
 
   const GroupRideArgs({
     required this.rideId,
@@ -41,6 +44,7 @@ class GroupRideArgs {
     this.endLatitude,
     this.endLongitude,
     this.organizerId,
+    this.forceBackToCommunication = false,
   });
 
   factory GroupRideArgs.fromMap(Map<String, dynamic> map) {
@@ -69,6 +73,7 @@ class GroupRideArgs {
       endLatitude: map['endLatitude']?.toDouble(),
       endLongitude: map['endLongitude']?.toDouble(),
       organizerId: map['organizerId'],
+      forceBackToCommunication: map['forceBackToCommunication'] == true,
     );
   }
 
@@ -94,6 +99,29 @@ class GroupRideArgs {
       'endLatitude': endLatitude,
       'endLongitude': endLongitude,
       'organizerId': organizerId,
+      'forceBackToCommunication': forceBackToCommunication,
     };
+  }
+
+  @override
+  bool get isValid => (rideId > 0) || (sessionId != null && sessionId! > 0);
+
+  @override
+  String? get errorMessage => isValid ? null : 'Geçersiz Sürüş veya Oturum ID';
+
+  static GroupRideArgs? fromExtra(Object? extra) {
+    if (extra is GroupRideArgs) return extra;
+    if (extra is Map<String, dynamic>) {
+      // Handle nested 'data' key if present (sometimes used in SignalR or complex maps)
+      final data = extra['data'];
+      if (data is GroupRideArgs) return data;
+      if (data is Map<String, dynamic>) return GroupRideArgs.fromMap(data);
+      return GroupRideArgs.fromMap(extra);
+    }
+    return null;
+  }
+
+  factory GroupRideArgs.empty() {
+    return const GroupRideArgs(rideId: 0, groupName: '');
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/usecases/usecase.dart';
@@ -58,7 +59,13 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     Emitter<NotificationsState> emit,
   ) {
     try {
-      final data = event.notification as Map<String, dynamic>;
+      final raw = event.notification;
+      if (raw is! Map) {
+        return;
+      }
+      final data = raw.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
 
       // Güvenli Parsing Helper
       int parseInt(dynamic value) {
@@ -75,6 +82,23 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         return null;
       }
 
+      String? normalizeDataJson(dynamic value) {
+        if (value == null) return null;
+        if (value is String) {
+          final text = value.trim();
+          if (text.isEmpty || text == 'null') return null;
+          return text;
+        }
+
+        try {
+          return jsonEncode(value);
+        } catch (_) {
+          final text = value.toString().trim();
+          if (text.isEmpty || text == 'null') return null;
+          return text;
+        }
+      }
+
       final newNotification = NotificationEntity(
         id: parseInt(data['id']),
         title: data['title']?.toString() ?? '',
@@ -84,10 +108,11 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
             ? DateTime.parse(data['createdAt'].toString())
             : DateTime.now(),
         type: data['type']?.toString(),
+        relatedId: parseNullableInt(data['relatedId']),
         senderId: parseNullableInt(data['actorId']),
         senderUsername: data['actorUsername']?.toString(),
         senderProfileImage: data['actorProfilePictureUrl']?.toString(),
-        dataJson: data['dataJson']?.toString(),
+        dataJson: normalizeDataJson(data['dataJson']),
       );
 
       final alreadyExists = state.notifications.any((n) => n.id == newNotification.id);

@@ -40,7 +40,7 @@ class SettingsExpansionTile extends StatelessWidget {
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha:0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: AppColors.primary, size: 22),
@@ -58,7 +58,7 @@ class SettingsExpansionTile extends StatelessWidget {
                   subtitle!,
                   // Alt başlık rengini temaya göre şeffaflaştırdık
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha:0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 )
               : null,
@@ -102,7 +102,7 @@ class SettingsSelectionTile extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
             color: isSelected
-                ? AppColors.primary.withValues(alpha:0.05)
+                ? AppColors.primary.withValues(alpha: 0.05)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -158,7 +158,7 @@ class SettingsSwitchTile extends StatelessWidget {
     return SwitchListTile.adaptive(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-      activeColor: AppColors.primary,
+      activeThumbColor: AppColors.primary,
       title: Text(
         title,
         style: AppTextStyles.medium.copyWith(
@@ -170,7 +170,7 @@ class SettingsSwitchTile extends StatelessWidget {
         subtitle,
         // Alt başlık rengini temaya göre ayarladık
         style: AppTextStyles.bodySmall.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
         ),
       ),
       value: value,
@@ -199,7 +199,7 @@ class SettingsActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha:0.5);
+    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
 
     return ListTile(
       dense: true,
@@ -292,7 +292,7 @@ void showSettingsBottomSheet(
                 trailing: Icon(
                   Icons.chevron_right,
                   size: 20,
-                  color: theme.colorScheme.onSurface.withValues(alpha:0.5),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
               ),
             ),

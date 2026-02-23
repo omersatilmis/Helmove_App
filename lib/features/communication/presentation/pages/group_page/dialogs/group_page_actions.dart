@@ -20,19 +20,19 @@ class GroupPageActions {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kullanıcıyı At'),
-        content: Text('$userName adlı kullanıcıyı atmak istiyor musunuz?'),
+        title: const Text('Kullaniciyi At'),
+        content: Text('$userName adli kullaniciyi atmak istiyor musunuz?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: const Text('Iptal'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.read<VoiceSessionBloc>().add(
-                    KickUserEvent(sessionId, targetUserId),
-                  );
+                KickUserEvent(sessionId, targetUserId),
+              );
             },
             child: const Text('At', style: TextStyle(color: Colors.red)),
           ),
@@ -50,19 +50,19 @@ class GroupPageActions {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kullanıcıyı Sustur'),
-        content: Text('$userName adlı kullanıcıyı susturmak istiyor musunuz?'),
+        title: const Text('Kullaniciyi Sustur'),
+        content: Text('$userName adli kullaniciyi susturmak istiyor musunuz?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: const Text('Iptal'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.read<VoiceSessionBloc>().add(
-                    MuteUserEvent(sessionId, targetUserId),
-                  );
+                MuteUserEvent(sessionId, targetUserId),
+              );
             },
             child: const Text('Sustur'),
           ),
@@ -80,23 +80,87 @@ class GroupPageActions {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Host Yetkisini Devret'),
+        title: const Text('Captain Yetkisini Devret'),
         content: Text(
-          'Host yetkisini $userName adlı kullanıcıya devretmek istiyor musunuz?',
+          'Captain yetkisini $userName adli kullaniciya devretmek istiyor musunuz?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: const Text('Iptal'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.read<VoiceSessionBloc>().add(
-                    TransferHostEvent(sessionId, targetUserId),
-                  );
+                TransferHostEvent(sessionId, targetUserId),
+              );
             },
             child: const Text('Devret'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void promoteUser({
+    required BuildContext context,
+    required int rideId,
+    required int targetUserId,
+    required String userName,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kaptan Yap'),
+        content: Text(
+          '$userName adli kullaniciyi kaptan yapmak istiyor musunuz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Iptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<VoiceSessionBloc>().add(
+                PromoteParticipantEvent(rideId, targetUserId),
+              );
+            },
+            child: const Text('Yukselt'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void demoteUser({
+    required BuildContext context,
+    required int rideId,
+    required int targetUserId,
+    required String userName,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rutbe Dusur'),
+        content: Text(
+          '$userName adli kullanicinin rutbesini dusurmek istiyor musunuz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Iptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<VoiceSessionBloc>().add(
+                DemoteParticipantEvent(rideId, targetUserId),
+              );
+            },
+            child: const Text('Dusur', style: TextStyle(color: Colors.orange)),
           ),
         ],
       ),
@@ -107,25 +171,73 @@ class GroupPageActions {
     required BuildContext context,
     required VoiceSessionEntity? sessionDetails,
     required int rideId,
+    required int? sessionId,
   }) {
     final currentUserId = context.read<VoiceSessionBloc>().state.currentUserId;
 
-    final isHost = sessionDetails?.hostUserId == currentUserId;
+    final isHost = sessionDetails?.hostUserId == currentUserId; // Captain kontrolü
 
     final participants = sessionDetails?.participants ?? [];
     final activeCount = participants
         .where((p) => p.status == 'Joined' || p.status == 'Accepted')
         .length;
-    final hasOthers = activeCount > 1;
 
-    if (isHost && hasOthers) {
-      _showSmartLeaveDialog(context, rideId);
+    // [New Requirement] If sole participant (or 0), treat Leave as Terminate
+    if (activeCount <= 1) {
+      _showLastPersonLeaveDialog(context, rideId, sessionId);
+      return;
+    }
+
+    if (isHost) {
+      _showSmartLeaveDialog(context, rideId, sessionId);
     } else {
-      _showStandardLeaveDialog(context, rideId);
+      _showStandardLeaveDialog(context, rideId, sessionId);
     }
   }
 
-  static void _showStandardLeaveDialog(BuildContext context, int rideId) {
+  static void _showLastPersonLeaveDialog(
+    BuildContext context,
+    int rideId,
+    int? sessionId,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colorScheme.surfaceContainerHigh,
+        title: Text('Grubu Sonlandır', style: AppTextStyles.h3),
+        content: Text(
+          'Grupta kalan son kişisiniz. Ayrıldığınızda grup ve ses oturumu tamamen sonlandırılacak.',
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('İptal', style: TextStyle(color: colorScheme.primary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _performTerminate(context, rideId, sessionId);
+            },
+            child: Text(
+              'Sonlandır ve Çık',
+              style: TextStyle(
+                color: colorScheme.error,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showStandardLeaveDialog(
+    BuildContext context,
+    int rideId,
+    int? sessionId,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -144,7 +256,7 @@ class GroupPageActions {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _performLeave(context, rideId);
+              _performLeave(context, rideId, sessionId);
             },
             child: Text(
               'Ayrıl',
@@ -159,7 +271,11 @@ class GroupPageActions {
     );
   }
 
-  static void _showSmartLeaveDialog(BuildContext context, int rideId) {
+  static void _showSmartLeaveDialog(
+    BuildContext context,
+    int rideId,
+    int? sessionId,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -178,9 +294,9 @@ class GroupPageActions {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _performLeave(context, rideId);
+              _performLeave(context, rideId, sessionId);
             },
-            child: Text(
+            child: const Text(
               'Ayrıl & Devret',
               style: TextStyle(
                 color: Colors.orange,
@@ -191,7 +307,7 @@ class GroupPageActions {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _performTerminate(context, rideId);
+              _performTerminate(context, rideId, sessionId);
             },
             child: Text(
               'Grubu Sonlandır',
@@ -206,19 +322,46 @@ class GroupPageActions {
     );
   }
 
-  static void _performLeave(BuildContext context, int rideId) {
+  static int? _resolveValidSessionId(BuildContext context, int? sessionId) {
+    var resolvedSessionId = sessionId;
+
+    if (resolvedSessionId == null || resolvedSessionId <= 0) {
+      final state = context.read<VoiceSessionBloc>().state;
+      if (state.session != null && state.session!.id > 0) {
+        resolvedSessionId = state.session!.id;
+      } else if (state.sessionId != null && state.sessionId! > 0) {
+        resolvedSessionId = state.sessionId;
+      }
+    }
+
+    if (resolvedSessionId != null && resolvedSessionId > 0) {
+      return resolvedSessionId;
+    }
+
+    return null;
+  }
+
+  static void _performLeave(BuildContext context, int rideId, int? sessionId) {
+    final validSessionId = _resolveValidSessionId(context, sessionId);
+
     if (rideId > 0) {
-      context.read<GroupRideBloc>().add(LeaveGroupRideEvent(rideId));
-    } else {
-      Navigator.of(context).pop();
+      context.read<GroupRideBloc>().add(
+        LeaveGroupRideEvent(rideId, sessionId: validSessionId),
+      );
     }
   }
 
-  static void _performTerminate(BuildContext context, int rideId) {
+  static void _performTerminate(
+    BuildContext context,
+    int rideId,
+    int? sessionId,
+  ) {
+    final validSessionId = _resolveValidSessionId(context, sessionId);
+
     if (rideId > 0) {
-      context.read<GroupRideBloc>().add(DeleteGroupRideEvent(rideId));
-    } else {
-      Navigator.of(context).pop();
+      context.read<GroupRideBloc>().add(
+        DeleteGroupRideEvent(rideId, sessionId: validSessionId),
+      );
     }
   }
 }

@@ -1,8 +1,10 @@
+/// Grup sürüşü entity'si
+/// organizerId = Admin (sürüşü organize eden) kullanıcı ID'si
 class GroupRideEntity {
   final int id;
   final String title;
   final String? description;
-  final int organizerId;
+  final int organizerId; // Admin ID (Backend field adı: organizerId)
   final DateTime startDateTime;
   final DateTime endDateTime;
   final String startLocation;

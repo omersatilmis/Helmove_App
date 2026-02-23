@@ -43,6 +43,11 @@ class AudioOrchestratorService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('audio_mixing_mode', mode.name);
 
+    // If we are switching to OFF, ensure we release ducking immediately
+    if (mode == AudioMixingMode.off) {
+      await stopDucking();
+    }
+
     await _configureSession();
   }
 
@@ -127,13 +132,16 @@ class AudioOrchestratorService {
     }
   }
 
+  AudioMixingMode get currentMixingMode => _currentMixingMode;
+
   /// High-level orchestration for audio focus
   Future<void> manageAudioFocus(bool active) async {
     if (active) {
-      // For "Always" mode, we might want to duck immediately.
-      // For "Auto", maybe we wait?
-      // Current implementation of startDucking checks mode.
-      await startDucking();
+      // In 'always' mode, we duck immediately and stay ducked.
+      // In 'auto' mode, we wait for VAD triggers from the Bloc.
+      if (_currentMixingMode == AudioMixingMode.always) {
+        await startDucking();
+      }
     } else {
       await stopDucking();
     }

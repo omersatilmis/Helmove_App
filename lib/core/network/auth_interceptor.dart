@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/dto/login_response_dto.dart';
+import '../services/communication_baseline_tracker.dart';
 
 class AuthInterceptor extends Interceptor {
   final Dio _dio;
@@ -11,6 +12,8 @@ class AuthInterceptor extends Interceptor {
   final AuthLocalDataSource _localDataSource;
   final Future<void> Function()? _onAuthInvalidated;
   final Future<void> Function(String token)? _onTokenRefreshed;
+  final CommunicationBaselineTracker _baselineTracker =
+      CommunicationBaselineTracker.instance;
 
   Future<void>? _refreshInFlight;
 
@@ -27,6 +30,8 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    _baselineTracker.recordApiRequest(options);
+
     final accessToken = await _localDataSource.getToken();
     if (accessToken != null && accessToken.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $accessToken';
@@ -44,14 +49,27 @@ class AuthInterceptor extends Interceptor {
   }
 
   @override
+  void onResponse(
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) {
+    _baselineTracker.recordApiResponse(response);
+    super.onResponse(response, handler);
+  }
+
+  @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    _baselineTracker.recordApiError(err);
+
     final statusCode = err.response?.statusCode;
     final requestOptions = err.requestOptions;
 
     final isUnauthorized = statusCode == 401;
     final alreadyRetried = requestOptions.extra['__auth_retry'] == true;
 
-    if (!isUnauthorized || alreadyRetried || _isAuthRequest(requestOptions.path)) {
+    if (!isUnauthorized ||
+        alreadyRetried ||
+        _isAuthRequest(requestOptions.path)) {
       return super.onError(err, handler);
     }
 
@@ -65,15 +83,33 @@ class AuthInterceptor extends Interceptor {
 
       final response = await _retryWithToken(requestOptions, newAccessToken);
       return handler.resolve(response);
-    } catch (_) {
-      // If refresh fails, clear auth so UI can route to login.
-      await _localDataSource.clearAuthData();
-      final onAuthInvalidated = _onAuthInvalidated;
-      if (onAuthInvalidated != null) {
-        try {
-          await onAuthInvalidated();
-        } catch (_) {}
+    } catch (e) {
+      // SADECE Refresh Token geçersizse (401/403) veya backend reddettiyse (StateError) logout yap.
+      // Network hatası (Timeout, SocketException vb.) varsa oturumu koru.
+      bool shouldLogout = false;
+
+      if (e is DioException) {
+        final status = e.response?.statusCode;
+        // 401: Unauthorized, 403: Forbidden -> Token geçersiz
+        if (status == 401 || status == 403) {
+          shouldLogout = true;
+        }
+      } else if (e is StateError) {
+        // "Refresh failed" from DTO check inside _refreshTokens
+        shouldLogout = true;
       }
+
+      if (shouldLogout) {
+        // If refresh fails due to auth reasons, clear auth so UI can route to login.
+        await _localDataSource.clearAuthData();
+        final onAuthInvalidated = _onAuthInvalidated;
+        if (onAuthInvalidated != null) {
+          try {
+            await onAuthInvalidated();
+          } catch (_) {}
+        }
+      }
+
       return super.onError(err, handler);
     }
   }

@@ -1,21 +1,13 @@
-import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
-import '../../../voice_session/domain/entities/voice_session_entity.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
-// import '../../domain/entities/group_ride_data.dart';
-// import '../bloc/group_ride_bloc.dart';
-// import '../bloc/group_ride_event.dart';
-// import '../bloc/group_ride_state.dart';
-import '../widgets/active_group.dart';
+import '../widgets/active_session_card.dart';
 import '../widgets/nearby_group.dart';
-import '../widgets/rider_card.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
 
 class CommunicationPage extends StatefulWidget {
   const CommunicationPage({super.key});
@@ -25,88 +17,11 @@ class CommunicationPage extends StatefulWidget {
 }
 
 class _CommunicationPageState extends State<CommunicationPage> {
-  List<VoiceSessionEntity> _mySessions = [];
-  bool _isLoadingSessions = true;
-
-  bool _isPendingInviteForCurrentUser(
-    VoiceSessionEntity session,
-    int? currentUserId,
-  ) {
-    if (currentUserId == null) return false;
-    return session.participants.any(
-      (participant) =>
-          participant.userId == currentUserId &&
-          participant.status == 'Invited',
-    );
-  }
-
-  DateTime? _lastLoadTime;
-  Timer? _throttleTimer;
-  bool _pendingRefresh = false;
-
   @override
   void initState() {
     super.initState();
-    _loadMySessions();
-  }
-
-  @override
-  void dispose() {
-    _throttleTimer?.cancel();
-    super.dispose();
-  }
-
-  void _loadMySessions() {
-    if (!mounted) return;
-    final bloc = context.read<VoiceSessionBloc>();
-    if (bloc.isClosed) return;
-
-    // 1. Guard: Loading check
-    if (bloc.state.status == VoiceSessionStatus.loading) {
-      debugPrint(
-        "⚠️ [CommunicationPage] Refresh ignored: Bloc is already loading.",
-      );
-      return;
-    }
-
-    final now = DateTime.now();
-    const throttleDuration = Duration(seconds: 2);
-
-    // 2. Throttle check
-    if (_lastLoadTime != null) {
-      final difference = now.difference(_lastLoadTime!);
-      if (difference < throttleDuration) {
-        // Hysteresis: Mark as pending and schedule if not already scheduled
-        debugPrint(
-          "⏳ [CommunicationPage] Refresh throttled. Scheduled for later.",
-        );
-        _pendingRefresh = true;
-
-        if (_throttleTimer == null || !_throttleTimer!.isActive) {
-          final remaining = throttleDuration - difference;
-          _throttleTimer = Timer(remaining, () {
-            if (mounted && _pendingRefresh) {
-              _executeLoadSessions();
-              _pendingRefresh = false;
-            }
-          });
-        }
-        return;
-      }
-    }
-
-    // 3. Execute
-    _executeLoadSessions();
-  }
-
-  void _executeLoadSessions() {
-    if (!mounted) return;
-    final bloc = context.read<VoiceSessionBloc>();
-    if (bloc.isClosed) return;
-
-    debugPrint("🚀 [CommunicationPage] Sending GetMyVoiceSessionsEvent...");
-    _lastLoadTime = DateTime.now();
-    bloc.add(const GetMyVoiceSessionsEvent());
+    // İlk yükleme: BLoC zaten debounce transformer ile throttle yapıyor
+    context.read<VoiceSessionBloc>().add(const GetMyVoiceSessionsEvent());
   }
 
   @override
@@ -114,14 +29,9 @@ class _CommunicationPageState extends State<CommunicationPage> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final currentUserId = context.select<VoiceSessionBloc, int?>(
-      (bloc) => bloc.state.currentUserId,
+    final pendingInviteCount = context.select<VoiceSessionBloc, int>(
+      (bloc) => bloc.state.pendingInvitesCount,
     );
-    final pendingInviteCount = _mySessions
-        .where(
-          (session) => _isPendingInviteForCurrentUser(session, currentUserId),
-        )
-        .length;
 
     // Dinamik arka plan gradyanı
     final backgroundGradient = isDark
@@ -145,35 +55,35 @@ class _CommunicationPageState extends State<CommunicationPage> {
             stops: const [0.0, 0.5, 1.0],
           );
 
-    return BlocListener<VoiceSessionBloc, VoiceSessionState>(
-      listener: (context, state) {
-        if (state.status == VoiceSessionStatus.mySessionsLoaded &&
-            state.mySessions != null) {
-          setState(() {
-            // Sadece aktif oturumları göster (isActive = true)
-            _mySessions = state.mySessions!
-                .cast<VoiceSessionEntity>()
-                .where((s) => s.isActive)
-                .toList();
-            _isLoadingSessions = false;
-          });
-        } else if (state.status == VoiceSessionStatus.error) {
-          setState(() => _isLoadingSessions = false);
-        } else if (state.status == VoiceSessionStatus.loading) {
-          if (_mySessions.isEmpty) {
-            setState(() => _isLoadingSessions = true);
-          }
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(gradient: backgroundGradient),
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SafeArea(
-            bottom: false,
+    return Container(
+      decoration: BoxDecoration(gradient: backgroundGradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          bottom: false,
+          child: BlocListener<VoiceSessionBloc, VoiceSessionState>(
+            listenWhen: (prev, curr) {
+              final prevActiveId = prev.activeSession?.id;
+              final currActiveId = curr.activeSession?.id;
+              // Trigger detail fetch if active session changed OR if it's the same but details (session entity) are missing
+              return prevActiveId != currActiveId ||
+                  (currActiveId != null && curr.session?.id != currActiveId);
+            },
+            listener: (context, state) {
+              final activeSession = state.activeSession;
+              if (activeSession != null &&
+                  state.session?.id != activeSession.id &&
+                  state.status != VoiceSessionStatus.loading) {
+                context.read<VoiceSessionBloc>().add(
+                  GetVoiceSessionDetailsEvent(activeSession.id),
+                );
+              }
+            },
             child: RefreshIndicator(
               onRefresh: () async {
-                _loadMySessions();
+                context.read<VoiceSessionBloc>().add(
+                  const GetMyVoiceSessionsEvent(force: true),
+                );
                 await Future.delayed(const Duration(milliseconds: 500));
               },
               child: SingleChildScrollView(
@@ -214,10 +124,32 @@ class _CommunicationPageState extends State<CommunicationPage> {
                                 ? colorScheme.onSurface
                                 : colorScheme.onPrimary,
                             onTap: () async {
+                              final currentBloc = context
+                                  .read<VoiceSessionBloc>();
+                              if (currentBloc.state.activeSession != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      'Lütfen yeni bir grup oluşturmadan önce mevcut sürüşten ayrılın.',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    backgroundColor: colorScheme.error,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
                               await context.push(
                                 '/communication/create-group-ride',
                               );
-                              if (mounted) _loadMySessions();
+                              if (mounted) {
+                                context.read<VoiceSessionBloc>().add(
+                                  const GetMyVoiceSessionsEvent(force: true),
+                                );
+                              }
                             },
                           ),
                         ),
@@ -253,7 +185,11 @@ class _CommunicationPageState extends State<CommunicationPage> {
                                 size: 20,
                               ),
                               tooltip: 'Refresh',
-                              onPressed: _loadMySessions,
+                              onPressed: () {
+                                context.read<VoiceSessionBloc>().add(
+                                  const GetMyVoiceSessionsEvent(force: true),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -342,7 +278,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                     ],
 
                     // --- 3. ACTIVE GROUP KARTI (VoiceSession'dan yüklenir) ---
-                    _buildActiveSessionCard(colorScheme),
+                    const ActiveSessionCard(),
 
                     const SizedBox(height: 30),
 
@@ -403,149 +339,6 @@ class _CommunicationPageState extends State<CommunicationPage> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildActiveSessionCard(ColorScheme colorScheme) {
-    final currentUserId = context.select<VoiceSessionBloc, int?>(
-      (bloc) => bloc.state.currentUserId,
-    );
-
-    if (_isLoadingSessions) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: CircularProgressIndicator(color: colorScheme.primary),
-        ),
-      );
-    }
-
-    if (_mySessions.isEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: colorScheme.outline.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.groups_outlined,
-                  size: 48,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Aktif odanız yok',
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Yeni bir oda oluşturun veya davet bekleyin',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Aktif session varsa göster
-    final activeSession = _mySessions.first;
-    final participants = activeSession.participants
-        .where(
-          (p) =>
-              p.status == 'Joined' ||
-              p.status == 'Accepted' ||
-              p.status == 'Disconnected',
-        )
-        .toList();
-
-    return ActiveGroupCard(
-      groupName: activeSession.title,
-      currentParticipants: activeSession.activeParticipantCount,
-      maxParticipants: activeSession.maxParticipants,
-      destination: activeSession.destination,
-      ridingStyle: activeSession.ridingStyle,
-      difficulty: activeSession.difficulty,
-      isActive: activeSession.isActive,
-      onOpenPressed: () async {
-        final args = GroupRideArgs(
-          rideId: activeSession.rideId ?? activeSession.id,
-          sessionId: activeSession.id,
-          groupName: activeSession.title,
-          maxParticipants: activeSession.maxParticipants,
-          currentParticipants: activeSession.activeParticipantCount,
-        );
-        final result = await context.push<bool>(
-          '/communication/group-page',
-          extra: args,
-        );
-
-        if (result == true) {
-          // Force clear and reload
-          setState(() {
-            _mySessions = [];
-            _isLoadingSessions = true;
-          });
-          // Increased delay to ensure backend consistency (1500ms)
-          await Future.delayed(const Duration(milliseconds: 1500));
-          if (mounted) _loadMySessions();
-        } else {
-          if (mounted) _loadMySessions();
-        }
-      },
-      riderCards: participants.map((p) {
-        final isConnected = p.status == 'Joined' || p.status == 'Accepted';
-        final isMe = p.userId == currentUserId;
-
-        // Viewer Role Determination
-        RiderRole viewerRole = RiderRole.participant;
-        if (currentUserId != null &&
-            activeSession.hostUserId == currentUserId) {
-          viewerRole = RiderRole.host;
-        }
-
-        // Target Role Determination
-        RiderRole targetRole = RiderRole.participant;
-        if (p.userId == activeSession.hostUserId) {
-          targetRole = RiderRole.host;
-        }
-
-        return RiderCard(
-          firstName: p.firstName ?? '',
-          lastName: p.lastName ?? '',
-          profileImageUrl:
-              p.profileImage ?? 'https://i.pravatar.cc/150?u=${p.userId}',
-          phoneBatteryLevel: p.phoneBatteryLevel,
-          intercomBatteryLevel: p.intercomBatteryLevel,
-          signalStrength: p.signalStrength,
-          isMicOn: isConnected,
-          isSpeaking: isConnected,
-          isConnected: isConnected,
-          isMe: isMe,
-          role: targetRole,
-          viewerRole: viewerRole,
-          onKickUser: null,
-          onMuteUser: null,
-          onTransferHost: null,
-        );
-      }).toList(),
     );
   }
 

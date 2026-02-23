@@ -12,7 +12,6 @@ import '../bloc/notifications_bloc.dart';
 import '../bloc/notifications_event.dart';
 import '../bloc/notifications_state.dart';
 import '../../domain/entities/notification_entity.dart';
-import 'dart:convert';
 import 'package:go_router/go_router.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
 import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
@@ -93,7 +92,8 @@ class _NotificationsViewState extends State<_NotificationsView> {
 
     return BlocListener<VoiceSessionBloc, VoiceSessionState>(
       listenWhen: (previous, current) =>
-          previous.status != current.status || previous.message != current.message,
+          previous.status != current.status ||
+          previous.message != current.message,
       listener: (context, state) {
         if (state.status == VoiceSessionStatus.error && state.message != null) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -105,99 +105,172 @@ class _NotificationsViewState extends State<_NotificationsView> {
         }
       },
       child: Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Bildirimler',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: isDark ? Colors.white : Colors.black,
-          ),
-        ),
         backgroundColor: backgroundColor,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.playlist_add_check_circle_rounded),
-            color: AppColors.primary,
-            tooltip: "Hepsini Okundu İşaretle",
-            onPressed: () {
-              context.read<NotificationsBloc>().add(
-                MarkAllNotificationsReadEvent(),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Tüm bildirimler okundu.'),
-                  backgroundColor: AppColors.darkSurface,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            },
+        appBar: AppBar(
+          title: Text(
+            'Bildirimler',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
-        ],
-      ),
-      body: BlocConsumer<NotificationsBloc, NotificationsState>(
-        listener: (context, state) {
-          if (state.status == NotificationsStatus.failure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.errorMessage ?? 'Hata oluştu'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          // Loading İlk Açılış
-          if (state.status == NotificationsStatus.loading &&
-              state.notifications.isEmpty) {
-            return const Center(child: CircularProgressIndicator.adaptive());
-          }
-
-          // Boş Liste
-          if (state.notifications.isEmpty) {
-            return _buildEmptyState(context);
-          }
-
-          // Liste
-          return RefreshIndicator(
-            color: AppColors.primary,
-            backgroundColor: surfaceColor,
-            onRefresh: () async {
-              context.read<NotificationsBloc>().add(
-                RefreshNotificationsEvent(),
-              );
-            },
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.only(top: 8, bottom: 20),
-              itemCount: state.hasReachedMax
-                  ? state.notifications.length
-                  : state.notifications.length + 1,
-              itemBuilder: (context, index) {
-                if (index >= state.notifications.length) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+          backgroundColor: backgroundColor,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.playlist_add_check_circle_rounded),
+              color: AppColors.primary,
+              tooltip: "Hepsini Okundu İşaretle",
+              onPressed: () {
+                context.read<NotificationsBloc>().add(
+                  MarkAllNotificationsReadEvent(),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Tüm bildirimler okundu.'),
+                    backgroundColor: AppColors.darkSurface,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                }
-
-                final notification = state.notifications[index];
-                return _NotificationItemModern(notification: notification);
+                  ),
+                );
               },
             ),
-          );
-        },
-      ),
+          ],
+        ),
+        body: BlocConsumer<NotificationsBloc, NotificationsState>(
+          listener: (context, state) {
+            if (state.status == NotificationsStatus.failure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage ?? 'Hata oluştu'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            // Loading İlk Açılış
+            if (state.status == NotificationsStatus.loading &&
+                state.notifications.isEmpty) {
+              return const Center(child: CircularProgressIndicator.adaptive());
+            }
+
+            // Boş Liste
+            if (state.notifications.isEmpty) {
+              return _buildEmptyState(context);
+            }
+
+            // Gruplandırma Mantığı
+            final groupedItems = _groupNotifications(state.notifications);
+
+            // Liste
+            return RefreshIndicator(
+              color: AppColors.primary,
+              backgroundColor: surfaceColor,
+              onRefresh: () async {
+                context.read<NotificationsBloc>().add(
+                  RefreshNotificationsEvent(),
+                );
+              },
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(top: 8, bottom: 20),
+                // Pagination loader için +1
+                itemCount: state.hasReachedMax
+                    ? groupedItems.length
+                    : groupedItems.length + 1,
+                itemBuilder: (context, index) {
+                  if (index >= groupedItems.length) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: CircularProgressIndicator.adaptive(
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    );
+                  }
+
+                  final item = groupedItems[index];
+
+                  if (item is String) {
+                    // Başlık (Header)
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                      child: Text(
+                        item,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    );
+                  } else if (item is NotificationEntity) {
+                    // Bildirim Öğesi
+                    return _NotificationItemModern(notification: item);
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
+  }
+
+  // Bildirimleri gruplayıp düz bir liste (Header + Item karışık) haline getirir
+  List<dynamic> _groupNotifications(List<NotificationEntity> notifications) {
+    final groupedList = <dynamic>[];
+    if (notifications.isEmpty) return groupedList;
+
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1));
+
+    // Grupları tutacak geçici map
+    final groups = <String, List<NotificationEntity>>{
+      'Bugün': [],
+      'Dün': [],
+      'Bu Hafta': [],
+      'Bu Ay': [],
+      'Daha Eski': [],
+    };
+
+    for (var notification in notifications) {
+      final date = notification.createdAt;
+      final diff = now.difference(date);
+
+      if (date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day) {
+        groups['Bugün']!.add(notification);
+      } else if (date.year == yesterday.year &&
+          date.month == yesterday.month &&
+          date.day == yesterday.day) {
+        groups['Dün']!.add(notification);
+      } else if (diff.inDays < 7) {
+        groups['Bu Hafta']!.add(notification);
+      } else if (diff.inDays < 30) {
+        groups['Bu Ay']!.add(notification);
+      } else {
+        groups['Daha Eski']!.add(notification);
+      }
+    }
+
+    // Map'ten listeye çevir (Sadece dolu grupları ekle)
+    for (var entry in groups.entries) {
+      if (entry.value.isNotEmpty) {
+        groupedList.add(entry.key); // Başlık
+        groupedList.addAll(entry.value); // İçerikler
+      }
+    }
+
+    return groupedList;
   }
 
   Widget _buildEmptyState(BuildContext context) {
@@ -422,19 +495,81 @@ class _NotificationItemModern extends StatelessWidget {
   }
 
   Future<void> _handleAcceptInvite(BuildContext context) async {
-    final sessionId = notification.voiceSessionId;
+    final sessionId = notification.sessionId;
     // Eğer voiceSessionId yoksa eski usul sessionId ara (Geriye uyumluluk)
     final effectiveSessionId = sessionId ?? _getLegacySessionId(notification);
 
-    if (effectiveSessionId != null) {
-      // 1. Bildirimi sil (Optimistik)
-      _deleteNotification(context);
+    debugPrint("\uD83D\uDD14 [Notification] _handleAcceptInvite Triggered");
+    debugPrint(
+      "\uD83D\uDD14 [Notification] Raw Data JSON: ${notification.dataJson}",
+    );
+    debugPrint("\uD83D\uDD14 [Notification] Parsed sessionId: $sessionId");
+    debugPrint(
+      "\uD83D\uDD14 [Notification] Parsed rideId: ${notification.rideId}",
+    );
+    debugPrint(
+      "\uD83D\uDD14 [Notification] Effective SessionId: $effectiveSessionId",
+    );
 
-      // 2. Gruba Katılma İsteği ve Navigasyon
-      await _goToGroupPage(context, effectiveSessionId);
+    if (effectiveSessionId != null) {
+      // 1. Gerekli referansları güvene al (widget unmount olmadan önce)
+      final router = GoRouter.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      final voiceBloc = context.read<VoiceSessionBloc>();
+      final notifBloc = context.read<NotificationsBloc>();
+
+      // --- Singleton Session Guard: Aktif oturum varsa onay diyalogu göster ---
+      final currentActiveSession = voiceBloc.state.activeSession;
+      if (currentActiveSession != null) {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Aktif S\u00fcr\u00fc\u015ften Ayr\u0131l'),
+            content: Text(
+              '"${currentActiveSession.title}" adl\u0131 s\u00fcr\u00fc\u015fte zaten aktifsiniz. '
+              'Bu daveti kabul etti\u011finizde mevcut s\u00fcr\u00fc\u015ften ayr\u0131lacaks\u0131n\u0131z. '
+              'Devam etmek istiyor musunuz?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('\u0130ptal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Evet, Ayr\u0131l ve Kat\u0131l'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed != true) return;
+
+        // Kullan\u0131c\u0131 onaylad\u0131 - \u00f6nce mevcut oturumdan ayr\u0131l
+        voiceBloc.add(LeaveVoiceSessionEvent(currentActiveSession.id));
+        // K\u0131sa bir bekleme ile state g\u00fcncellenmesini bekle
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+
+      // 2. Bildirimi sil (Optimistik)
+      notifBloc.add(DeleteNotificationEvent(notification.id));
+
+      // 3. Gruba Kat\u0131lma \u0130ste\u011fi ve Navigasyon
+      await _goToGroupPageSafe(
+        router,
+        messenger,
+        voiceBloc,
+        effectiveSessionId,
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Oturum bilgisine ulaşılamadı.")),
+        const SnackBar(
+          content: Text("Oturum bilgisine ula\u015f\u0131lamad\u0131."),
+        ),
       );
     }
   }
@@ -450,45 +585,102 @@ class _NotificationItemModern extends StatelessWidget {
     }
   }
 
-  void _navigateToVoiceSession(BuildContext context) {
+  Future<void> _navigateToVoiceSession(BuildContext context) async {
     final sessionId =
-        notification.voiceSessionId ?? _getLegacySessionId(notification);
+        notification.sessionId ?? _getLegacySessionId(notification);
 
-    if (sessionId != null) {
-      _goToGroupPage(context, sessionId);
-    } else {
-      debugPrint("⚠️ Bildirim detayında ID bulunamadı.");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Oturum bilgisine ulaşılamadı. (ID Yok)")),
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final voiceBloc = context.read<VoiceSessionBloc>();
+
+    // --- Singleton Session Guard: Aktif oturum varsa onay diyalogu göster ---
+    final currentActiveSession = voiceBloc.state.activeSession;
+    if (currentActiveSession != null) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Aktif S\u00fcr\u00fc\u015ften Ayr\u0131l'),
+          content: Text(
+            '"${currentActiveSession.title}" adl\u0131 s\u00fcr\u00fc\u015fte zaten aktifsiniz. '
+            'Bu gruba ge\u00e7ti\u011finizde mevcut s\u00fcr\u00fc\u015ften ayr\u0131lacaks\u0131n\u0131z. '
+            'Devam etmek istiyor musunuz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('\u0130ptal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Evet, Ayr\u0131l ve Ge\u00e7'),
+            ),
+          ],
+        ),
       );
+
+      if (confirmed != true) return;
+
+      // Kullan\u0131c\u0131 onaylad\u0131 - \u00f6nce mevcut oturumdan ayr\u0131l
+      voiceBloc.add(LeaveVoiceSessionEvent(currentActiveSession.id));
+      await Future.delayed(const Duration(milliseconds: 800));
     }
+
+    // Pass whatever we have; _goToGroupPageSafe handles validating sessionId and rideId
+    _goToGroupPageSafe(router, messenger, voiceBloc, sessionId);
   }
 
   // Eski tip JSON parse (Geriye uyumluluk için, eğer entity getter null dönerse)
   int? _getLegacySessionId(NotificationEntity notification) {
-    if (notification.relatedId != null) return notification.relatedId;
-    if (notification.dataJson != null) {
-      try {
-        final data = json.decode(notification.dataJson!);
-        if (data is Map && data.containsKey('sessionId')) {
-          return data['sessionId'];
-        }
-      } catch (e) {
-        debugPrint("JSON Parse hatası: $e");
-      }
-    }
-    return null;
+    return notification.relatedId;
   }
 
-  Future<void> _goToGroupPage(BuildContext context, int sessionId) async {
-    final voiceBloc = context.read<VoiceSessionBloc>();
-    if (!voiceBloc.isClosed) {
-      voiceBloc.add(AcceptVoiceSessionInviteEvent(sessionId));
+  Future<void> _goToGroupPageSafe(
+    GoRouter router,
+    ScaffoldMessengerState messenger,
+    VoiceSessionBloc voiceBloc,
+    int? sessionId,
+  ) async {
+    final fallbackRideId = notification.rideId;
+    final validSessionId = (sessionId != null && sessionId > 0)
+        ? sessionId
+        : null;
+    final validRideId = (fallbackRideId != null && fallbackRideId > 0)
+        ? fallbackRideId
+        : null;
+
+    if (validSessionId == null && validRideId == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Oturum veya Sürüş ID bulunamadı.")),
+      );
+      return;
+    }
+
+    if (validSessionId != null && !voiceBloc.isClosed) {
+      final accepted = await _acceptInviteAndWaitResult(
+        voiceBloc: voiceBloc,
+        sessionId: validSessionId,
+      );
+
+      if (!accepted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Sesli oturum daveti kabul edilemedi. Lütfen tekrar deneyin.",
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        // Continue navigation anyway in case the ride itself exists
+      }
     }
 
     final groupArgs = GroupRideArgs(
-      rideId: notification.groupRideId ?? sessionId,
-      sessionId: sessionId,
+      rideId: validRideId ?? validSessionId ?? 0,
+      sessionId: validSessionId,
       groupName:
           notification.groupName ??
           "${notification.senderUsername ?? 'Arkadaş'} Daveti",
@@ -496,10 +688,59 @@ class _NotificationItemModern extends StatelessWidget {
       privacy: "Private",
       destination: "Bilinmiyor",
       ridingStyle: "Bilinmiyor",
+      forceBackToCommunication: true,
     );
 
-    if (!context.mounted) return;
-    context.go('/communication/group-page', extra: groupArgs);
+    router.go('/communication/group-page', extra: groupArgs);
+  }
+
+  Future<bool> _acceptInviteAndWaitResult({
+    required VoiceSessionBloc voiceBloc,
+    required int sessionId,
+  }) async {
+    bool isTargetState(VoiceSessionState state) {
+      final detailsLoadedForSession =
+          state.status == VoiceSessionStatus.detailsLoaded &&
+          state.session?.id == sessionId;
+      final acceptedForSession =
+          state.status == VoiceSessionStatus.inviteAccepted &&
+          state.sessionId == sessionId;
+      final joinedForSession =
+          state.status == VoiceSessionStatus.joined &&
+          (state.sessionId == sessionId || state.session?.id == sessionId);
+
+      return acceptedForSession ||
+          joinedForSession ||
+          detailsLoadedForSession ||
+          state.status == VoiceSessionStatus.error;
+    }
+
+    // 1. Önce mevcut state'e bak (Event zaten işlenmiş veya devam ediyor olabilir)
+    if (isTargetState(voiceBloc.state)) {
+      if (voiceBloc.state.status == VoiceSessionStatus.error) return false;
+      // Eğer zaten bu oturumdaysak, event atmaya gerek bile kalmayabilir ama yine de sağlamlaştırıyoruz
+    }
+
+    // 2. Stream dinlemeyi başlat
+    final acceptanceFuture = voiceBloc.stream.firstWhere(
+      (state) => isTargetState(state),
+    );
+
+    // 3. İsteği gönder
+    voiceBloc.add(AcceptVoiceSessionInviteEvent(sessionId));
+
+    try {
+      final nextState = await acceptanceFuture.timeout(
+        const Duration(seconds: 8),
+      );
+      return nextState.status != VoiceSessionStatus.error;
+    } on Exception {
+      // Event kaçırma / geç state güncelleme durumlarında akışı bloklamayalım.
+      // Optimistik olarak true dönüyoruz ki yönlendirme gerçekleşsin.
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // Avatar ve Köşesindeki İkon

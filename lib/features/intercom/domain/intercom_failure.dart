@@ -13,6 +13,7 @@ enum IntercomFailureCode {
   webrtcIceFailed,
   transportSwitchFailed,
   reconnectTtlExceeded,
+  peerUnavailable,
 }
 
 @immutable

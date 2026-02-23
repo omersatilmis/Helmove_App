@@ -13,9 +13,7 @@ class GroupHeaderSection extends StatelessWidget {
   final VoiceSessionEntity? sessionDetails;
   final bool isLoadingRide;
   final RtcConnectionStatus rtcStatus;
-  final bool isMicOn;
   final VoidCallback onBack;
-  final VoidCallback onToggleMic;
 
   const GroupHeaderSection({
     super.key,
@@ -24,9 +22,7 @@ class GroupHeaderSection extends StatelessWidget {
     required this.sessionDetails,
     required this.isLoadingRide,
     required this.rtcStatus,
-    required this.isMicOn,
     required this.onBack,
-    required this.onToggleMic,
   });
 
   @override
@@ -231,24 +227,6 @@ class GroupHeaderSection extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (rtcStatus == RtcConnectionStatus.sfuConnected) ...[
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: onToggleMic,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: isMicOn ? Colors.white : Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        isMicOn ? Icons.mic : Icons.mic_off,
-                        color: isMicOn ? connectionColor : Colors.white,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

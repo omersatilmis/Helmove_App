@@ -84,3 +84,10 @@ class OtherUserTypingReceived extends ChatEvent {
   @override
   List<Object> get props => [isTyping];
 }
+
+class RefreshMessagesReadStatus extends ChatEvent {
+  const RefreshMessagesReadStatus();
+
+  @override
+  List<Object> get props => [];
+}

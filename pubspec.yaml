@@ -63,6 +63,10 @@ dependencies:
   flutter_callkit_incoming: ^3.0.0
   uuid: ^4.5.1
   rxdart: ^0.28.0
+  package_info_plus: ^9.0.0
+  url_launcher: ^6.3.2
+  flutter_background_service: ^5.1.0
+  flutter_local_notifications: ^20.1.0
 dev_dependencies:
   build_runner: ^2.4.10
   widgetbook_generator: ^3.6.0

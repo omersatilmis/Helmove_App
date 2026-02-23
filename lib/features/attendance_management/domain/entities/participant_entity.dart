@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'group_role.dart';
 
 class ParticipantEntity extends Equatable {
   final int userId;
@@ -16,8 +17,11 @@ class ParticipantEntity extends Equatable {
     this.lastName,
     this.profileImageUrl,
     required this.status,
+    required this.role,
     this.requestDate,
   });
+
+  final GroupRole role;
 
   @override
   List<Object?> get props => [

@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:moto_comm_app_1/core/di/injection_container.dart' as di;
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
@@ -11,6 +12,7 @@ import 'package:moto_comm_app_1/core/di/injection_container.dart';
 import 'package:moto_comm_app_1/app/app_router.dart';
 import 'package:moto_comm_app_1/core/theme/app_theme.dart';
 import 'package:moto_comm_app_1/core/theme/theme_provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/auth/domain/repositories/auth_repository.dart';
@@ -21,6 +23,7 @@ import 'package:moto_comm_app_1/core/services/real_time_service.dart';
 import 'package:moto_comm_app_1/features/intercom/domain/intercom_engine.dart';
 import 'package:moto_comm_app_1/features/intercom/domain/intercom_models.dart';
 import 'package:moto_comm_app_1/features/intercom/presentation/widgets/intercom_debug_overlay.dart';
+import 'package:moto_comm_app_1/core/presentation/widgets/connection_status_overlay.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
@@ -89,9 +92,23 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _themeProvider.addListener(_onThemeChanged);
 
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
-      final online = results.isNotEmpty &&
-          !results.contains(ConnectivityResult.none);
-      _intercomEngine.onConnectivityChanged(online: online);
+      final online =
+          results.isNotEmpty && !results.contains(ConnectivityResult.none);
+
+      // Network tipini belirle — Smart Reconnect için
+      String networkType = 'none';
+      if (results.contains(ConnectivityResult.wifi)) {
+        networkType = 'wifi';
+      } else if (results.contains(ConnectivityResult.mobile)) {
+        networkType = 'mobile';
+      } else if (results.contains(ConnectivityResult.ethernet)) {
+        networkType = 'ethernet';
+      }
+
+      _intercomEngine.onConnectivityChanged(
+        online: online,
+        networkType: networkType,
+      );
     });
   }
 
@@ -133,23 +150,31 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // Provider'ları tamamen kaldırdık - GetIt'ten erişilecek veya
     // sayfa seviyesinde wrap edilecek. MaterialApp.router(builder:)
     // bile mount derinliği artırıyor.
-    return MaterialApp.router(
-      title: 'Rider App',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: _themeProvider.themeMode,
-      routerConfig: _router,
-      builder: (context, child) {
-        if (child == null) return const SizedBox.shrink();
-        if (!kDebugMode) return child;
-        return Stack(
-          children: [
-            child,
-            const IntercomDebugOverlay(),
-          ],
-        );
-      },
-      debugShowCheckedModeBanner: false,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: _authProvider),
+        ChangeNotifierProvider.value(value: _themeProvider),
+        ChangeNotifierProvider.value(value: sl<ProfileProvider>()),
+      ],
+      child: MaterialApp.router(
+        title: 'Rider App',
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: _themeProvider.themeMode,
+        routerConfig: _router,
+        builder: (context, child) {
+          if (child == null) return const SizedBox.shrink();
+          if (!kDebugMode) return child;
+          return Stack(
+            children: [
+              child,
+              const ConnectionStatusOverlay(),
+              if (kDebugMode) const IntercomDebugOverlay(),
+            ],
+          );
+        },
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }

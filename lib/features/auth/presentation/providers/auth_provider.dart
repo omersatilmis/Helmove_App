@@ -22,12 +22,19 @@ class AuthProvider extends ChangeNotifier {
     this._notificationService, // Constructor updated
     this._appSession,
   ) {
-    _appSessionUserIdSubscription = _appSession.currentUserIdStream.distinct().listen((userId) {
-      if (userId == null && _currentUser != null) {
-        _currentUser = null;
-        notifyListeners();
-      }
-    });
+    // Constructor içinde AppSession'dan gelen veriyi al
+    if (_appSession.currentUser != null) {
+      _currentUser = _appSession.currentUser;
+    }
+
+    _appSessionUserIdSubscription = _appSession.currentUserIdStream
+        .distinct()
+        .listen((userId) {
+          if (userId == null && _currentUser != null) {
+            _currentUser = null;
+            notifyListeners();
+          }
+        });
   }
 
   bool _isLoading = false;
@@ -160,6 +167,13 @@ class AuthProvider extends ChangeNotifier {
 
   // Auth check
   Future<bool> checkAuthStatus() async {
+    // 0. Check in-memory state first (Sync check)
+    if (_currentUser != null) return true;
+    if (_appSession.currentUser != null) {
+      _currentUser = _appSession.currentUser;
+      return true;
+    }
+
     final isLoggedIn = await _authRepository.isLoggedIn();
 
     if (isLoggedIn) {

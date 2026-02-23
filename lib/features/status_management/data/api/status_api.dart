@@ -36,15 +36,34 @@ class StatusApi {
         data: {'newDateTime': newDateTime.toIso8601String()},
       );
     } on DioException catch (e) {
-      throw Exception(_parseErrorMessage(e.response?.data));
+      throw Exception(_parseErrorMessage(e));
     }
   }
 
-  String _parseErrorMessage(dynamic data) {
-    if (data == null) return 'Bir hata oluştu';
-    if (data is Map<String, dynamic>) {
-      return data['message'] ?? data['title'] ?? 'Bir hata oluştu';
+  String _parseErrorMessage(dynamic error) {
+    if (error is DioException) {
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return 'Bağlantı zaman aşımına uğradı.';
+        case DioExceptionType.badResponse:
+          final data = error.response?.data;
+          if (data is Map<String, dynamic>) {
+            return data['message'] ??
+                data['title'] ??
+                'Sunucu hatası (${error.response?.statusCode})';
+          }
+          return 'Sunucu hatası (${error.response?.statusCode})';
+        case DioExceptionType.connectionError:
+          return 'İnternet bağlantısı yok.';
+        default:
+          return 'Bir ağ hatası oluştu.';
+      }
     }
-    return data.toString();
+    if (error is Map<String, dynamic>) {
+      return error['message'] ?? error['title'] ?? 'Bir hata oluştu';
+    }
+    return error?.toString() ?? 'Bilinmeyen bir hata oluştu';
   }
 }

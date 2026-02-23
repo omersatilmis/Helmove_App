@@ -75,7 +75,7 @@ class ErrorHandler {
           return "İstek iptal edildi.";
 
         default:
-          return "Bilinmeyen bir bağlantı hatası oluştu.";
+          return "Bağlantı hatası: ${error.message ?? error.type.name}";
       }
     }
 
@@ -91,18 +91,26 @@ class ErrorHandler {
     switch (statusCode) {
       case 400:
       case 422:
-        throw ValidationException(message ?? 'Geçersiz veri');
+        throw ValidationException(
+          message ?? 'Geçersiz veri girişi ($statusCode)',
+        );
       case 401:
       case 403:
-        throw AuthException(message ?? 'Yetkilendirme hatası');
+        throw AuthException(message ?? 'Yetkilendirme hatası ($statusCode)');
       case 404:
-        throw NotFoundException(message ?? 'Kaynak bulunamadı');
+        throw NotFoundException(message ?? 'Kaynak bulunamadı ($statusCode)');
       case 500:
       case 502:
       case 503:
-        throw ServerException(message ?? 'Sunucu hatası', statusCode);
+        throw ServerException(
+          message ?? 'Sunucu hatası ($statusCode)',
+          statusCode,
+        );
       default:
-        throw ServerException(message ?? 'Bilinmeyen hata', statusCode);
+        throw ServerException(
+          message ?? 'Beklenmeyen hata ($statusCode)',
+          statusCode,
+        );
     }
   }
 }

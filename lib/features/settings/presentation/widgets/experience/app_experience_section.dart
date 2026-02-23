@@ -54,7 +54,7 @@ class _AppExperienceSectionState extends State<AppExperienceSection> {
           title: "Bildirimler",
           trailing: Switch.adaptive(
             value: _notificationsEnabled,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
             onChanged: (val) => setState(() => _notificationsEnabled = val),
           ),
         ),

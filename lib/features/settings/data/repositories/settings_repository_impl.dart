@@ -5,11 +5,16 @@ import '../../domain/entities/privacy_settings_entity.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../datasources/settings_remote_data_source.dart';
 import '../models/privacy_settings_model.dart';
+import '../../../intercom/domain/intercom_engine.dart';
 
 class SettingsRepositoryImpl implements SettingsRepository {
   final SettingsRemoteDataSource remoteDataSource;
+  final IntercomEngine intercomEngine;
 
-  SettingsRepositoryImpl({required this.remoteDataSource});
+  SettingsRepositoryImpl({
+    required this.remoteDataSource,
+    required this.intercomEngine,
+  });
 
   @override
   Future<Either<Failure, void>> updatePrivacy(
@@ -48,7 +53,10 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<Either<Failure, void>> updateAudio() async {
     try {
-      return Right(await remoteDataSource.updateAudio());
+      await remoteDataSource.updateAudio();
+      // Notify engine immediately for real-time changes (e.g. Noise Suppression)
+      await intercomEngine.onAudioSettingsChanged();
+      return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     }

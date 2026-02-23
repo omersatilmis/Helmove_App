@@ -18,6 +18,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final MessageSignalRService messageSignalRService;
 
   Timer? _typingTimer;
+  StreamSubscription<void>? _messagesReadSubscription;
 
   ChatBloc({
     required this.getMessages,
@@ -35,6 +36,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<ReceiveMessageEvent>(_onReceiveMessage);
     on<UpdateTypingStatus>(_onUpdateTypingStatus);
     on<OtherUserTypingReceived>(_onOtherUserTypingReceived);
+    on<RefreshMessagesReadStatus>(_onRefreshMessagesReadStatus);
 
     // Set up SignalR Direct Message listener
     messageSignalRService.setOnReceiveDirectMessage((messageData) {
@@ -53,6 +55,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             add(OtherUserTypingReceived(isTyping));
           }
         }
+      }
+    });
+
+    // Set up SignalR MessagesRead listener
+    _messagesReadSubscription = messageSignalRService.onMessagesRead.listen((_) {
+      if (!isClosed) {
+        add(const RefreshMessagesReadStatus());
       }
     });
   }
@@ -172,9 +181,21 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
   }
 
+  Future<void> _onRefreshMessagesReadStatus(
+    RefreshMessagesReadStatus event,
+    Emitter<ChatState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is ChatLoaded) {
+      // Reload messages to get updated read status
+      add(LoadMessages(currentState.otherUserId));
+    }
+  }
+
   @override
   Future<void> close() {
     _typingTimer?.cancel();
+    _messagesReadSubscription?.cancel();
     return super.close();
   }
 }

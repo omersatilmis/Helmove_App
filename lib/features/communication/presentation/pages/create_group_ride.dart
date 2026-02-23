@@ -67,16 +67,24 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     final maxParticipants = participantOptions[selectedMaxParticipantsKey] ?? 6;
 
     final descriptionText = _descriptionController.text.trim();
+
+    // InviteArgs.fromExtra() Map yapısına uygun format:
+    //   sessionId  → 0 (henüz oluşturulmadı, invite sonrası oluşacak)
+    //   isFromCreateGroup → true  (redirect guard'ın isValid kontrolü için gerekli)
+    //   groupData  → grup oluşturma bilgileri
     final data = {
-      'groupName': finalGroupName,
-      'maxParticipants': maxParticipants,
-      'privacy': selectedPrivacy,
-      'destination': _destinationController.text.trim(),
-      'ridingStyle': selectedRidingStyle,
-      'difficulty': selectedDifficulty,
-      'description': descriptionText.isNotEmpty
-          ? descriptionText
-          : "belirlenmedi",
+      'isFromCreateGroup': true,
+      'groupData': {
+        'groupName': finalGroupName,
+        'maxParticipants': maxParticipants,
+        'privacy': selectedPrivacy,
+        'destination': _destinationController.text.trim(),
+        'ridingStyle': selectedRidingStyle,
+        'difficulty': selectedDifficulty,
+        'description': descriptionText.isNotEmpty
+            ? descriptionText
+            : "belirlenmedi",
+      },
     };
 
     context.push('/communication/invite', extra: data);
@@ -99,7 +107,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              colorScheme.primary.withValues(alpha:0.08),
+              colorScheme.primary.withValues(alpha: 0.08),
               colorScheme.surface,
               colorScheme.surface,
             ],

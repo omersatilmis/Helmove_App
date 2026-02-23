@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 
 class NotificationEntity extends Equatable {
@@ -27,45 +29,75 @@ class NotificationEntity extends Equatable {
     this.dataJson,
   });
 
-  // Helper getters for parsing dataJson safely
-  int? get voiceSessionId {
-    if (dataJson == null) return null;
-    // Simple parsing, assuming dataJson is valid JSON string
+  Map<String, dynamic>? get _parsedDataJson {
+    final raw = dataJson;
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+
     try {
-      // Note: In real logic, we should use jsonDecode.
-      // But since this is an entity, we keep it simple or use a helper.
-      // Better to do this parsing in Model or use logic here.
-      // Let's use a regex or check if we can import dart:convert.
-      // Entities usually shouldn't depend on dart:convert but it's part of dart:core essentially.
-      // Actually, better to parse keys manually or rely on the fact that dataJson is string.
-      final RegExp regExp = RegExp(r'"voiceSessionId":\s*(\d+)');
-      final match = regExp.firstMatch(dataJson!);
-      return match != null ? int.parse(match.group(1)!) : null;
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return decoded.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+      }
     } catch (_) {
       return null;
     }
+
+    return null;
   }
 
-  int? get groupRideId {
-    if (dataJson == null) return null;
-    try {
-      final RegExp regExp = RegExp(r'"groupRideId":\s*(\d+)');
-      final match = regExp.firstMatch(dataJson!);
-      return match != null ? int.parse(match.group(1)!) : null;
-    } catch (_) {
+  int? _readIntFromData(List<String> keys) {
+    final data = _parsedDataJson;
+    if (data == null) {
       return null;
     }
+
+    for (final key in keys) {
+      final value = data[key];
+      if (value == null) continue;
+      if (value is int) return value;
+      final parsed = int.tryParse(value.toString());
+      if (parsed != null) return parsed;
+    }
+
+    return null;
   }
+
+  String? _readStringFromData(List<String> keys) {
+    final data = _parsedDataJson;
+    if (data == null) {
+      return null;
+    }
+
+    for (final key in keys) {
+      final value = data[key];
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+
+    return null;
+  }
+
+  // Canonical keys: sessionId and rideId.
+  // Legacy aliases are still read for backward compatibility.
+  int? get sessionId =>
+      _readIntFromData(const ['sessionId', 'voiceSessionId']) ?? relatedId;
+
+  int? get rideId => _readIntFromData(const ['rideId', 'groupRideId']);
+
+  // Backward-compatible aliases used by existing UI code.
+  int? get voiceSessionId => sessionId;
+  int? get groupRideId => rideId;
 
   String? get groupName {
-    if (dataJson == null) return null;
-    try {
-      final RegExp regExp = RegExp(r'"groupName":\s*"([^"]+)"');
-      final match = regExp.firstMatch(dataJson!);
-      return match?.group(1);
-    } catch (_) {
-      return null;
-    }
+    return _readStringFromData(const ['groupName', 'rideTitle', 'title']);
   }
 
   @override

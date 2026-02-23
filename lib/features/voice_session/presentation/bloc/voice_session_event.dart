@@ -38,6 +38,24 @@ class LeaveVoiceSessionEvent extends VoiceSessionEvent {
   List<Object?> get props => [sessionId];
 }
 
+class EndVoiceSessionEvent extends VoiceSessionEvent {
+  final int sessionId;
+
+  const EndVoiceSessionEvent(this.sessionId);
+
+  @override
+  List<Object?> get props => [sessionId];
+}
+
+class TeardownVoiceSessionLocalEvent extends VoiceSessionEvent {
+  final int? sessionId;
+
+  const TeardownVoiceSessionLocalEvent({this.sessionId});
+
+  @override
+  List<Object?> get props => [sessionId];
+}
+
 class InviteUsersEvent extends VoiceSessionEvent {
   final int sessionId;
   final InviteUsersRequestDto request;
@@ -51,16 +69,22 @@ class InviteUsersEvent extends VoiceSessionEvent {
 /// Belirli bir session'ın detaylarını getir
 class GetVoiceSessionDetailsEvent extends VoiceSessionEvent {
   final int sessionId;
+  final bool force;
 
-  const GetVoiceSessionDetailsEvent(this.sessionId);
+  const GetVoiceSessionDetailsEvent(this.sessionId, {this.force = false});
 
   @override
-  List<Object?> get props => [sessionId];
+  List<Object?> get props => [sessionId, force];
 }
 
 /// Kullanıcının aktif session'larını getir
 class GetMyVoiceSessionsEvent extends VoiceSessionEvent {
-  const GetMyVoiceSessionsEvent();
+  final bool force;
+
+  const GetMyVoiceSessionsEvent({this.force = false});
+
+  @override
+  List<Object?> get props => [force];
 }
 
 /// Daveti kabul et
@@ -73,22 +97,6 @@ class AcceptVoiceSessionInviteEvent extends VoiceSessionEvent {
   List<Object?> get props => [sessionId];
 }
 
-class VoiceSessionParticipantJoinedEvent extends VoiceSessionEvent {
-  final String userId;
-  final String? roomId;
-  const VoiceSessionParticipantJoinedEvent(this.userId, {this.roomId});
-  @override
-  List<Object?> get props => [userId, roomId];
-}
-
-class VoiceSessionParticipantLeftEvent extends VoiceSessionEvent {
-  final String userId;
-  final String? roomId;
-  const VoiceSessionParticipantLeftEvent(this.userId, {this.roomId});
-  @override
-  List<Object?> get props => [userId, roomId];
-}
-
 class VoiceSessionForceRemovedEvent extends VoiceSessionEvent {
   final int sessionId;
   final String? reason;
@@ -99,12 +107,64 @@ class VoiceSessionForceRemovedEvent extends VoiceSessionEvent {
   List<Object?> get props => [sessionId, reason];
 }
 
+class RideTerminatedVoiceSessionEvent extends VoiceSessionEvent {
+  final String? rideId;
+
+  const RideTerminatedVoiceSessionEvent(this.rideId);
+
+  @override
+  List<Object?> get props => [rideId];
+}
+
+class VoiceSessionMembershipDeltaEvent extends VoiceSessionEvent {
+  final int sessionId;
+  final String userId;
+
+  /// Target status: 'Joined', 'Left', or 'Disconnected'.
+  final String nextStatus;
+  final int? version;
+
+  const VoiceSessionMembershipDeltaEvent({
+    required this.sessionId,
+    required this.userId,
+    required this.nextStatus,
+    this.version,
+  });
+
+  @override
+  List<Object?> get props => [sessionId, userId, nextStatus, version];
+}
+
 class KickUserEvent extends VoiceSessionEvent {
   final int sessionId;
   final int targetUserId;
   const KickUserEvent(this.sessionId, this.targetUserId);
   @override
   List<Object?> get props => [sessionId, targetUserId];
+}
+
+class KickParticipantEvent extends VoiceSessionEvent {
+  final int rideId;
+  final int targetUserId;
+  const KickParticipantEvent(this.rideId, this.targetUserId);
+  @override
+  List<Object?> get props => [rideId, targetUserId];
+}
+
+class PromoteParticipantEvent extends VoiceSessionEvent {
+  final int rideId;
+  final int targetUserId;
+  const PromoteParticipantEvent(this.rideId, this.targetUserId);
+  @override
+  List<Object?> get props => [rideId, targetUserId];
+}
+
+class DemoteParticipantEvent extends VoiceSessionEvent {
+  final int rideId;
+  final int targetUserId;
+  const DemoteParticipantEvent(this.rideId, this.targetUserId);
+  @override
+  List<Object?> get props => [rideId, targetUserId];
 }
 
 class MuteUserEvent extends VoiceSessionEvent {
@@ -149,90 +209,12 @@ class DisconnectFromLiveKitEvent extends VoiceSessionEvent {
   const DisconnectFromLiveKitEvent();
 }
 
-/// Mikrofon aç/kapat.
+/// Toggle microphone.
 class ToggleMicrophoneEvent extends VoiceSessionEvent {
   const ToggleMicrophoneEvent();
 }
 
-/// Mikrofon durumu dışarıdan (service'den) değişti (internal event).
-class LiveKitMicStateChangedEvent extends VoiceSessionEvent {
-  final bool isEnabled;
-  const LiveKitMicStateChangedEvent(this.isEnabled);
-  @override
-  List<Object?> get props => [isEnabled];
-}
-
-/// LiveKit bağlantı durumu değişti (internal event).
-class LiveKitConnectionChangedEvent extends VoiceSessionEvent {
-  final String connectionState; // connected, disconnected, reconnecting
-  const LiveKitConnectionChangedEvent(this.connectionState);
-  @override
-  List<Object?> get props => [connectionState];
-}
-
-/// Aktif konuşmacılar değişti (internal event).
-class ActiveSpeakersChangedEvent extends VoiceSessionEvent {
-  final List<String> speakerIdentities;
-  const ActiveSpeakersChangedEvent(this.speakerIdentities);
-  @override
-  List<Object?> get props => [speakerIdentities];
-}
-
-// ============================================================
-// Headless P2P Events (RTC Orchestrator)
-// ============================================================
-
-class HandleHeadlessCallRequestEvent extends VoiceSessionEvent {
-  final String callerId;
-  const HandleHeadlessCallRequestEvent(this.callerId);
-  @override
-  List<Object?> get props => [callerId];
-}
-
-class HandleHeadlessCallAcceptedEvent extends VoiceSessionEvent {
-  final String userId;
-  const HandleHeadlessCallAcceptedEvent(this.userId);
-  @override
-  List<Object?> get props => [userId];
-}
-
-class HandleHeadlessCallEndedEvent extends VoiceSessionEvent {
-  final String userId;
-  const HandleHeadlessCallEndedEvent(this.userId);
-  @override
-  List<Object?> get props => [userId];
-}
-
-class HandleHeadlessOfferEvent extends VoiceSessionEvent {
-  final String callerId;
-  final String sdp;
-  const HandleHeadlessOfferEvent(this.callerId, this.sdp);
-  @override
-  List<Object?> get props => [callerId, sdp];
-}
-
-class HandleHeadlessAnswerEvent extends VoiceSessionEvent {
-  final String targetUserId;
-  final String sdp;
-  const HandleHeadlessAnswerEvent(this.targetUserId, this.sdp);
-  @override
-  List<Object?> get props => [targetUserId, sdp];
-}
-
-class HandleHeadlessIceCandidateEvent extends VoiceSessionEvent {
-  final String fromUserId;
-  final dynamic candidateData;
-  const HandleHeadlessIceCandidateEvent(this.fromUserId, this.candidateData);
-  @override
-  List<Object?> get props => [fromUserId, candidateData];
-}
-
-/// Internal event: 5-second debounce timer expired for P2P/SFU decision.
-/// Fired by the orchestrator after waiting to see if more participants join.
-class RtcDebounceExpiredEvent extends VoiceSessionEvent {
-  const RtcDebounceExpiredEvent();
-}
-
+/// Internal event: app session current user changed.
 class AppSessionCurrentUserChangedEvent extends VoiceSessionEvent {
   final int? userId;
   const AppSessionCurrentUserChangedEvent(this.userId);
@@ -259,5 +241,30 @@ class ParticipantStatusUpdatedEvent extends VoiceSessionEvent {
     payload.phoneBatteryLevel,
     payload.intercomBatteryLevel,
     payload.signalStrength,
+    payload.isRemoteMuted,
   ];
+}
+
+class UserMuteStateChangedEvent extends VoiceSessionEvent {
+  final UserMuteStatePayload payload;
+  const UserMuteStateChangedEvent(this.payload);
+
+  @override
+  List<Object?> get props => [
+    payload.targetUserId,
+    payload.isMuted,
+    payload.mutedByUserId,
+  ];
+}
+
+class ClearSessionDataEvent extends VoiceSessionEvent {
+  const ClearSessionDataEvent();
+}
+
+class VoiceSessionNotFoundDetectedEvent extends VoiceSessionEvent {
+  final String message;
+  const VoiceSessionNotFoundDetectedEvent(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

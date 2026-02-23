@@ -29,6 +29,45 @@ class NotificationDto {
   });
 
   factory NotificationDto.fromJson(Map<String, dynamic> json) {
+    int? parseNullableInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      return int.tryParse(value.toString());
+    }
+
+    String? normalizeDataJson(Map<String, dynamic> source) {
+      final raw = source['dataJson'];
+      if (raw is String) {
+        final text = raw.trim();
+        if (text.isNotEmpty && text != 'null') {
+          return text;
+        }
+      } else if (raw != null) {
+        return jsonEncode(raw);
+      }
+
+      final fallbackPayload = <String, dynamic>{};
+      final sessionId = parseNullableInt(
+        source['sessionId'] ?? source['voiceSessionId'],
+      );
+      final rideId = parseNullableInt(
+        source['rideId'] ?? source['groupRideId'],
+      );
+      final groupName = source['groupName']?.toString();
+
+      if (sessionId != null) {
+        fallbackPayload['sessionId'] = sessionId;
+      }
+      if (rideId != null) {
+        fallbackPayload['rideId'] = rideId;
+      }
+      if (groupName != null && groupName.trim().isNotEmpty) {
+        fallbackPayload['groupName'] = groupName.trim();
+      }
+
+      return fallbackPayload.isEmpty ? null : jsonEncode(fallbackPayload);
+    }
+
     return NotificationDto(
       id: json['id'] is int
           ? json['id']
@@ -41,15 +80,15 @@ class NotificationDto {
           ? DateTime.tryParse(json['createdAt']) ?? DateTime.now()
           : DateTime.now(),
       type: json['type']?.toString(),
-      relatedId: json['relatedId'],
+      relatedId: parseNullableInt(
+        json['relatedId'] ?? json['sessionId'] ?? json['voiceSessionId'],
+      ),
       // Backend uses 'actorId' and nested 'actor' object
       senderId: json['actorId'] ?? json['senderId'],
       senderUsername: json['actor']?['username'] ?? json['senderUsername'],
       senderProfileImage:
           json['actor']?['profilePictureUrl'] ?? json['senderProfileImage'],
-      dataJson: json['dataJson'] is String
-          ? json['dataJson']
-          : (json['dataJson'] != null ? jsonEncode(json['dataJson']) : null),
+      dataJson: normalizeDataJson(json),
     );
   }
 

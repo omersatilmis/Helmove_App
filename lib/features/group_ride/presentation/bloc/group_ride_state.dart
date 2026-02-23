@@ -12,6 +12,15 @@ class GroupRideInitial extends GroupRideState {}
 
 class GroupRideLoading extends GroupRideState {}
 
+class GroupRideResolvingId extends GroupRideState {
+  final int sessionId;
+
+  const GroupRideResolvingId(this.sessionId);
+
+  @override
+  List<Object?> get props => [sessionId];
+}
+
 class GroupRideSuccess extends GroupRideState {
   final GroupRideEntity ride;
   final String message;
@@ -50,8 +59,43 @@ class GroupRideCreatedSync extends GroupRideState {
   List<Object?> get props => [ride, sessionId];
 }
 
-class GroupRideDeleted extends GroupRideState {}
+class GroupRideDeleted extends GroupRideState {
+  final int? rideId;
 
-class GroupRideTerminated extends GroupRideState {}
+  const GroupRideDeleted({this.rideId});
 
-class GroupRideLeft extends GroupRideState {}
+  @override
+  List<Object?> get props => [rideId];
+}
+
+class GroupRideTerminated extends GroupRideState {
+  final int? rideId;
+
+  const GroupRideTerminated({this.rideId});
+
+  @override
+  List<Object?> get props => [rideId];
+}
+
+class GroupRideLeft extends GroupRideState {
+  final int? rideId;
+
+  const GroupRideLeft({this.rideId});
+
+  @override
+  List<Object?> get props => [rideId];
+}
+
+class GroupRideKicked extends GroupRideState {
+  final String message;
+  const GroupRideKicked({this.message = "Gruptan atıldınız."});
+  @override
+  List<Object?> get props => [message];
+}
+
+class GroupRideAdminChanged extends GroupRideState {
+  final String message;
+  const GroupRideAdminChanged(this.message);
+  @override
+  List<Object?> get props => [message];
+}

@@ -17,6 +17,7 @@ import 'package:moto_comm_app_1/features/content/posts/presentation/pages/feed_p
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 import 'package:moto_comm_app_1/core/services/permissions_service.dart' as di;
+import 'package:moto_comm_app_1/core/services/callkit_incoming_service.dart';
 
 class HomePageWithDrawer extends StatefulWidget {
   const HomePageWithDrawer({super.key});
@@ -25,7 +26,8 @@ class HomePageWithDrawer extends StatefulWidget {
   State<HomePageWithDrawer> createState() => _HomePageWithDrawerState();
 }
 
-class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
+class _HomePageWithDrawerState extends State<HomePageWithDrawer>
+    with WidgetsBindingObserver {
   late String _visorMessage;
   int _unreadConversationCount = 0;
   int _unreadNotificationCount = 0;
@@ -36,13 +38,13 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // [NEW] Observer
     _visorMessage = _getRandomMotoMessage();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProfileProvider>().loadProfile();
     });
 
-    // Uygulama açıldığında okunmamış sohbet sayısını kontrol et
     _checkUnreadConversations();
     _checkUnreadNotifications();
 
@@ -80,7 +82,16 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Kullanıcı ayarlardan dönmüş olabilir, izinleri tekrar kontrol et
+      _requestStartupPermissions();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // [NEW] Remove observer
     _messageSubscription?.cancel();
     _readSubscription?.cancel();
     _notificationSubscription?.cancel();
@@ -127,7 +138,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'Tam sesli sohbet deneyimi için Mikrofon ve Bluetooth izinleri gereklidir.',
+              'Tam sesli sohbet deneyimi için Mikrofon, Bluetooth, Konum ve Arama izinleri gereklidir.',
             ),
             padding: const EdgeInsets.all(16),
             behavior: SnackBarBehavior.floating,
@@ -137,13 +148,22 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
               label: 'Ayarlar',
               textColor: Colors.white,
               onPressed: () {
-                // openAppSettings() is from permission_handler, but we might not have direct access here easily
-                // without importing the package. For now, just a prompt.
-                // Ideally: AppSettings.openAppSettings();
+                di.PermissionsService.openSettings();
               },
             ),
           ),
         );
+      } else if (granted && mounted) {
+        // [NEW] Eğer izinler verildiyse uyarıyı kaldır
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+        // [NEW] CallKit ek izinlerini (Full Intent vb.) iste
+        try {
+          final callKitService = GetIt.I<CallKitIncomingService>();
+          await callKitService.requestPermissions();
+        } catch (e) {
+          debugPrint("CallKit permissions error: $e");
+        }
       }
     } catch (e) {
       debugPrint("Startup permissions error: $e");

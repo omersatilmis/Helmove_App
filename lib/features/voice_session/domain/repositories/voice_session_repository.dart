@@ -15,6 +15,12 @@ abstract class VoiceSessionRepository {
 
   // Moderator methods
   Future<Either<Failure, Unit>> kickUser(int sessionId, int targetUserId);
+  Future<Either<Failure, Unit>> kickParticipant(int rideId, int targetUserId);
+  Future<Either<Failure, Unit>> promoteParticipant(
+    int rideId,
+    int targetUserId,
+  );
+  Future<Either<Failure, Unit>> demoteParticipant(int rideId, int targetUserId);
   Future<Either<Failure, Unit>> muteUser(int sessionId, int targetUserId);
   Future<Either<Failure, Unit>> transferHost(int sessionId, int newHostId);
 }

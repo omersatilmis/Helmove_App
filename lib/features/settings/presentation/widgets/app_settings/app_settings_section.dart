@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:moto_comm_app_1/core/services/webrtc_service.dart';
+// WebRTC servisi artık doğrudan çağrılmıyor — bitrate yönetimi
+// AdaptiveBitrateController üzerinden IntercomEngine tarafından yapılır.
 import 'package:moto_comm_app_1/core/services/audio_orchestrator_service.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_event.dart';
@@ -81,41 +82,20 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
           if (savedWiredMic != null) _preferWiredMic = savedWiredMic;
         });
 
-        if (savedQualityKey != null) {
-          _updateWebRTCServiceWithKey(savedQualityKey);
-        }
+        // Bitrate artık IntercomEngine.onAudioSettingsChanged() üzerinden
+        // AdaptiveBitrateController'a iletiliyor — doğrudan WebRTC çağrısı yok.
       }
     } catch (e) {
-      debugPrint("Ayarlar yüklenirken hata: $e");
+      // Logic for error logging could go here
     }
   }
 
-  // WebRTC servisine yeni kaliteyi bildir
-  void _updateWebRTCServiceWithKey(String qualityKey) {
-    try {
-      if (!GetIt.I.isRegistered<WebRTCService>()) return;
-
-      final service = GetIt.I<WebRTCService>();
-      CallAudioQuality qualityEnum = CallAudioQuality.medium;
-
-      switch (qualityKey) {
-        case 'low':
-          qualityEnum = CallAudioQuality.low;
-          break;
-        case 'medium':
-          qualityEnum = CallAudioQuality.medium;
-          break;
-        case 'high':
-          qualityEnum = CallAudioQuality.high;
-          break;
-        case 'ultra':
-          qualityEnum = CallAudioQuality.ultra;
-          break;
-      }
-
-      service.setAudioQuality(qualityEnum);
-    } catch (_) {}
-  }
+  // ─── KALDIRILDI ───────────────────────────────────────────────────
+  // _updateWebRTCServiceWithKey kaldırıldı.
+  // Bitrate yönetimi artık tek noktadan (AdaptiveBitrateController)
+  // IntercomEngine.onAudioSettingsChanged() üzerinden yapılıyor.
+  // Bu sayede P2P ve SFU aynı pipeline'ı kullanıyor.
+  // ──────────────────────────────────────────────────────────────────
 
   String _getKeyFromLabel(String label) {
     return _qualityOptions.entries
@@ -277,7 +257,10 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                         final qualityKey = _getKeyFromLabel(val);
                         final prefs = await SharedPreferences.getInstance();
                         await prefs.setString('audio_quality_key', qualityKey);
-                        _updateWebRTCServiceWithKey(qualityKey);
+                        // Bitrate güncellemesi artık UpdateAudioEvent →
+                        // SettingsRepo → IntercomEngine.onAudioSettingsChanged()
+                        // → AdaptiveBitrateController üzerinden yapılıyor.
+                        if (!mounted) return;
                         context.read<SettingsBloc>().add(
                           const UpdateAudioEvent(),
                         );
@@ -291,7 +274,7 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                         horizontal: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceVariant.withValues(
+                        color: colorScheme.surfaceContainerHighest.withValues(
                           alpha: 0.3,
                         ),
                         borderRadius: BorderRadius.circular(8),

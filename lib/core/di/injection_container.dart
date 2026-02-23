@@ -98,6 +98,9 @@ import '../../features/voice_session/domain/usecases/end_voice_session_usecase.d
 import '../../features/voice_session/domain/usecases/kick_user_usecase.dart';
 import '../../features/voice_session/domain/usecases/mute_user_usecase.dart';
 import '../../features/voice_session/domain/usecases/transfer_host_usecase.dart';
+import '../../features/voice_session/domain/usecases/promote_participant_usecase.dart';
+import '../../features/voice_session/domain/usecases/demote_participant_usecase.dart';
+import '../../features/voice_session/domain/usecases/kick_participant_usecase.dart';
 // Status Management Feature
 import '../../features/status_management/data/datasources/status_remote_data_source.dart';
 import '../../features/status_management/data/repositories/status_repository_impl.dart';
@@ -203,6 +206,8 @@ import '../../features/content/posts/domain/usecases/create_post_usecase.dart';
 import '../../features/content/posts/presentation/bloc/create_post_cubit.dart';
 
 import '../services/signalr_service.dart';
+import '../services/communication_realtime_bus.dart';
+import '../services/communication_refresh_coordinator.dart';
 import '../services/message_signalr_service.dart';
 import '../services/callkit_incoming_service.dart';
 import '../services/call_listener_service.dart';
@@ -214,6 +219,8 @@ import '../services/livekit_room_service.dart';
 import '../services/permissions_service.dart';
 import '../services/webrtc_service.dart';
 import '../services/audio_orchestrator_service.dart';
+import '../services/version_service.dart';
+import '../services/connectivity_watcher_service.dart';
 import '../../features/voice_session/presentation/bloc/voice_session_bloc.dart';
 
 import '../../features/intercom/domain/intercom_engine.dart';
@@ -489,6 +496,15 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<TransferHostUseCase>()) {
     sl.registerLazySingleton(() => TransferHostUseCase(sl()));
   }
+  if (!sl.isRegistered<PromoteParticipantUseCase>()) {
+    sl.registerLazySingleton(() => PromoteParticipantUseCase(sl()));
+  }
+  if (!sl.isRegistered<DemoteParticipantUseCase>()) {
+    sl.registerLazySingleton(() => DemoteParticipantUseCase(sl()));
+  }
+  if (!sl.isRegistered<KickParticipantUseCase>()) {
+    sl.registerLazySingleton(() => KickParticipantUseCase(sl()));
+  }
 
   // Discover Feature
   if (!sl.isRegistered<DiscoverApi>()) {
@@ -715,7 +731,8 @@ void _registerFeatureSingletons() {
   }
   if (!sl.isRegistered<SettingsRepository>()) {
     sl.registerLazySingleton<SettingsRepository>(
-      () => SettingsRepositoryImpl(remoteDataSource: sl()),
+      () =>
+          SettingsRepositoryImpl(remoteDataSource: sl(), intercomEngine: sl()),
     );
   }
   if (!sl.isRegistered<UpdatePrivacyUseCase>()) {
@@ -964,6 +981,15 @@ Future<void> init() async {
 
   sl.registerLazySingleton(() => SignalRService(sl<AuthLocalDataSource>()));
   sl.registerLazySingleton(
+    () => RealtimeStateCoordinator(signalRService: sl<SignalRService>()),
+  );
+  sl.registerLazySingleton(
+    () => CommunicationRealtimeBus(sl<RealtimeStateCoordinator>()),
+  );
+  sl.registerLazySingleton(
+    () => CommunicationRefreshCoordinator(sl<RealtimeStateCoordinator>()),
+  );
+  sl.registerLazySingleton(
     () => RealTimeService(sl<AppSession>(), sl<SignalRService>()),
   );
   sl.registerLazySingleton(
@@ -992,7 +1018,9 @@ Future<void> init() async {
     ),
   );
 
+  sl.registerLazySingleton(() => VersionService(sl()));
   sl.registerLazySingleton(() => NotificationService(sl()));
+  sl.registerLazySingleton(() => ConnectivityWatcherService(sl(), sl()));
 
   // Feature'ları kaydet (Auth, Profile, Friendship, Voice, Discover vb.)
   _registerFeatureSingletons();
@@ -1055,8 +1083,11 @@ Future<void> init() async {
       getActiveGroupRidesUseCase: sl(),
       leaveGroupRideUseCase: sl(), // From Attendance Feature
       signalRService: sl(),
+      realtimeBus: sl(),
+      refreshCoordinator: sl(),
       updateGroupRideUseCase: sl(),
       getGroupRideByIdUseCase: sl(),
+      getVoiceSessionDetailsUseCase: sl(),
     ),
   );
 
@@ -1078,10 +1109,15 @@ Future<void> init() async {
       muteUserUseCase: sl(),
       transferHostUseCase: sl(),
       signalRService: sl(),
+      realtimeBus: sl(),
+      refreshCoordinator: sl(),
       permissionsService: sl(),
       intercomEngine: sl(),
       callKitIncomingService: sl(),
       audioOrchestratorService: sl(),
+      promoteParticipantUseCase: sl(),
+      demoteParticipantUseCase: sl(),
+      kickParticipantUseCase: sl(),
     ),
   );
 

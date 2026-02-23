@@ -18,34 +18,34 @@ class AuthApi {
 
   Future<LoginResponseDto> login(LoginRequestDto request) async {
     try {
-      print("======== LOGIN START ========");
-      print("Request Data: ${request.toJson()}");
+      AppLogger.info("======== LOGIN START ========");
+      AppLogger.debug("Request Data: ${request.toJson()}");
 
       final response = await _dio.post(
         AuthEndpoints.login,
         data: request.toJson(),
       );
 
-      print("Response Status: ${response.statusCode}");
-      print("Response Data: ${response.data}");
-      print("======== LOGIN END ========");
+      AppLogger.info("Response Status: ${response.statusCode}");
+      AppLogger.debug("Response Data: ${response.data}");
+      AppLogger.info("======== LOGIN END ========");
 
       return LoginResponseDto.fromJson(response.data);
     } on DioException catch (e) {
-      print("======== LOGIN ERROR ========");
-      print("Status: ${e.response?.statusCode}");
-      print("Data: ${e.response?.data}");
-      print("Message: ${e.message}");
-      print("======== LOGIN END ========");
+      AppLogger.error("======== LOGIN ERROR ========");
+      AppLogger.error("Status: ${e.response?.statusCode}");
+      AppLogger.error("Data: ${e.response?.data}");
+      AppLogger.error("Message: ${e.message}");
+      AppLogger.error("======== LOGIN END ========");
 
       final errorMessage =
           _parseErrorMessage(e.response?.data) ??
           'Giriş işlemi başarısız: ${e.response?.statusCode}';
       throw Exception(errorMessage);
     } catch (e) {
-      print("======== LOGIN UNEXPECTED ERROR ========");
-      print("Error: $e");
-      print("======== LOGIN END ========");
+      AppLogger.error("======== LOGIN UNEXPECTED ERROR ========");
+      AppLogger.error("Error: $e");
+      AppLogger.error("======== LOGIN END ========");
       throw Exception("Beklenmedik bir hata oluştu: $e");
     }
   }
@@ -58,18 +58,18 @@ class AuthApi {
       );
 
       // 🔍 Debug: Backend'in döndürdüğü veriyi logla
-      print("======== REGISTER DEBUG ========");
-      print("Register Response: ${response.data}");
-      print("Response Type: ${response.data.runtimeType}");
-      print("================================");
+      AppLogger.info("======== REGISTER DEBUG ========");
+      AppLogger.debug("Register Response: ${response.data}");
+      AppLogger.debug("Response Type: ${response.data.runtimeType}");
+      AppLogger.info("================================");
 
       return RegisterResponseDto.fromJson(response.data);
     } on DioException catch (e) {
       // 🔍 Debug: Hata durumunda response'u logla
-      print("======== REGISTER DIO ERROR ========");
-      print("Status Code: ${e.response?.statusCode}");
-      print("Response Data: ${e.response?.data}");
-      print("====================================");
+      AppLogger.error("======== REGISTER DIO ERROR ========");
+      AppLogger.error("Status Code: ${e.response?.statusCode}");
+      AppLogger.error("Response Data: ${e.response?.data}");
+      AppLogger.error("====================================");
 
       final errorMessage =
           _parseErrorMessage(e.response?.data) ??
@@ -77,9 +77,9 @@ class AuthApi {
       throw Exception(errorMessage);
     } catch (e) {
       // 🔍 Debug: Beklenmedik hataları logla
-      print("======== REGISTER UNEXPECTED ERROR ========");
-      print("Error: $e");
-      print("===========================================");
+      AppLogger.error("======== REGISTER UNEXPECTED ERROR ========");
+      AppLogger.error("Error: $e");
+      AppLogger.error("===========================================");
       throw Exception("Beklenmedik bir hata oluştu: $e");
     }
   }
