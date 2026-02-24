@@ -109,8 +109,6 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Remove MediaQuery.of(context) to prevent rebuilds on keyboard open
-    // final size = MediaQuery.of(context).size;
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
@@ -120,32 +118,40 @@ class _RegisterPageState extends State<RegisterPage> {
         top: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            return SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Column(
-                    children: [
-                      // 1. HEADER (Dalgalı Tasarım)
-                      SizedBox(
-                        height: (constraints.maxHeight * 0.25).clamp(
-                          220.0,
-                          260.0,
-                        ),
-                        child: const AuthHeaderWidget(
-                          title: "Aramıza Katılın",
-                          subtitle: "Sürüş deneyiminizi başlatın.",
-                        ),
+            final isCompactHeight = constraints.maxHeight < 760;
+            final horizontalPadding = constraints.maxWidth < 360 ? 16.0 : 24.0;
+            final headerHeight = (constraints.maxHeight * 0.25).clamp(
+              180.0,
+              260.0,
+            );
+            final formWidth = (constraints.maxWidth - (horizontalPadding * 2))
+                .clamp(220.0, 450.0)
+                .toDouble();
+
+            return Column(
+              children: [
+                // 1. HEADER (Dalgalı Tasarım)
+                SizedBox(
+                  height: headerHeight,
+                  child: const AuthHeaderWidget(
+                    title: "Aramıza Katılın",
+                    subtitle: "Sürüş deneyiminizi başlatın.",
+                  ),
+                ),
+
+                // 2. FORM ALANI
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: isCompactHeight ? 8 : 12,
                       ),
-
-                      const Spacer(),
-
-                      // 2. FORM ALANI
-                      // Formu ortalamak ve genişliği sınırlamak için container
-                      Center(
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: 450),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: formWidth,
                           child: RegisterFormWidget(
                             formKey: _formKey,
                             usernameController: _usernameController,
@@ -160,19 +166,17 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 8),
-
-                      // 3. FOOTER
-                      AuthFooterWidget(
-                        questionText: "Zaten hesabınız var mı?",
-                        actionText: "Giriş Yap",
-                        onPressed: () => context.pop(),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+
+                // 3. FOOTER
+                AuthFooterWidget(
+                  questionText: "Zaten hesabınız var mı?",
+                  actionText: "Giriş Yap",
+                  onPressed: () => context.pop(),
+                ),
+              ],
             );
           },
         ),
