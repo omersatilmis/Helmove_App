@@ -7,7 +7,7 @@ class PromoteParticipantUseCase {
 
   PromoteParticipantUseCase(this.repository);
 
-  Future<Either<Failure, Unit>> call(int rideId, int targetUserId) async {
-    return await repository.promoteParticipant(rideId, targetUserId);
+  Future<Either<Failure, Unit>> call(int sessionId, int targetUserId) async {
+    return await repository.promoteParticipant(sessionId, targetUserId);
   }
 }

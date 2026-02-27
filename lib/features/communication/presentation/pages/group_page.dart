@@ -185,12 +185,6 @@ class _GroupPageState extends State<GroupPage>
     context.read<VoiceSessionBloc>().add(const ToggleMicrophoneEvent());
   }
 
-  bool _isCurrentUserHost(int? currentUserId) {
-    // hostUserId = Captain (sesli oturumun lideri)
-    return currentUserId != null &&
-        _sessionDetails?.hostUserId == currentUserId;
-  }
-
   bool _canAccessSettings(int? currentUserId) {
     if (currentUserId == null || _sessionDetails == null) return false;
     
@@ -248,32 +242,22 @@ class _GroupPageState extends State<GroupPage>
   }
 
   void _promoteUser(int targetUserId, String userName) {
-    final rideId = _effectiveRideId;
-    if (rideId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sürüş bilgisi hazırlanıyor...')),
-      );
-      return;
-    }
+    final sessionId = _validatedSessionId(showMessage: true);
+    if (sessionId == null) return;
     GroupPageActions.promoteUser(
       context: context,
-      rideId: rideId,
+      sessionId: sessionId,
       targetUserId: targetUserId,
       userName: userName,
     );
   }
 
   void _demoteUser(int targetUserId, String userName) {
-    final rideId = _effectiveRideId;
-    if (rideId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sürüş bilgisi hazırlanıyor...')),
-      );
-      return;
-    }
+    final sessionId = _validatedSessionId(showMessage: true);
+    if (sessionId == null) return;
     GroupPageActions.demoteUser(
       context: context,
-      rideId: rideId,
+      sessionId: sessionId,
       targetUserId: targetUserId,
       userName: userName,
     );
@@ -546,7 +530,6 @@ class _GroupPageState extends State<GroupPage>
                                 ),
                                 GroupParticipantsSection(
                                   data: widget.data,
-                                  organizerId: _rideDetails?.organizerId,
                                   sessionDetails: _sessionDetails,
                                   isLoadingSession: _isLoadingSession,
                                   currentUserId: currentUserId,

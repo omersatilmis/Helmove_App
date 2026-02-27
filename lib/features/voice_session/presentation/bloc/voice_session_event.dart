@@ -152,19 +152,19 @@ class KickParticipantEvent extends VoiceSessionEvent {
 }
 
 class PromoteParticipantEvent extends VoiceSessionEvent {
-  final int rideId;
+  final int sessionId;
   final int targetUserId;
-  const PromoteParticipantEvent(this.rideId, this.targetUserId);
+  const PromoteParticipantEvent(this.sessionId, this.targetUserId);
   @override
-  List<Object?> get props => [rideId, targetUserId];
+  List<Object?> get props => [sessionId, targetUserId];
 }
 
 class DemoteParticipantEvent extends VoiceSessionEvent {
-  final int rideId;
+  final int sessionId;
   final int targetUserId;
-  const DemoteParticipantEvent(this.rideId, this.targetUserId);
+  const DemoteParticipantEvent(this.sessionId, this.targetUserId);
   @override
-  List<Object?> get props => [rideId, targetUserId];
+  List<Object?> get props => [sessionId, targetUserId];
 }
 
 class MuteUserEvent extends VoiceSessionEvent {

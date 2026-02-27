@@ -10,7 +10,6 @@ import 'package:moto_comm_app_1/features/attendance_management/domain/entities/g
 
 class GroupParticipantsSection extends StatelessWidget {
   final GroupRideArgs data;
-  final int? organizerId;
   final VoiceSessionEntity? sessionDetails;
   final bool isLoadingSession;
   final int? currentUserId;
@@ -31,7 +30,6 @@ class GroupParticipantsSection extends StatelessWidget {
   const GroupParticipantsSection({
     super.key,
     required this.data,
-    this.organizerId,
     required this.sessionDetails,
     required this.isLoadingSession,
     required this.currentUserId,
@@ -122,10 +120,9 @@ class GroupParticipantsSection extends StatelessWidget {
 
     if (participants.isEmpty) return _buildEmptyState(context);
 
-    final hostId = sessionDetails?.hostUserId; // Captain ID
-    final effectiveOrganizerId = organizerId ?? data.organizerId; // Admin ID
+    final hostId = sessionDetails?.hostUserId;
 
-    // Current user'ın role'ünü participant listesinden al
+    // Current user'ın role'ünü participant listesinden al (backend'den gelir)
     GroupRole viewerRole = GroupRole.rider;
     if (currentUserId != null) {
       final currentParticipant = participants
@@ -133,13 +130,9 @@ class GroupParticipantsSection extends StatelessWidget {
           .firstOrNull;
       if (currentParticipant != null) {
         viewerRole = currentParticipant.role;
-      } else {
-        // Fallback: organizerId = admin, hostId = captain
-        if (effectiveOrganizerId != null && currentUserId == effectiveOrganizerId) {
-          viewerRole = GroupRole.admin;
-        } else if (hostId == currentUserId) {
-          viewerRole = GroupRole.captain;
-        }
+      } else if (hostId == currentUserId) {
+        // Fallback: host her zaman Admin'dir
+        viewerRole = GroupRole.admin;
       }
     }
 

@@ -17,8 +17,8 @@ abstract class VoiceSessionRemoteDataSource {
   // Extra moderator methods
   Future<void> kickUser(int sessionId, int targetUserId);
   Future<void> kickParticipant(int rideId, int targetUserId);
-  Future<void> promoteParticipant(int rideId, int targetUserId);
-  Future<void> demoteParticipant(int rideId, int targetUserId);
+  Future<void> promoteParticipant(int sessionId, int targetUserId);
+  Future<void> demoteParticipant(int sessionId, int targetUserId);
   Future<void> muteUser(int sessionId, int targetUserId);
   Future<void> transferHost(int sessionId, int newHostId);
 }

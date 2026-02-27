@@ -126,18 +126,18 @@ class VoiceSessionApi implements VoiceSessionRemoteDataSource {
   }
 
   @override
-  Future<void> promoteParticipant(int rideId, int targetUserId) async {
+  Future<void> promoteParticipant(int sessionId, int targetUserId) async {
     try {
-      await _dio.post('/api/GroupRide/$rideId/promote/$targetUserId');
+      await _dio.post('/api/voice-sessions/$sessionId/promote/$targetUserId');
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e));
     }
   }
 
   @override
-  Future<void> demoteParticipant(int rideId, int targetUserId) async {
+  Future<void> demoteParticipant(int sessionId, int targetUserId) async {
     try {
-      await _dio.post('/api/GroupRide/$rideId/demote/$targetUserId');
+      await _dio.post('/api/voice-sessions/$sessionId/demote/$targetUserId');
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e));
     }

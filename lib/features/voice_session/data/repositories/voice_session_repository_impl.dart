@@ -156,11 +156,11 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
 
   @override
   Future<Either<Failure, Unit>> promoteParticipant(
-    int rideId,
+    int sessionId,
     int targetUserId,
   ) async {
     try {
-      await remoteDataSource.promoteParticipant(rideId, targetUserId);
+      await remoteDataSource.promoteParticipant(sessionId, targetUserId);
       return const Right(unit);
     } catch (e) {
       final message = e.toString().replaceAll('Exception: ', '');
@@ -170,11 +170,11 @@ class VoiceSessionRepositoryImpl implements VoiceSessionRepository {
 
   @override
   Future<Either<Failure, Unit>> demoteParticipant(
-    int rideId,
+    int sessionId,
     int targetUserId,
   ) async {
     try {
-      await remoteDataSource.demoteParticipant(rideId, targetUserId);
+      await remoteDataSource.demoteParticipant(sessionId, targetUserId);
       return const Right(unit);
     } catch (e) {
       final message = e.toString().replaceAll('Exception: ', '');

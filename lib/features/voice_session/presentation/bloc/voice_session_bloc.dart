@@ -1158,7 +1158,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     final result = await promoteParticipantUseCase(
-      event.rideId,
+      event.sessionId,
       event.targetUserId,
     );
     result.fold(
@@ -1182,7 +1182,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     final result = await demoteParticipantUseCase(
-      event.rideId,
+      event.sessionId,
       event.targetUserId,
     );
     result.fold(

@@ -105,30 +105,30 @@ class GroupPageActions {
 
   static void promoteUser({
     required BuildContext context,
-    required int rideId,
+    required int sessionId,
     required int targetUserId,
     required String userName,
   }) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kaptan Yap'),
+        title: const Text('Captain Yap'),
         content: Text(
-          '$userName adli kullaniciyi kaptan yapmak istiyor musunuz?',
+          '$userName kullanıcısına Captain yetkisi vermek istiyor musunuz?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Iptal'),
+            child: const Text('İptal'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.read<VoiceSessionBloc>().add(
-                PromoteParticipantEvent(rideId, targetUserId),
+                PromoteParticipantEvent(sessionId, targetUserId),
               );
             },
-            child: const Text('Yukselt'),
+            child: const Text('Captain Yap'),
           ),
         ],
       ),
@@ -137,30 +137,30 @@ class GroupPageActions {
 
   static void demoteUser({
     required BuildContext context,
-    required int rideId,
+    required int sessionId,
     required int targetUserId,
     required String userName,
   }) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Rutbe Dusur'),
+        title: const Text('Rider Yap'),
         content: Text(
-          '$userName adli kullanicinin rutbesini dusurmek istiyor musunuz?',
+          '$userName kullanıcısının Captain yetkisini kaldırmak istiyor musunuz?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Iptal'),
+            child: const Text('İptal'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.read<VoiceSessionBloc>().add(
-                DemoteParticipantEvent(rideId, targetUserId),
+                DemoteParticipantEvent(sessionId, targetUserId),
               );
             },
-            child: const Text('Dusur', style: TextStyle(color: Colors.orange)),
+            child: const Text('Rider Yap', style: TextStyle(color: Colors.orange)),
           ),
         ],
       ),

@@ -7,7 +7,7 @@ class DemoteParticipantUseCase {
 
   DemoteParticipantUseCase(this.repository);
 
-  Future<Either<Failure, Unit>> call(int rideId, int targetUserId) async {
-    return await repository.demoteParticipant(rideId, targetUserId);
+  Future<Either<Failure, Unit>> call(int sessionId, int targetUserId) async {
+    return await repository.demoteParticipant(sessionId, targetUserId);
   }
 }
