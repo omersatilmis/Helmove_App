@@ -54,6 +54,18 @@ class IntercomEngineImpl implements IntercomEngine {
   StreamSubscription? _webRtcIceSub;
   StreamSubscription? _webRtcConnectionSub;
   StreamSubscription? _adaptiveBitrateSub;
+  // Telefon araması / Siri / alarm gibi OS audio interruption olayları
+  StreamSubscription? _audioInterruptionSub;
+
+  // [ICE-BATCH] ICE candidate göndermede batching
+  //
+  // 5–15 ICE candidate'in her biri için tek tek SignalR mesajı göndermek yerine
+  // 150ms'lik bir pencere açılır. Bu süre içinde biriken tüm candidate'ler
+  // SendIceCandidatesBatch ile tek seferde iletilir. Peer tarafında
+  // ReceiveIceCandidatesBatch, her candidate'i ayrı ayrı WebRTC'ye besler.
+  final List<Map<String, dynamic>> _iceBatchBuffer = [];
+  Timer? _iceBatchTimer;
+  static const Duration _iceBatchWindow = Duration(milliseconds: 150);
 
   // Adaptive Bitrate Controller
   final AdaptiveBitrateController _bitrateController =
@@ -67,12 +79,32 @@ class IntercomEngineImpl implements IntercomEngine {
   Timer? _transportOverlapTimer; // [NEW] Overlap Timer for Seamless Switching
   Timer? _headlessCallTimeoutTimer; // Peer offline timeout
 
+  // [PRE-WARM] SFU→P2P geçişinde WebRTC arka planda ısındırma
+  //
+  // _sfuToP2pTimer başlatıldığı anda WebRTC donanımını (ICE fetch + PeerConnection
+  // init + mikrofon) arka planda hazırlarız. sfuToP2pDelay (3 sn) bittiğinde
+  // _switchToP2p() bu pre-warm'u hazır bulur ve _prepareWebRtcForOffer()'ı
+  // tekrar çağırmaz — bağlantı anında kurulur.
+  Future<void>? _sfuToP2pPrewarmFuture;
+  bool _webRtcPrewarmed = false;
+
   // [NEW] Token Caching
   String? _cachedLiveKitToken;
   String? _cachedLiveKitUrl;
-  List<Map<String, dynamic>>? _cachedIceServers;
   DateTime? _tokenTimestamp;
   static const Duration _tokenTtl = Duration(minutes: 30);
+
+  // [ICE-REFRESH] ICE server proaktif önbelleği
+  //
+  // TTL = 55 dk (TURN credential'larının tipik ömrüne yakın, ama biraz kısa).
+  // attachSession() çağrıldığı anda cache boşsa ya da TTL'nin son 5 dakikasındaysa
+  // _proactivelyRefreshIceServers() arka planda yeniler. Bu sayede
+  // _prepareWebRtcForOffer() çağrıldığında cache her zaman sıcak olur.
+  List<Map<String, dynamic>>? _cachedIceServers;
+  DateTime? _iceServerTimestamp;
+  static const Duration _iceServerTtl = Duration(minutes: 55);
+  // Yenileme penceresi: TTL dolmadan bu kadar süre önce arka planda yenile.
+  static const Duration _iceServerRefreshMargin = Duration(minutes: 5);
 
   String? _p2pPeerUserId;
   bool _disconnectP2pWhenSfuConnected = false;
@@ -129,6 +161,7 @@ class IntercomEngineImpl implements IntercomEngine {
     _subscribeLiveKit();
     _subscribeSignalR();
     _subscribeWebRtc();
+    _subscribeAudioSession(); // [NEW] OS audio interruption recovery
 
     // [NEW] Start Background Service for Android
     if (Platform.isAndroid) {
@@ -191,6 +224,10 @@ class IntercomEngineImpl implements IntercomEngine {
     }
 
     _context = context;
+
+    // [ICE-REFRESH] Session'a bağlanılır bağlanılmaz ICE sunucularını arka planda
+    // hazırla. 2. katılımcı gelip P2P başlatıldığında cache sıcak olur → 0 gecikme.
+    unawaited(_proactivelyRefreshIceServers());
 
     _emitTelemetry(
       IntercomTelemetryEvent.now(
@@ -468,10 +505,13 @@ class IntercomEngineImpl implements IntercomEngine {
     await _offerSub?.cancel();
     await _answerSub?.cancel();
     await _iceSub?.cancel();
+    _iceBatchTimer?.cancel();
+    _iceBatchBuffer.clear();
 
     await _webRtcIceSub?.cancel();
     await _webRtcConnectionSub?.cancel();
     await _adaptiveBitrateSub?.cancel();
+    await _audioInterruptionSub?.cancel();
 
     _bitrateController.dispose();
     _iceRestartFallbackTimer?.cancel();
@@ -671,15 +711,14 @@ class IntercomEngineImpl implements IntercomEngine {
 
   void _subscribeWebRtc() {
     _webRtcIceSub?.cancel();
-    _webRtcIceSub = webRTCService.onIceCandidate$.listen((candidate) async {
-      final target = _p2pPeerUserId;
-      if (target == null || target.isEmpty) return;
-      await signalRService.sendIceCandidate(
-        target,
-        candidate.candidate ?? '',
-        candidate.sdpMid,
-        candidate.sdpMLineIndex,
-      );
+    _webRtcIceSub = webRTCService.onIceCandidate$.listen((candidate) {
+      // [ICE-BATCH] Her candidate'i buffer'a ekle; 150ms sonra hepsini tek mesajda gönder.
+      _iceBatchBuffer.add({
+        'candidate': candidate.candidate ?? '',
+        'sdpMid': candidate.sdpMid,
+        'sdpMLineIndex': candidate.sdpMLineIndex,
+      });
+      _iceBatchTimer ??= Timer(_iceBatchWindow, _flushIceCandidateBatch);
     });
 
     _webRtcConnectionSub?.cancel();
@@ -729,6 +768,78 @@ class IntercomEngineImpl implements IntercomEngine {
         );
       }
     });
+  }
+
+  // ============================================================
+  // AUDIO SESSION — OS Interruption Recovery
+  // ============================================================
+  //
+  // iOS ve Android'de telefon araması / Siri / alarm gibi sistem events'leri
+  // audio session'ı askıya alır. Bu metot ilgili stream'e abone olarak:
+  //   • Kesinti başlayınca → reconnecting state'e girer (bağlantıyı koparma,
+  //     OS zaten I/O'yu duraklatır; timer TTL içinde retry başlar).
+  //   • Kesinti bitince → session'ı yeniden aktifleştirir + transport recovery.
+  //
+  // Neden bağlantıyı kesmiyoruz?
+  //   Tipik telefon araması 1–3 dk sürer. Bağlantı koparılırsa karşı tarafın
+  //   reconnect döngüsü de tetiklenir → çift gürültü + bağlantı gecikmesi.
+  //   Bunun yerine "sessiz bekleme + otomatik recovery" tercih edildi.
+
+  void _subscribeAudioSession() {
+    _audioInterruptionSub?.cancel();
+    _audioInterruptionSub = audioOrchestratorService.interruptionStream.listen(
+      (event) async {
+        if (event.begin) {
+          // ── Interruption Başladı ────────────────────────────────────────
+          // Telefon araması, Siri, alarm vb. OS audio I/O'yu durdurdu.
+          // Biz sadece state'i güncelliyoruz; gerçek I/O OS tarafından
+          // zaten askıya alındı.
+          _emitTelemetry(
+            IntercomTelemetryEvent.now(
+              level: IntercomTelemetryLevel.warning,
+              command: IntercomCommand.onLifecycleChanged,
+              name: 'audio.interruption.began',
+              data: {
+                'transport': _state.transport.name,
+                'phase': _state.phase.name,
+              },
+            ),
+          );
+
+          // Aktif bir oturum varsa ve zaten reconnecting/idle değilsek
+          // reconnecting'e geç — timer içinde otomatik retry başlar.
+          if (_context != null &&
+              _state.phase != IntercomPhase.idle &&
+              _state.phase != IntercomPhase.reconnecting) {
+            _enterReconnecting(reason: 'audio.interruption.began');
+          }
+        } else {
+          // ── Interruption Bitti ──────────────────────────────────────────
+          // Telefon araması kapandı / Siri bitti vb.
+          // iOS, interruption bittikten sonra setActive(true) çağrılana dek
+          // audio I/O'yu restore etmez (platform quirk). Bunu biz yapıyoruz.
+          _emitTelemetry(
+            IntercomTelemetryEvent.now(
+              command: IntercomCommand.onLifecycleChanged,
+              name: 'audio.interruption.ended',
+              data: {
+                'transport': _state.transport.name,
+                'hasContext': _context != null,
+              },
+            ),
+          );
+
+          if (_context != null) {
+            // Önce session'ı yeniden aktifleştir; sonra transport'u recovery
+            // modunda başlat. Sırası önemli: setActive(true) olmadan
+            // iOS'ta ses gelmez.
+            await audioOrchestratorService.activateSession();
+            _cancelReconnectWorkflow(); // Var olan retry döngüsünü temizle
+            await _evaluateTransport(reason: IntercomDecisionReason.recovery);
+          }
+        }
+      },
+    );
   }
 
   Future<void> _evaluateTransport({
@@ -792,6 +903,10 @@ class IntercomEngineImpl implements IntercomEngine {
           delayApplied: _policy.sfuToP2pDelay,
         );
       });
+      // [PRE-WARM] sfuToP2pDelay (3 sn) beklerken WebRTC donanımını
+      // arka planda hazırla: ICE fetch + PeerConnection init + mikrofon.
+      // Timer bitip _switchToP2p() çağrıldığında her şey hazır olur.
+      _startSfuToP2pPrewarm();
       _emitDecision(
         IntercomDecision(
           target: IntercomTransport.p2p,
@@ -804,10 +919,17 @@ class IntercomEngineImpl implements IntercomEngine {
       return;
     }
 
-    _p2pDebounceTimer = Timer(_policy.p2pDecisionDelay, () {
+    // [ADAPTIVE-DELAY] ICE cache sıcaksa kısa debounce (100ms), soğuksa tam 500ms.
+    // Tek amaç: 3. katılımcının anlık çıkış/giriş fırtınasına karşı guard;
+    // ICE fetch süresi yoksa 500ms beklemek gereksiz.
+    final delay = _isIceCacheWarm()
+        ? _policy.p2pDecisionDelayWarm
+        : _policy.p2pDecisionDelay;
+
+    _p2pDebounceTimer = Timer(delay, () {
       _switchToP2p(
         reason: IntercomDecisionReason.twoParticipantsP2p,
-        delayApplied: _policy.p2pDecisionDelay,
+        delayApplied: delay,
       );
     });
 
@@ -824,8 +946,19 @@ class IntercomEngineImpl implements IntercomEngine {
         target: IntercomTransport.p2p,
         reason: IntercomDecisionReason.awaitingSecondPartyStability,
         activeParticipantCount: context.activeCount,
-        delayApplied: _policy.p2pDecisionDelay,
+        delayApplied: delay,
         at: DateTime.now(),
+      ),
+    );
+
+    _emitTelemetry(
+      IntercomTelemetryEvent.now(
+        command: IntercomCommand.attachSession,
+        name: 'p2p.decision_delay',
+        data: {
+          'delayMs': delay.inMilliseconds,
+          'iceCacheWarm': _isIceCacheWarm(),
+        },
       ),
     );
   }
@@ -1002,11 +1135,22 @@ class IntercomEngineImpl implements IntercomEngine {
     await audioOrchestratorService.manageAudioFocus(true);
 
     // [FAST-ICE & EARLY MEDIA / PRE-WARMING]
-    // Hem Host hem Invitee icin WebRTC'yi simdiden hazirla (Mikrofon izni vs. 1-2 saniye surer).
-    // Bu sayede Offer ve Answer asamasinda hardware spin-up suresi beklenmez, baglanti ANINDA kurulur.
+    //
+    // SFU→P2P geçişinde: _startSfuToP2pPrewarm() sayesinde WebRTC,
+    // sfuToP2pDelay timer'dan önce zaten hazırlandı. Pre-warm bittiyse
+    // _prepareWebRtcForOffer()'u atla; hâlâ sürüyorsa (nadir: aw yavaş ağ)
+    // tamamlanmasını bekle. Direkt P2P geçişlerinde (SFU yoksa) burada yap.
     try {
-      await _prepareWebRtcForOffer();
+      if (_sfuToP2pPrewarmFuture != null) {
+        // Pre-warm hâlâ sürüyor — tamamlanmasını bekle
+        await _sfuToP2pPrewarmFuture;
+      }
+      if (!_webRtcPrewarmed) {
+        // SFU yokken direkt P2P ya da pre-warm başarısız oldu — burada yap
+        await _prepareWebRtcForOffer();
+      }
     } catch (e, stack) {
+      _webRtcPrewarmed = false;
       _enterReconnecting(
         reason: 'webrtc.prepare_failed',
         failure: IntercomFailure(
@@ -1017,6 +1161,9 @@ class IntercomEngineImpl implements IntercomEngine {
         ),
       );
       return;
+    } finally {
+      // Pre-warm bayrağını sıfırla — bir sonraki geçişte temiz başlasın
+      _webRtcPrewarmed = false;
     }
 
     final localUserId = context.localUserId;
@@ -1043,10 +1190,10 @@ class IntercomEngineImpl implements IntercomEngine {
         }
       });
     } else {
-      // ── Symmetric Timeout (Invitee Side) ─────────────────────────
-      // [NEW] Kurucu (Host) değilsek, Host'tan Offer gelmesini bekliyoruz.
-      // Eğer Host 15 saniye içinde Offer yollamazsa (ağ koptuysa vs.) sonsuza
-      // kadar "Bağlanıyor..." kalmamak için zaman aşımı başlatıyoruz.
+      // ── Invitee Side Timeout ──────────────────────────────────────
+      // [OFFER-FIRST] Host Offer'ı doğrudan gönderiyor. _onOffer() tetiklenince
+      // _headlessCallTimeoutTimer iptal edilecek. Eğer 15s geçmeden Offer gelmezse
+      // (host offline / ağ sorunu) reconnect'e düş.
       _headlessCallTimeoutTimer?.cancel();
       _headlessCallTimeoutTimer = Timer(const Duration(seconds: 15), () {
         if (_state.rtcStatus == RtcConnectionStatus.p2pConnecting) {
@@ -1064,28 +1211,13 @@ class IntercomEngineImpl implements IntercomEngine {
   }
 
   Future<void> _onHeadlessRequest(String callerId) async {
-    // [NEW] Handshake Validation: Sadece P2P modundaysak ve bağlanıyorsak kabul et
+    // [OFFER-FIRST] Headless istek artık yalnızca "host online" bilgisi taşıyor.
+    // Invitee tarafında kritik yol _onOffer() üzerinden işliyor.
+    // acceptHeadlessCall fire-and-forget: host kabul sinyalini beklemediği için
+    // invitee tarafında ayrı bir timeout kurmak gerekmez.
     if (_state.transport != IntercomTransport.p2p) return;
-
     _p2pPeerUserId = callerId;
-    await signalRService.acceptHeadlessCall(callerId);
-
-    // [NEW] Sinyali kabul ettik, şimdi Host'tan Offer gelmesini bekliyoruz.
-    // Timeout sayacını sıfırdan 15 saniyeye kuruyoruz ki Offer yolda kaybolursa
-    // sınırsız bekleme (6 dakika kilitlenme) olmasın.
-    _headlessCallTimeoutTimer?.cancel();
-    _headlessCallTimeoutTimer = Timer(const Duration(seconds: 15), () {
-      if (_state.rtcStatus == RtcConnectionStatus.p2pConnecting) {
-        _enterReconnecting(
-          reason: 'invitee.offer_timeout_after_accept',
-          failure: const IntercomFailure(
-            code: IntercomFailureCode.webrtcOfferFailed,
-            message: 'Host did not send offer after accept inside 15s',
-            recoverable: true,
-          ),
-        );
-      }
-    });
+    unawaited(signalRService.acceptHeadlessCall(callerId));
   }
 
   /// Peer offline olduğunda backend'den gelen callback.
@@ -1113,29 +1245,16 @@ class IntercomEngineImpl implements IntercomEngine {
   }
 
   Future<void> _onHeadlessAccepted(String userId) async {
-    _headlessCallTimeoutTimer?.cancel(); // Timeout iptal — peer yanıt verdi
-    if (_state.transport != IntercomTransport.p2p) return;
-
-    _p2pPeerUserId = userId;
-    try {
-      // KOD SILINDI: await _prepareWebRtcForOffer(); -> Cünkü _switchToP2p anında donanım (mikrofon) ısındı!
-      final offer = await webRTCService.createOffer();
-      final sdp = offer.sdp;
-      if (sdp == null || sdp.isEmpty) {
-        throw StateError('WebRTC offer empty');
-      }
-      await signalRService.sendOffer(userId, sdp);
-    } catch (e, stack) {
-      _enterReconnecting(
-        reason: 'webrtc.offer_failed',
-        failure: IntercomFailure(
-          code: IntercomFailureCode.webrtcOfferFailed,
-          message: 'WebRTC offer failed',
-          cause: e,
-          stackTrace: stack,
-        ),
-      );
-    }
+    // [OFFER-FIRST] Host artık HeadlessAccepted sinyalini beklemeden Offer gönderiyor.
+    // Bu callback kritik yolda değil. Gelirse timeout'u iptal et, telemetri logla.
+    _headlessCallTimeoutTimer?.cancel();
+    _emitTelemetry(
+      IntercomTelemetryEvent.now(
+        command: IntercomCommand.attachSession,
+        name: 'offer_first.headless_accepted_late',
+        data: {'peerId': userId},
+      ),
+    );
   }
 
   Future<void> _onHeadlessEnded(String userId) async {
@@ -1152,14 +1271,23 @@ class IntercomEngineImpl implements IntercomEngine {
   }
 
   Future<void> _onOffer(String userId, String sdp) async {
-    // [NEW] Host Offer yolladı. Simetrik timeout'u iptal edebiliriz, süreç başarıyla ilerliyor.
     _headlessCallTimeoutTimer?.cancel();
     _p2pPeerUserId = userId;
     try {
       if (_state.transport != IntercomTransport.p2p) return;
-      
-      // KOD DEGISTIRILDI: handleOffer icindeki initialize, stopAll vb. hardware-spin kaldirildi! 
-      // Zaten _switchToP2p isinildi. Yalnizca saf WebSocket String set etmesi yapiliyor (Sifir Gecikme).
+
+      // [OFFER-FIRST + PRE-WARM] Offer direkt geldi (headless handshake beklenmedi).
+      // Invitee tarafında WebRTC pre-warm durumunu kontrol et:
+      //  • SFU→P2P yolundaysa: _startSfuToP2pPrewarm() arka planda hazırlandı — bekle.
+      //  • Direkt P2P / pre-warm başarısız: burada hazırla.
+      if (_sfuToP2pPrewarmFuture != null) {
+        await _sfuToP2pPrewarmFuture;
+      }
+      if (!_webRtcPrewarmed) {
+        await _prepareWebRtcForOffer();
+      }
+      _webRtcPrewarmed = false;
+
       await webRTCService.setRemoteDescription('offer', sdp);
       final answer = await webRTCService.createAnswer();
       final answerSdp = answer.sdp;
@@ -1195,19 +1323,87 @@ class IntercomEngineImpl implements IntercomEngine {
     await webRTCService.addIceCandidate(candidate, sdpMid, sdpMLineIndex);
   }
 
+  /// [ICE-BATCH] Buffer dolduğunda ya da 150ms geçtiğinde batch'ı gönderir.
+  /// Peer tarafında ReceiveIceCandidatesBatch her candidate'ı ayrı ayrı WebRTC'ye besler.
+  void _flushIceCandidateBatch() {
+    _iceBatchTimer = null;
+    final batch = List<Map<String, dynamic>>.from(_iceBatchBuffer);
+    _iceBatchBuffer.clear();
+    final target = _p2pPeerUserId;
+    if (target == null || target.isEmpty || batch.isEmpty) return;
+    unawaited(signalRService.sendIceCandidatesBatch(target, batch));
+  }
+
   Future<void> _prepareWebRtcForOffer() async {
-    // [NEW] Use Prefetched ICE servers if available (Zero Api wait)
-    List<Map<String, dynamic>> servers = _cachedIceServers ?? const <Map<String, dynamic>>[];
-    if (servers.isEmpty) {
+    // [ICE-REFRESH] Cache sıcaksa doğrudan kullan; TTL dolduysa hemen fetch et.
+    List<Map<String, dynamic>> servers;
+    if (_isIceCacheWarm()) {
+      servers = _cachedIceServers!;
+    } else {
+      // Cache yok veya süresi doldu — senkron olarak yenile
       final ice = await liveKitApi.getIceServers();
       servers = (ice['iceServers'] as List?)?.cast<Map<String, dynamic>>() ??
           const <Map<String, dynamic>>[];
       _cachedIceServers = servers;
+      _iceServerTimestamp = DateTime.now();
     }
 
     await webRTCService.stopAll();
     await webRTCService.initialize(servers);
     await webRTCService.startLocalStream();
+  }
+
+  // ============================================================
+  // SFU → P2P PRE-WARMING
+  // ============================================================
+  //
+  // Akış:
+  //   1. _evaluateTransport() → 2 katılımcı + SFU aktif
+  //   2. _sfuToP2pTimer başlatılır (sfuToP2pDelay = 3 sn)
+  //   3. _startSfuToP2pPrewarm() hemen çağrılır
+  //   4. _runSfuToP2pPrewarm() arka planda: ICE fetch + WebRTC init + mikrofon
+  //   5. 3 sn sonra timer biter → _switchToP2p() çağrılır
+  //   6. _switchToP2p(): pre-warm bitmişse _prepareWebRtcForOffer()'ı atlar
+  //      → donanım hazır, bağlantı anında kurulur (~0 ms ek gecikme)
+  //
+  // Timer iptal senaryosu (3. katılımcı gelirse):
+  //   _cancelPendingSwitches() → _cancelSfuToP2pPrewarm() → stopAll()
+  // ============================================================
+
+  /// [PRE-WARM] SFU→P2P hysteresis timer başladığında çağrılır.
+  /// Timer süresi boyunca WebRTC donanımını arka planda hazırlar.
+  void _startSfuToP2pPrewarm() {
+    if (_sfuToP2pPrewarmFuture != null) return; // Zaten çalışıyor
+    _webRtcPrewarmed = false;
+    _sfuToP2pPrewarmFuture = _runSfuToP2pPrewarm();
+  }
+
+  Future<void> _runSfuToP2pPrewarm() async {
+    try {
+      await _prepareWebRtcForOffer();
+      _webRtcPrewarmed = true;
+    } catch (_) {
+      // Hata sessizce yutulur.
+      // _switchToP2p() _webRtcPrewarmed=false görünce _prepareWebRtcForOffer()'ı
+      // kendisi yeniden deneyecek ve hata orada raporlanacak.
+      _webRtcPrewarmed = false;
+    } finally {
+      _sfuToP2pPrewarmFuture = null;
+    }
+  }
+
+  /// Pre-warm sırasında başlatılan WebRTC kaynaklarını temizler.
+  /// _cancelTimers() ve _cancelPendingSwitches() tarafından çağrılır:
+  /// timer iptal edildiğinde boşta açık kalan donanım kapatılır.
+  void _cancelSfuToP2pPrewarm() {
+    if (_webRtcPrewarmed) {
+      // Pre-warm tamamlandı ama switch iptal edildi → WebRTC'yi kapat
+      webRTCService.stopAll();
+      _webRtcPrewarmed = false;
+    }
+    // Future hâlâ sürüyorsa bitmesine izin ver; sonuç _webRtcPrewarmed=false
+    // ile bitecek — _cancelPendingSwitches sonrası if bloğu çalışmaz.
+    _sfuToP2pPrewarmFuture = null;
   }
 
   Future<void> _stopAllAudio() async {
@@ -1506,11 +1702,17 @@ class IntercomEngineImpl implements IntercomEngine {
     _sfuToP2pTimer?.cancel();
     _reconnectRetryTimer?.cancel();
     _transportOverlapTimer?.cancel();
+    _iceBatchTimer?.cancel();
 
     _p2pDebounceTimer = null;
     _sfuToP2pTimer = null;
     _reconnectRetryTimer = null;
     _transportOverlapTimer = null;
+    _iceBatchTimer = null;
+    _iceBatchBuffer.clear();
+
+    // Timer iptal edildi — arka planda ısınan WebRTC kaynaklarını temizle
+    _cancelSfuToP2pPrewarm();
   }
 
   void _startReconnectTtl() {
@@ -1547,6 +1749,9 @@ class IntercomEngineImpl implements IntercomEngine {
     _sfuToP2pTimer = null;
     _p2pDebounceTimer = null;
     _p2pToSfuHysteresisTimer = null;
+
+    // Timer iptal edildi — arka planda ısınan WebRTC kaynaklarını temizle
+    _cancelSfuToP2pPrewarm();
   }
 
   // [NEW] Pre-fetch Token
@@ -1575,4 +1780,64 @@ class IntercomEngineImpl implements IntercomEngine {
       // Ignore pre-fetch errors
     }
   }
-}
+
+  // ============================================================
+  // ICE SERVER PROAKTİF REFRESH
+  // ============================================================
+  //
+  // Neden gerekli?
+  //   TURN credential'ların ömrü dolduğunda (veya cache hiç dolu olmadığında)
+  //   _prepareWebRtcForOffer() içinde senkron bir HTTP isteği yapılmak zorunda
+  //   kalınır. Bu 200–500ms ek gecikme demektir.
+  //
+  // Çözüm:
+  //   attachSession() çağrıldığı anda cache'i kontrol et; boşsa veya TTL'nin
+  //   son _iceServerRefreshMargin (5 dk) içindeyse arka planda hemen yenile.
+  //   P2P bağlantısı başladığında cache her zaman sıcak olur.
+  // ============================================================
+
+  /// ICE server cache'inin geçerli ve sıcak olup olmadığını döndürür.
+  bool _isIceCacheWarm() {
+    if (_cachedIceServers == null || _cachedIceServers!.isEmpty) return false;
+    if (_iceServerTimestamp == null) return false;
+    final age = DateTime.now().difference(_iceServerTimestamp!);
+    return age < _iceServerTtl - _iceServerRefreshMargin;
+  }
+
+  /// ICE sunucularını arka planda proaktif olarak yeniler.
+  ///
+  /// Cache boşsa veya TTL'nin son 5 dakikasındaysa fetch yapar.
+  /// Hata durumunda sessizce devam eder — eski/boş cache varsa
+  /// _prepareWebRtcForOffer() yine de fallback fetch yapabilir.
+  Future<void> _proactivelyRefreshIceServers() async {
+    if (_isIceCacheWarm()) return; // Cache zaten sıcak — gerek yok
+
+    try {
+      final ice = await liveKitApi.getIceServers();
+      final servers = (ice['iceServers'] as List?)
+              ?.cast<Map<String, dynamic>>() ??
+          const <Map<String, dynamic>>[];
+
+      if (servers.isNotEmpty) {
+        _cachedIceServers = servers;
+        _iceServerTimestamp = DateTime.now();
+        _emitTelemetry(
+          IntercomTelemetryEvent.now(
+            command: IntercomCommand.attachSession,
+            name: 'ice.proactive_refresh_ok',
+            data: {'serverCount': servers.length},
+          ),
+        );
+      }
+    } catch (e) {
+      // Hata sessizce loglanır; _prepareWebRtcForOffer() fallback yapar.
+      _emitTelemetry(
+        IntercomTelemetryEvent.now(
+          level: IntercomTelemetryLevel.warning,
+          command: IntercomCommand.attachSession,
+          name: 'ice.proactive_refresh_failed',
+          data: {'error': e.toString()},
+        ),
+      );
+    }
+  }

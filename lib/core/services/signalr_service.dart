@@ -801,6 +801,132 @@ class SignalRService {
       }
     });
 
+    // [ICE-BATCH] Tek mesajda gelen tüm ICE candidate'leri bireysel event olarak emit et.
+    // Engine tarafında mevcut _iceSub listener'ı değişmeden çalışır; batch tamamen şeffaf.
+    _hubConnection!.on('ReceiveIceCandidatesBatch', (arguments) {
+      _trackSignalREvent('ReceiveIceCandidatesBatch');
+      if (arguments == null || arguments.isEmpty) return;
+
+      String? fromUserId;
+      dynamic rawCandidates;
+
+      if (arguments[0] is Map) {
+        final payload = Map<String, dynamic>.from(arguments[0] as Map);
+        if (!_hasRequiredRealtimeMetadata(payload, 'ReceiveIceCandidatesBatch')) return;
+        fromUserId = _readString(payload, const ['fromUserId', 'FromUserId']);
+        rawCandidates = payload['candidates'];
+      } else {
+        if (arguments.length < 2) return;
+        fromUserId = _asString(arguments[0]);
+        rawCandidates = arguments[1];
+      }
+
+      if (fromUserId == null || fromUserId.isEmpty) return;
+
+      List<dynamic> candidateList;
+      if (rawCandidates is String) {
+        final decoded = jsonDecode(rawCandidates);
+        if (decoded is! List) return;
+        candidateList = decoded;
+      } else if (rawCandidates is List) {
+        candidateList = rawCandidates;
+      } else {
+        return;
+      }
+
+      AppLogger.info(
+        'SignalR: ICE batch alındı <- $fromUserId (${candidateList.length} candidate)',
+      );
+
+      for (final item in candidateList) {
+        final Map<String, dynamic> parsed;
+        if (item is String) {
+          final decoded = jsonDecode(item);
+          if (decoded is! Map) continue;
+          parsed = Map<String, dynamic>.from(decoded);
+        } else if (item is Map) {
+          parsed = Map<String, dynamic>.from(item);
+        } else {
+          continue;
+        }
+
+        final candidate = _asString(parsed['candidate']);
+        if (candidate == null || candidate.isEmpty) continue;
+
+        _iceCandidateController.add(
+          IceCandidatePayload(
+            fromUserId: fromUserId,
+            candidate: candidate,
+            sdpMid: _asString(parsed['sdpMid']),
+            sdpMLineIndex: _asInt(parsed['sdpMLineIndex']),
+          ),
+        );
+      }
+    });
+
+    // [ICE-BATCH] Tek mesajda gelen tüm ICE candidate'leri bireysel event olarak emit et.
+    // Engine tarafında mevcut _iceSub listener'ı değişmeden çalışır; batch tamamen şeffaf.
+    _hubConnection!.on('ReceiveIceCandidatesBatch', (arguments) {
+      _trackSignalREvent('ReceiveIceCandidatesBatch');
+      if (arguments == null || arguments.isEmpty) return;
+
+      String? fromUserId;
+      dynamic rawCandidates;
+
+      if (arguments[0] is Map) {
+        final payload = Map<String, dynamic>.from(arguments[0] as Map);
+        if (!_hasRequiredRealtimeMetadata(payload, 'ReceiveIceCandidatesBatch')) return;
+        fromUserId = _readString(payload, const ['fromUserId', 'FromUserId']);
+        rawCandidates = payload['candidates'];
+      } else {
+        if (arguments.length < 2) return;
+        fromUserId = _asString(arguments[0]);
+        rawCandidates = arguments[1];
+      }
+
+      if (fromUserId == null || fromUserId.isEmpty) return;
+
+      List<dynamic> candidateList;
+      if (rawCandidates is String) {
+        final decoded = jsonDecode(rawCandidates);
+        if (decoded is! List) return;
+        candidateList = decoded;
+      } else if (rawCandidates is List) {
+        candidateList = rawCandidates;
+      } else {
+        return;
+      }
+
+      AppLogger.info(
+        'SignalR: ICE batch alındı <- $fromUserId (${candidateList.length} candidate)',
+      );
+
+      for (final item in candidateList) {
+        final Map<String, dynamic> parsed;
+        if (item is String) {
+          final decoded = jsonDecode(item);
+          if (decoded is! Map) continue;
+          parsed = Map<String, dynamic>.from(decoded);
+        } else if (item is Map) {
+          parsed = Map<String, dynamic>.from(item);
+        } else {
+          continue;
+        }
+
+        final candidate = _asString(parsed['candidate']);
+        if (candidate == null || candidate.isEmpty) continue;
+
+        _iceCandidateController.add(
+          IceCandidatePayload(
+            fromUserId: fromUserId,
+            candidate: candidate,
+            sdpMid: _asString(parsed['sdpMid']),
+            sdpMLineIndex: _asInt(parsed['sdpMLineIndex']),
+          ),
+        );
+      }
+    });
+
     _hubConnection!.on("ReceiveHeadlessCallRequest", (arguments) {
       _trackSignalREvent('ReceiveHeadlessCallRequest');
       if (arguments != null && arguments.isNotEmpty) {
@@ -1558,6 +1684,27 @@ class SignalRService {
         "SignalR: ICE candidate gÃƒÆ’Ã‚Â¶nderme hatasÃƒâ€Ã‚Â±",
         e,
       );
+    }
+  }
+
+  /// [ICE-BATCH] Birden fazla ICE candidate'i tek SignalR mesajında gönderir.
+  /// Backend'de SendIceCandidatesBatch, her candidate'i peer'e iletiyor.
+  Future<void> sendIceCandidatesBatch(
+    String targetUserId,
+    List<Map<String, dynamic>> candidates,
+  ) async {
+    if (!isConnected || candidates.isEmpty) return;
+    try {
+      final candidatesJson = jsonEncode(candidates);
+      await _hubConnection!.invoke(
+        'SendIceCandidatesBatch',
+        args: [targetUserId, candidatesJson],
+      );
+      AppLogger.info(
+        'SignalR: ICE batch gönderildi -> $targetUserId (${candidates.length} candidate)',
+      );
+    } catch (e) {
+      AppLogger.error('SignalR: ICE batch gönderme hatası', e);
     }
   }
 

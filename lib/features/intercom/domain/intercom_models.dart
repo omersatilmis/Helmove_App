@@ -31,8 +31,21 @@ class IntercomPolicy {
   /// If a 3rd participant joins during the window, engine should prefer SFU.
   final Duration p2pDecisionDelay;
 
+  /// Adaptive P2P decision delay used when the ICE server cache is already warm.
+  ///
+  /// When ICE servers are cached and valid there is nothing to wait for; the
+  /// debounce only guards against 3rd-participant churn. A short window (100ms)
+  /// is enough for that guard while saving ~400ms off the connection time.
+  final Duration p2pDecisionDelayWarm;
+
   /// When SFU is connected and active participants drop to 2, wait this long
   /// before switching back to P2P (hysteresis).
+  ///
+  /// 3 seconds is long enough to guard against momentary participant churn
+  /// (e.g. a 3rd rider whose connection briefly drops), yet short enough
+  /// that the pre-warming that begins the moment this timer starts can fully
+  /// complete before the switch fires — making the actual P2P handshake
+  /// near-instantaneous when the timer expires.
   final Duration sfuToP2pDelay;
 
   /// Max time allowed to recover from connectivity loss / transport reconnect.
@@ -46,7 +59,8 @@ class IntercomPolicy {
 
   const IntercomPolicy({
     this.p2pDecisionDelay = const Duration(milliseconds: 500),
-    this.sfuToP2pDelay = const Duration(seconds: 10),
+    this.p2pDecisionDelayWarm = const Duration(milliseconds: 100),
+    this.sfuToP2pDelay = const Duration(seconds: 3),
     this.reconnectTtl = const Duration(seconds: 60),
     this.participantChurnDebounce = const Duration(milliseconds: 350),
   });

@@ -12,6 +12,13 @@ class AudioOrchestratorService {
   AudioSession? _session;
   bool _isDucking = false;
 
+  /// iOS AVAudioSession.setActive durumunu takip eder.
+  ///
+  /// `true` iken OS bu uygulamanın sesi aktif kullandığını bilir ve
+  /// arkaplan / sessizlik dönemlerinde audio session'ı suspend etmez.
+  /// `false` iken iOS arka planda sesi kesebilir → call drop.
+  bool _sessionActive = false;
+
   AudioMixingMode _currentMixingMode = AudioMixingMode.auto;
   bool _preferWiredMic = false;
 
@@ -103,49 +110,104 @@ class AudioOrchestratorService {
     );
   }
 
-  /// Start ducking music volume (Spotify, etc.)
+  /// Müzik sesini kısar (Spotify, vb.) — sadece mode Auto/Always'de.
   Future<void> startDucking() async {
     if (_isDucking) return;
-    // If mode is OFF, we do nothing
     if (_currentMixingMode == AudioMixingMode.off) return;
-
-    try {
-      final success = await _session!.setActive(true);
-      if (success) {
-        _isDucking = true;
-        AppLogger.info("AudioOrchestratorService: Ducking enabled");
-      }
-    } catch (e) {
-      AppLogger.error("AudioOrchestratorService: Ducking failed", e);
-    }
+    // Ducking öncesi session aktif olmalı (iOS için zorunlu).
+    await activateSession();
+    _isDucking = true;
+    AppLogger.info("AudioOrchestratorService: Ducking enabled");
   }
 
-  /// Stop ducking and restore music volume
+  /// Ducking bayrağını sıfırlar — audio session'ı KAPATMAZ.
+  ///
+  /// Önceki implementasyon burada `setActive(false)` çağırıyordu.
+  /// Bu yanlıştı: sessizlik dönemlerinde (VAD tetiklemez) iOS audio
+  /// session'ı devre dışı bırakıyordu → arkaplanda call drop.
+  /// Session yalnızca `deactivateSession()` ile kapatılır.
   Future<void> stopDucking() async {
     if (!_isDucking) return;
-    try {
-      await _session!.setActive(false);
-      _isDucking = false;
-      AppLogger.info("AudioOrchestratorService: Ducking disabled");
-    } catch (e) {
-      AppLogger.error("AudioOrchestratorService: Ducking stop failed", e);
-    }
+    _isDucking = false;
+    AppLogger.info("AudioOrchestratorService: Ducking disabled");
   }
 
   AudioMixingMode get currentMixingMode => _currentMixingMode;
 
-  /// High-level orchestration for audio focus
+  /// Ses oturumunu yönetir — transport başladığında / durduğunda çağrılır.
+  ///
+  /// `active = true`:
+  ///   Her modda `activateSession()` çağrılır. Bu iOS için kritiktir:
+  ///   AVAudioSession setActive(true) olmadan arka planda sessizlik
+  ///   dönemlerinde (konuşma yok, VAD tetiklenmiyor) OS sesi keser.
+  ///   `always` modunda ducking de hemen başlar.
+  ///
+  /// `active = false`:
+  ///   Ses tamamen durduruluyorsa `deactivateSession()` çağrılır.
   Future<void> manageAudioFocus(bool active) async {
     if (active) {
-      // In 'always' mode, we duck immediately and stay ducked.
-      // In 'auto' mode, we wait for VAD triggers from the Bloc.
+      // Her modda session'ı aktifleştir (iOS arkaplan için zorunlu).
+      await activateSession();
+      // 'always' modunda ducking hemen başlar; 'auto' modunda VAD tetikler.
       if (_currentMixingMode == AudioMixingMode.always) {
         await startDucking();
       }
     } else {
-      await stopDucking();
+      // Ses tamamen durduruluyor — session'ı kapat.
+      await deactivateSession();
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Session Lifecycle
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// AVAudioSession'ı aktifleştirir (iOS) ve Android audio focus'u alır.
+  ///
+  /// Ducking modundan bağımsız — her zaman çağrılabilir.
+  /// İdempotent: zaten aktifse tekrar setActive çağırmaz.
+  Future<void> activateSession() async {
+    if (_session == null || _sessionActive) return;
+    try {
+      await _session!.setActive(true);
+      _sessionActive = true;
+      AppLogger.info('AudioOrchestratorService: Audio session activated');
+    } catch (e) {
+      AppLogger.error('AudioOrchestratorService: Audio session activate failed', e);
+    }
+  }
+
+  /// AVAudioSession'ı devre dışı bırakır (iOS) ve Android audio focus'u bırakır.
+  ///
+  /// YALNIZCA ses tamamen durduğunda çağrılır (`stop` / `detach` / `dispose`).
+  /// Normal konuşma sessizliği, VAD yokluğu veya geçici kesintilerde çağrılmaz.
+  Future<void> deactivateSession() async {
+    if (_session == null) return;
+    _isDucking = false;
+    if (!_sessionActive) return;
+    try {
+      await _session!.setActive(false);
+      _sessionActive = false;
+      AppLogger.info('AudioOrchestratorService: Audio session deactivated');
+    } catch (e) {
+      AppLogger.error('AudioOrchestratorService: Audio session deactivate failed', e);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Interruption Stream
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Telefon araması / Siri / alarm gibi sistem kesintileri için stream.
+  ///
+  /// `AudioInterruptionEvent.begin == true`  → kesinti başladı.
+  /// `AudioInterruptionEvent.begin == false` → kesinti bitti.
+  ///
+  /// IntercomEngineImpl bu stream'e abone olarak kesintileri yönetir:
+  /// başlayınca reconnecting state'e geçer, bitince session'ı yeniden
+  /// aktifleştirip transport'u recovery modunda başlatır.
+  Stream<AudioInterruptionEvent> get interruptionStream =>
+      _session?.interruptionEventStream ?? const Stream.empty();
 
   /// Force Helmic Type-C input and Bluetooth A2DP output
   /// Note: This is an architectural hook for native optimizations if needed.
