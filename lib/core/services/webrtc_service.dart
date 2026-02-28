@@ -3,6 +3,18 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:moto_comm_app_1/core/constants/audio_bitrate.dart';
 import '../utils/app_logger.dart';
 
+class WebRtcNetworkMetrics {
+  final double packetLossPercent;
+  final double jitterMs;
+  final double rttMs;
+
+  const WebRtcNetworkMetrics({
+    required this.packetLossPercent,
+    required this.jitterMs,
+    required this.rttMs,
+  });
+}
+
 /// P2P (Mode A) 1v1 arama iÃ§in WebRTC motoru.
 ///
 /// Bu servis UI'dan tamamen baÄŸÄ±msÄ±zdÄ±r. Sadece ÅŸunlarÄ± yapar:
@@ -59,6 +71,10 @@ class WebRTCService {
   final _connectionQualityController = StreamController<String>.broadcast();
   Stream<String> get connectionQualityStream =>
       _connectionQualityController.stream;
+    final _networkMetricsController =
+      StreamController<WebRtcNetworkMetrics>.broadcast();
+    Stream<WebRtcNetworkMetrics> get networkMetricsStream =>
+      _networkMetricsController.stream;
   Timer? _statsTimer;
   int _poorQualityCount = 0;
 
@@ -730,6 +746,8 @@ class WebRTCService {
   /// TÃ¼m kaynaklarÄ± serbest bÄ±rakÄ±r. Arama bittiÄŸinde Ã§aÄŸrÄ±lmalÄ±.
   Future<void> dispose() async {
     AppLogger.info('WebRTC: Kaynaklar temizleniyor...');
+    _statsTimer?.cancel();
+    _statsTimer = null;
 
     // Yerel stream'i kapat
     if (_localStream != null) {
@@ -769,6 +787,8 @@ class WebRTCService {
     _iceCandidateController.close();
     _connectionStateController.close();
     _iceGatheringStateController.close();
+    _connectionQualityController.close();
+    _networkMetricsController.close();
 
     AppLogger.info('WebRTC: Service destroy edildi.');
   }
@@ -859,18 +879,58 @@ class WebRTCService {
         final stats = await pc.getStats();
         bool isPoor = false;
 
+        double? packetLossPercent;
+        double? jitterMs;
+        double? rttMs;
+
         for (final stat in stats) {
           if (stat.type == 'inbound-rtp' && stat.values['kind'] == 'audio') {
-            final packetLoss = stat.values['packetsLost'] ?? 0;
-            final jitter = stat.values['jitter'] ?? 0;
+            final packetLoss =
+                (num.tryParse('${stat.values['packetsLost'] ?? 0}') ?? 0)
+                    .toDouble();
+            final packetsReceived =
+                (num.tryParse('${stat.values['packetsReceived'] ?? 0}') ?? 0)
+                    .toDouble();
+            final total = packetLoss + packetsReceived;
+            packetLossPercent = total > 0 ? (packetLoss / total) * 100.0 : 0.0;
 
-            // Basit Kalite Algoritmasi
-            if (packetLoss > 50 || jitter > 0.05) {
-              // 50ms jitter veya asiri kayip
+            final rawJitter =
+                (num.tryParse('${stat.values['jitter'] ?? 0}') ?? 0).toDouble();
+            jitterMs = rawJitter <= 1 ? rawJitter * 1000.0 : rawJitter;
+
+            if ((packetLossPercent ?? 0) >= 5.0 || (jitterMs ?? 0) >= 35.0) {
               isPoor = true;
             }
           }
+
+          if (rttMs == null && stat.type == 'remote-inbound-rtp') {
+            final rawRtt =
+                (num.tryParse('${stat.values['roundTripTime'] ?? 0}') ?? 0)
+                    .toDouble();
+            if (rawRtt > 0) {
+              rttMs = rawRtt <= 1 ? rawRtt * 1000.0 : rawRtt;
+            }
+          }
+
+          if (stat.type == 'candidate-pair') {
+            final currentRtt =
+                (num.tryParse('${stat.values['currentRoundTripTime'] ?? 0}') ??
+                        0)
+                    .toDouble();
+            if (currentRtt > 0) {
+              final currentRttMs =
+                  currentRtt <= 1 ? currentRtt * 1000.0 : currentRtt;
+              rttMs = currentRttMs;
+            }
+          }
         }
+
+        final metrics = WebRtcNetworkMetrics(
+          packetLossPercent: packetLossPercent ?? 0,
+          jitterMs: jitterMs ?? 0,
+          rttMs: rttMs ?? 0,
+        );
+        _networkMetricsController.add(metrics);
 
         if (isPoor) {
           _poorQualityCount++;

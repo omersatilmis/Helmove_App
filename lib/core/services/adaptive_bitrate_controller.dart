@@ -13,7 +13,17 @@ class AdaptiveBitrateController {
   static const String _prefKey = 'audio_quality_key';
   static const int _defaultCeiling = AudioBitrate.medium; // medium
   static const int _poorFloor = AudioBitrate.low; // minimum survival bitrate
+  static const int _warningFloor = AudioBitrate.medium;
   static const Duration _hysteresisDuration = Duration(seconds: 3);
+
+  // Network metric thresholds (tuned for voice comm).
+  static const double _criticalPacketLossPercent = 12.0;
+  static const double _criticalJitterMs = 80.0;
+  static const double _criticalRttMs = 450.0;
+
+  static const double _warningPacketLossPercent = 5.0;
+  static const double _warningJitterMs = 35.0;
+  static const double _warningRttMs = 220.0;
 
   /// Kullanıcının ayarlardan seçtiği bitrate (tavan).
   int _ceilingBitrate = _defaultCeiling;
@@ -26,6 +36,9 @@ class AdaptiveBitrateController {
   /// Son bilinen sinyal kalitesi.
   IntercomConnectionQuality _lastQuality = IntercomConnectionQuality.unknown;
   IntercomConnectionQuality get lastQuality => _lastQuality;
+
+  int _qualityCap = _defaultCeiling;
+  int _metricsCap = _defaultCeiling;
 
   /// Hysteresis timer — poor→good geçişinde 3 saniye bekler.
   Timer? _hysteresisTimer;
@@ -44,6 +57,8 @@ class AdaptiveBitrateController {
       final prefs = await SharedPreferences.getInstance();
       final key = prefs.getString(_prefKey);
       _ceilingBitrate = _keyToBitrate(key);
+      _qualityCap = _ceilingBitrate;
+      _metricsCap = _ceilingBitrate;
       _effectiveBitrate = _ceilingBitrate;
       AppLogger.info(
         'AdaptiveBitrate: Ceiling loaded -> $_ceilingBitrate bps (key=$key)',
@@ -56,14 +71,11 @@ class AdaptiveBitrateController {
   /// Kullanıcı ayarlardan ses kalitesini değiştirdiğinde çağrılır.
   void updateCeiling(int bitrate) {
     _ceilingBitrate = bitrate;
+    _qualityCap = _qualityCap.clamp(_poorFloor, _ceilingBitrate);
+    _metricsCap = _metricsCap.clamp(_poorFloor, _ceilingBitrate);
     AppLogger.info('AdaptiveBitrate: Ceiling updated -> $bitrate bps');
 
-    // Eğer mevcut efektif tavan değerinin altındaysa ve sinyal iyiyse, yükselt
-    if (_lastQuality == IntercomConnectionQuality.excellent ||
-        _lastQuality == IntercomConnectionQuality.good ||
-        _lastQuality == IntercomConnectionQuality.unknown) {
-      _applyBitrate(_ceilingBitrate);
-    }
+    _recomputeAndApply(immediate: false, reason: 'ceiling_update');
   }
 
   /// SharedPreferences key'i üzerinden ceiling'i güncelle.
@@ -87,16 +99,15 @@ class AdaptiveBitrateController {
     switch (quality) {
       case IntercomConnectionQuality.excellent:
       case IntercomConnectionQuality.good:
-        // Sinyal iyileşti — hysteresis ile bekle, sonra yükselt
-        _scheduleUpgrade();
+        _qualityCap = _ceilingBitrate;
+        _recomputeAndApply(immediate: false, reason: 'quality_recovered');
         break;
 
       case IntercomConnectionQuality.poor:
       case IntercomConnectionQuality.lost:
         // Sinyal kötü — HEMEN düşür (gecikme yok)
-        _hysteresisTimer?.cancel();
-        _hysteresisTimer = null;
-        _applyBitrate(_poorFloor);
+        _qualityCap = _poorFloor;
+        _recomputeAndApply(immediate: true, reason: 'quality_degraded');
         break;
 
       case IntercomConnectionQuality.unknown:
@@ -105,21 +116,89 @@ class AdaptiveBitrateController {
     }
   }
 
+  /// Runtime ağ metriklerine göre adaptif cap günceller.
+  ///
+  /// - Kritik durumda: low
+  /// - Uyarı durumunda: medium
+  /// - Sağlıklı durumda: ceiling (kullanıcı seçimi / varsayılan)
+  void onNetworkMetrics({
+    required double packetLossPercent,
+    required double jitterMs,
+    required double rttMs,
+  }) {
+    final isCritical =
+        packetLossPercent >= _criticalPacketLossPercent ||
+        jitterMs >= _criticalJitterMs ||
+        rttMs >= _criticalRttMs;
+
+    final isWarning =
+        packetLossPercent >= _warningPacketLossPercent ||
+        jitterMs >= _warningJitterMs ||
+        rttMs >= _warningRttMs;
+
+    if (isCritical) {
+      _metricsCap = _poorFloor;
+      _recomputeAndApply(immediate: true, reason: 'metrics_critical');
+      return;
+    }
+
+    if (isWarning) {
+      _metricsCap = _warningFloor.clamp(_poorFloor, _ceilingBitrate);
+      _recomputeAndApply(immediate: true, reason: 'metrics_warning');
+      return;
+    }
+
+    _metricsCap = _ceilingBitrate;
+    _recomputeAndApply(immediate: false, reason: 'metrics_recovered');
+  }
+
   /// Poor → Good/Excellent geçişinde 3 saniye bekleyip yükseltir.
   /// Bu sayede sinyal kısa süreli dalgalanmalarda gereksiz zıplama olmaz.
-  void _scheduleUpgrade() {
+  void _scheduleUpgrade(int targetBitrate) {
     _hysteresisTimer?.cancel();
     _hysteresisTimer = Timer(_hysteresisDuration, () {
-      // 3 saniye sonra hâlâ iyi sinyal mi?
-      if (_lastQuality == IntercomConnectionQuality.excellent ||
-          _lastQuality == IntercomConnectionQuality.good) {
-        _applyBitrate(_ceilingBitrate);
+      // 3 saniye sonra hâlâ iyileşme yönünde mi?
+      final stillRecovering =
+          _lastQuality == IntercomConnectionQuality.excellent ||
+          _lastQuality == IntercomConnectionQuality.good ||
+          _lastQuality == IntercomConnectionQuality.unknown;
+      if (stillRecovering) {
+        _applyBitrate(targetBitrate);
         AppLogger.info(
-          'AdaptiveBitrate: Hysteresis passed -> upgrading to ceiling '
-          '($_ceilingBitrate bps)',
+          'AdaptiveBitrate: Hysteresis passed -> upgrading to $targetBitrate bps',
         );
       }
     });
+  }
+
+  void _recomputeAndApply({
+    required bool immediate,
+    required String reason,
+  }) {
+    final target =
+        (_qualityCap < _metricsCap ? _qualityCap : _metricsCap).clamp(
+          _poorFloor,
+          _ceilingBitrate,
+        );
+
+    if (target <= _effectiveBitrate) {
+      _hysteresisTimer?.cancel();
+      _hysteresisTimer = null;
+      _applyBitrate(target);
+      return;
+    }
+
+    if (immediate) {
+      _hysteresisTimer?.cancel();
+      _hysteresisTimer = null;
+      _applyBitrate(target);
+      return;
+    }
+
+    AppLogger.info(
+      'AdaptiveBitrate: Recovery pending ($reason) -> schedule $target bps',
+    );
+    _scheduleUpgrade(target);
   }
 
   /// Efektif bitrate'i güncelle ve stream'e yayınla.

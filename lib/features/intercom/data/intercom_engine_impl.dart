@@ -53,6 +53,8 @@ class IntercomEngineImpl implements IntercomEngine {
   StreamSubscription? _iceSub;
   StreamSubscription? _webRtcIceSub;
   StreamSubscription? _webRtcConnectionSub;
+  StreamSubscription? _webRtcQualitySub;
+  StreamSubscription? _webRtcMetricsSub;
   StreamSubscription? _adaptiveBitrateSub;
   // Telefon araması / Siri / alarm gibi OS audio interruption olayları
   StreamSubscription? _audioInterruptionSub;
@@ -496,6 +498,7 @@ class IntercomEngineImpl implements IntercomEngine {
     await _lkConnectionSub?.cancel();
     await _lkSpeakersSub?.cancel();
     await _lkMicSub?.cancel();
+    await _lkQualitySub?.cancel();
 
     await _headlessRequestSub?.cancel();
     await _headlessAcceptedSub?.cancel();
@@ -510,6 +513,8 @@ class IntercomEngineImpl implements IntercomEngine {
 
     await _webRtcIceSub?.cancel();
     await _webRtcConnectionSub?.cancel();
+    await _webRtcQualitySub?.cancel();
+    await _webRtcMetricsSub?.cancel();
     await _adaptiveBitrateSub?.cancel();
     await _audioInterruptionSub?.cancel();
 
@@ -767,6 +772,39 @@ class IntercomEngineImpl implements IntercomEngine {
           ),
         );
       }
+    });
+
+    _webRtcQualitySub?.cancel();
+    _webRtcQualitySub = webRTCService.connectionQualityStream.listen((quality) {
+      final normalized = quality.toUpperCase();
+      final mapped = normalized == 'POOR'
+          ? IntercomConnectionQuality.poor
+          : IntercomConnectionQuality.good;
+      _bitrateController.onQualityChanged(mapped);
+    });
+
+    _webRtcMetricsSub?.cancel();
+    _webRtcMetricsSub = webRTCService.networkMetricsStream.listen((metrics) {
+      _bitrateController.onNetworkMetrics(
+        packetLossPercent: metrics.packetLossPercent,
+        jitterMs: metrics.jitterMs,
+        rttMs: metrics.rttMs,
+      );
+
+      _emitTelemetry(
+        IntercomTelemetryEvent.now(
+          command: IntercomCommand.onAudioSettingsChanged,
+          name: 'adaptive_bitrate.metrics',
+          data: {
+            'transport': 'p2p',
+            'packetLossPercent': metrics.packetLossPercent,
+            'jitterMs': metrics.jitterMs,
+            'rttMs': metrics.rttMs,
+            'effectiveBitrate': _bitrateController.effectiveBitrate,
+            'ceiling': _bitrateController.ceilingBitrate,
+          },
+        ),
+      );
     });
   }
 

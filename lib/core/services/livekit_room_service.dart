@@ -107,6 +107,7 @@ class LiveKitRoomService {
       // İlk state güncelleme
       _emitParticipants();
       _emitMicState();
+      _emitConnectionQualities();
     } catch (e) {
       debugPrint('❌ [LiveKitRoomService] Connection failed: $e');
       await disconnect();
@@ -246,6 +247,9 @@ class LiveKitRoomService {
 
     // Aktif konuşmacılar
     _activeSpeakersController.add(_room!.activeSpeakers);
+
+    // Bağlantı kaliteleri
+    _emitConnectionQualities();
   }
 
   void _emitParticipants() {
@@ -255,6 +259,22 @@ class LiveKitRoomService {
 
   void _emitMicState() {
     _isMicEnabledController.add(isMicrophoneEnabled);
+  }
+
+  void _emitConnectionQualities() {
+    final room = _room;
+    if (room == null) return;
+
+    final qualities = <String, ConnectionQuality>{};
+
+    for (final participant in room.remoteParticipants.values) {
+      qualities[participant.identity] = participant.connectionQuality;
+    }
+
+    final local = room.localParticipant;
+    qualities[local.identity] = local.connectionQuality;
+
+    _qualityController.add(qualities);
   }
 
   // ============================================================

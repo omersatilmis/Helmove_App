@@ -1639,33 +1639,35 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
   /// Smart Refresh Priority: Reason'a göre full refresh gerekip gerekmediğini belirler
   bool _shouldTriggerFullRefresh(String reason) {
-    // Membership değişiklikleri zaten delta event'lerle handle ediliyor
-    // Sadece yapısal değişiklikler için full refresh gerekli
-    const membershipReasons = [
-      'user_joined',
-      'user_left',
-      'user_disconnected',
-      'user_reconnected',
-    ];
+    // Bu reason'lar UserJoined/Left/Disconnected delta event'leriyle
+    // zaten anlık olarak handle ediliyor — ek full refresh gereksiz.
+    // Backend'deki gerçek reason string'leriyle eşleştirilmiştir.
+    const membershipReasons = {
+      'join_session',               // JoinSessionAsync
+      'leave_session',              // LeaveSessionAsync
+      'invite_response_accepted',   // RespondToInviteAsync → Accepted
+      'invite_response_rejected',   // RespondToInviteAsync → Rejected
+    };
 
     if (membershipReasons.contains(reason)) {
-      return false; // Delta event yeterli
+      return false; // Delta event yeterli, double-refresh önlenir
     }
 
-    // Yapısal değişiklikler için full refresh gerekli
-    const structuralReasons = [
-      'host_changed',
-      'session_settings_updated',
-      'session_ended',
-      'participant_promoted',
-      'participant_demoted',
-    ];
+    // Yapısal değişiklikler → full refresh zorunlu
+    const structuralReasons = {
+      'role_update',              // PromoteUserAsync / DemoteUserAsync
+      'transfer_host',            // TransferHostAsync
+      'kick_user',                // KickUserAsync
+      'invite_users',             // InviteUsersAsync
+      'session_settings_updated', // ayar değişikliği
+      'session_ended',            // oturum kapandı
+    };
 
     if (structuralReasons.contains(reason)) {
       return true;
     }
 
-    // Bilinmeyen reason'lar için güvenli tarafta kal: refresh yap
+    // Bilinmeyen reason → güvenli tarafta kal
     return true;
   }
 }
