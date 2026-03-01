@@ -898,7 +898,7 @@ class WebRTCService {
                 (num.tryParse('${stat.values['jitter'] ?? 0}') ?? 0).toDouble();
             jitterMs = rawJitter <= 1 ? rawJitter * 1000.0 : rawJitter;
 
-            if ((packetLossPercent ?? 0) >= 5.0 || (jitterMs ?? 0) >= 35.0) {
+            if (packetLossPercent >= 5.0 || jitterMs >= 35.0) {
               isPoor = true;
             }
           }

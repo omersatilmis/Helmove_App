@@ -3,6 +3,8 @@ import '../../domain/entities/jot_entity.dart';
 
 enum JotsStatus { initial, loading, success, failure }
 
+enum JotsSource { profile, feed }
+
 class JotsState extends Equatable {
   final JotsStatus status;
   final List<JotEntity> jots;
@@ -12,6 +14,7 @@ class JotsState extends Equatable {
   // Creation status
   final JotsStatus createStatus;
   final String createError;
+  final JotsSource source;
 
   const JotsState({
     this.status = JotsStatus.initial,
@@ -22,6 +25,7 @@ class JotsState extends Equatable {
     this.createStatus = JotsStatus.initial,
     this.createError = "",
     this.isFetchingMore = false,
+    this.source = JotsSource.profile,
   });
 
   final bool isFetchingMore;
@@ -35,6 +39,7 @@ class JotsState extends Equatable {
     JotsStatus? createStatus,
     String? createError,
     bool? isFetchingMore,
+    JotsSource? source,
   }) {
     return JotsState(
       status: status ?? this.status,
@@ -45,6 +50,7 @@ class JotsState extends Equatable {
       createStatus: createStatus ?? this.createStatus,
       createError: createError ?? this.createError,
       isFetchingMore: isFetchingMore ?? this.isFetchingMore,
+      source: source ?? this.source,
     );
   }
 
@@ -58,5 +64,6 @@ class JotsState extends Equatable {
     createStatus,
     createError,
     isFetchingMore,
+    source,
   ];
 }

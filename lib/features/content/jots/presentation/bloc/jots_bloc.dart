@@ -15,6 +15,8 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
   final DeleteJotUseCase deleteJot;
   final LikeJotUseCase likeJot;
 
+  static const int _defaultPageSize = 10;
+
   JotsBloc({
     required this.getUserJots,
     required this.getFeed,
@@ -24,6 +26,8 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
   }) : super(const JotsState()) {
     on<FetchUserJotsEvent>(_onFetchUserJots);
     on<FetchMoreUserJotsEvent>(_onFetchMoreUserJots);
+    on<FetchJotsFeedEvent>(_onFetchJotsFeed);
+    on<FetchMoreJotsFeedEvent>(_onFetchMoreJotsFeed);
     on<CreateJotEvent>(_onCreateJot);
     on<DeleteJotEvent>(_onDeleteJot);
     on<LikeJotEvent>(_onLikeJot);
@@ -34,7 +38,11 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     Emitter<JotsState> emit,
   ) async {
     // Eğer zaten veri yüklendiyse ve bu bir yenileme (refresh) değilse tekrar çekme
-    if (!event.isRefresh && state.status == JotsStatus.success) return;
+    if (!event.isRefresh &&
+        state.status == JotsStatus.success &&
+        state.source == JotsSource.profile) {
+      return;
+    }
 
     // Refresh ise listeyi temizle
     if (event.isRefresh) {
@@ -47,7 +55,12 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
         ),
       );
     } else {
-      emit(state.copyWith(status: JotsStatus.loading));
+      emit(
+        state.copyWith(
+          status: JotsStatus.loading,
+          source: JotsSource.profile,
+        ),
+      );
     }
 
     final result = await getUserJots(
@@ -61,6 +74,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
           state.copyWith(
             status: JotsStatus.failure,
             errorMessage: failure.message,
+            source: JotsSource.profile,
           ),
         );
       },
@@ -74,6 +88,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
             jots: jots,
             hasReachedMax: jots.isEmpty,
             currentPage: 1,
+            source: JotsSource.profile,
           ),
         );
       },
@@ -87,7 +102,8 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     // Eğer zaten max'a ulaşılmışsa, hata varsa veya ŞU AN YÜKLENİYORSA işlem yapma
     if (state.hasReachedMax ||
         state.status != JotsStatus.success ||
-        state.isFetchingMore) {
+        state.isFetchingMore ||
+        state.source != JotsSource.profile) {
       return;
     }
 
@@ -102,7 +118,11 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
 
     result.fold(
       (failure) => emit(
-        state.copyWith(errorMessage: failure.message, isFetchingMore: false),
+        state.copyWith(
+          errorMessage: failure.message,
+          isFetchingMore: false,
+          source: JotsSource.profile,
+        ),
       ),
       (newJots) {
         if (newJots.isEmpty) {
@@ -114,6 +134,95 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
               currentPage: nextPage,
               hasReachedMax: false,
               isFetchingMore: false,
+              source: JotsSource.profile,
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _onFetchJotsFeed(
+    FetchJotsFeedEvent event,
+    Emitter<JotsState> emit,
+  ) async {
+    final shouldRefetch = event.isRefresh || state.source != JotsSource.feed;
+    if (!shouldRefetch && state.status == JotsStatus.success) {
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        status: JotsStatus.loading,
+        jots: shouldRefetch ? [] : state.jots,
+        currentPage: 1,
+        hasReachedMax: false,
+        source: JotsSource.feed,
+      ),
+    );
+
+    final result = await getFeed(const GetFeedParams(page: 1));
+
+    result.fold(
+      (failure) => emit(
+        state.copyWith(
+          status: JotsStatus.failure,
+          errorMessage: failure.message,
+          source: JotsSource.feed,
+        ),
+      ),
+      (jots) => emit(
+        state.copyWith(
+          status: JotsStatus.success,
+          jots: jots,
+          currentPage: 1,
+          hasReachedMax: jots.length < _defaultPageSize,
+          source: JotsSource.feed,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onFetchMoreJotsFeed(
+    FetchMoreJotsFeedEvent event,
+    Emitter<JotsState> emit,
+  ) async {
+    if (state.source != JotsSource.feed ||
+        state.hasReachedMax ||
+        state.status != JotsStatus.success ||
+        state.isFetchingMore) {
+      return;
+    }
+
+    emit(state.copyWith(isFetchingMore: true));
+
+    final nextPage = state.currentPage + 1;
+    final result = await getFeed(GetFeedParams(page: nextPage));
+
+    result.fold(
+      (failure) => emit(
+        state.copyWith(
+          errorMessage: failure.message,
+          isFetchingMore: false,
+          source: JotsSource.feed,
+        ),
+      ),
+      (newJots) {
+        if (newJots.isEmpty) {
+          emit(
+            state.copyWith(
+              hasReachedMax: true,
+              isFetchingMore: false,
+            ),
+          );
+        } else {
+          emit(
+            state.copyWith(
+              jots: List.of(state.jots)..addAll(newJots),
+              currentPage: nextPage,
+              hasReachedMax: newJots.length < _defaultPageSize,
+              isFetchingMore: false,
+              source: JotsSource.feed,
             ),
           );
         }

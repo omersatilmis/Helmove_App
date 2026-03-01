@@ -27,6 +27,22 @@ class FetchMoreUserJotsEvent extends JotsEvent {
   List<Object?> get props => [userId];
 }
 
+class FetchJotsFeedEvent extends JotsEvent {
+  final bool isRefresh;
+
+  const FetchJotsFeedEvent({this.isRefresh = false});
+
+  @override
+  List<Object?> get props => [isRefresh];
+}
+
+class FetchMoreJotsFeedEvent extends JotsEvent {
+  const FetchMoreJotsFeedEvent();
+
+  @override
+  List<Object?> get props => [];
+}
+
 class CreateJotEvent extends JotsEvent {
   final String text;
   final JotType type;
