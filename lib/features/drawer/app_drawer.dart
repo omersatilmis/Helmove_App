@@ -5,19 +5,40 @@ import 'package:moto_comm_app_1/features/drawer/drawer_item.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/core/widgets/app_avatar.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Profil bilgilerini dinle
+    // Profil ve Auth bilgilerini dinle
     final profileProvider = context.watch<ProfileProvider>();
-    final firstName = profileProvider.firstName;
-    final lastName = profileProvider.lastName;
-    final email = profileProvider.email;
-    final profileImage =
-        profileProvider.profileImageUrl ?? 'https://i.pravatar.cc/150?img=11';
+    final authProvider = context.watch<AuthProvider>();
+
+    final cachedUser = authProvider.currentUser;
+
+    // Ad
+    final pFirstName = profileProvider.firstName;
+    final firstName = pFirstName.isNotEmpty
+        ? pFirstName
+        : (cachedUser?.firstName ?? '');
+
+    // Soyad
+    final pLastName = profileProvider.lastName;
+    final lastName = pLastName.isNotEmpty
+        ? pLastName
+        : (cachedUser?.lastName ?? '');
+
+    // E-posta
+    final pEmail = profileProvider.email;
+    final email = pEmail.isNotEmpty ? pEmail : (cachedUser?.email ?? '');
+
+    // Görüntülenen İsim
+    final composedName = '$firstName $lastName'.trim();
+    final displayName = composedName.isNotEmpty
+        ? composedName
+        : (cachedUser?.username ?? 'Kullanıcı');
 
     final theme = Theme.of(context);
     // Güvenli alan (Çentik) kontrolü
@@ -50,8 +71,8 @@ class AppDrawer extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha:
-                    0.12,
+                  theme.colorScheme.primary.withValues(
+                    alpha: 0.12,
                   ), // Hafif ton farkı
                 ],
               ),
@@ -66,23 +87,18 @@ class AppDrawer extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha:0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha:0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 10,
                         offset: const Offset(0, 5),
                       ),
                     ],
                   ),
-                  child: CircleAvatar(
-                    radius: 30,
-                    backgroundImage: NetworkImage(profileImage),
-                    // Resim yüklenmezse diye arka plan
-                    backgroundColor: Colors.white,
-                  ),
+                  child: const AppAvatar(radius: 30, isCurrentUser: true),
                 ),
                 const SizedBox(width: 16),
 
@@ -93,7 +109,7 @@ class AppDrawer extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "$firstName $lastName",
+                        displayName,
                         style: AppTextStyles.regular.copyWith(
                           color: Colors.white,
                           fontSize: 20,
@@ -104,7 +120,7 @@ class AppDrawer extends StatelessWidget {
                       Text(
                         email,
                         style: AppTextStyles.regular.copyWith(
-                          color: Colors.white.withValues(alpha:0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontWeight: FontWeight.w500,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -141,7 +157,9 @@ class AppDrawer extends StatelessWidget {
                   title: "Premium Planlar",
                   iconColor: const Color(0xFF9C27B0),
                   textColor: const Color(0xFF9C27B0),
-                  backgroundColor: const Color(0xFF9C27B0).withValues(alpha:0.1),
+                  backgroundColor: const Color(
+                    0xFF9C27B0,
+                  ).withValues(alpha: 0.1),
                   onTap: () {
                     context.pop();
                     context.push('/plans');
@@ -165,7 +183,9 @@ class AppDrawer extends StatelessWidget {
                     horizontal: 16,
                   ),
                   child: Divider(
-                    color: theme.colorScheme.outlineVariant.withValues(alpha:0.1),
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.1,
+                    ),
                   ),
                 ),
 

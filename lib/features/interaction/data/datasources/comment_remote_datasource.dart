@@ -7,6 +7,7 @@ abstract class CommentRemoteDataSource {
   Future<List<CommentModel>> getComments({
     required int contentId,
     int page = 1,
+    int limit = 10,
   });
   Future<CommentModel> addComment({
     required int contentId,
@@ -24,11 +25,12 @@ class CommentRemoteDataSourceImpl implements CommentRemoteDataSource {
   Future<List<CommentModel>> getComments({
     required int contentId,
     int page = 1,
+    int limit = 10,
   }) async {
     try {
       final response = await dio.get(
         InteractionEndpoints.getComments(contentId),
-        queryParameters: {'page': page},
+        queryParameters: {'page': page, 'limit': limit},
       );
 
       final List<dynamic> data = response.data is List

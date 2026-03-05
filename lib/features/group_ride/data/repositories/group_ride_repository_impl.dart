@@ -72,7 +72,7 @@ class GroupRideRepositoryImpl implements GroupRideRepository {
       id: ride.id,
       title: ride.title,
       description: ride.description,
-      organizerId: ride.organizerId,
+      adminId: ride.adminId,
       startDateTime: ride.startDateTime,
       endDateTime: ride.endDateTime,
       startLocation: ride.startLocation,

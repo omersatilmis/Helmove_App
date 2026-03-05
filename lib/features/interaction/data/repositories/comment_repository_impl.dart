@@ -13,11 +13,13 @@ class CommentRepositoryImpl implements CommentRepository {
   Future<Either<Failure, List<CommentEntity>>> getComments({
     required int contentId,
     int page = 1,
+    int limit = 10,
   }) async {
     try {
       final result = await remoteDataSource.getComments(
         contentId: contentId,
         page: page,
+        limit: limit,
       );
       return Right(result);
     } catch (e) {

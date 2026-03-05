@@ -1,20 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
-import '../../../../core/widgets/app_input_field.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../domain/entities/comment_entity.dart';
 import '../bloc/comments_bloc.dart';
 import '../bloc/comments_event.dart';
 import '../bloc/comments_state.dart';
 
-class CommentsSheet extends StatelessWidget {
+const int _commentsPageSize = 10;
+
+class CommentsSheet extends StatefulWidget {
   final int contentId;
 
   const CommentsSheet({super.key, required this.contentId});
+
+  @override
+  State<CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends State<CommentsSheet> {
+  late final TextEditingController _commentController;
+  late final FocusNode _commentFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentController = TextEditingController();
+    _commentFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    _commentFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleReply(String username) {
+    setState(() {
+      _commentController.text = '@$username ';
+      _commentController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _commentController.text.length),
+      );
+    });
+    _commentFocusNode.requestFocus();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +54,14 @@ class CommentsSheet extends StatelessWidget {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return BlocProvider(
-      create: (context) =>
-          sl<CommentsBloc>()..add(LoadCommentsEvent(contentId: contentId)),
+      create: (context) => sl<CommentsBloc>()
+        ..add(
+          LoadCommentsEvent(
+            contentId: widget.contentId,
+            page: 1,
+            limit: _commentsPageSize,
+          ),
+        ),
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomPadding),
         child: DraggableScrollableSheet(
@@ -43,18 +81,23 @@ class CommentsSheet extends StatelessWidget {
               child: Column(
                 children: [
                   const _SheetHeader(),
-                  Divider(height: 1, color: Theme.of(context).dividerColor),
+                  // Divider kaldırıldı, daha ferah bir görünüm için padding kullanıldı.
 
                   // Liste Alanı
                   Expanded(
                     child: _CommentsList(
                       scrollController: scrollController,
-                      contentId: contentId,
+                      contentId: widget.contentId,
+                      onReply: _handleReply,
                     ),
                   ),
 
                   // Input Alanı
-                  _CommentInputArea(contentId: contentId),
+                  _CommentInputArea(
+                    contentId: widget.contentId,
+                    controller: _commentController,
+                    focusNode: _commentFocusNode,
+                  ),
                 ],
               ),
             );
@@ -73,33 +116,64 @@ class _SheetHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        children: [
-          // Gri Çubuk (Tutma yeri)
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              // DİNAMİK RENK: Arka plan koyuysa açık, açıksa koyu olur
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
+    return BlocBuilder<CommentsBloc, CommentsState>(
+      builder: (context, state) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Column(
+            children: [
+              // Gri Çubuk (Tutma yeri)
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Yorumlar',
+                    style: AppTextStyles.h3.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  if (state.comments.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        state.comments.length.toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Yorumlar',
-            // DİNAMİK TEXT STİLİ
-            style: AppTextStyles.h3.copyWith(
-              fontSize: 16,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -110,10 +184,12 @@ class _SheetHeader extends StatelessWidget {
 class _CommentsList extends StatelessWidget {
   final ScrollController scrollController;
   final int contentId;
+  final Function(String) onReply;
 
   const _CommentsList({
     required this.scrollController,
     required this.contentId,
+    required this.onReply,
   });
 
   @override
@@ -180,6 +256,7 @@ class _CommentsList extends StatelessWidget {
                 LoadCommentsEvent(
                   contentId: contentId,
                   page: state.currentPage + 1,
+                  limit: _commentsPageSize,
                 ),
               );
             }
@@ -202,7 +279,11 @@ class _CommentsList extends StatelessWidget {
                 );
               }
               final comment = state.comments[index];
-              return _CommentItem(comment: comment, contentId: contentId);
+              return _CommentItem(
+                comment: comment,
+                contentId: contentId,
+                onReply: onReply,
+              );
             },
           ),
         );
@@ -217,83 +298,101 @@ class _CommentsList extends StatelessWidget {
 class _CommentItem extends StatelessWidget {
   final CommentEntity comment;
   final int contentId;
+  final Function(String) onReply;
 
-  const _CommentItem({required this.comment, required this.contentId});
+  const _CommentItem({
+    required this.comment,
+    required this.contentId,
+    required this.onReply,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Avatar
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest,
-          backgroundImage:
-              comment.userAvatar != null && comment.userAvatar!.isNotEmpty
-              ? CachedNetworkImageProvider(comment.userAvatar!)
-              : null,
-          child: (comment.userAvatar == null || comment.userAvatar!.isEmpty)
-              ? Text(
-                  comment.username.isNotEmpty
-                      ? comment.username[0].toUpperCase()
-                      : "?",
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              : null,
-        ),
-        const SizedBox(width: 12),
-
-        // İçerik
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    comment.username,
-                    // DİNAMİK TEXT RENGİ
-                    style: AppTextStyles.bodySmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _formatTimeAgo(comment.createdAt),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                comment.text,
-                // DİNAMİK TEXT RENGİ
-                style: AppTextStyles.bodySmall.copyWith(
-                  fontSize: 14,
-                  height: 1.3,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.9),
-                ),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Gelişmiş AppAvatar Kullanımı
+          AppAvatar(
+            radius: 18,
+            overrideImageUrl: comment.userAvatar,
+            userId: comment.userId,
           ),
-        ),
+          const SizedBox(width: 12),
 
-        // SAMSUNG STYLE MENÜ BUTONU (Burada)
-        _CommentMoreButton(comment: comment, contentId: contentId),
-      ],
+          // İçerik
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        comment.username,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '•',
+                      style: TextStyle(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatTimeAgo(comment.createdAt),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  comment.text,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.9),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Yanıtla Butonu (Artık Çalışıyor)
+                GestureDetector(
+                  onTap: () => onReply(comment.username),
+                  child: Text(
+                    'Yanıtla',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Menü Butonu
+          _CommentMoreButton(comment: comment, contentId: contentId),
+        ],
+      ),
     );
   }
 
@@ -327,8 +426,8 @@ class _CommentMoreButton extends StatelessWidget {
     // ZIRHLI SAHİPLİK KONTROLÜ
     final bool isOwner =
         currentUserId != null &&
-        currentUserId != 0 &&
-        currentUserId.toString() == comment.userId.toString();
+        currentUserId > 0 &&
+        currentUserId == comment.userId;
 
     // SAMSUNG ONE UI STİLİ POPUP MENU
     return PopupMenuButton<String>(
@@ -466,64 +565,108 @@ class _CommentMoreButton extends StatelessWidget {
 // -----------------------------------------------------------------------------
 class _CommentInputArea extends StatefulWidget {
   final int contentId;
+  final TextEditingController controller;
+  final FocusNode focusNode;
 
-  const _CommentInputArea({required this.contentId});
+  const _CommentInputArea({
+    required this.contentId,
+    required this.controller,
+    required this.focusNode,
+  });
 
   @override
   State<_CommentInputArea> createState() => _CommentInputAreaState();
 }
 
 class _CommentInputAreaState extends State<_CommentInputArea> {
-  final TextEditingController _controller = TextEditingController();
   bool _isComposing = false;
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      final isNotEmpty = _controller.text.trim().isNotEmpty;
-      if (_isComposing != isNotEmpty) {
-        setState(() => _isComposing = isNotEmpty);
-      }
-    });
+    widget.controller.addListener(_updateComposing);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    widget.controller.removeListener(_updateComposing);
     super.dispose();
   }
 
+  void _updateComposing() {
+    final isNotEmpty = widget.controller.text.trim().isNotEmpty;
+    if (_isComposing != isNotEmpty) {
+      setState(() => _isComposing = isNotEmpty);
+    }
+  }
+
   void _submit() {
-    final text = _controller.text.trim();
+    final text = widget.controller.text.trim();
     if (text.isEmpty) return;
 
     context.read<CommentsBloc>().add(
       AddCommentEvent(contentId: widget.contentId, text: text),
     );
-    _controller.clear();
-    FocusScope.of(context).unfocus();
+    widget.controller.clear();
+    widget.focusNode.unfocus();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor, // Dinamik zemin
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+            width: 0.5,
+          ),
+        ),
       ),
       child: SafeArea(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // Mevcut Kullanıcının Profil Fotoğrafı
+            const Padding(
+              padding: EdgeInsets.only(bottom: 6),
+              child: AppAvatar(radius: 18, isCurrentUser: true),
+            ),
+            const SizedBox(width: 12),
             Expanded(
-              child: AppInputField(
-                controller: _controller,
-                hint: 'Yorum ekle...',
-                minLines: 1,
-                maxLines: 4,
-                radius: 24,
-                // AppInputField senin temanı kullanacak şekilde zaten ayarlıdır
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: TextField(
+                  controller: widget.controller,
+                  focusNode: widget.focusNode,
+                  minLines: 1,
+                  maxLines: 5,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Yorum ekle...',
+                    hintStyle: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      fontSize: 15,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -531,28 +674,24 @@ class _CommentInputAreaState extends State<_CommentInputArea> {
               builder: (context, state) {
                 if (state.isPostingComment) {
                   return const SizedBox(
-                    width: 40,
-                    height: 40,
+                    width: 44,
+                    height: 44,
                     child: Padding(
-                      padding: EdgeInsets.all(10.0),
+                      padding: EdgeInsets.all(12.0),
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   );
                 }
-                return Container(
-                  decoration: BoxDecoration(
-                    color: _isComposing
-                        ? AppColors.primary
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
-                  ),
+                return AnimatedOpacity(
+                  opacity: _isComposing ? 1.0 : 0.4,
+                  duration: const Duration(milliseconds: 200),
                   child: IconButton(
+                    iconSize: 28,
                     icon: Icon(
-                      Icons.arrow_upward_rounded,
+                      Icons.arrow_circle_up_rounded,
                       color: _isComposing
-                          ? Colors.white
-                          : Theme.of(context).disabledColor,
-                      size: 20,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     onPressed: _isComposing ? _submit : null,
                   ),

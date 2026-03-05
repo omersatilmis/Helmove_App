@@ -9,6 +9,8 @@ class PostEntity extends Equatable {
   final int visibility;
   final int userId;
   final String username;
+  final String? userFirstName;
+  final String? userLastName;
   final String? userProfileImage;
   final DateTime createdAt;
   final int likeCount;
@@ -24,6 +26,8 @@ class PostEntity extends Equatable {
     required this.visibility,
     required this.userId,
     required this.username,
+    this.userFirstName,
+    this.userLastName,
     this.userProfileImage,
     required this.createdAt,
     this.likeCount = 0,
@@ -40,6 +44,8 @@ class PostEntity extends Equatable {
     int? visibility,
     int? userId,
     String? username,
+    String? userFirstName,
+    String? userLastName,
     String? userProfileImage,
     DateTime? createdAt,
     int? likeCount,
@@ -55,12 +61,24 @@ class PostEntity extends Equatable {
       visibility: visibility ?? this.visibility,
       userId: userId ?? this.userId,
       username: username ?? this.username,
+      userFirstName: userFirstName ?? this.userFirstName,
+      userLastName: userLastName ?? this.userLastName,
       userProfileImage: userProfileImage ?? this.userProfileImage,
       createdAt: createdAt ?? this.createdAt,
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
       isLiked: isLiked ?? this.isLiked,
     );
+  }
+
+  String get displayName {
+    final first = userFirstName?.trim() ?? '';
+    final last = userLastName?.trim() ?? '';
+    final fullName = [first, last].where((part) => part.isNotEmpty).join(' ');
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+    return username;
   }
 
   @override
@@ -73,6 +91,8 @@ class PostEntity extends Equatable {
     visibility,
     userId,
     username,
+    userFirstName,
+    userLastName,
     userProfileImage,
     createdAt,
     likeCount,

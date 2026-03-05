@@ -4,6 +4,7 @@ import 'package:moto_comm_app_1/features/intercom/domain/intercom_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/di/injection_container.dart' as di;
 
 import 'group_page/dialogs/group_page_actions.dart';
 import 'group_page/sections/group_footer_section.dart';
@@ -38,6 +39,7 @@ class GroupPage extends StatefulWidget {
 
 class _GroupPageState extends State<GroupPage>
     with NavigationGuardMixin<GroupPage> {
+  static const Duration _refreshCooldown = Duration(milliseconds: 1500);
   @override
   BaseNavigationArgs? get args => widget.data;
 
@@ -54,6 +56,8 @@ class _GroupPageState extends State<GroupPage>
   Set<String> _activeSpeakers = {};
   Map<int, IntercomConnectionQuality> _participantQualities = {};
   StreamSubscription<ConnectionStatus>? _connectivityWatcherSub;
+  Timer? _refreshCooldownTimer;
+  bool _isRefreshDisabled = false;
   String? _lastVoiceErrorMessage;
   String? _lastVoiceInfoMessage;
   bool _didNavigateAway = false;
@@ -61,6 +65,8 @@ class _GroupPageState extends State<GroupPage>
   @override
   void initState() {
     super.initState();
+    unawaited(di.ensureCommunicationRuntimeStarted());
+
     final hasRideId = widget.data.rideId > 0;
     final hasSessionId = (widget.data.sessionId ?? 0) > 0;
     if (!hasRideId && !hasSessionId) {
@@ -94,7 +100,7 @@ class _GroupPageState extends State<GroupPage>
 
   void _loadSessionDetails() {
     if (!mounted) return;
-    final sessionId = widget.data.sessionId;
+    final sessionId = _sessionDetails?.id ?? widget.data.sessionId;
     if (sessionId == null || sessionId <= 0) {
       setState(() => _isLoadingSession = false);
       // Valid case: there may be no session yet, just a ride.
@@ -104,7 +110,9 @@ class _GroupPageState extends State<GroupPage>
     setState(() => _isLoadingSession = true);
     final voiceBloc = context.read<VoiceSessionBloc>();
     if (voiceBloc.isClosed) return;
-    voiceBloc.add(GetVoiceSessionDetailsEvent(sessionId));
+    voiceBloc.add(
+      GetVoiceSessionDetailsEvent(sessionId, force: true, immediate: true),
+    );
   }
 
   void _loadRideDetails() {
@@ -116,7 +124,7 @@ class _GroupPageState extends State<GroupPage>
     setState(() => _isLoadingRide = true);
     final rideBloc = context.read<GroupRideBloc>();
     if (rideBloc.isClosed) return;
-    rideBloc.add(LoadGroupRideDetailsEvent(rideId));
+    rideBloc.add(LoadGroupRideDetailsEvent(rideId, force: true));
   }
 
   void _handleInvite() {
@@ -147,6 +155,18 @@ class _GroupPageState extends State<GroupPage>
   }
 
   void _handleRefresh() {
+    if (_isRefreshDisabled) {
+      return;
+    }
+
+    setState(() => _isRefreshDisabled = true);
+    _refreshCooldownTimer?.cancel();
+    _refreshCooldownTimer = Timer(_refreshCooldown, () {
+      if (mounted) {
+        setState(() => _isRefreshDisabled = false);
+      }
+    });
+
     _loadRideDetails();
     _loadSessionDetails();
   }
@@ -187,20 +207,20 @@ class _GroupPageState extends State<GroupPage>
 
   bool _canAccessSettings(int? currentUserId) {
     if (currentUserId == null || _sessionDetails == null) return false;
-    
-    // Captain (host) her zaman erişebilir
-    if (_sessionDetails!.hostUserId == currentUserId) return true;
-    
+
+    // Admin her zaman erişebilir
+    if (_sessionDetails!.adminId == currentUserId) return true;
+
     // Participant listesinden current user'ı bul ve role'ünü kontrol et
     final currentParticipant = _sessionDetails!.participants
         .where((p) => p.userId == currentUserId)
         .firstOrNull;
-    
+
     if (currentParticipant == null) return false;
-    
+
     // Admin veya Captain ise erişebilir
     return currentParticipant.role == GroupRole.admin ||
-           currentParticipant.role == GroupRole.captain;
+        currentParticipant.role == GroupRole.captain;
   }
 
   // --- UI ACTIONS ---
@@ -538,7 +558,9 @@ class _GroupPageState extends State<GroupPage>
                                   participantQualities: _participantQualities,
                                   isCurrentUserMicOn: _isMicOn,
                                   onToggleMic: _handleToggleMic,
-                                  onRefresh: _handleRefresh,
+                                  onRefresh: _isRefreshDisabled
+                                      ? null
+                                      : _handleRefresh,
                                   onInvite: _handleInvite,
                                   onSettings: _handleOpenSettings,
                                   onKickUser: _kickUser,
@@ -590,6 +612,7 @@ class _GroupPageState extends State<GroupPage>
   @override
   void dispose() {
     _connectivityWatcherSub?.cancel();
+    _refreshCooldownTimer?.cancel();
     super.dispose();
   }
 }

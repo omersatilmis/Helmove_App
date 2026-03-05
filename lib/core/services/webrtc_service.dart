@@ -15,6 +15,22 @@ class WebRtcNetworkMetrics {
   });
 }
 
+class WebRtcUplinkStats {
+  final int bytesDelta;
+  final int packetsDelta;
+  final double bitrateKbps;
+  final bool silenceLikely;
+  final bool dtxEnabled;
+
+  const WebRtcUplinkStats({
+    required this.bytesDelta,
+    required this.packetsDelta,
+    required this.bitrateKbps,
+    required this.silenceLikely,
+    required this.dtxEnabled,
+  });
+}
+
 /// P2P (Mode A) 1v1 arama iÃ§in WebRTC motoru.
 ///
 /// Bu servis UI'dan tamamen baÄŸÄ±msÄ±zdÄ±r. Sadece ÅŸunlarÄ± yapar:
@@ -38,6 +54,7 @@ class WebRTCService {
   MediaStream? _remoteStream;
   final List<RTCIceCandidate> _pendingCandidates = [];
   int _currentBitrate = AudioBitrate.medium; // Varsayılan: Medium
+  bool _isInitializing = false;
 
   // ============================================================
   // STREAMS â€” UI KatmanÄ±na veri aktarÄ±mÄ±
@@ -71,12 +88,16 @@ class WebRTCService {
   final _connectionQualityController = StreamController<String>.broadcast();
   Stream<String> get connectionQualityStream =>
       _connectionQualityController.stream;
-    final _networkMetricsController =
+  final _networkMetricsController =
       StreamController<WebRtcNetworkMetrics>.broadcast();
-    Stream<WebRtcNetworkMetrics> get networkMetricsStream =>
+  Stream<WebRtcNetworkMetrics> get networkMetricsStream =>
       _networkMetricsController.stream;
+  final _uplinkStatsController =
+      StreamController<WebRtcUplinkStats>.broadcast();
+  Stream<WebRtcUplinkStats> get uplinkStatsStream =>
+      _uplinkStatsController.stream;
   Timer? _statsTimer;
-  int _poorQualityCount = 0;
+  int _lowQualityCount = 0;
 
   // ============================================================
   // GETTERS
@@ -123,22 +144,27 @@ class WebRTCService {
       return;
     }
 
+    if (_isInitializing) {
+      AppLogger.warning('WebRTC: initialize ignored, already initializing.');
+      return;
+    }
+
+    _isInitializing = true;
     _pendingCandidates.clear();
 
-    AppLogger.info('WebRTC: PeerConnection baÅŸlatÄ±lÄ±yor...');
+    AppLogger.info('WebRTC: PeerConnection baslatiliyor...');
     final sanitizedIceServers = _sanitizeIceServers(iceServers);
     AppLogger.info(
-      'WebRTC: ICE server sanitize sonrasÄ± count=${sanitizedIceServers.length}',
+      'WebRTC: ICE server sanitize count=${sanitizedIceServers.length}',
     );
 
     final configuration = <String, dynamic>{
       'iceServers': sanitizedIceServers,
-      // P2P Ã¶ncelikli, TURN gerektiÄŸinde kullanÄ±lÄ±r
       'iceTransportPolicy': 'all',
       'bundlePolicy': 'max-bundle',
       'rtcpMuxPolicy': 'require',
       'sdpSemantics': 'unified-plan',
-      'iceCandidatePoolSize': 2, // Bağlantı öncesi aday toplamayı hızlandırır
+      'iceCandidatePoolSize': 2,
     };
 
     final constraints = <String, dynamic>{
@@ -148,14 +174,14 @@ class WebRTCService {
       ],
     };
 
-    _peerConnection = await createPeerConnection(configuration, constraints);
-    _registerPeerConnectionCallbacks();
-
-    // İYİLEŞTİRME: Varsayılan olarak sesi hoparlöre (Speaker) yönlendir.
-    // Motosiklet interkom deneyimi için hoparlör kullanımı şarttır.
-    await Helper.setSpeakerphoneOn(true);
-
-    AppLogger.info('WebRTC: PeerConnection oluÅŸturuldu.');
+    try {
+      _peerConnection = await createPeerConnection(configuration, constraints);
+      _registerPeerConnectionCallbacks();
+      await Helper.setSpeakerphoneOn(true);
+      AppLogger.info('WebRTC: PeerConnection olusturuldu.');
+    } finally {
+      _isInitializing = false;
+    }
   }
 
   List<Map<String, dynamic>> _sanitizeIceServers(
@@ -304,9 +330,9 @@ class WebRTCService {
             _noiseSuppressionEnabled, // Google gürültü bastırma
         'googNoiseReduction':
             _noiseSuppressionEnabled, // Ekstra gürültü azaltma
-        'autoGainControl': true, // Otomatik ses seviyesi
-        'googAutoGainControl': true,
-        'googHighpassFilter': true,
+        'autoGainControl': false, // Kesintisiz ses: AGC kapalı
+        'googAutoGainControl': false, // Kesintisiz ses: AGC kapalı
+        'googHighpassFilter': false, // Kesintisiz ses: HPF kapalı
         'googAudioMirroring': false,
       },
       'video': false, // Sadece ses â€” video yok
@@ -318,6 +344,7 @@ class WebRTCService {
     // Track'leri PeerConnection'a ekle
     final audioTrack = _localStream!.getAudioTracks().first;
     await pc.addTrack(audioTrack, _localStream!);
+    _setLocalTrackEnabled(true);
 
     _localStreamController.add(_localStream);
     AppLogger.info('WebRTC: Mikrofon aÃ§Ä±ldÄ± ve PeerConnection\'a eklendi.');
@@ -328,9 +355,7 @@ class WebRTCService {
     if (_localStream == null) return;
 
     _isMicEnabled = !_isMicEnabled;
-    for (final track in _localStream!.getAudioTracks()) {
-      track.enabled = _isMicEnabled;
-    }
+    _setLocalTrackEnabled(_isMicEnabled);
 
     AppLogger.info(
       'WebRTC: Mikrofon ${_isMicEnabled ? "aÃ§Ä±ldÄ±" : "kapatÄ±ldÄ±"}',
@@ -338,14 +363,11 @@ class WebRTCService {
   }
 
   /// Mikrofonu belirli bir duruma set eder
-  /// Mikrofonu belirli bir duruma set eder
   void setMicrophoneEnabled(bool enabled) {
     if (_localStream == null) return;
 
     _isMicEnabled = enabled;
-    for (final track in _localStream!.getAudioTracks()) {
-      track.enabled = enabled;
-    }
+    _setLocalTrackEnabled(_isMicEnabled);
 
     AppLogger.info(
       'WebRTC: Mikrofon \u2192 ${enabled ? "a\u00e7\u0131k" : "kapal\u0131"}',
@@ -372,6 +394,14 @@ class WebRTCService {
   }
 
   /// Ses ayarlarını dinamik olarak güncelle (Gürültü engelleme vb.)
+  void _setLocalTrackEnabled(bool enabled) {
+    final stream = _localStream;
+    if (stream == null) return;
+    for (final track in stream.getAudioTracks()) {
+      track.enabled = enabled;
+    }
+  }
+
   Future<void> updateAudioSettings({required bool noiseSuppression}) async {
     _noiseSuppressionEnabled = noiseSuppression;
 
@@ -381,24 +411,55 @@ class WebRTCService {
       'WebRTC: Ses ayarları güncelleniyor: noiseSuppression=$noiseSuppression',
     );
 
-    // Mevcut stream'i ve track'leri temizleyip yeni ayarlarla yeniden başlatıyoruz.
-    // "Motoru yeniden başlatmak" mantığına en uygun ve stabil yöntem budur.
+    // Mevcut stream'i koparmadan sadece track'i değiştiriyoruz (Seamless)
     final wasMicEnabled = _isMicEnabled;
 
     try {
-      // 1. Mevcut track'leri durdur
-      for (final track in _localStream!.getTracks()) {
-        await track.stop();
+      final oldStream = _localStream;
+
+      final constraints = <String, dynamic>{
+        'audio': {
+          'echoCancellation': true,
+          'googEchoCancellation': true,
+          'googEchoCancellation2': true,
+          'googDAEchoCancellation': true,
+          'noiseSuppression': noiseSuppression,
+          'googNoiseSuppression': noiseSuppression,
+          'googNoiseReduction': noiseSuppression,
+          'autoGainControl': false, // Kesintisiz iletim
+          'googAutoGainControl': false, // Kesintisiz iletim
+          'googHighpassFilter': false, // Kesintisiz iletim
+          'googAudioMirroring': false,
+        },
+        'video': false,
+      };
+
+      if (oldStream != null) {
+        for (final track in oldStream.getTracks()) {
+          await track.stop();
+        }
+        await oldStream.dispose();
       }
-      _localStream = null;
 
-      // 2. Yeni stream'i başlat (Yeni constraints ile)
-      await startLocalStream();
+      final newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      final newAudioTrack = newStream.getAudioTracks().first;
 
-      // 3. Mikrofon durumunu koru
+      // Senders üzerinden track değiştir (Bağlantı kopmaz)
+      final senders = await _peerConnection!.getSenders();
+      for (final sender in senders) {
+        if (sender.track?.kind == 'audio') {
+          await sender.replaceTrack(newAudioTrack);
+        }
+      }
+
+      _localStream = newStream;
+      _setLocalTrackEnabled(wasMicEnabled);
       setMicrophoneEnabled(wasMicEnabled);
+      _localStreamController.add(_localStream);
 
-      AppLogger.info('WebRTC: Ses ayarları başarıyla uygulandı.');
+      AppLogger.info(
+        'WebRTC: Ses ayarları başarıyla uygulandı (Track Replaced).',
+      );
     } catch (e) {
       AppLogger.error('WebRTC: Ses ayarları güncellenirken hata oluştu', e);
     }
@@ -789,6 +850,7 @@ class WebRTCService {
     _iceGatheringStateController.close();
     _connectionQualityController.close();
     _networkMetricsController.close();
+    _uplinkStatsController.close();
 
     AppLogger.info('WebRTC: Service destroy edildi.');
   }
@@ -846,11 +908,11 @@ class WebRTCService {
     final fmtpRegex = RegExp('a=fmtp:$payloadType (.*)\r\n');
 
     // Motosiklet için optimize edilmiş parametreler:
-    // usedtx=0 -> Sessizlikte veri kesmeyi kapat (Rüzgarı konuşma sanıp kesmesin)
+    // usedtx=1 -> Sessiz anlarda paket göndermeyi azalt (DTX)
     // useinbandfec=1 -> Paket kaybı onarımı
     // minptime=10 -> Düşük gecikme (10ms paketler)
     final newParams =
-        'a=fmtp:$payloadType minptime=10;useinbandfec=1;maxaveragebitrate=$_currentBitrate;stereo=0;sprop-stereo=0;usedtx=0;cbr=0\r\n';
+        'a=fmtp:$payloadType minptime=10;useinbandfec=1;maxaveragebitrate=$_currentBitrate;stereo=0;sprop-stereo=0;usedtx=0;cbr=1\r\n';
 
     if (!sdp.contains(fmtpRegex)) {
       // fmtp satırı yoksa rtpmap'in altına ekle
@@ -865,7 +927,19 @@ class WebRTCService {
   }
 
   // [NEW] Stats Tracking for Seamless Fallback
+  // Delta hesaplama için önceki kümülatif değerler
+  int _prevPacketsLost = 0;
+  int _prevPacketsReceived = 0;
+  int _prevBytesSent = 0;
+  int _prevPacketsSent = 0;
+  bool _hasOutboundBaseline = false;
+
   void _startStatsTimer() {
+    _prevPacketsLost = 0;
+    _prevPacketsReceived = 0;
+    _prevBytesSent = 0;
+    _prevPacketsSent = 0;
+    _hasOutboundBaseline = false;
     _statsTimer?.cancel();
     _statsTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       final pc = _peerConnection;
@@ -877,30 +951,38 @@ class WebRTCService {
 
       try {
         final stats = await pc.getStats();
-        bool isPoor = false;
 
         double? packetLossPercent;
         double? jitterMs;
         double? rttMs;
+        int outboundBytesSent = 0;
+        int outboundPacketsSent = 0;
 
         for (final stat in stats) {
           if (stat.type == 'inbound-rtp' && stat.values['kind'] == 'audio') {
-            final packetLoss =
+            // Delta packet loss: son 2 saniyelik gerçek kayıp oranı
+            // (kümülatif değil — ağ iyileşince hemen yansır)
+            final cumLost =
                 (num.tryParse('${stat.values['packetsLost'] ?? 0}') ?? 0)
-                    .toDouble();
-            final packetsReceived =
+                    .toInt();
+            final cumReceived =
                 (num.tryParse('${stat.values['packetsReceived'] ?? 0}') ?? 0)
-                    .toDouble();
-            final total = packetLoss + packetsReceived;
-            packetLossPercent = total > 0 ? (packetLoss / total) * 100.0 : 0.0;
+                    .toInt();
+            final deltaLost = (cumLost - _prevPacketsLost).clamp(0, 999999);
+            final deltaReceived = (cumReceived - _prevPacketsReceived).clamp(
+              0,
+              999999,
+            );
+            _prevPacketsLost = cumLost;
+            _prevPacketsReceived = cumReceived;
+            final deltaTotal = deltaLost + deltaReceived;
+            packetLossPercent = deltaTotal > 0
+                ? (deltaLost / deltaTotal) * 100.0
+                : 0.0;
 
             final rawJitter =
                 (num.tryParse('${stat.values['jitter'] ?? 0}') ?? 0).toDouble();
             jitterMs = rawJitter <= 1 ? rawJitter * 1000.0 : rawJitter;
-
-            if (packetLossPercent >= 5.0 || jitterMs >= 35.0) {
-              isPoor = true;
-            }
           }
 
           if (rttMs == null && stat.type == 'remote-inbound-rtp') {
@@ -918,10 +1000,21 @@ class WebRTCService {
                         0)
                     .toDouble();
             if (currentRtt > 0) {
-              final currentRttMs =
-                  currentRtt <= 1 ? currentRtt * 1000.0 : currentRtt;
+              final currentRttMs = currentRtt <= 1
+                  ? currentRtt * 1000.0
+                  : currentRtt;
               rttMs = currentRttMs;
             }
+          }
+
+          if (stat.type == 'outbound-rtp' && stat.values['kind'] == 'audio') {
+            final bytes =
+                (num.tryParse('${stat.values['bytesSent'] ?? 0}') ?? 0).toInt();
+            final packets =
+                (num.tryParse('${stat.values['packetsSent'] ?? 0}') ?? 0)
+                    .toInt();
+            outboundBytesSent += bytes;
+            outboundPacketsSent += packets;
           }
         }
 
@@ -931,16 +1024,55 @@ class WebRTCService {
           rttMs: rttMs ?? 0,
         );
         _networkMetricsController.add(metrics);
+        if (!_hasOutboundBaseline) {
+          _prevBytesSent = outboundBytesSent;
+          _prevPacketsSent = outboundPacketsSent;
+          _hasOutboundBaseline = true;
+        } else {
+          final bytesDelta = (outboundBytesSent - _prevBytesSent).clamp(
+            0,
+            1 << 30,
+          );
+          final packetsDelta = (outboundPacketsSent - _prevPacketsSent).clamp(
+            0,
+            1 << 30,
+          );
+          _prevBytesSent = outboundBytesSent;
+          _prevPacketsSent = outboundPacketsSent;
+          final bitrateKbps = (bytesDelta * 8) / 2 / 1000;
+          final silenceLikely = packetsDelta == 0 || bitrateKbps < 1.0;
+          _uplinkStatsController.add(
+            WebRtcUplinkStats(
+              bytesDelta: bytesDelta,
+              packetsDelta: packetsDelta,
+              bitrateKbps: bitrateKbps,
+              silenceLikely: silenceLikely,
+              dtxEnabled: false,
+            ),
+          );
+        }
 
-        if (isPoor) {
-          _poorQualityCount++;
-          if (_poorQualityCount >= 3) {
-            _connectionQualityController.add('POOR');
-            _poorQualityCount = 0; // Sifirla, surekli tetiklemesin
+        // 4 seviyeli quality: ULTRA / HIGH / BALANCED / LOW
+        final loss = packetLossPercent ?? 0;
+        final jit = jitterMs ?? 0;
+        final rtt = rttMs ?? 0;
+
+        if (loss >= 8.0 || jit >= 45.0 || rtt >= 260.0) {
+          _lowQualityCount++;
+          if (_lowQualityCount >= 2) {
+            _connectionQualityController.add('LOW');
+          } else {
+            _connectionQualityController.add('BALANCED');
           }
         } else {
-          _poorQualityCount = 0; // Bir iyi raporda sayaci sifirla
-          _connectionQualityController.add('GOOD');
+          _lowQualityCount = 0;
+          if (loss < 0.8 && jit < 10.0 && rtt < 80.0) {
+            _connectionQualityController.add('ULTRA');
+          } else if (loss < 2.0 && jit < 22.0 && rtt < 140.0) {
+            _connectionQualityController.add('HIGH');
+          } else {
+            _connectionQualityController.add('BALANCED');
+          }
         }
       } catch (e) {
         // Stats error ignored

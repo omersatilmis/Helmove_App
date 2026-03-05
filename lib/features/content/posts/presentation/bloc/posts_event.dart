@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../domain/entities/post_entity.dart';
 
 abstract class PostsEvent extends Equatable {
   const PostsEvent();
@@ -60,4 +61,19 @@ class PostsCurrentUserChangedEvent extends PostsEvent {
 
   @override
   List<Object?> get props => [userId];
+}
+
+class SeedInitialFeedEvent extends PostsEvent {
+  final List<PostEntity> posts;
+  final bool hasNextPage;
+  final int page;
+
+  const SeedInitialFeedEvent({
+    required this.posts,
+    required this.hasNextPage,
+    this.page = 1,
+  });
+
+  @override
+  List<Object?> get props => [posts, hasNextPage, page];
 }

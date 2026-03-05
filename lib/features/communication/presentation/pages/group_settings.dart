@@ -6,6 +6,7 @@ import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
+import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_event.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_state.dart';
@@ -16,6 +17,7 @@ import '../../../../features/group_ride/data/dto/create_group_ride_request_dto.d
 import '../../../../features/group_ride/domain/entities/group_ride_entity.dart';
 import '../../../../core/navigation/base_navigation_args.dart';
 import '../../../../core/mixins/navigation_guard_mixin.dart';
+import '../../../../features/attendance_management/domain/entities/group_role.dart';
 
 class GroupSettings extends StatefulWidget {
   final GroupRideArgs data;
@@ -97,12 +99,18 @@ class _GroupSettingsState extends State<GroupSettings>
     final bool isAdmin =
         (widget.data.organizerId != null && user.id == widget.data.organizerId);
 
-    // 2. Captain/Host = hostUserId of the VoiceSession
+    // 2. Admin = adminId of the VoiceSession
     bool isHost = false;
     try {
       final vsState = context.read<VoiceSessionBloc>().state;
       if (vsState.session != null) {
-        isHost = vsState.session!.hostUserId == user.id;
+        isHost =
+            vsState.session!.adminId == user.id ||
+            vsState.session!.participants.any(
+              (p) =>
+                  p.userId == user.id &&
+                  (p.role == GroupRole.admin || p.role == GroupRole.captain),
+            );
       }
     } catch (_) {
       // VoiceSessionBloc not available in tree — skip
@@ -186,6 +194,11 @@ class _GroupSettingsState extends State<GroupSettings>
         sessionId: widget.data.sessionId,
       ),
     );
+    if (widget.data.sessionId != null) {
+      context.read<VoiceSessionBloc>().add(
+        EndVoiceSessionEvent(widget.data.sessionId!),
+      );
+    }
   }
 
   @override

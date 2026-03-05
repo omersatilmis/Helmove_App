@@ -7,6 +7,8 @@ import 'package:moto_comm_app_1/core/utils/app_logger.dart';
 import 'package:moto_comm_app_1/core/network/network_service.dart';
 import 'package:moto_comm_app_1/core/utils/image_compressor.dart';
 import 'package:moto_comm_app_1/core/services/app_session.dart';
+import 'package:get_it/get_it.dart';
+import 'package:moto_comm_app_1/features/auth/data/datasources/auth_local_data_source.dart';
 
 /// ProfileProvider - Profil verilerini yönetir
 class ProfileProvider extends ChangeNotifier {
@@ -16,18 +18,20 @@ class ProfileProvider extends ChangeNotifier {
 
   ProfileProvider(this._profileRepository, this._appSession) {
     _currentUserId = _appSession.currentUserId;
-    _sessionUserIdSubscription = _appSession.currentUserIdStream.distinct().listen((userId) {
-      if (_currentUserId == userId) {
-        return;
-      }
-      _currentUserId = userId;
-      if (userId == null) {
-        _profile = null;
-        _visitedProfile = null;
-        _motorcycles = [];
-      }
-      notifyListeners();
-    });
+    _sessionUserIdSubscription = _appSession.currentUserIdStream
+        .distinct()
+        .listen((userId) {
+          if (_currentUserId == userId) {
+            return;
+          }
+          _currentUserId = userId;
+          if (userId == null) {
+            _profile = null;
+            _visitedProfile = null;
+            _motorcycles = [];
+          }
+          notifyListeners();
+        });
   }
 
   // State
@@ -79,6 +83,19 @@ class ProfileProvider extends ChangeNotifier {
 
     try {
       _profile = await _profileRepository.getMyProfile();
+
+      // Cache'i güncelle (Uygulama yeniden açıldığında hızlı yüklenmesi için)
+      try {
+        if (_profile != null) {
+          final localAuth = GetIt.I<AuthLocalDataSource>();
+          await localAuth.saveFirstName(_profile!.firstName);
+          await localAuth.saveLastName(_profile!.lastName);
+          await localAuth.saveProfileImageUrl(_profile!.profileImageUrl);
+        }
+      } catch (_) {
+        // Cache yazma hatalarını göz ardı et
+      }
+
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -162,6 +179,18 @@ class ProfileProvider extends ChangeNotifier {
         shareLocation: shareLocation,
         showProfileToOthers: showProfileToOthers,
       );
+
+      // Cache'i güncelle
+      try {
+        if (_profile != null) {
+          final localAuth = GetIt.I<AuthLocalDataSource>();
+          await localAuth.saveFirstName(_profile!.firstName);
+          await localAuth.saveLastName(_profile!.lastName);
+        }
+      } catch (_) {
+        // Cache hatalarını yoksay
+      }
+
       notifyListeners();
       return true;
     } catch (e) {

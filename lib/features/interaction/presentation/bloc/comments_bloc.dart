@@ -10,12 +10,15 @@ import 'comments_event.dart';
 import 'comments_state.dart';
 
 class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
+  static const int _defaultPageSize = 10;
+
   final GetCommentsUseCase getComments;
   final AddCommentUseCase addComment;
   final DeleteCommentUseCase deleteComment;
   final GetCurrentUserIdUseCase getCurrentUserIdUseCase;
   final AppSession appSession;
   StreamSubscription<int?>? _appSessionUserIdSubscription;
+  bool _isLoadingComments = false;
 
   CommentsBloc({
     required this.getComments,
@@ -61,53 +64,63 @@ class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
   ) async {
     // Has already reached max and not refreshing/first page
     if (state.hasReachedMax && !event.isRefresh && event.page > 1) return;
+    if (_isLoadingComments) return;
 
-    if (event.isRefresh || event.page == 1) {
-      emit(
-        state.copyWith(
-          status: CommentsStatus.loading,
-          comments: [],
-          hasReachedMax: false,
-          currentPage: 1,
+    _isLoadingComments = true;
+
+    try {
+      if (event.isRefresh || event.page == 1) {
+        emit(
+          state.copyWith(
+            status: CommentsStatus.loading,
+            comments: [],
+            hasReachedMax: false,
+            currentPage: 1,
+          ),
+        );
+      }
+
+      final result = await getComments(
+        GetCommentsParams(
+          contentId: event.contentId,
+          page: event.page,
+          limit: event.limit,
         ),
       );
-    } else {
-      // Don't emit loading for pagination, just fetch
-    }
 
-    final result = await getComments(
-      GetCommentsParams(contentId: event.contentId, page: event.page),
-    );
-
-    result.fold(
-      (failure) => emit(
-        state.copyWith(
-          status: CommentsStatus.failure,
-          errorMessage: failure.message,
+      result.fold(
+        (failure) => emit(
+          state.copyWith(
+            status: CommentsStatus.failure,
+            errorMessage: failure.message,
+          ),
         ),
-      ),
-      (comments) {
-        if (event.page == 1) {
-          emit(
-            state.copyWith(
-              status: CommentsStatus.success,
-              comments: comments,
-              hasReachedMax: comments.length < 10,
-              currentPage: 1,
-            ),
-          );
-        } else {
-          emit(
-            state.copyWith(
-              status: CommentsStatus.success,
-              comments: List.of(state.comments)..addAll(comments),
-              hasReachedMax: comments.length < 10,
-              currentPage: event.page,
-            ),
-          );
-        }
-      },
-    );
+        (comments) {
+          final limit = event.limit > 0 ? event.limit : _defaultPageSize;
+          if (event.page == 1) {
+            emit(
+              state.copyWith(
+                status: CommentsStatus.success,
+                comments: comments,
+                hasReachedMax: comments.length < limit,
+                currentPage: 1,
+              ),
+            );
+          } else {
+            emit(
+              state.copyWith(
+                status: CommentsStatus.success,
+                comments: List.of(state.comments)..addAll(comments),
+                hasReachedMax: comments.length < limit,
+                currentPage: event.page,
+              ),
+            );
+          }
+        },
+      );
+    } finally {
+      _isLoadingComments = false;
+    }
   }
 
   Future<void> _onAddComment(

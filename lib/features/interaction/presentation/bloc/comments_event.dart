@@ -11,15 +11,17 @@ class LoadCommentsEvent extends CommentsEvent {
   final int contentId;
   final bool isRefresh;
   final int page;
+  final int limit;
 
   const LoadCommentsEvent({
     required this.contentId,
     this.isRefresh = false,
     this.page = 1,
+    this.limit = 10,
   });
 
   @override
-  List<Object> get props => [contentId, isRefresh, page];
+  List<Object> get props => [contentId, isRefresh, page, limit];
 }
 
 class AddCommentEvent extends CommentsEvent {

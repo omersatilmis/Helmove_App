@@ -5,11 +5,13 @@ import 'package:dio/dio.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/dto/login_response_dto.dart';
 import '../services/communication_baseline_tracker.dart';
+import 'auth_bootstrap_gate.dart';
 
 class AuthInterceptor extends Interceptor {
   final Dio _dio;
   final Dio _refreshDio;
   final AuthLocalDataSource _localDataSource;
+  final AuthBootstrapGate _authBootstrapGate;
   final Future<void> Function()? _onAuthInvalidated;
   final Future<void> Function(String token)? _onTokenRefreshed;
   final CommunicationBaselineTracker _baselineTracker =
@@ -21,6 +23,7 @@ class AuthInterceptor extends Interceptor {
     this._dio,
     this._refreshDio,
     this._localDataSource,
+    this._authBootstrapGate,
     this._onAuthInvalidated,
     this._onTokenRefreshed,
   );
@@ -30,22 +33,36 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    _baselineTracker.recordApiRequest(options);
+    bool proceedToNext = true;
+    try {
+      _baselineTracker.recordApiRequest(options);
 
-    final accessToken = await _localDataSource.getToken();
-    if (accessToken != null && accessToken.isNotEmpty) {
-      options.headers['Authorization'] = 'Bearer $accessToken';
-    }
+      await _authBootstrapGate.waitUntilReady();
 
-    // Only attach refresh token when the backend explicitly expects it.
-    if (_requiresRefreshTokenHeader(options.path)) {
-      final refreshToken = await _localDataSource.getRefreshToken();
-      if (refreshToken != null && refreshToken.isNotEmpty) {
-        options.headers['X-Refresh-Token'] = refreshToken;
+      final accessToken = await _localDataSource.getToken();
+      if (accessToken != null && accessToken.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $accessToken';
       }
+
+      // Only attach refresh token when the backend explicitly expects it.
+      if (_requiresRefreshTokenHeader(options.path)) {
+        final refreshToken = await _localDataSource.getRefreshToken();
+        if (refreshToken != null && refreshToken.isNotEmpty) {
+          options.headers['X-Refresh-Token'] = refreshToken;
+        }
+      }
+    } catch (e) {
+      proceedToNext = false;
+      try {
+        handler.reject(DioException(requestOptions: options, error: e));
+      } catch (_) {}
     }
 
-    super.onRequest(options, handler);
+    if (proceedToNext) {
+      try {
+        super.onRequest(options, handler);
+      } catch (_) {}
+    }
   }
 
   @override
@@ -59,33 +76,30 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    _baselineTracker.recordApiError(err);
-
-    final statusCode = err.response?.statusCode;
-    final requestOptions = err.requestOptions;
-
-    final isUnauthorized = statusCode == 401;
-    final alreadyRetried = requestOptions.extra['__auth_retry'] == true;
-
-    if (!isUnauthorized ||
-        alreadyRetried ||
-        _isAuthRequest(requestOptions.path)) {
-      return super.onError(err, handler);
-    }
+    bool isResolved = false;
+    Response? retryResponse;
 
     try {
-      await _refreshTokens();
+      _baselineTracker.recordApiError(err);
 
-      final newAccessToken = await _localDataSource.getToken();
-      if (newAccessToken == null || newAccessToken.isEmpty) {
-        return super.onError(err, handler);
+      final statusCode = err.response?.statusCode;
+      final requestOptions = err.requestOptions;
+
+      final isUnauthorized = statusCode == 401;
+      final alreadyRetried = requestOptions.extra['__auth_retry'] == true;
+
+      if (isUnauthorized &&
+          !alreadyRetried &&
+          !_isAuthRequest(requestOptions.path)) {
+        await _refreshTokens();
+
+        final newAccessToken = await _localDataSource.getToken();
+        if (newAccessToken != null && newAccessToken.isNotEmpty) {
+          retryResponse = await _retryWithToken(requestOptions, newAccessToken);
+          isResolved = true;
+        }
       }
-
-      final response = await _retryWithToken(requestOptions, newAccessToken);
-      return handler.resolve(response);
     } catch (e) {
-      // SADECE Refresh Token geçersizse (401/403) veya backend reddettiyse (StateError) logout yap.
-      // Network hatası (Timeout, SocketException vb.) varsa oturumu koru.
       bool shouldLogout = false;
 
       if (e is DioException) {
@@ -101,17 +115,23 @@ class AuthInterceptor extends Interceptor {
 
       if (shouldLogout) {
         // If refresh fails due to auth reasons, clear auth so UI can route to login.
-        await _localDataSource.clearAuthData();
-        final onAuthInvalidated = _onAuthInvalidated;
-        if (onAuthInvalidated != null) {
-          try {
+        try {
+          await _localDataSource.clearAuthData();
+          final onAuthInvalidated = _onAuthInvalidated;
+          if (onAuthInvalidated != null) {
             await onAuthInvalidated();
-          } catch (_) {}
-        }
+          }
+        } catch (_) {}
       }
-
-      return super.onError(err, handler);
     }
+
+    try {
+      if (isResolved && retryResponse != null) {
+        handler.resolve(retryResponse);
+      } else {
+        super.onError(err, handler);
+      }
+    } catch (_) {}
   }
 
   bool _isAuthRequest(String path) {

@@ -18,9 +18,9 @@ class LikeJotUseCase implements UseCase<void, LikeJotParams> {
   @override
   Future<Either<Failure, void>> call(LikeJotParams params) {
     if (params.isLiked) {
-      return repository.unlikeJot(params.id);
-    } else {
       return repository.likeJot(params.id);
+    } else {
+      return repository.unlikeJot(params.id);
     }
   }
 }

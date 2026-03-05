@@ -7,6 +7,7 @@ import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride
 import 'package:moto_comm_app_1/features/voice_session/domain/entities/voice_session_entity.dart';
 import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
 import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_event.dart';
+import 'package:moto_comm_app_1/features/attendance_management/domain/entities/group_role.dart';
 
 class GroupPageActions {
   const GroupPageActions._();
@@ -160,7 +161,10 @@ class GroupPageActions {
                 DemoteParticipantEvent(sessionId, targetUserId),
               );
             },
-            child: const Text('Rider Yap', style: TextStyle(color: Colors.orange)),
+            child: const Text(
+              'Rider Yap',
+              style: TextStyle(color: Colors.orange),
+            ),
           ),
         ],
       ),
@@ -175,7 +179,16 @@ class GroupPageActions {
   }) {
     final currentUserId = context.read<VoiceSessionBloc>().state.currentUserId;
 
-    final isHost = sessionDetails?.hostUserId == currentUserId; // Captain kontrolü
+    final isHost =
+        sessionDetails?.adminId == currentUserId ||
+        (currentUserId != null &&
+            sessionDetails?.participants.any(
+                  (p) =>
+                      p.userId == currentUserId &&
+                      (p.role == GroupRole.admin ||
+                          p.role == GroupRole.captain),
+                ) ==
+                true); // Admin/Captain kontrolü
 
     final participants = sessionDetails?.participants ?? [];
     final activeCount = participants
@@ -349,6 +362,11 @@ class GroupPageActions {
         LeaveGroupRideEvent(rideId, sessionId: validSessionId),
       );
     }
+    if (validSessionId != null && validSessionId > 0) {
+      context.read<VoiceSessionBloc>().add(
+        LeaveVoiceSessionEvent(validSessionId),
+      );
+    }
   }
 
   static void _performTerminate(
@@ -361,6 +379,11 @@ class GroupPageActions {
     if (rideId > 0) {
       context.read<GroupRideBloc>().add(
         DeleteGroupRideEvent(rideId, sessionId: validSessionId),
+      );
+    }
+    if (validSessionId != null && validSessionId > 0) {
+      context.read<VoiceSessionBloc>().add(
+        EndVoiceSessionEvent(validSessionId),
       );
     }
   }

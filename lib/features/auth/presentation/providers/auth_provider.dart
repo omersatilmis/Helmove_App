@@ -61,6 +61,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       // OneSignal Login
+      await _notificationService.ensureInitialized();
       await _notificationService.login(authEntity.id.toString());
 
       _setLoading(false);
@@ -212,6 +213,10 @@ class AuthProvider extends ChangeNotifier {
               await _authRepository.savePersistedUser(
                 _currentUser!.id,
                 _currentUser!.username,
+                email: _currentUser!.email,
+                firstName: _currentUser!.firstName,
+                lastName: _currentUser!.lastName,
+                profileImageUrl: _currentUser!.profileImageUrl,
               );
 
               _appSession.updateSession(
@@ -220,13 +225,14 @@ class AuthProvider extends ChangeNotifier {
                 token: _currentUser!.token,
               );
 
-              // Ensure OneSignal is logged in
-              await _notificationService.login(_currentUser!.id.toString());
+              _syncNotificationIdentityNonBlocking();
             }
           } catch (e) {
             AppLogger.error("Failed to fetch profile on auth check: $e");
           }
         }
+
+        _syncNotificationIdentityNonBlocking();
       }
     } else {
       if (_currentUser != null) {
@@ -252,6 +258,18 @@ class AuthProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  void _syncNotificationIdentityNonBlocking() {
+    final userId = _currentUser?.id;
+    if (userId == null || userId <= 0) {
+      return;
+    }
+
+    unawaited(() async {
+      await _notificationService.ensureInitialized();
+      await _notificationService.login(userId.toString());
+    }());
   }
 
   @override

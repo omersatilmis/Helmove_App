@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_tile.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
 import 'package:moto_comm_app_1/core/theme/app_colors.dart';
 
-class SupportSection extends StatelessWidget {
+class SupportSection extends StatefulWidget {
   const SupportSection({super.key});
+
+  @override
+  State<SupportSection> createState() => _SupportSectionState();
+}
+
+class _SupportSectionState extends State<SupportSection> {
+  String _version = "";
+  final String _appReleaseStage = "Beta"; // Geliştirme aşaması
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPackageInfo();
+  }
+
+  Future<void> _loadPackageInfo() async {
+    final info = await PackageInfo.fromPlatform();
+    setState(() {
+      _version = info.version;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +39,30 @@ class SupportSection extends StatelessWidget {
         SettingsTile(
           icon: Icons.help_outline_rounded,
           title: "Yardım Merkezi",
-          onTap: () {},
+          onTap: () => context.push('/help-center'),
+        ),
+        SettingsTile(
+          icon: Icons.feedback_outlined,
+          title: "Geri Bildirim Gönder",
+          onTap: () => context.push('/feedback'),
+        ),
+        SettingsTile(
+          icon: Icons.copyright_rounded,
+          title: "Telif Hakkı",
+          onTap: () => context.push('/copyright'),
+        ),
+        SettingsTile(
+          icon: Icons.privacy_tip_outlined,
+          title: "Gizlilik Politikası",
+          onTap: () => context.push('/privacy-policy'),
         ),
         SettingsTile(
           icon: Icons.info_outline_rounded,
           title: "Hakkında",
-          subtitle: "v1.0.0 (Beta)",
-          onTap: () {},
+          subtitle: _version.isNotEmpty
+              ? "v$_version ($_appReleaseStage)"
+              : "Yükleniyor...",
+          onTap: () => context.push('/about'),
         ),
 
         // Çıkış Butonu

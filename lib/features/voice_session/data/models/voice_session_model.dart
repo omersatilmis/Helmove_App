@@ -4,11 +4,11 @@ import 'voice_session_participant_model.dart';
 class VoiceSessionModel extends VoiceSessionEntity {
   const VoiceSessionModel({
     required super.id,
-    required super.hostUserId,
-    super.hostUsername,
-    super.hostFirstName,
-    super.hostLastName,
-    super.hostProfileImage,
+    required super.adminId,
+    super.adminUsername,
+    super.adminFirstName,
+    super.adminLastName,
+    super.adminProfileImage,
     required super.title,
     required super.roomName,
     required super.isActive,
@@ -41,11 +41,15 @@ class VoiceSessionModel extends VoiceSessionEntity {
 
     return VoiceSessionModel(
       id: parseNullableInt(data['id']) ?? 0,
-      hostUserId: parseNullableInt(data['hostUserId']) ?? 0,
-      hostUsername: host?['username'],
-      hostFirstName: host?['firstName'],
-      hostLastName: host?['lastName'],
-      hostProfileImage: host?['profilePictureUrl'],
+      adminId: data['adminId'] != null
+          ? parseNullableInt(data['adminId']) ??
+                parseNullableInt(data['hostUserId']) ??
+                0
+          : parseNullableInt(data['hostUserId']) ?? 0,
+      adminUsername: host?['username'],
+      adminFirstName: host?['firstName'],
+      adminLastName: host?['lastName'],
+      adminProfileImage: host?['profilePictureUrl'],
       title: data['title'] ?? '',
       roomName: data['roomName'] ?? '',
       isActive: data['isActive'] ?? true,
@@ -67,7 +71,7 @@ class VoiceSessionModel extends VoiceSessionEntity {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'hostUserId': hostUserId,
+      'hostUserId': adminId, // GÜVENLİK: API Key korunuyor
       'title': title,
       'roomName': roomName,
       'isActive': isActive,

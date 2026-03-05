@@ -123,7 +123,8 @@ class VoiceSessionState extends Equatable {
           (p) =>
               p.status == 'Joined' ||
               p.status == 'Accepted' ||
-              p.status == 'Disconnected',
+              p.status == 'Disconnected' ||
+              p.status == 'Invited',
         )
         .toList();
   }

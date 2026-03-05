@@ -168,9 +168,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
       }
 
       if (event is RideCreatedRealtimeEvent) {
-        refreshCoordinator.requestGroupRidesRefresh(
-          reason: 'rt_ride_created',
-        );
+        refreshCoordinator.requestGroupRidesRefresh(reason: 'rt_ride_created');
         return;
       }
 
@@ -178,10 +176,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
         final rideId = _resolveRideIdBySessionId(event.sessionId);
         if (rideId != null) {
           add(
-            GroupRideUpdatedReceived(
-              rideId.toString(),
-              version: event.version,
-            ),
+            GroupRideUpdatedReceived(rideId.toString(), version: event.version),
           );
         }
         return;
@@ -191,10 +186,7 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
         final rideId = _resolveRideIdBySessionId(event.sessionId);
         if (rideId != null) {
           add(
-            GroupRideUpdatedReceived(
-              rideId.toString(),
-              version: event.version,
-            ),
+            GroupRideUpdatedReceived(rideId.toString(), version: event.version),
           );
         }
         return;
@@ -265,15 +257,12 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
 
     int? resolvedRideId;
     String? failureMessage;
-    result.fold(
-      (failure) => failureMessage = failure.message,
-      (session) {
-        final rideId = session.rideId;
-        if (rideId != null && rideId > 0) {
-          resolvedRideId = rideId;
-        }
-      },
-    );
+    result.fold((failure) => failureMessage = failure.message, (session) {
+      final rideId = session.rideId;
+      if (rideId != null && rideId > 0) {
+        resolvedRideId = rideId;
+      }
+    });
 
     if (resolvedRideId == null || resolvedRideId! <= 0) {
       emit(GroupRideFailure(failureMessage ?? 'Sürüş bilgisi çözülemedi.'));
@@ -359,19 +348,27 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     emit(GroupRideLoading());
     final result = await deleteGroupRideUseCase.execute(event.rideId);
 
-    await result.fold(
-      (failure) async => emit(GroupRideFailure(failure.message)),
-      (_) async {
-        await signalRService.leaveRideGroup(event.rideId.toString());
-        if (signalrSessionId != null && signalrSessionId > 0) {
-          await signalRService.leaveVoiceSessionGroup(
-            signalrSessionId.toString(),
-          );
-        }
-        _rideSessionCache.remove(event.rideId);
-        emit(GroupRideDeleted(rideId: event.rideId));
-      },
-    );
+    await result.fold((failure) async => emit(GroupRideFailure(failure.message)), (
+      _,
+    ) async {
+      // [FIX] SignalR Delay: We do not leave the SignalR group immediately.
+      // We delay leaving for 2 seconds so that the current user can receive the
+      // `RideTerminated` socket broadcast, which ensures other blocs like VoiceSessionBloc
+      // get notified to reliably tear down if they haven't already.
+      Future.delayed(const Duration(seconds: 2), () async {
+        try {
+          await signalRService.leaveRideGroup(event.rideId.toString());
+          if (signalrSessionId != null && signalrSessionId > 0) {
+            await signalRService.leaveVoiceSessionGroup(
+              signalrSessionId.toString(),
+            );
+          }
+        } catch (_) {}
+      });
+
+      _rideSessionCache.remove(event.rideId);
+      emit(GroupRideDeleted(rideId: event.rideId));
+    });
   }
 
   Future<void> _onLeaveGroupRide(
@@ -389,12 +386,20 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     await result.fold(
       (failure) async => emit(GroupRideFailure(failure.message)),
       (_) async {
-        await signalRService.leaveRideGroup(event.rideId.toString());
-        if (signalrSessionId != null && signalrSessionId > 0) {
-          await signalRService.leaveVoiceSessionGroup(
-            signalrSessionId.toString(),
-          );
-        }
+        // [FIX] SignalR Delay: Just like in delete, we delay leaving the SignalR
+        // group to allow any in-flight socket events to reach our client
+        // before we fully sever the connection.
+        Future.delayed(const Duration(seconds: 2), () async {
+          try {
+            await signalRService.leaveRideGroup(event.rideId.toString());
+            if (signalrSessionId != null && signalrSessionId > 0) {
+              await signalRService.leaveVoiceSessionGroup(
+                signalrSessionId.toString(),
+              );
+            }
+          } catch (_) {}
+        });
+
         _rideSessionCache.remove(event.rideId);
         emit(GroupRideLeft(rideId: event.rideId));
       },
@@ -458,7 +463,8 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
       id: event.rideId,
       title: event.request.title,
       description: event.request.description,
-      organizerId: event.organizerId,
+      adminId: event
+          .organizerId, // Note: Event currently still holds organizerId, mapping it to entity adminId
       startDateTime: event.request.startDateTime,
       endDateTime: event.request.endDateTime,
       startLocation: event.request.startLocation,
@@ -527,7 +533,11 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
           dedupKey: 'group_ride_404:${event.rideId}',
         );
         _markRideNotFound(event.rideId);
-        emit(const GroupRideFailure('Grup artık mevcut değil. Güvenli çıkış yapın.'));
+        emit(
+          const GroupRideFailure(
+            'Grup artık mevcut değil. Güvenli çıkış yapın.',
+          ),
+        );
         return;
       }
 
@@ -612,7 +622,13 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
   ) async {
     _notFoundLocked = true;
     _rideNotFoundUntil.clear();
-    emit(GroupRideFailure(event.message.isEmpty ? 'Grup artık mevcut değil. Güvenli çıkış yapın.' : event.message));
+    emit(
+      GroupRideFailure(
+        event.message.isEmpty
+            ? 'Grup artık mevcut değil. Güvenli çıkış yapın.'
+            : event.message,
+      ),
+    );
   }
 
   Future<void> _onHostChanged(

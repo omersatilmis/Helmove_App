@@ -6,6 +6,7 @@ abstract class CommentRepository {
   Future<Either<Failure, List<CommentEntity>>> getComments({
     required int contentId,
     int page = 1,
+    int limit = 10,
   });
 
   Future<Either<Failure, CommentEntity>> addComment({

@@ -81,7 +81,7 @@ class IntercomStartOptions {
   });
 }
 
-enum IntercomConnectionQuality { unknown, excellent, good, poor, lost }
+enum IntercomConnectionQuality { unknown, ultra, high, balanced, low, lost }
 
 @immutable
 class IntercomParticipant {
@@ -127,7 +127,7 @@ class IntercomParticipant {
 class IntercomSessionContext {
   final int sessionId;
   final String roomName;
-  final int hostUserId;
+  final int adminId;
   final int localUserId;
 
   /// Active participant user IDs (should already be filtered for relevant statuses).
@@ -141,7 +141,7 @@ class IntercomSessionContext {
   const IntercomSessionContext({
     required this.sessionId,
     required this.roomName,
-    required this.hostUserId,
+    required this.adminId,
     required this.localUserId,
     required this.activeParticipantUserIds,
     this.participants,
@@ -278,7 +278,7 @@ abstract final class IntercomTelemetryKeys {
   static const String sessionId = 'sessionId';
   static const String roomName = 'roomName';
   static const String localUserId = 'localUserId';
-  static const String hostUserId = 'hostUserId';
+  static const String adminId = 'adminId';
 
   static const String activeParticipantCount = 'activeParticipantCount';
   static const String activeParticipantUserIds = 'activeParticipantUserIds';

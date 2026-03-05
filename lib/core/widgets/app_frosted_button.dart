@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 // --- 1. İKONLU BUZLU CAM BUTONU ---
 class AppFrostedButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final double size;
   final double iconSize;
 

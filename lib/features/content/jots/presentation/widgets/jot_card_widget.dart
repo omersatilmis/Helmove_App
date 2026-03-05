@@ -22,7 +22,7 @@ class JotCardWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textPrimary = colorScheme.onSurface;
-    final textSecondary = colorScheme.onSurface.withValues(alpha:0.6);
+    final textSecondary = colorScheme.onSurface.withValues(alpha: 0.6);
 
     final firstName = jot.firstName ?? jot.username ?? "Kullanıcı";
     final lastName = jot.lastName ?? "";
@@ -41,7 +41,9 @@ class JotCardWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: theme.dividerColor.withValues(alpha:0.2)),
+            bottom: BorderSide(
+              color: theme.dividerColor.withValues(alpha: 0.2),
+            ),
           ),
         ),
         child: Column(
@@ -82,7 +84,9 @@ class JotCardWidget extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: colorScheme.primary.withValues(alpha:0.1),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -141,7 +145,7 @@ class JotCardWidget extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   height: 1.4,
-                  color: textPrimary.withValues(alpha:0.9),
+                  color: textPrimary.withValues(alpha: 0.9),
                 ),
               ),
             ),
@@ -215,7 +219,7 @@ class _ActionButton extends StatelessWidget {
     final theme = Theme.of(context);
     final color = isActive
         ? (activeColor ?? theme.primaryColor)
-        : theme.colorScheme.onSurface.withValues(alpha:0.5);
+        : theme.colorScheme.onSurface.withValues(alpha: 0.5);
     final currentIcon = isActive ? (activeIcon ?? icon) : icon;
 
     return InkWell(
@@ -225,7 +229,18 @@ class _ActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
         child: Row(
           children: [
-            Icon(currentIcon, size: 20, color: color),
+            TweenAnimationBuilder<double>(
+              key: ValueKey(isActive),
+              tween: Tween<double>(begin: isActive ? 0.3 : 1.0, end: 1.0),
+              duration: const Duration(milliseconds: 500),
+              curve: isActive ? Curves.elasticOut : Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Icon(currentIcon, size: 20, color: color),
+                );
+              },
+            ),
             if (label != null) ...[
               const SizedBox(width: 5),
               Text(label!, style: TextStyle(fontSize: 13, color: color)),

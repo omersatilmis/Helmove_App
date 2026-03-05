@@ -3,13 +3,40 @@
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../config/env_config.dart';
 import 'auth_interceptor.dart';
+import 'auth_bootstrap_gate.dart';
+import 'etag_interceptor.dart';
 
 class NetworkModule {
+  static String? _cachedBaseUrl;
+  static Future<String>? _baseUrlFuture;
+
   static Future<String> getBaseUrl() async {
+    final cached = _cachedBaseUrl;
+    if (cached != null && cached.isNotEmpty) {
+      return cached;
+    }
+
+    if (_baseUrlFuture != null) {
+      return _baseUrlFuture!;
+    }
+
+    final completer = _resolveBaseUrl();
+    _baseUrlFuture = completer;
+    try {
+      final resolved = await completer;
+      _cachedBaseUrl = resolved;
+      return resolved;
+    } finally {
+      _baseUrlFuture = null;
+    }
+  }
+
+  static Future<String> _resolveBaseUrl() async {
     if (kIsWeb) {
       return EnvConfig.webBaseUrl;
     }
@@ -42,10 +69,12 @@ class NetworkModule {
 
   static Future<Dio> provideDio(
     AuthLocalDataSource localDataSource, {
+    required AuthBootstrapGate authBootstrapGate,
     Future<void> Function()? onAuthInvalidated,
     Future<void> Function(String token)? onTokenRefreshed,
   }) async {
     final baseUrl = await getBaseUrl();
+    final sharedPreferences = await SharedPreferences.getInstance();
 
     final dio = Dio(
       BaseOptions(
@@ -77,10 +106,15 @@ class NetworkModule {
         dio,
         refreshDio,
         localDataSource,
+        authBootstrapGate,
         onAuthInvalidated,
         onTokenRefreshed,
       ),
     );
+
+    // Order is important:
+    // AuthInterceptor -> ETagInterceptor -> LogInterceptor
+    dio.interceptors.add(ETagInterceptor(sharedPreferences));
 
     dio.interceptors.add(
       LogInterceptor(

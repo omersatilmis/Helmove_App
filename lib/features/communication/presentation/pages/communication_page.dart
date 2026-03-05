@@ -1,13 +1,19 @@
 import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/di/injection_container.dart' as di;
 import '../../../../core/theme/text_styles.dart';
+import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
+import '../../../group_ride/presentation/bloc/group_ride_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
 import '../widgets/active_session_card.dart';
 import '../widgets/nearby_group.dart';
+
+void _noop() {}
 
 class CommunicationPage extends StatefulWidget {
   const CommunicationPage({super.key});
@@ -17,29 +23,146 @@ class CommunicationPage extends StatefulWidget {
 }
 
 class _CommunicationPageState extends State<CommunicationPage> {
+  static const Duration _refreshCooldown = Duration(milliseconds: 1500);
+  bool _refreshInFlight = false;
+  bool _isRefreshDisabled = false;
+  bool _initialLoadTriggered = false;
+  Timer? _refreshCooldownTimer;
+  bool _runtimeBootstrapTriggered = false;
+
+  Future<void> _bootstrapCommunicationRuntime() async {
+    if (_runtimeBootstrapTriggered) {
+      return;
+    }
+    _runtimeBootstrapTriggered = true;
+    try {
+      await di.ensureCommunicationRuntimeStarted();
+    } catch (_) {
+      // Best-effort. Communication UI must stay usable even if runtime fails.
+    }
+  }
+
+  Future<void> _refreshCommunicationFast() async {
+    if (_refreshInFlight || _isRefreshDisabled) {
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _isRefreshDisabled = true);
+    }
+    _refreshCooldownTimer?.cancel();
+    _refreshCooldownTimer = Timer(_refreshCooldown, () {
+      if (mounted) {
+        setState(() => _isRefreshDisabled = false);
+      }
+    });
+
+    _refreshInFlight = true;
+
+    final bloc = context.read<VoiceSessionBloc>();
+
+    final activeSessionId =
+        bloc.state.session?.id ?? bloc.state.activeSession?.id;
+
+    bloc.add(const GetMyVoiceSessionsEvent(force: true, immediate: true));
+
+    if (activeSessionId != null && activeSessionId > 0) {
+      bloc.add(
+        GetVoiceSessionDetailsEvent(
+          activeSessionId,
+          force: true,
+          immediate: true,
+        ),
+      );
+    }
+
+    // Pull-to-refresh UX: sabit delay yerine state tabanlÄ± kÄ±sa bekleme.
+    try {
+      await bloc.stream
+          .firstWhere((state) => state.status != VoiceSessionStatus.loading)
+          .timeout(const Duration(seconds: 2), onTimeout: () => bloc.state);
+    } finally {
+      _refreshInFlight = false;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    // İlk yükleme: BLoC zaten debounce transformer ile throttle yapıyor
-    context.read<VoiceSessionBloc>().add(const GetMyVoiceSessionsEvent());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(_bootstrapCommunicationRuntime());
+    });
+  }
+
+  void _triggerInitialLoadIfVisible() {
+    if (_initialLoadTriggered || !mounted) {
+      return;
+    }
+
+    final route = ModalRoute.of(context);
+    final isCurrentRoute = route?.isCurrent ?? false;
+    if (!isCurrentRoute) {
+      return;
+    }
+
+    _initialLoadTriggered = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      final bloc = context.read<VoiceSessionBloc>();
+      final state = bloc.state;
+      final hasSessions = state.mySessions?.isNotEmpty ?? false;
+      final activeSessionId = state.activeSession?.id;
+      context.read<GroupRideBloc>().add(const LoadActiveGroupRidesEvent());
+
+      if (!hasSessions &&
+          state.status != VoiceSessionStatus.loading &&
+          state.status != VoiceSessionStatus.mySessionsLoaded) {
+        bloc.add(const GetMyVoiceSessionsEvent(immediate: true));
+      }
+
+      if (activeSessionId != null &&
+          activeSessionId > 0 &&
+          state.session?.id != activeSessionId) {
+        bloc.add(GetVoiceSessionDetailsEvent(activeSessionId, immediate: true));
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    _triggerInitialLoadIfVisible();
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth < 360;
+
+    final horizontalPadding = isCompact ? 16.0 : 20.0;
+    final sectionSpacing = isCompact ? 22.0 : 30.0;
+    final cardSpacing = isCompact ? 12.0 : 16.0;
+    final topButtonHeight = isCompact ? 78.0 : 85.0;
+    final topButtonIconSize = isCompact ? 24.0 : 28.0;
+    final topButtonFontSize = isCompact ? 12.0 : 13.0;
+    final sosWidth = isCompact ? 52.0 : 60.0;
+    final sosHeight = isCompact ? 36.0 : 40.0;
     final pendingInviteCount = context.select<VoiceSessionBloc, int>(
       (bloc) => bloc.state.pendingInvitesCount,
     );
 
-    // Dinamik arka plan gradyanı
+    // Dinamik arka plan gradyanÄ±
     final backgroundGradient = isDark
         ? const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF2A100A), // Koyu modda hafif kırmızımsı üst
+              Color(0xFF2A100A), // Koyu modda hafif kÄ±rmÄ±zÄ±msÄ± Ã¼st
               Color(0xFF12100E),
             ],
             stops: [0.0, 0.4],
@@ -65,9 +188,17 @@ class _CommunicationPageState extends State<CommunicationPage> {
             listenWhen: (prev, curr) {
               final prevActiveId = prev.activeSession?.id;
               final currActiveId = curr.activeSession?.id;
-              // Trigger detail fetch if active session changed OR if it's the same but details (session entity) are missing
-              return prevActiveId != currActiveId ||
-                  (currActiveId != null && curr.session?.id != currActiveId);
+              if (prevActiveId != currActiveId) {
+                return true;
+              }
+
+              final prevNeedsDetails =
+                  prevActiveId != null && prev.session?.id != prevActiveId;
+              final currNeedsDetails =
+                  currActiveId != null && curr.session?.id != currActiveId;
+
+              // Fire only on transition to "details missing" to avoid repeated requests.
+              return currNeedsDetails && !prevNeedsDetails;
             },
             listener: (context, state) {
               final activeSession = state.activeSession;
@@ -75,27 +206,33 @@ class _CommunicationPageState extends State<CommunicationPage> {
                   state.session?.id != activeSession.id &&
                   state.status != VoiceSessionStatus.loading) {
                 context.read<VoiceSessionBloc>().add(
-                  GetVoiceSessionDetailsEvent(activeSession.id),
+                  GetVoiceSessionDetailsEvent(
+                    activeSession.id,
+                    immediate: true,
+                  ),
                 );
               }
             },
             child: RefreshIndicator(
-              onRefresh: () async {
-                context.read<VoiceSessionBloc>().add(
-                  const GetMyVoiceSessionsEvent(force: true),
-                );
-                await Future.delayed(const Duration(milliseconds: 500));
+              onRefresh: () {
+                if (_isRefreshDisabled || _refreshInFlight) {
+                  return Future.value();
+                }
+                return _refreshCommunicationFast();
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: horizontalPadding,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- 1. ÜST BUTONLAR (Saved Sessions & Create Ride) ---
+                    // --- 1. ÃœST BUTONLAR (Saved Sessions & Create Ride) ---
                     Row(
                       children: [
-                        // --- SAVED SESSIONS (Nötr Cam) ---
+                        // --- SAVED SESSIONS (NÃ¶tr Cam) ---
                         Expanded(
                           child: _buildTopButton(
                             context,
@@ -104,11 +241,14 @@ class _CommunicationPageState extends State<CommunicationPage> {
                             glassTint: colorScheme.onSurface,
                             iconColor: colorScheme.primary,
                             textColor: colorScheme.onSurface,
+                            height: topButtonHeight,
+                            iconSize: topButtonIconSize,
+                            fontSize: topButtonFontSize,
                             onTap: () {},
                           ),
                         ),
 
-                        const SizedBox(width: 16),
+                        SizedBox(width: cardSpacing),
 
                         // --- CREATE RIDE GROUP (Renkli Cam) ---
                         Expanded(
@@ -123,14 +263,18 @@ class _CommunicationPageState extends State<CommunicationPage> {
                             textColor: isDark
                                 ? colorScheme.onSurface
                                 : colorScheme.onPrimary,
+                            height: topButtonHeight,
+                            iconSize: topButtonIconSize,
+                            fontSize: topButtonFontSize,
                             onTap: () async {
-                              final currentBloc = context
+                              final voiceSessionBloc = context
                                   .read<VoiceSessionBloc>();
-                              if (currentBloc.state.activeSession != null) {
+                              if (voiceSessionBloc.state.activeSession !=
+                                  null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: const Text(
-                                      'Lütfen yeni bir grup oluşturmadan önce mevcut sürüşten ayrılın.',
+                                      'LÃ¼tfen yeni bir grup oluÅŸturmadan Ã¶nce mevcut sÃ¼rÃ¼ÅŸten ayrÄ±lÄ±n.',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -145,62 +289,65 @@ class _CommunicationPageState extends State<CommunicationPage> {
                               await context.push(
                                 '/communication/create-group-ride',
                               );
-                              if (mounted) {
-                                context.read<VoiceSessionBloc>().add(
-                                  const GetMyVoiceSessionsEvent(force: true),
-                                );
-                              }
+                              if (!mounted) return;
+                              voiceSessionBloc.add(
+                                const GetMyVoiceSessionsEvent(force: true),
+                              );
                             },
                           ),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 30),
+                    SizedBox(height: sectionSpacing),
 
-                    // --- 2. YOUR ACTIVE GROUP BAŞLIĞI & SOS ---
+                    // --- 2. YOUR ACTIVE GROUP BAÅLIÄI & SOS ---
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.people_outline,
-                              color: colorScheme.onSurface,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              "Your Active Group",
-                              style: AppTextStyles.h3.copyWith(
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.people_outline,
                                 color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
+                                size: isCompact ? 22 : 24,
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: Icon(
-                                Icons.refresh,
-                                color: colorScheme.onSurface,
-                                size: 20,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  "Your Active Group",
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.h3.copyWith(
+                                    color: colorScheme.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                              tooltip: 'Refresh',
-                              onPressed: () {
-                                context.read<VoiceSessionBloc>().add(
-                                  const GetMyVoiceSessionsEvent(force: true),
-                                );
-                              },
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.refresh,
+                                  color: colorScheme.onSurface,
+                                  size: 20,
+                                ),
+                                tooltip: 'Refresh',
+                                onPressed: _isRefreshDisabled
+                                    ? null
+                                    : _refreshCommunicationFast,
+                              ),
+                            ],
+                          ),
                         ),
+                        SizedBox(width: isCompact ? 8 : 12),
                         // --- SOS Acil Durum Butonu ---
                         GestureDetector(
                           onTap: () {
-                            debugPrint("SOS Gönderildi!");
+                            debugPrint("SOS GÃ¶nderildi!");
                           },
                           child: Container(
-                            width: 60,
-                            height: 40,
+                            width: sosWidth,
+                            height: sosHeight,
                             decoration: BoxDecoration(
                               color: colorScheme.error.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(20),
@@ -219,13 +366,16 @@ class _CommunicationPageState extends State<CommunicationPage> {
                               ],
                             ),
                             child: Center(
-                              child: Text(
-                                "!SOS",
-                                style: TextStyle(
-                                  color: colorScheme.error,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.8,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  "!SOS",
+                                  style: TextStyle(
+                                    color: colorScheme.error,
+                                    fontSize: isCompact ? 14 : 16,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8,
+                                  ),
                                 ),
                               ),
                             ),
@@ -234,7 +384,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    SizedBox(height: cardSpacing),
 
                     if (pendingInviteCount > 0) ...[
                       Container(
@@ -274,15 +424,15 @@ class _CommunicationPageState extends State<CommunicationPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: isCompact ? 12 : 14),
                     ],
 
-                    // --- 3. ACTIVE GROUP KARTI (VoiceSession'dan yüklenir) ---
+                    // --- 3. ACTIVE GROUP KARTI (VoiceSession'dan yÃ¼klenir) ---
                     const ActiveSessionCard(),
 
-                    const SizedBox(height: 30),
+                    SizedBox(height: sectionSpacing),
 
-                    // --- 4. NEARBY GROUPS BAŞLIĞI ---
+                    // --- 4. NEARBY GROUPS BAÅLIÄI ---
                     Row(
                       children: [
                         Icon(
@@ -301,37 +451,37 @@ class _CommunicationPageState extends State<CommunicationPage> {
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    SizedBox(height: cardSpacing),
 
-                    // --- 5. NEARBY GROUPS LİSTESİ (Dummy UI) ---
+                    // --- 5. NEARBY GROUPS LÄ°STESÄ° (Dummy UI) ---
                     Column(
-                      children: [
+                      children: const [
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: EdgeInsets.only(bottom: 12),
                           child: NearbyGroupCard(
                             groupName: "Weekend Riders",
                             distance: "1.2 km",
                             currentParticipants: 3,
                             maxParticipants: 10,
                             signalStatus: "Strong",
-                            onJoinPressed: () {},
+                            onJoinPressed: _noop,
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: EdgeInsets.only(bottom: 12),
                           child: NearbyGroupCard(
                             groupName: "Mountain Tour",
                             distance: "5.4 km",
                             currentParticipants: 8,
                             maxParticipants: 12,
                             signalStatus: "Good",
-                            onJoinPressed: () {},
+                            onJoinPressed: _noop,
                           ),
                         ),
                       ],
                     ),
                     // --- 6. BOTTOM PADDING (for extendBody: true) ---
-                    const SizedBox(height: 100),
+                    SizedBox(height: isCompact ? 84 : 100),
                   ],
                 ),
               ),
@@ -342,7 +492,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
     );
   }
 
-  // --- Üst Buton Yardımcı Fonksiyon ---
+  // --- Ãœst Buton YardÄ±mcÄ± Fonksiyon ---
   Widget _buildTopButton(
     BuildContext context, {
     required String title,
@@ -350,6 +500,9 @@ class _CommunicationPageState extends State<CommunicationPage> {
     required Color glassTint,
     required Color iconColor,
     required Color textColor,
+    required double height,
+    required double iconSize,
+    required double fontSize,
     required VoidCallback onTap,
   }) {
     return ClipRRect(
@@ -360,7 +513,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
           child: Container(
-            height: 85,
+            constraints: BoxConstraints(minHeight: height),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: glassTint.withValues(alpha: 0.15),
@@ -380,7 +533,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: iconColor, size: 28),
+                Icon(icon, color: iconColor, size: iconSize),
                 const SizedBox(height: 6),
                 Text(
                   title,
@@ -388,7 +541,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                   style: AppTextStyles.bodySmall.copyWith(
                     color: textColor,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: fontSize,
                     height: 1.1,
                   ),
                 ),
@@ -398,5 +551,11 @@ class _CommunicationPageState extends State<CommunicationPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _refreshCooldownTimer?.cancel();
+    super.dispose();
   }
 }

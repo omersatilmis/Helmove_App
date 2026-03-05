@@ -17,21 +17,24 @@ class FeedView extends StatefulWidget {
 }
 
 class _FeedViewState extends State<FeedView> {
+  static const int _feedPageSize = 10;
+
   final ScrollController _scrollController = ScrollController();
   late final PostsBloc _postsBloc;
 
   @override
   void initState() {
     super.initState();
-    // 🔥 Step 3: Initial fetch - 10 items, Page 1
-    _postsBloc = sl<PostsBloc>()..add(const GetFeedEvent(page: 1, limit: 10));
+    _postsBloc = sl<PostsBloc>();
+    if (_postsBloc.state.posts.isEmpty) {
+      _postsBloc.add(const GetFeedEvent(page: 1, limit: _feedPageSize));
+    }
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _postsBloc.close();
     super.dispose();
   }
 
@@ -39,7 +42,9 @@ class _FeedViewState extends State<FeedView> {
     if (_isBottom) {
       final state = _postsBloc.state;
       if (!state.hasReachedMax && state.status != PostsStatus.loading) {
-        _postsBloc.add(GetFeedEvent(page: state.page + 1));
+        _postsBloc.add(
+          GetFeedEvent(page: state.page + 1, limit: _feedPageSize),
+        );
       }
     }
   }
@@ -79,7 +84,13 @@ class _FeedViewState extends State<FeedView> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      _postsBloc.add(const GetFeedEvent(isRefresh: true));
+                      _postsBloc.add(
+                        const GetFeedEvent(
+                          isRefresh: true,
+                          page: 1,
+                          limit: _feedPageSize,
+                        ),
+                      );
                     },
                     child: const Text('Tekrar Dene'),
                   ),
@@ -101,7 +112,13 @@ class _FeedViewState extends State<FeedView> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              _postsBloc.add(const GetFeedEvent(isRefresh: true));
+              _postsBloc.add(
+                const GetFeedEvent(
+                  isRefresh: true,
+                  page: 1,
+                  limit: _feedPageSize,
+                ),
+              );
             },
             child: ListView.builder(
               controller: _scrollController,

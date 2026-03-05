@@ -39,6 +39,10 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       await _localDataSource.saveUserId(entity.id);
       await _localDataSource.saveUsername(entity.username);
+      await _localDataSource.saveEmail(entity.email);
+      await _localDataSource.saveFirstName(entity.firstName);
+      await _localDataSource.saveLastName(entity.lastName);
+      await _localDataSource.saveProfileImageUrl(entity.profileImageUrl);
 
       return entity;
     } catch (e) {
@@ -104,13 +108,24 @@ class AuthRepositoryImpl implements AuthRepository {
     final token = await _localDataSource.getToken();
     final id = await _localDataSource.getUserId();
     final username = await _localDataSource.getUsername();
+    final firstName = await _localDataSource.getFirstName();
+    final lastName = await _localDataSource.getLastName();
+    final profileImageUrl = await _localDataSource.getProfileImageUrl();
 
     if (token != null &&
         token.isNotEmpty &&
         id != null &&
         username != null &&
         username.isNotEmpty) {
-      return AuthEntity(id: id, username: username, email: '', token: token);
+      return AuthEntity(
+        id: id,
+        username: username,
+        email: '',
+        token: token,
+        firstName: firstName,
+        lastName: lastName,
+        profileImageUrl: profileImageUrl,
+      );
     }
     return null;
   }
@@ -121,9 +136,20 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> savePersistedUser(int id, String username) async {
+  Future<void> savePersistedUser(
+    int id,
+    String username, {
+    required String email,
+    String? firstName,
+    String? lastName,
+    String? profileImageUrl,
+  }) async {
     await _localDataSource.saveUserId(id);
     await _localDataSource.saveUsername(username);
+    await _localDataSource.saveEmail(email);
+    await _localDataSource.saveFirstName(firstName);
+    await _localDataSource.saveLastName(lastName);
+    await _localDataSource.saveProfileImageUrl(profileImageUrl);
   }
 
   @override

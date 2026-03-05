@@ -26,7 +26,14 @@ abstract class AuthRepository {
   Future<String?> getAuthToken();
 
   /// Kullanıcı bilgilerini yerel belleğe kaydeder
-  Future<void> savePersistedUser(int id, String username);
+  Future<void> savePersistedUser(
+    int id,
+    String username, {
+    required String email,
+    String? firstName,
+    String? lastName,
+    String? profileImageUrl,
+  });
 
   /// Şifremi unuttum - Email'e sıfırlama linki gönderir
   Future<void> forgotPassword(String email);

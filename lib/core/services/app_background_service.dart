@@ -1,205 +1,206 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
+
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+
+import '../di/background_injection.dart';
 import '../utils/app_logger.dart';
 
-/// Arkaplan ses iletişimi için Android süreç koruma katmanı.
-///
-/// ### Çift Katman Koruma Stratejisi
-///
-/// **Katman 1 — Foreground Service**
-/// AndroidManifest'te `android:stopWithTask="false"` + `android:exported="false"`
-/// ile declare edilmiş bir foreground service başlatır. Bu sayede:
-/// - Kullanıcı Recents'tan uygulamayı swipe'layıp kapattığında servis
-///   yaşamaya devam eder (WhatsApp / Zoom davranışı).
-/// - Diğer uygulamalar bu servise bind olamaz (güvenlik).
-/// - Bildirim çubuğunda kalıcı "Sesli iletişim aktif" bildirimi gösterir.
-///
-/// **Katman 2 — PARTIAL_WAKE_LOCK**
-/// Foreground service tek başına CPU'nun suspend/sleep'e geçmesini
-/// engellemez. Ekran kapandığında kernel Timer'ları ve network I/O'yu
-/// geciktirebilir (10–60 sn). Bu gecikme WebRTC ICE keepalive ve SignalR
-/// ping paketlerinin zamanında gönderilememesine → bağlantı timeout'una
-/// yol açar.
-///
-/// `PARTIAL_WAKE_LOCK` alarak CPU'nun uyanık kalmasını garantiliyoruz.
-/// Wake lock process-scoped'dur: process sonlandığında OS otomatik serbest
-/// bırakır, yani leak riski yoktur.
-///
-/// ### iOS
-/// iOS'ta `flutter_background_service` kullanılmaz. Bunun yerine:
-/// - `Info.plist`'de `audio` + `voip` background mode'ları,
-/// - `AVAudioSession` category `playAndRecord` + `voiceChat` mode,
-/// - `PKPushRegistry` (VoIP push) kullanılır.
-/// Bu sınıf iOS'ta tüm çağrılar için no-op döner.
+@pragma('vm:entry-point')
 class AppBackgroundService {
-  static const _channelId = 'moto_comm_foreground_service';
-  static const _notificationId = 888;
+  static const String _channelId = 'moto_comm_foreground_service';
+  static const String _channelName = 'Moto Comm Foreground Service';
+  static const String _channelDescription =
+      'Keeps voice communication active in background.';
+  static const int _notificationId = 888;
+  static bool _isConfigured = false;
+  static Completer<void>? _initializeCompleter;
+  static Completer<void>? _startCompleter;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Public API
-  // ─────────────────────────────────────────────────────────────────────────
+  static bool get _isMainIsolate => RootIsolateToken.instance != null;
 
-  /// Foreground service konfigürasyonunu hazırlar.
-  /// Uygulama başlangıcında tek kez, main isolate'den `runApp` öncesinde çağrılmalı.
+  /// Configure background service. Must run on UI isolate.
   static Future<void> initialize() async {
     if (!Platform.isAndroid) return;
+    if (!_isMainIsolate) {
+      AppLogger.warning(
+        'AppBackgroundService.initialize ignored: not on main isolate.',
+      );
+      return;
+    }
+    if (_isConfigured) {
+      return;
+    }
+    if (_initializeCompleter != null) {
+      return _initializeCompleter!.future;
+    }
 
-    final service = FlutterBackgroundService();
+    final completer = Completer<void>();
+    _initializeCompleter = completer;
 
-    await service.configure(
-      androidConfiguration: AndroidConfiguration(
-        onStart: _onStart,
-        autoStart: false,
-        isForegroundMode: true,
-        notificationChannelId: _channelId,
-        initialNotificationTitle: 'Moto Comm',
-        initialNotificationContent: 'Ses servisi başlatılıyor...',
-        foregroundServiceNotificationId: _notificationId,
-      ),
-      iosConfiguration: IosConfiguration(
-        autoStart: false,
-        onForeground: _onIosForeground,
-        onBackground: _onIosBackground,
-      ),
-    );
+    try {
+      final service = FlutterBackgroundService();
+      final localNotifications = FlutterLocalNotificationsPlugin();
+
+      final androidNotifications = localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await androidNotifications?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _channelId,
+          _channelName,
+          description: _channelDescription,
+          importance: Importance.low,
+        ),
+      );
+
+      await service.configure(
+        androidConfiguration: AndroidConfiguration(
+          onStart: _onStart,
+          autoStart: false,
+          isForegroundMode: true,
+          notificationChannelId: _channelId,
+          initialNotificationTitle: 'Moto Comm Active',
+          initialNotificationContent: 'Background communication is starting...',
+          foregroundServiceNotificationId: _notificationId,
+          foregroundServiceTypes: const [AndroidForegroundType.microphone],
+        ),
+        iosConfiguration: IosConfiguration(
+          autoStart: false,
+          onForeground: _onIosForeground,
+          onBackground: _onIosBackground,
+        ),
+      );
+
+      _isConfigured = true;
+      completer.complete();
+    } catch (e, st) {
+      completer.completeError(e, st);
+      rethrow;
+    } finally {
+      _initializeCompleter = null;
+    }
   }
 
-  /// Foreground service'i başlatır ve PARTIAL_WAKE_LOCK alır.
-  ///
-  /// Main Flutter isolate'inden (intercom engine `start()` içi) çağrılmalı.
-  /// İdempotent — zaten çalışıyorsa tekrar başlatmaz.
+  /// Start foreground service and acquire wakelock. Must run on UI isolate.
   static Future<void> start() async {
     if (!Platform.isAndroid) return;
-
-    // ── Katman 1: Foreground Service ──────────────────────────────────────
-    final service = FlutterBackgroundService();
-    if (!await service.isRunning()) {
-      AppLogger.info('BackgroundService ▶ Foreground service başlatılıyor...');
-      service.startService();
+    if (!_isMainIsolate) {
+      AppLogger.warning(
+        'AppBackgroundService.start ignored: not on main isolate.',
+      );
+      return;
+    }
+    if (_startCompleter != null) {
+      return _startCompleter!.future;
     }
 
-    // ── Katman 2: PARTIAL_WAKE_LOCK ───────────────────────────────────────
-    // Ekran kapandığında CPU'nun uyanık kalmasını sağlar.
-    // WebRTC ICE keepalive (~15 sn) ve SignalR server-ping (~15 sn)
-    // zamanında iletilir; bağlantı timeout'a düşmez.
+    final completer = Completer<void>();
+    _startCompleter = completer;
     try {
-      final alreadyEnabled = await WakelockPlus.enabled;
-      if (!alreadyEnabled) {
-        await WakelockPlus.enable();
-        AppLogger.info('BackgroundService ▶ PARTIAL_WAKE_LOCK alındı.');
+      if (!_isConfigured) {
+        await initialize();
       }
-    } catch (e) {
-      // Wake lock başarısız olursa servis yine de çalışır.
-      AppLogger.warning('BackgroundService ⚠ Wake lock enable başarısız: $e');
+
+      final service = FlutterBackgroundService();
+      if (!await service.isRunning()) {
+        AppLogger.info('BackgroundService: starting foreground service.');
+        await service.startService();
+      }
+
+      try {
+        final alreadyEnabled = await WakelockPlus.enabled;
+        if (!alreadyEnabled) {
+          await WakelockPlus.enable();
+          AppLogger.info('BackgroundService: PARTIAL_WAKE_LOCK acquired.');
+        }
+      } catch (e) {
+        AppLogger.warning('BackgroundService: wakelock enable failed: $e');
+      }
+
+      completer.complete();
+    } catch (e, st) {
+      completer.completeError(e, st);
+      rethrow;
+    } finally {
+      _startCompleter = null;
     }
   }
 
-  /// Foreground service'i durdurur ve PARTIAL_WAKE_LOCK'u serbest bırakır.
-  ///
-  /// Main Flutter isolate'inden (intercom engine `stop()` / `detachSession()` içi) çağrılmalı.
-  /// İdempotent.
+  /// Stop foreground service and release wakelock. Must run on UI isolate.
   static Future<void> stop() async {
     if (!Platform.isAndroid) return;
+    if (!_isMainIsolate) {
+      AppLogger.warning(
+        'AppBackgroundService.stop ignored: not on main isolate.',
+      );
+      return;
+    }
 
-    // ── Katman 2: Wake lock'u önce serbest bırak ──────────────────────────
-    // Servis kapanmadan önce kernel normal güç yönetimine dönebilsin.
     try {
       final isEnabled = await WakelockPlus.enabled;
       if (isEnabled) {
         await WakelockPlus.disable();
-        AppLogger.info('BackgroundService ▶ PARTIAL_WAKE_LOCK serbest bırakıldı.');
+        AppLogger.info('BackgroundService: PARTIAL_WAKE_LOCK released.');
       }
     } catch (e) {
-      AppLogger.warning('BackgroundService ⚠ Wake lock disable başarısız: $e');
+      AppLogger.warning('BackgroundService: wakelock disable failed: $e');
     }
 
-    // ── Katman 1: Foreground Service'i durdur ────────────────────────────
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
-      AppLogger.info('BackgroundService ▶ Foreground service durduruluyor...');
+      AppLogger.info('BackgroundService: stopping foreground service.');
       service.invoke('stopService');
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Background Isolate Entry Point
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /// Android background service isolate'inin giriş noktası.
-  ///
-  /// Bu metot ana Flutter isolate'inden **ayrı** bir Dart isolate'inde koşar.
-  /// Sorumluluğu: foreground notification'ı ayakta tutmak ve OEM'in
-  /// servisi background'a indirmesini tespit edip geri almak.
-  ///
-  /// ⚠️ SignalR / WebRTC / LiveKit bu isolate'de çalışmaz; onlar main
-  /// isolate'dedir. Gerçek audio işlemi wake lock sayesinde uyanık kalan
-  /// (CPU-active) main thread'de devam eder.
+  /// Background isolate entrypoint. Use only ServiceInstance here.
   @pragma('vm:entry-point')
   static void _onStart(ServiceInstance service) async {
-    DartPluginRegistrant.ensureInitialized();
-
-    final notificationsPlugin = FlutterLocalNotificationsPlugin();
-
-    // ── Kontrol event listener'ları ──────────────────────────────────────
-    if (service is AndroidServiceInstance) {
-      service.on('setAsForeground').listen((_) => service.setAsForegroundService());
-      service.on('setAsBackground').listen((_) => service.setAsBackgroundService());
+    try {
+      await initBackgroundDi();
+    } catch (e) {
+      AppLogger.warning('BackgroundService: background DI init failed: $e');
     }
-    service.on('stopService').listen((_) => service.stopSelf());
 
-    // ── Foreground notification kanalı ve bildirimi ───────────────────────
-    // Importance.low  → görünür ama ses/titreşim yok.
-    // enableVibration: false, playSound: false → arka planda sessiz.
-    // NOT: Foreground service bildirimleri Android tarafından otomatik
-    //   "ongoing" (kapat düğmesi yok) yapılır; importance bunu etkilemez.
     if (service is AndroidServiceInstance) {
-      await notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(
-            const AndroidNotificationChannel(
-              _channelId,
-              'Moto Comm Ses Servisi',
-              description:
-                  'Sesli iletişimi arkaplanda ve ekran kapalıyken aktif tutar.',
-              importance: Importance.low,
-              enableVibration: false,
-              playSound: false,
-            ),
-          );
+      service.on('setAsForeground').listen((_) {
+        service.setAsForegroundService();
+      });
+      service.on('setAsBackground').listen((_) {
+        service.setAsBackgroundService();
+      });
+    }
 
-      await service.setForegroundNotificationInfo(
+    service.on('stopService').listen((_) {
+      service.stopSelf();
+    });
+
+    if (service is AndroidServiceInstance) {
+      service.setForegroundNotificationInfo(
         title: 'Moto Comm',
-        content: 'Sesli iletişim arkaplanda aktif',
+        content: 'Sesli iletisim arkaplanda aktif',
       );
     }
 
-    // ── Heartbeat loop ───────────────────────────────────────────────────
-    // Her 30 sn'de bir servisin foreground önceliğini doğrula.
-    // Bazı OEM'ler (Xiaomi MIUI, Huawei EMUI) foreground servisi sessizce
-    // background'a demote etmeye çalışır; bunu tespit edip geri alıyoruz.
-    Timer.periodic(const Duration(seconds: 30), (timer) async {
+    Timer.periodic(const Duration(seconds: 30), (_) async {
       if (service is AndroidServiceInstance) {
-        final isFg = await service.isForegroundService();
-        if (!isFg) {
+        final isForeground = await service.isForegroundService();
+        if (!isForeground) {
           AppLogger.warning(
-            'BackgroundService ⚠ OEM foreground önceliğini kaldırdı — yeniden talep ediliyor.',
+            'BackgroundService: foreground priority dropped, requesting again.',
           );
           service.setAsForegroundService();
         }
       }
     });
 
-    AppLogger.info('BackgroundService ▶ Foreground service isolate hazır.');
+    AppLogger.info('BackgroundService: background isolate ready.');
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // iOS Stubs (IosConfiguration imzası için gerekli — işlevsizdir)
-  // ─────────────────────────────────────────────────────────────────────────
 
   @pragma('vm:entry-point')
   static bool _onIosForeground(ServiceInstance service) => true;

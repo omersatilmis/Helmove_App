@@ -614,9 +614,6 @@ class RealtimeStateCoordinator {
   }) {
     final gapReason =
         'version_gap:$reason:$scopeKey:$currentVersion->$incomingVersion';
-    debugPrint(
-      '[Realtime-F2][Coordinator] Version Gap detected for $scopeKey, forcing full refetch',
-    );
     _markDataStale(gapReason);
     deduplicator.invalidate(scopeKey);
     _lastAppliedVersionByScope.remove(scopeKey);
@@ -685,7 +682,6 @@ class RealtimeStateCoordinator {
 
     _pendingRefreshRequests[key] = request;
     if (_pendingRefreshTimers[key]?.isActive ?? false) {
-      debugPrint('[Realtime-F2][Coordinator] Deduplicated request for $key');
       return;
     }
 
@@ -986,7 +982,6 @@ class InFlightDeduplicator {
   }) {
     final inFlight = _inFlight[key];
     if (inFlight != null) {
-      debugPrint('[Realtime-F2][Coordinator] Deduplicated request for $key');
       return inFlight.then((value) => value as T);
     }
 
@@ -995,9 +990,6 @@ class InFlightDeduplicator {
       if (cached != null) {
         final window = throttleWindow ?? defaultThrottle;
         if (DateTime.now().difference(cached.completedAt) < window) {
-          debugPrint(
-            '[Realtime-F2][Coordinator] Deduplicated request for $key',
-          );
           if (cached.error != null) {
             return Future<T>.error(cached.error!, cached.stackTrace);
           }

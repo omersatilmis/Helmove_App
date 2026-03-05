@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../data/models/message_model.dart';
 import '../../../domain/usecases/delete_message_usecase.dart';
 import '../../../domain/usecases/edit_message_usecase.dart';
 import '../../../domain/usecases/get_conversation_messages_usecase.dart';
@@ -18,7 +19,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final MessageSignalRService messageSignalRService;
 
   Timer? _typingTimer;
-  StreamSubscription<void>? _messagesReadSubscription;
+  StreamSubscription<List<int>>? _messagesReadSubscription;
 
   ChatBloc({
     required this.getMessages,
@@ -59,9 +60,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     });
 
     // Set up SignalR MessagesRead listener
-    _messagesReadSubscription = messageSignalRService.onMessagesRead.listen((_) {
+    _messagesReadSubscription = messageSignalRService.onMessagesRead.listen((
+      messageIds,
+    ) {
       if (!isClosed) {
-        add(const RefreshMessagesReadStatus());
+        add(RefreshMessagesReadStatus(messageIds));
       }
     });
   }
@@ -121,7 +124,53 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     final currentState = state;
     if (currentState is ChatLoaded) {
-      add(LoadMessages(currentState.otherUserId));
+      // Try to parse the incoming SignalR message data optimistically
+      try {
+        if (event.messageData is Map<String, dynamic>) {
+          final incomingMessage = MessageModel.fromJson(
+            event.messageData as Map<String, dynamic>,
+          );
+
+          // Avoid duplicates
+          final alreadyExists = currentState.messages.any(
+            (m) => m.id == incomingMessage.id,
+          );
+          if (alreadyExists) return;
+
+          // Only add if this message belongs to the current conversation
+          final isFromOtherUser =
+              incomingMessage.senderId == currentState.otherUserId;
+          final isToOtherUser =
+              incomingMessage.receiverId == currentState.otherUserId;
+
+          if (isFromOtherUser || isToOtherUser) {
+            final updatedMessages = List.of(currentState.messages)
+              ..insert(0, incomingMessage);
+            emit(currentState.copyWith(messages: updatedMessages));
+
+            // Auto mark-as-read if the message is from the other user
+            // (we're already viewing this chat)
+            if (isFromOtherUser) {
+              add(MarkAsRead(currentState.otherUserId));
+            }
+          }
+          return;
+        }
+      } catch (_) {
+        // If parsing fails, fall back to a silent reload
+      }
+
+      // Fallback: reload without showing loading spinner
+      try {
+        final messages = await getMessages(
+          otherUserId: currentState.otherUserId,
+        );
+        messages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+        emit(currentState.copyWith(messages: messages));
+        add(MarkAsRead(currentState.otherUserId));
+      } catch (_) {
+        // Silent error - don't disrupt the UI
+      }
     }
   }
 
@@ -187,8 +236,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     final currentState = state;
     if (currentState is ChatLoaded) {
-      // Reload messages to get updated read status
-      add(LoadMessages(currentState.otherUserId));
+      if (event.messageIds.isEmpty) return;
+
+      // Update isRead locally for the specified message IDs
+      final readIdSet = event.messageIds.toSet();
+      final updatedMessages = currentState.messages.map((msg) {
+        if (readIdSet.contains(msg.id) && !msg.isRead) {
+          return msg.copyWith(isRead: true, readAt: DateTime.now());
+        }
+        return msg;
+      }).toList();
+
+      emit(currentState.copyWith(messages: updatedMessages));
     }
   }
 

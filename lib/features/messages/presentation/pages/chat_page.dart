@@ -246,7 +246,7 @@ class _ChatViewState extends State<ChatView> {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: colorScheme.primary.withValues(alpha:0.1),
+            backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
             backgroundImage: widget.profileImageUrl != null
                 ? CachedNetworkImageProvider(widget.profileImageUrl!)
                 : null,
@@ -334,7 +334,7 @@ class _ChatViewState extends State<ChatView> {
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(0.5),
         child: Container(
-          color: theme.dividerColor.withValues(alpha:0.05),
+          color: theme.dividerColor.withValues(alpha: 0.05),
           height: 0.5,
         ),
       ),
@@ -348,9 +348,9 @@ class _ChatViewState extends State<ChatView> {
         padding: const EdgeInsets.all(12),
         margin: const EdgeInsets.symmetric(horizontal: 40),
         decoration: BoxDecoration(
-          color: colorScheme.primaryContainer.withValues(alpha:0.1),
+          color: colorScheme.primaryContainer.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colorScheme.primary.withValues(alpha:0.1)),
+          border: Border.all(color: colorScheme.primary.withValues(alpha: 0.1)),
         ),
         child: Text(
           "🔒 Mesajlar uçtan uca şifrelidir. Bu sohbeti kimse okuyamaz veya dinleyemez.",
@@ -372,7 +372,7 @@ class _ChatViewState extends State<ChatView> {
         color: containerBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -414,8 +414,8 @@ class _ChatViewState extends State<ChatView> {
                             vertical: 11,
                           ),
                           hintStyle: TextStyle(
-                            color: colorScheme.onSurfaceVariant.withValues(alpha:
-                              0.6,
+                            color: colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.6,
                             ),
                           ),
                         ),
@@ -449,7 +449,7 @@ class _ChatViewState extends State<ChatView> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: colorScheme.primary.withValues(alpha:0.3),
+                      color: colorScheme.primary.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -510,7 +510,7 @@ class _MessageBubble extends StatelessWidget {
         : (isDark ? Colors.white : colorScheme.onSurface);
 
     final timeColor = isMe
-        ? colorScheme.onPrimary.withValues(alpha:0.7)
+        ? colorScheme.onPrimary.withValues(alpha: 0.7)
         : (isDark ? Colors.white70 : colorScheme.onSurfaceVariant);
 
     return Align(
@@ -572,7 +572,9 @@ class _MessageBubble extends StatelessWidget {
                         Icon(
                           Icons.done_all_rounded,
                           size: 14,
-                          color: isRead ? const Color(0xFF69F0AE) : colorScheme.onPrimary.withValues(alpha:0.6),
+                          color: isRead
+                              ? const Color(0xFF69F0AE)
+                              : colorScheme.onPrimary.withValues(alpha: 0.6),
                         ),
                       ],
                     ],
@@ -647,7 +649,7 @@ class _BubblePainter extends CustomPainter {
     }
 
     if (!isDark && !isMe) {
-      canvas.drawShadow(path, Colors.black.withValues(alpha:0.2), 2, false);
+      canvas.drawShadow(path, Colors.black.withValues(alpha: 0.2), 2, false);
     }
 
     canvas.drawPath(path, paint);
@@ -672,7 +674,7 @@ class _DateChip extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 16),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHigh.withValues(alpha:0.8),
+          color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(

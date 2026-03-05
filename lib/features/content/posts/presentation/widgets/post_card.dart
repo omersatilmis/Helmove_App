@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
+import '../../../../../core/utils/image_url_extensions.dart';
 import '../../domain/entities/post_entity.dart';
 
 class PostCardModern extends StatefulWidget {
@@ -61,14 +62,18 @@ class _PostCardModernState extends State<PostCardModern>
 
   @override
   Widget build(BuildContext context) {
-    // 1. ADIM: State'ten gelen currentUserId ile sahiplik kontrolü
     final bool isOwner =
-      widget.currentUserId != null &&
-      widget.currentUserId != 0 &&
-      widget.currentUserId.toString() == widget.post.userId.toString();
+        widget.currentUserId != null &&
+        widget.currentUserId! > 0 &&
+        widget.currentUserId == widget.post.userId;
+    final displayName = widget.post.displayName.trim().isEmpty
+        ? widget.post.username
+        : widget.post.displayName;
 
     final bool hasMedia =
         widget.post.mediaUrl != null && widget.post.mediaUrl!.isNotEmpty;
+    final mediaUrl = widget.post.mediaUrl.toFeedThumbnail();
+    final avatarUrl = widget.post.userProfileImage.toAvatarThumbnail();
 
     return GestureDetector(
       // Basılı tutunca UI gizleme
@@ -96,7 +101,7 @@ class _PostCardModernState extends State<PostCardModern>
               Positioned.fill(
                 child: hasMedia
                     ? CachedNetworkImage(
-                        imageUrl: widget.post.mediaUrl!,
+                        imageUrl: mediaUrl,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
                           color: AppColors.darkSurfaceContainer,
@@ -253,13 +258,10 @@ class _PostCardModernState extends State<PostCardModern>
                         children: [
                           CircleAvatar(
                             radius: 16,
-                            backgroundImage:
-                                widget.post.userProfileImage != null
-                                ? CachedNetworkImageProvider(
-                                    widget.post.userProfileImage!,
-                                  )
+                            backgroundImage: avatarUrl.isNotEmpty
+                                ? CachedNetworkImageProvider(avatarUrl)
                                 : null,
-                            child: widget.post.userProfileImage == null
+                            child: avatarUrl.isEmpty
                                 ? const Icon(
                                     Icons.person,
                                     size: 16,
@@ -270,7 +272,7 @@ class _PostCardModernState extends State<PostCardModern>
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              widget.post.username,
+                              displayName,
                               style: AppTextStyles.h3.copyWith(
                                 color: Colors.white,
                                 fontSize: 14,

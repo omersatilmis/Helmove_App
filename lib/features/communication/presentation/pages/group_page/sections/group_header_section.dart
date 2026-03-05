@@ -82,18 +82,12 @@ class GroupHeaderSection extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        AppFrostedButton(
-          icon: Icons.arrow_back,
-          size: 44,
-          onTap: onBack,
-        ),
+        AppFrostedButton(icon: Icons.arrow_back, size: 44, onTap: onBack),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              rideDetails?.title ??
-                  sessionDetails?.title ??
-                  data.groupName,
+              rideDetails?.title ?? sessionDetails?.title ?? data.groupName,
               style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface),
               textAlign: TextAlign.right,
             ),
@@ -133,9 +127,11 @@ class GroupHeaderSection extends StatelessWidget {
   Widget _buildIntercomBanner(BuildContext context) {
     const intercomColor = Color(0xFF22C55E);
 
-    final isP2P = rtcStatus == RtcConnectionStatus.p2pConnected ||
+    final isP2P =
+        rtcStatus == RtcConnectionStatus.p2pConnected ||
         rtcStatus == RtcConnectionStatus.p2pConnecting;
-    final isSfu = rtcStatus == RtcConnectionStatus.sfuConnected ||
+    final isSfu =
+        rtcStatus == RtcConnectionStatus.sfuConnected ||
         rtcStatus == RtcConnectionStatus.sfuConnecting;
     final isReconnecting = rtcStatus == RtcConnectionStatus.reconnecting;
 
@@ -165,73 +161,69 @@ class GroupHeaderSection extends StatelessWidget {
       connectionIcon = Icons.hourglass_empty;
     }
 
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-            decoration: BoxDecoration(
-              color: intercomColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: intercomColor.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.wifi_tethering,
-                  color: intercomColor,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "Intercom Active",
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: intercomColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-            decoration: BoxDecoration(
-              color: connectionColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: connectionColor.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(connectionIcon, color: connectionColor, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        connectionText,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: connectionColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    final intercomCard = _buildIntercomStatusCard(
+      color: intercomColor,
+      icon: Icons.wifi_tethering,
+      title: 'Intercom Active',
+    );
+    final connectionCard = _buildIntercomStatusCard(
+      color: connectionColor,
+      icon: connectionIcon,
+      title: connectionText,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 360;
+        if (isCompact) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [intercomCard, const SizedBox(height: 8), connectionCard],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: intercomCard),
+            const SizedBox(width: 12),
+            Expanded(child: connectionCard),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildIntercomStatusCard({
+    required Color color,
+    required IconData icon,
+    required String title,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              title,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -258,10 +250,9 @@ class GroupHeaderSection extends StatelessWidget {
       width: 3,
       height: 3,
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .onSurfaceVariant
-            .withValues(alpha: 0.4),
+        color: Theme.of(
+          context,
+        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
         shape: BoxShape.circle,
       ),
     );

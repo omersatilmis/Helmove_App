@@ -49,6 +49,8 @@ class _IntercomDebugOverlayState extends State<IntercomDebugOverlay> {
     }
 
     final engine = sl<IntercomEngine>();
+    final availableWidth = MediaQuery.of(context).size.width - 24;
+    final expandedWidth = availableWidth.clamp(220.0, 320.0).toDouble();
 
     return SafeArea(
       child: Align(
@@ -56,7 +58,7 @@ class _IntercomDebugOverlayState extends State<IntercomDebugOverlay> {
         child: Container(
           margin: const EdgeInsets.all(12),
           padding: EdgeInsets.all(_collapsed ? 6 : 10),
-          width: _collapsed ? 36 : 320,
+          width: _collapsed ? 36 : expandedWidth,
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.75),
             borderRadius: BorderRadius.circular(12),
@@ -93,18 +95,24 @@ class _IntercomDebugOverlayState extends State<IntercomDebugOverlay> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: _collapsed
               ? MainAxisAlignment.end
               : MainAxisAlignment.spaceBetween,
           children: [
             if (!_collapsed)
-              const Text(
-                'Intercom',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+              const Expanded(
+                child: Text(
+                  'Intercom',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+            if (!_collapsed) const SizedBox(width: 8),
             IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -174,13 +182,13 @@ class _IntercomDebugOverlayState extends State<IntercomDebugOverlay> {
       return 'idle';
     }
     if (decision.reason == IntercomDecisionReason.awaitingSecondPartyStability) {
-      return '2 kişi: bekleme$delayPart';
+      return '2 kisi: bekleme$delayPart';
     }
     if (decision.reason == IntercomDecisionReason.twoParticipantsP2p) {
-      return '2 kişi sabit: P2P';
+      return '2 kisi sabit: P2P';
     }
     if (decision.reason == IntercomDecisionReason.threeOrMoreParticipantsSfu) {
-      return '3+ kişi: SFU';
+      return '3+ kisi: SFU';
     }
     if (decision.reason == IntercomDecisionReason.manual) {
       return 'manuel override';

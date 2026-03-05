@@ -9,7 +9,7 @@ import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.d
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/models/invite_args.dart';
 import '../../features/communication/presentation/pages/invite_page.dart';
-import 'package:moto_comm_app_1/core/widgets/app_bloc_listener.dart'; // Import AppBlocListener
+import 'package:moto_comm_app_1/core/widgets/app_bloc_listener.dart';
 // Removed CallListenerWrapper import
 
 // 🔥 YENİ SAYFALARIN IMPORTLARI
@@ -25,7 +25,6 @@ import 'package:moto_comm_app_1/features/communication/presentation/pages/group_
 import 'package:moto_comm_app_1/features/media/presentation/pages/prepare_media_page.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_event.dart';
 
 // Drawer Sayfalarının Importları
 import 'package:moto_comm_app_1/features/profile/presentation/pages/profile_page.dart';
@@ -35,12 +34,15 @@ import 'package:moto_comm_app_1/features/communities/presentation/pages/communit
 import 'package:moto_comm_app_1/features/settings/presentation/pages/settings_page.dart';
 import 'package:moto_comm_app_1/features/help/presentation/pages/help_page.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/pages/my_garage_page.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/pages/support/help_center_page.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/pages/support/feedback_page.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/pages/support/copyright_page.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/pages/support/privacy_policy_page.dart';
+import 'package:moto_comm_app_1/features/settings/presentation/pages/support/about_app_page.dart';
 
 // Homepage den girilen sayfaların Importları
 import 'package:moto_comm_app_1/features/messages/presentation/pages/messages_page.dart';
 import 'package:moto_comm_app_1/features/notification/presentation/pages/notification_page.dart';
-import 'package:moto_comm_app_1/core/services/version_service.dart';
-import 'package:moto_comm_app_1/core/presentation/pages/force_update_page.dart';
 
 // Profile Jots Tabından açılan sayfa
 import 'package:moto_comm_app_1/features/content/jots/presentation/pages/create_jot_page.dart';
@@ -111,19 +113,9 @@ GoRouter createRouter(AuthProvider authProvider) {
     refreshListenable: authProvider,
     initialLocation: '/homepage',
 
-    // Unified Redirect Guard (Version Check + Auth)
+    // Unified Redirect Guard (Auth)
     redirect: (context, state) async {
-      // 1. Force Update Check (Highest Priority)
-      final versionService = sl<VersionService>();
-      final isUpdateRequired = await versionService.isUpdateRequired();
-
-      final isForceUpdating = state.uri.toString() == '/force-update';
-
-      if (isUpdateRequired && !isForceUpdating) {
-        return '/force-update';
-      }
-
-      // 2. Auth Logic
+      // Auth Logic
       // Kullanıcı giriş yapmış mı?
       bool isLoggedIn = authProvider.isAuthenticated;
 
@@ -136,7 +128,7 @@ GoRouter createRouter(AuthProvider authProvider) {
       final isRegistering = state.uri.toString() == '/register';
 
       if (!isLoggedIn) {
-        if (!isLoggingIn && !isRegistering && !isForceUpdating) {
+        if (!isLoggingIn && !isRegistering) {
           return '/login';
         }
       } else {
@@ -149,11 +141,6 @@ GoRouter createRouter(AuthProvider authProvider) {
     },
 
     routes: [
-      GoRoute(
-        path: '/force-update',
-        builder: (context, state) => const ForceUpdatePage(),
-      ),
-
       // --- 1. TAM EKRAN SAYFALAR ---
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(
@@ -194,6 +181,26 @@ GoRouter createRouter(AuthProvider authProvider) {
         builder: (context, state) => const MyGaragePage(),
       ),
       GoRoute(path: '/help', builder: (context, state) => const HelpPage()),
+      GoRoute(
+        path: '/help-center',
+        builder: (context, state) => const HelpCenterPage(),
+      ),
+      GoRoute(
+        path: '/feedback',
+        builder: (context, state) => const FeedbackPage(),
+      ),
+      GoRoute(
+        path: '/copyright',
+        builder: (context, state) => const CopyrightPage(),
+      ),
+      GoRoute(
+        path: '/privacy-policy',
+        builder: (context, state) => const PrivacyPolicyPage(),
+      ),
+      GoRoute(
+        path: '/about',
+        builder: (context, state) => const AboutAppPage(),
+      ),
 
       // Homepage topbarından  gidilen sayfalar
       GoRoute(
@@ -240,18 +247,14 @@ GoRouter createRouter(AuthProvider authProvider) {
       // --- 2. BOTTOM BARLI SAYFALAR ---
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          // Provide GLOBAL Blocs here so they persist across tabs
+          // Provide GLOBAL Blocs lazily so startup does not instantiate
+          // communication stacks before they are actually used.
           return MultiBlocProvider(
             providers: [
-              BlocProvider(
-                create: (context) =>
-                    sl<GroupRideBloc>()..add(const LoadActiveGroupRidesEvent()),
-              ),
-              BlocProvider.value(value: sl<VoiceSessionBloc>()),
+              BlocProvider(create: (context) => sl<GroupRideBloc>()),
+              BlocProvider(create: (context) => sl<VoiceSessionBloc>()),
             ],
-            child: AppBlocListener(
-              child: BottomBarWrapper(navigationShell: navigationShell),
-            ),
+            child: BottomBarWrapper(navigationShell: navigationShell),
           );
         },
         branches: [
@@ -287,7 +290,8 @@ GoRouter createRouter(AuthProvider authProvider) {
             routes: [
               GoRoute(
                 path: '/communication',
-                builder: (context, state) => const CommunicationPage(),
+                builder: (context, state) =>
+                    const AppBlocListener(child: CommunicationPage()),
                 routes: [
                   GoRoute(
                     path: 'create-group-ride',

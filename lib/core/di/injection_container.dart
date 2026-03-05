@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -5,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../network/network_module.dart';
+import '../network/auth_bootstrap_gate.dart';
 import '../../features/auth/data/api/auth_api.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
@@ -50,9 +53,11 @@ import '../../features/content/jots/domain/usecases/get_feed_usecase.dart';
 import '../../features/content/jots/domain/usecases/get_user_jots_usecase.dart';
 import '../../features/content/jots/domain/usecases/like_jot_usecase.dart';
 import '../../features/content/jots/presentation/bloc/jots_bloc.dart';
+import '../../features/content/jots/data/cache/jot_feed_cache.dart';
 
 // Posts Feature
 import '../../features/content/posts/data/api/post_api.dart';
+import '../../features/content/posts/data/cache/post_feed_cache.dart';
 import '../../features/content/posts/data/datasources/post_remote_datasource.dart';
 import '../../features/content/posts/data/repositories/post_repository_impl.dart';
 import '../../features/content/posts/domain/repositories/post_repository.dart';
@@ -153,6 +158,12 @@ import '../../features/settings/domain/usecases/update_map_usecase.dart';
 import '../../features/settings/domain/usecases/update_audio_usecase.dart';
 import '../../features/settings/presentation/bloc/settings_bloc.dart';
 
+// Feedback Feature
+import '../../features/settings/data/datasources/feedback_remote_data_source.dart';
+import '../../features/settings/data/repositories/feedback_repository_impl.dart';
+import '../../features/settings/domain/repositories/feedback_repository.dart';
+import '../../features/settings/domain/usecases/send_feedback_usecase.dart';
+
 // Subscription / Plan Feature (data layer + use cases + bloc)
 import '../../features/plan/data/datasources/subscription_remote_data_source.dart';
 import '../../features/plan/data/repositories/subscription_repository_impl.dart';
@@ -219,8 +230,9 @@ import '../services/livekit_room_service.dart';
 import '../services/permissions_service.dart';
 import '../services/webrtc_service.dart';
 import '../services/audio_orchestrator_service.dart';
-import '../services/version_service.dart';
 import '../services/connectivity_watcher_service.dart';
+import '../services/home_summary_service.dart';
+import '../services/home_bootstrap_service.dart';
 import '../../features/voice_session/presentation/bloc/voice_session_bloc.dart';
 
 import '../../features/intercom/domain/intercom_engine.dart';
@@ -231,6 +243,74 @@ import '../../features/profile/presentation/providers/profile_provider.dart';
 import '../../core/theme/theme_provider.dart';
 
 final sl = GetIt.instance;
+bool _coreInitialized = false;
+Completer<void>? _coreInitCompleter;
+bool _deferredFeaturesInitialized = false;
+Completer<void>? _deferredFeaturesInitCompleter;
+bool _communicationRuntimeStarted = false;
+Completer<void>? _communicationRuntimeStartCompleter;
+
+void _logInitProfile(String phase, Stopwatch stopwatch) {
+  if (kReleaseMode) {
+    return;
+  }
+  debugPrint('[DI][PROFILE] $phase ${stopwatch.elapsedMilliseconds}ms');
+  stopwatch
+    ..reset()
+    ..start();
+}
+
+Future<void> initDeferredFeatures() async {
+  if (_deferredFeaturesInitialized) {
+    return;
+  }
+  if (_deferredFeaturesInitCompleter != null) {
+    return _deferredFeaturesInitCompleter!.future;
+  }
+
+  final completer = Completer<void>();
+  _deferredFeaturesInitCompleter = completer;
+  try {
+    final stopwatch = Stopwatch()..start();
+    _registerFeatureSingletons();
+    _logInitProfile('registerFeatureSingletons(deferred)', stopwatch);
+    _registerDeferredRuntimeSingletons();
+    _logInitProfile('registerDeferredRuntimeSingletons', stopwatch);
+    _deferredFeaturesInitialized = true;
+    completer.complete();
+  } catch (e, st) {
+    completer.completeError(e, st);
+    rethrow;
+  } finally {
+    _deferredFeaturesInitCompleter = null;
+  }
+}
+
+Future<void> ensureCommunicationRuntimeStarted() async {
+  await initDeferredFeatures();
+
+  if (_communicationRuntimeStarted) {
+    return;
+  }
+  if (_communicationRuntimeStartCompleter != null) {
+    return _communicationRuntimeStartCompleter!.future;
+  }
+
+  final completer = Completer<void>();
+  _communicationRuntimeStartCompleter = completer;
+  try {
+    sl<RealTimeService>().start();
+    sl<CallListenerService>().start();
+    await sl<IntercomEngine>().start();
+    _communicationRuntimeStarted = true;
+    completer.complete();
+  } catch (e, st) {
+    completer.completeError(e, st);
+    rethrow;
+  } finally {
+    _communicationRuntimeStartCompleter = null;
+  }
+}
 
 Future<void> _handleAuthInvalidationFromInterceptor() async {
   try {
@@ -392,6 +472,116 @@ Future<void> resetOnLogout() async {
   _registerFeatureSingletons();
 
   debugPrint("🔄 resetOnLogout completed. Dio and Features reset.");
+}
+
+void _registerCoreFeatureSingletons() {
+  // Auth Feature (AuthApi, AuthRemoteDataSource, AuthRepository)
+  if (!sl.isRegistered<AuthApi>()) {
+    sl.registerLazySingleton(() => AuthApi(sl()));
+  }
+  if (!sl.isRegistered<AuthRemoteDataSource>()) {
+    sl.registerLazySingleton<AuthRemoteDataSource>(
+      () => AuthRemoteDataSourceImpl(api: sl()),
+    );
+  }
+  if (!sl.isRegistered<AuthRepository>()) {
+    sl.registerLazySingleton<AuthRepository>(
+      () => AuthRepositoryImpl(sl(), sl()),
+    );
+  }
+  if (!sl.isRegistered<GetCurrentUserIdUseCase>()) {
+    sl.registerLazySingleton(
+      () => GetCurrentUserIdUseCase(appSession: sl(), authRepository: sl()),
+    );
+  }
+
+  // Profile Feature
+  if (!sl.isRegistered<ProfileApi>()) {
+    sl.registerLazySingleton(() => ProfileApi(sl()));
+  }
+  if (!sl.isRegistered<ProfileRemoteDataSource>()) {
+    sl.registerLazySingleton<ProfileRemoteDataSource>(
+      () => ProfileRemoteDataSourceImpl(api: sl()),
+    );
+  }
+  if (!sl.isRegistered<ProfileRepository>()) {
+    sl.registerLazySingleton<ProfileRepository>(
+      () => ProfileRepositoryImpl(sl()),
+    );
+  }
+
+  // Messages core path (only unread count path for startup badge fallback)
+  if (!sl.isRegistered<MessageRemoteDataSource>()) {
+    sl.registerLazySingleton<MessageRemoteDataSource>(
+      () => MessageRemoteDataSourceImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<MessageRepository>()) {
+    sl.registerLazySingleton<MessageRepository>(
+      () => MessageRepositoryImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<msg_unread.GetUnreadCountUseCase>()) {
+    sl.registerLazySingleton(() => msg_unread.GetUnreadCountUseCase(sl()));
+  }
+
+  // Posts Feature (home feed)
+  if (!sl.isRegistered<PostFeedCache>()) {
+    sl.registerLazySingleton(() => PostFeedCache(sl<SharedPreferences>()));
+  }
+  if (!sl.isRegistered<PostApi>()) {
+    sl.registerLazySingleton(() => PostApi(sl()));
+  }
+  if (!sl.isRegistered<PostRemoteDataSource>()) {
+    sl.registerLazySingleton<PostRemoteDataSource>(
+      () => PostRemoteDataSourceImpl(sl<PostApi>()),
+    );
+  }
+  if (!sl.isRegistered<PostRepository>()) {
+    sl.registerLazySingleton<PostRepository>(
+      () => PostRepositoryImpl(sl<PostRemoteDataSource>()),
+    );
+  }
+  if (!sl.isRegistered<GetPostsFeedUseCase>()) {
+    sl.registerFactory(() => GetPostsFeedUseCase(sl()));
+  }
+  if (!sl.isRegistered<GetUserPostsUseCase>()) {
+    sl.registerFactory(() => GetUserPostsUseCase(sl()));
+  }
+  if (!sl.isRegistered<DeletePostUseCase>()) {
+    sl.registerFactory(() => DeletePostUseCase(sl()));
+  }
+  if (!sl.isRegistered<LikePostUseCase>()) {
+    sl.registerFactory(() => LikePostUseCase(sl()));
+  }
+  if (!sl.isRegistered<PostsBloc>()) {
+    sl.registerLazySingleton(
+      () => PostsBloc(
+        getFeed: sl<GetPostsFeedUseCase>(),
+        getUserPosts: sl<GetUserPostsUseCase>(),
+        deletePost: sl<DeletePostUseCase>(),
+        likePost: sl<LikePostUseCase>(),
+        getCurrentUserIdUseCase: sl<GetCurrentUserIdUseCase>(),
+        appSession: sl<AppSession>(),
+        postFeedCache: sl<PostFeedCache>(),
+      ),
+    );
+  }
+
+  // Notification unread count fallback for home top bar
+  if (!sl.isRegistered<NotificationRemoteDataSource>()) {
+    sl.registerLazySingleton<NotificationRemoteDataSource>(
+      () => NotificationRemoteDataSourceImpl(client: sl()),
+    );
+  }
+  if (!sl.isRegistered<NotificationRepository>()) {
+    sl.registerLazySingleton<NotificationRepository>(
+      () => NotificationRepositoryImpl(remoteDataSource: sl()),
+    );
+  }
+  if (!sl.isRegistered<notif_unread.GetUnreadCountUseCase>()) {
+    sl.registerLazySingleton(() => notif_unread.GetUnreadCountUseCase(sl()));
+  }
 }
 
 void _registerFeatureSingletons() {
@@ -562,6 +752,10 @@ void _registerFeatureSingletons() {
     sl.registerLazySingleton(() => GetJotsFeedUseCase(sl()));
   }
 
+  if (!sl.isRegistered<JotFeedCache>()) {
+    sl.registerLazySingleton(() => JotFeedCache(sl<SharedPreferences>()));
+  }
+
   // Bloc
   if (!sl.isRegistered<JotsBloc>()) {
     sl.registerFactory(
@@ -571,11 +765,15 @@ void _registerFeatureSingletons() {
         createJot: sl<CreateJotUseCase>(),
         deleteJot: sl<DeleteJotUseCase>(),
         likeJot: sl<LikeJotUseCase>(),
+        jotFeedCache: sl<JotFeedCache>(),
       ),
     );
   }
 
   // Posts Feature
+  if (!sl.isRegistered<PostFeedCache>()) {
+    sl.registerLazySingleton(() => PostFeedCache(sl<SharedPreferences>()));
+  }
   if (!sl.isRegistered<PostApi>()) {
     sl.registerLazySingleton(() => PostApi(sl()));
   }
@@ -606,7 +804,7 @@ void _registerFeatureSingletons() {
 
   // Bloc
   if (!sl.isRegistered<PostsBloc>()) {
-    sl.registerFactory(
+    sl.registerLazySingleton(
       () => PostsBloc(
         getFeed: sl<GetPostsFeedUseCase>(),
         getUserPosts: sl<GetUserPostsUseCase>(),
@@ -614,6 +812,7 @@ void _registerFeatureSingletons() {
         likePost: sl<LikePostUseCase>(),
         getCurrentUserIdUseCase: sl<GetCurrentUserIdUseCase>(),
         appSession: sl<AppSession>(),
+        postFeedCache: sl<PostFeedCache>(),
       ),
     );
   }
@@ -756,6 +955,21 @@ void _registerFeatureSingletons() {
         updateAudio: sl(),
       ),
     );
+  }
+
+  // Feedback Feature
+  if (!sl.isRegistered<FeedbackRemoteDataSource>()) {
+    sl.registerLazySingleton<FeedbackRemoteDataSource>(
+      () => FeedbackRemoteDataSourceImpl(dio: sl()),
+    );
+  }
+  if (!sl.isRegistered<FeedbackRepository>()) {
+    sl.registerLazySingleton<FeedbackRepository>(
+      () => FeedbackRepositoryImpl(remoteDataSource: sl()),
+    );
+  }
+  if (!sl.isRegistered<SendFeedbackUseCase>()) {
+    sl.registerLazySingleton(() => SendFeedbackUseCase(sl()));
   }
 
   // ────────────────────────────────────────────────────────
@@ -949,211 +1163,315 @@ void _registerFeatureSingletons() {
   }
 }
 
+void _registerDeferredRuntimeSingletons() {
+  if (!sl.isRegistered<CallListenerService>()) {
+    sl.registerLazySingleton(() => CallListenerService());
+  }
+  // Status Management Feature
+  if (!sl.isRegistered<StatusRemoteDataSource>()) {
+    sl.registerLazySingleton<StatusRemoteDataSource>(
+      () => StatusRemoteDataSourceImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<StatusRepository>()) {
+    sl.registerLazySingleton<StatusRepository>(
+      () => StatusRepositoryImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<StartRideUseCase>()) {
+    sl.registerFactory(() => StartRideUseCase(sl()));
+  }
+  if (!sl.isRegistered<CompleteRideUseCase>()) {
+    sl.registerFactory(() => CompleteRideUseCase(sl()));
+  }
+  if (!sl.isRegistered<CancelRideUseCase>()) {
+    sl.registerFactory(() => CancelRideUseCase(sl()));
+  }
+  if (!sl.isRegistered<PostponeRideUseCase>()) {
+    sl.registerFactory(() => PostponeRideUseCase(sl()));
+  }
+
+  // Call Feature
+  if (!sl.isRegistered<CallRemoteDataSource>()) {
+    sl.registerLazySingleton<CallRemoteDataSource>(
+      () => CallRemoteDataSourceImpl(client: sl()),
+    );
+  }
+  if (!sl.isRegistered<CallRepository>()) {
+    sl.registerLazySingleton<CallRepository>(() => CallRepositoryImpl(sl()));
+  }
+  if (!sl.isRegistered<SendCallRequestUseCase>()) {
+    sl.registerFactory(() => SendCallRequestUseCase(sl()));
+  }
+  if (!sl.isRegistered<AcceptCallUseCase>()) {
+    sl.registerFactory(() => AcceptCallUseCase(sl()));
+  }
+  if (!sl.isRegistered<RejectCallUseCase>()) {
+    sl.registerFactory(() => RejectCallUseCase(sl()));
+  }
+  if (!sl.isRegistered<EndCallUseCase>()) {
+    sl.registerFactory(() => EndCallUseCase(sl()));
+  }
+  if (!sl.isRegistered<GetOnlineUsersUseCase>()) {
+    sl.registerFactory(() => GetOnlineUsersUseCase(sl()));
+  }
+  if (!sl.isRegistered<CheckUserOnlineStatusUseCase>()) {
+    sl.registerFactory(() => CheckUserOnlineStatusUseCase(sl()));
+  }
+  if (!sl.isRegistered<GetPendingCallsUseCase>()) {
+    sl.registerFactory(() => GetPendingCallsUseCase(sl()));
+  }
+  if (!sl.isRegistered<CallBloc>()) {
+    sl.registerLazySingleton(
+      () => CallBloc(
+        signalRService: sl(),
+        webRTCService: sl(),
+        sendCallRequestUseCase: sl(),
+        acceptCallUseCase: sl(),
+        rejectCallUseCase: sl(),
+        endCallUseCase: sl(),
+        getPendingCallsUseCase: sl(),
+        permissionsService: sl(),
+        callKitIncomingService: sl(),
+      ),
+    );
+  }
+}
+
+Future<void> initCore() async {
+  if (_coreInitialized) {
+    return;
+  }
+  if (_coreInitCompleter != null) {
+    return _coreInitCompleter!.future;
+  }
+
+  final completer = Completer<void>();
+  _coreInitCompleter = completer;
+  try {
+    final stopwatch = Stopwatch()..start();
+    setup();
+    if (!sl.isRegistered<AppSession>()) {
+      sl.registerLazySingleton(() => AppSession());
+    }
+    if (!sl.isRegistered<AuthBootstrapGate>()) {
+      sl.registerLazySingleton(() => AuthBootstrapGate());
+    }
+
+    //! External
+    final sharedPreferences = await SharedPreferences.getInstance();
+    if (!sl.isRegistered<SharedPreferences>()) {
+      sl.registerLazySingleton(() => sharedPreferences);
+    }
+    _logInitProfile('SharedPreferences', stopwatch);
+
+    if (!sl.isRegistered<FlutterSecureStorage>()) {
+      sl.registerLazySingleton<FlutterSecureStorage>(
+        () => const FlutterSecureStorage(),
+      );
+    }
+
+    if (!sl.isRegistered<AuthLocalDataSource>()) {
+      sl.registerLazySingleton<AuthLocalDataSource>(
+        () => AuthLocalDataSourceImpl(
+          sharedPreferences: sl(),
+          secureStorage: sl(),
+        ),
+      );
+    }
+    _logInitProfile('AuthLocalDataSource', stopwatch);
+
+    if (!sl.isRegistered<Dio>()) {
+      final dio = await NetworkModule.provideDio(
+        sl<AuthLocalDataSource>(),
+        authBootstrapGate: sl<AuthBootstrapGate>(),
+        onAuthInvalidated: _handleAuthInvalidationFromInterceptor,
+        onTokenRefreshed: _handleTokenRefreshedFromInterceptor,
+      );
+      sl.registerSingleton<Dio>(dio);
+    }
+    _logInitProfile('NetworkModule.provideDio', stopwatch);
+
+    sl.registerLazySingleton(
+      () => SignalRService(sl<AuthLocalDataSource>(), sl<Dio>()),
+    );
+    if (!sl.isRegistered<AudioOrchestratorService>()) {
+      sl.registerLazySingleton(() => AudioOrchestratorService());
+    }
+    if (!sl.isRegistered<PermissionsService>()) {
+      sl.registerLazySingleton(() => PermissionsService());
+    }
+    if (!sl.isRegistered<WebRTCService>()) {
+      sl.registerLazySingleton(() => WebRTCService());
+    }
+    if (!sl.isRegistered<LiveKitApi>()) {
+      sl.registerLazySingleton(() => LiveKitApi(sl<Dio>()));
+    }
+    if (!sl.isRegistered<LiveKitRoomService>()) {
+      sl.registerLazySingleton(() => LiveKitRoomService());
+    }
+    if (!sl.isRegistered<IntercomEngine>()) {
+      sl.registerLazySingleton<IntercomEngine>(
+        () => IntercomEngineImpl(
+          signalRService: sl(),
+          webRTCService: sl(),
+          liveKitApi: sl(),
+          liveKitRoomService: sl(),
+          permissionsService: sl(),
+          audioOrchestratorService: sl(),
+          appSession: sl(),
+        ),
+      );
+    }
+    if (!sl.isRegistered<ConnectivityWatcherService>()) {
+      sl.registerLazySingleton<ConnectivityWatcherService>(
+        () => ConnectivityWatcherService(
+          sl<SignalRService>(),
+          sl<LiveKitRoomService>(),
+        ),
+      );
+    }
+    sl.registerLazySingleton(
+      () => RealtimeStateCoordinator(signalRService: sl<SignalRService>()),
+    );
+    sl.registerLazySingleton(
+      () => CommunicationRealtimeBus(sl<RealtimeStateCoordinator>()),
+    );
+    sl.registerLazySingleton(
+      () => CommunicationRefreshCoordinator(sl<RealtimeStateCoordinator>()),
+    );
+    sl.registerLazySingleton(
+      () => RealTimeService(sl<AppSession>(), sl<SignalRService>()),
+    );
+    sl.registerLazySingleton(() => HomeBootstrapService(sl()));
+    sl.registerLazySingleton(() => HomeSummaryService(sl()));
+    sl.registerLazySingleton(
+      () => MessageSignalRService(sl<AuthLocalDataSource>()),
+    );
+    if (!sl.isRegistered<CallListenerService>()) {
+      sl.registerLazySingleton<CallListenerService>(
+        () => CallListenerService(),
+      );
+    }
+    if (!sl.isRegistered<CallKitIncomingService>()) {
+      sl.registerLazySingleton<CallKitIncomingService>(
+        () => CallKitIncomingService(),
+      );
+    }
+
+    sl.registerLazySingleton(() => NotificationService(sl()));
+    _logInitProfile('Core service registrations', stopwatch);
+
+    // Feature'ları kaydet (Auth, Profile, Friendship, Voice, Discover vb.)
+    _registerCoreFeatureSingletons();
+    _logInitProfile('registerCoreFeatureSingletons', stopwatch);
+
+    if (!sl.isRegistered<GroupRideApi>()) {
+      sl.registerLazySingleton(() => GroupRideApi(sl()));
+    }
+    if (!sl.isRegistered<GroupRideRemoteDataSource>()) {
+      sl.registerLazySingleton<GroupRideRemoteDataSource>(
+        () => GroupRideRemoteDataSourceImpl(sl<GroupRideApi>()),
+      );
+    }
+    if (!sl.isRegistered<GroupRideRepository>()) {
+      sl.registerLazySingleton<GroupRideRepository>(
+        () => GroupRideRepositoryImpl(sl()),
+      );
+    }
+    if (!sl.isRegistered<CreateGroupRideUseCase>()) {
+      sl.registerFactory(() => CreateGroupRideUseCase(sl()));
+    }
+    if (!sl.isRegistered<GetActiveGroupRidesUseCase>()) {
+      sl.registerFactory(() => GetActiveGroupRidesUseCase(sl()));
+    }
+    if (!sl.isRegistered<GetGroupRideByIdUseCase>()) {
+      sl.registerFactory(() => GetGroupRideByIdUseCase(sl()));
+    }
+    if (!sl.isRegistered<UpdateGroupRideUseCase>()) {
+      sl.registerFactory(() => UpdateGroupRideUseCase(sl()));
+    }
+    if (!sl.isRegistered<DeleteGroupRideUseCase>()) {
+      sl.registerFactory(() => DeleteGroupRideUseCase(sl()));
+    }
+    if (!sl.isRegistered<LeaveGroupRideUseCase>()) {
+      sl.registerFactory(() => LeaveGroupRideUseCase(sl()));
+    }
+    if (!sl.isRegistered<GroupRideBloc>()) {
+      sl.registerFactory(
+        () => GroupRideBloc(
+          createGroupRideUseCase: sl(),
+          deleteGroupRideUseCase: sl(),
+          getActiveGroupRidesUseCase: sl(),
+          leaveGroupRideUseCase: sl(),
+          signalRService: sl(),
+          realtimeBus: sl(),
+          refreshCoordinator: sl(),
+          updateGroupRideUseCase: sl(),
+          getGroupRideByIdUseCase: sl(),
+          getVoiceSessionDetailsUseCase: sl(),
+        ),
+      );
+    }
+
+    if (!sl.isRegistered<VoiceSessionBloc>()) {
+      sl.registerLazySingleton(
+        () => VoiceSessionBloc(
+          createVoiceSessionUseCase: sl(),
+          joinVoiceSessionUseCase: sl(),
+          leaveVoiceSessionUseCase: sl(),
+          inviteToVoiceSessionUseCase: sl(),
+          getVoiceSessionDetailsUseCase: sl(),
+          getMyVoiceSessionsUseCase: sl(),
+          getCurrentUserIdUseCase: sl(),
+          acceptVoiceSessionInvitationUseCase: sl(),
+          rejectVoiceSessionInvitationUseCase: sl(),
+          endVoiceSessionUseCase: sl(),
+          appSession: sl(),
+          kickUserUseCase: sl(),
+          muteUserUseCase: sl(),
+          transferHostUseCase: sl(),
+          signalRService: sl(),
+          realtimeBus: sl(),
+          refreshCoordinator: sl(),
+          permissionsService: sl(),
+          intercomEngine: sl(),
+          callKitIncomingService: sl(),
+          audioOrchestratorService: sl(),
+          promoteParticipantUseCase: sl(),
+          demoteParticipantUseCase: sl(),
+          kickParticipantUseCase: sl(),
+        ),
+      );
+    }
+
+    // --- ChangeNotifier Providers (GetIt singleton, root tree'den çıkarıldı) ---
+    // NOT: AuthRepository ve ProfileRepository artık _registerFeatureSingletons()
+    // tarafından yukarıda kaydedildi.
+    sl.registerLazySingleton(
+      () => AuthProvider(
+        sl<AuthRepository>(),
+        sl<ProfileRepository>(),
+        sl<NotificationService>(),
+        sl<AppSession>(),
+      ),
+    );
+    sl.registerLazySingleton(
+      () => ProfileProvider(sl<ProfileRepository>(), sl<AppSession>()),
+    );
+    sl.registerLazySingleton(() => ThemeProvider());
+    _logInitProfile('Root provider registrations', stopwatch);
+
+    _coreInitialized = true;
+    completer.complete();
+  } catch (e, st) {
+    completer.completeError(e, st);
+    rethrow;
+  } finally {
+    _coreInitCompleter = null;
+  }
+}
+
 Future<void> init() async {
-  setup();
-  if (!sl.isRegistered<AppSession>()) {
-    sl.registerLazySingleton(() => AppSession());
-  }
-
-  //! External
-  final sharedPreferences = await SharedPreferences.getInstance();
-  sl.registerLazySingleton(() => sharedPreferences);
-
-  if (!sl.isRegistered<FlutterSecureStorage>()) {
-    sl.registerLazySingleton<FlutterSecureStorage>(
-      () => const FlutterSecureStorage(),
-    );
-  }
-
-  if (!sl.isRegistered<AuthLocalDataSource>()) {
-    sl.registerLazySingleton<AuthLocalDataSource>(
-      () =>
-          AuthLocalDataSourceImpl(sharedPreferences: sl(), secureStorage: sl()),
-    );
-  }
-
-  final dio = await NetworkModule.provideDio(
-    sl<AuthLocalDataSource>(),
-    onAuthInvalidated: _handleAuthInvalidationFromInterceptor,
-    onTokenRefreshed: _handleTokenRefreshedFromInterceptor,
-  );
-  sl.registerSingleton<Dio>(dio);
-
-  sl.registerLazySingleton(() => SignalRService(sl<AuthLocalDataSource>()));
-  sl.registerLazySingleton(
-    () => RealtimeStateCoordinator(signalRService: sl<SignalRService>()),
-  );
-  sl.registerLazySingleton(
-    () => CommunicationRealtimeBus(sl<RealtimeStateCoordinator>()),
-  );
-  sl.registerLazySingleton(
-    () => CommunicationRefreshCoordinator(sl<RealtimeStateCoordinator>()),
-  );
-  sl.registerLazySingleton(
-    () => RealTimeService(sl<AppSession>(), sl<SignalRService>()),
-  );
-  sl.registerLazySingleton(
-    () => MessageSignalRService(sl<AuthLocalDataSource>()),
-  );
-  sl.registerLazySingleton(() => CallKitIncomingService());
-  sl.registerLazySingleton(() => CallListenerService());
-  sl.registerLazySingleton(() => AudioOrchestratorService());
-  sl.registerLazySingleton(() => PermissionsService());
-  // WebRTCService
-  sl.registerLazySingleton(() => WebRTCService());
-  // LiveKit
-  sl.registerLazySingleton(() => LiveKitApi(sl()));
-  sl.registerLazySingleton(() => LiveKitRoomService());
-
-  // Intercom Engine
-  sl.registerLazySingleton<IntercomEngine>(
-    () => IntercomEngineImpl(
-      signalRService: sl(),
-      webRTCService: sl(),
-      liveKitApi: sl(),
-      liveKitRoomService: sl(),
-      permissionsService: sl(),
-      audioOrchestratorService: sl(),
-      appSession: sl(),
-    ),
-  );
-
-  sl.registerLazySingleton(() => VersionService(sl()));
-  sl.registerLazySingleton(() => NotificationService(sl()));
-  sl.registerLazySingleton(() => ConnectivityWatcherService(sl(), sl()));
-
-  // Feature'ları kaydet (Auth, Profile, Friendship, Voice, Discover vb.)
-  _registerFeatureSingletons();
-
-  // --- ChangeNotifier Providers (GetIt singleton, root tree'den çıkarıldı) ---
-  // NOT: AuthRepository ve ProfileRepository artık _registerFeatureSingletons()
-  // tarafından yukarıda kaydedildi.
-  sl.registerLazySingleton(
-    () => AuthProvider(
-      sl<AuthRepository>(),
-      sl<ProfileRepository>(),
-      sl<NotificationService>(),
-      sl<AppSession>(),
-    ),
-  );
-  sl.registerLazySingleton(
-    () => ProfileProvider(sl<ProfileRepository>(), sl<AppSession>()),
-  );
-  sl.registerLazySingleton(() => ThemeProvider());
-  sl.registerLazySingleton<StatusRemoteDataSource>(
-    () => StatusRemoteDataSourceImpl(sl()),
-  );
-
-  // Repository
-  sl.registerLazySingleton<StatusRepository>(() => StatusRepositoryImpl(sl()));
-
-  // UseCases
-  sl.registerFactory(() => StartRideUseCase(sl()));
-  sl.registerFactory(() => CompleteRideUseCase(sl()));
-  sl.registerFactory(() => CancelRideUseCase(sl()));
-  sl.registerFactory(() => PostponeRideUseCase(sl()));
-
-  //! Group Ride Feature
-  // API
-  sl.registerLazySingleton(() => GroupRideApi(sl()));
-
-  // Data Sources
-  sl.registerLazySingleton<GroupRideRemoteDataSource>(
-    () => GroupRideRemoteDataSourceImpl(sl<GroupRideApi>()),
-  );
-
-  // Repository
-  sl.registerLazySingleton<GroupRideRepository>(
-    () => GroupRideRepositoryImpl(sl()),
-  );
-
-  // UseCases
-  sl.registerFactory(() => CreateGroupRideUseCase(sl()));
-  sl.registerFactory(() => GetActiveGroupRidesUseCase(sl()));
-  sl.registerFactory(() => GetGroupRideByIdUseCase(sl()));
-  sl.registerFactory(() => UpdateGroupRideUseCase(sl()));
-  sl.registerFactory(() => DeleteGroupRideUseCase(sl()));
-  sl.registerFactory(() => LeaveGroupRideUseCase(sl()));
-
-  // Bloc
-  sl.registerFactory(
-    () => GroupRideBloc(
-      createGroupRideUseCase: sl(),
-      deleteGroupRideUseCase: sl(),
-      getActiveGroupRidesUseCase: sl(),
-      leaveGroupRideUseCase: sl(), // From Attendance Feature
-      signalRService: sl(),
-      realtimeBus: sl(),
-      refreshCoordinator: sl(),
-      updateGroupRideUseCase: sl(),
-      getGroupRideByIdUseCase: sl(),
-      getVoiceSessionDetailsUseCase: sl(),
-    ),
-  );
-
-  // Voice Session Bloc
-  sl.registerLazySingleton(
-    () => VoiceSessionBloc(
-      createVoiceSessionUseCase: sl(),
-      joinVoiceSessionUseCase: sl(),
-      leaveVoiceSessionUseCase: sl(),
-      inviteToVoiceSessionUseCase: sl(),
-      getVoiceSessionDetailsUseCase: sl(),
-      getMyVoiceSessionsUseCase: sl(),
-      getCurrentUserIdUseCase: sl(),
-      acceptVoiceSessionInvitationUseCase: sl(),
-      rejectVoiceSessionInvitationUseCase: sl(),
-      endVoiceSessionUseCase: sl(),
-      appSession: sl(),
-      kickUserUseCase: sl(),
-      muteUserUseCase: sl(),
-      transferHostUseCase: sl(),
-      signalRService: sl(),
-      realtimeBus: sl(),
-      refreshCoordinator: sl(),
-      permissionsService: sl(),
-      intercomEngine: sl(),
-      callKitIncomingService: sl(),
-      audioOrchestratorService: sl(),
-      promoteParticipantUseCase: sl(),
-      demoteParticipantUseCase: sl(),
-      kickParticipantUseCase: sl(),
-    ),
-  );
-
-  //! Call Feature
-  // API - Removed
-  // sl.registerLazySingleton(() => CallApi(sl()));
-
-  // Data Sources
-  sl.registerLazySingleton<CallRemoteDataSource>(
-    () => CallRemoteDataSourceImpl(client: sl()),
-  );
-
-  // Repository
-  sl.registerLazySingleton<CallRepository>(() => CallRepositoryImpl(sl()));
-
-  // UseCases
-  sl.registerFactory(() => SendCallRequestUseCase(sl()));
-  sl.registerFactory(() => AcceptCallUseCase(sl()));
-  sl.registerFactory(() => RejectCallUseCase(sl()));
-  sl.registerFactory(() => EndCallUseCase(sl()));
-  sl.registerFactory(() => GetOnlineUsersUseCase(sl()));
-  sl.registerFactory(() => CheckUserOnlineStatusUseCase(sl()));
-  sl.registerFactory(() => GetPendingCallsUseCase(sl()));
-
-  // Bloc (single instance to avoid duplicate SignalR listeners/SDP offers)
-  sl.registerLazySingleton(
-    () => CallBloc(
-      signalRService: sl(),
-      webRTCService: sl(),
-      sendCallRequestUseCase: sl(),
-      acceptCallUseCase: sl(),
-      rejectCallUseCase: sl(),
-      endCallUseCase: sl(),
-      getPendingCallsUseCase: sl(),
-      permissionsService: sl(),
-      callKitIncomingService: sl(),
-    ),
-  );
+  await initCore();
 }

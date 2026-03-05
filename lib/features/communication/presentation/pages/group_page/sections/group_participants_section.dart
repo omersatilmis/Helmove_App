@@ -18,7 +18,7 @@ class GroupParticipantsSection extends StatelessWidget {
   final Map<int, IntercomConnectionQuality> participantQualities;
   final bool isCurrentUserMicOn;
   final VoidCallback onToggleMic;
-  final VoidCallback onRefresh;
+  final VoidCallback? onRefresh;
   final VoidCallback onInvite;
   final VoidCallback onSettings;
   final void Function(int targetUserId, String userName) onKickUser;
@@ -120,7 +120,7 @@ class GroupParticipantsSection extends StatelessWidget {
 
     if (participants.isEmpty) return _buildEmptyState(context);
 
-    final hostId = sessionDetails?.hostUserId;
+    final hostId = sessionDetails?.adminId;
 
     // Current user'ın role'ünü participant listesinden al (backend'den gelir)
     GroupRole viewerRole = GroupRole.rider;
@@ -136,64 +136,82 @@ class GroupParticipantsSection extends StatelessWidget {
       }
     }
 
-    return Column(
-      children: participants.map((p) {
-        final isConnected = p.status == 'Joined' || p.status == 'Accepted';
-        final isMe = p.userId == currentUserId;
-
-        final role = p.role;
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: participants.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final participant = participants[index];
+        final isConnected =
+            participant.status == 'Joined' || participant.status == 'Accepted';
+        final isMe = participant.userId == currentUserId;
+        final role = participant.role;
         final quality =
-            participantQualities[p.userId] ?? IntercomConnectionQuality.unknown;
+            participantQualities[participant.userId] ??
+            IntercomConnectionQuality.unknown;
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: RiderCard(
-            firstName: p.firstName ?? '',
-            lastName: p.lastName ?? '',
-            profileImageUrl:
-                p.profileImage ?? 'https://i.pravatar.cc/150?u=${p.userId}',
-            phoneBatteryLevel: p.phoneBatteryLevel,
-            intercomBatteryLevel: p.intercomBatteryLevel,
-            signalStrength: p.signalStrength,
-            connectionQuality: quality,
-            isMicOn: isMe ? isCurrentUserMicOn : false,
-            isSpeaking: activeSpeakers.contains(p.userId.toString()),
-            isConnected: isConnected,
-            isMe: isMe,
-            isRemoteMuted: p.isRemoteMuted,
-            role: role,
-            viewerRole: viewerRole,
-            onMicPressed: isMe ? onToggleMic : null,
-            onKickUser:
-                ((viewerRole == GroupRole.admin ||
-                        viewerRole == GroupRole.captain) &&
-                    !isMe)
-                ? () => onKickUser(p.userId, p.firstName ?? 'Kullanıcı')
-                : null,
-            onMuteUser:
-                ((viewerRole == GroupRole.admin ||
-                        viewerRole == GroupRole.captain) &&
-                    !isMe)
-                ? () => onMuteUser(p.userId, p.firstName ?? 'Kullanıcı')
-                : null,
-            onTransferHost: (viewerRole == GroupRole.admin && !isMe)
-                ? () => onTransferHost(p.userId, p.firstName ?? 'Kullanıcı')
-                : null,
-            onPromote:
-                (viewerRole == GroupRole.admin &&
-                    p.role == GroupRole.rider &&
-                    !isMe)
-                ? () => onPromote(p.userId, p.firstName ?? 'Kullanıcı')
-                : null,
-            onDemote:
-                (viewerRole == GroupRole.admin &&
-                    p.role == GroupRole.captain &&
-                    !isMe)
-                ? () => onDemote(p.userId, p.firstName ?? 'Kullanıcı')
-                : null,
-          ),
+        return RiderCard(
+          key: ValueKey(participant.userId),
+          firstName: participant.firstName ?? '',
+          lastName: participant.lastName ?? '',
+          profileImageUrl: participant.profileImage,
+          phoneBatteryLevel: participant.phoneBatteryLevel,
+          intercomBatteryLevel: participant.intercomBatteryLevel,
+          signalStrength: participant.signalStrength,
+          connectionQuality: quality,
+          isMicOn: isMe ? isCurrentUserMicOn : false,
+          isSpeaking: activeSpeakers.contains(participant.userId.toString()),
+          isConnected: isConnected,
+          isMe: isMe,
+          isRemoteMuted: participant.isRemoteMuted,
+          role: role,
+          viewerRole: viewerRole,
+          onMicPressed: isMe ? onToggleMic : null,
+          onKickUser:
+              ((viewerRole == GroupRole.admin ||
+                      viewerRole == GroupRole.captain) &&
+                  !isMe)
+              ? () => onKickUser(
+                  participant.userId,
+                  participant.firstName ?? 'Kullanıcı',
+                )
+              : null,
+          onMuteUser:
+              ((viewerRole == GroupRole.admin ||
+                      viewerRole == GroupRole.captain) &&
+                  !isMe)
+              ? () => onMuteUser(
+                  participant.userId,
+                  participant.firstName ?? 'Kullanıcı',
+                )
+              : null,
+          onTransferHost: (viewerRole == GroupRole.admin && !isMe)
+              ? () => onTransferHost(
+                  participant.userId,
+                  participant.firstName ?? 'Kullanıcı',
+                )
+              : null,
+          onPromote:
+              (viewerRole == GroupRole.admin &&
+                  participant.role == GroupRole.rider &&
+                  !isMe)
+              ? () => onPromote(
+                  participant.userId,
+                  participant.firstName ?? 'Kullanıcı',
+                )
+              : null,
+          onDemote:
+              (viewerRole == GroupRole.admin &&
+                  participant.role == GroupRole.captain &&
+                  !isMe)
+              ? () => onDemote(
+                  participant.userId,
+                  participant.firstName ?? 'Kullanıcı',
+                )
+              : null,
         );
-      }).toList(),
+      },
     );
   }
 

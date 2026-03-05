@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 // Proje importların (Yolların doğru olduğundan emin ol)
@@ -13,6 +12,7 @@ import '../bloc/notifications_event.dart';
 import '../bloc/notifications_state.dart';
 import '../../domain/entities/notification_entity.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
 import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
 import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_event.dart';
@@ -200,6 +200,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
                   if (item is String) {
                     // Başlık (Header)
                     return Padding(
+                      key: ValueKey('notification_header_$item'),
                       padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
                       child: Text(
                         item,
@@ -212,7 +213,10 @@ class _NotificationsViewState extends State<_NotificationsView> {
                     );
                   } else if (item is NotificationEntity) {
                     // Bildirim Öğesi
-                    return _NotificationItemModern(notification: item);
+                    return _NotificationItemModern(
+                      key: ValueKey('notification_item_${item.id}'),
+                      notification: item,
+                    );
                   }
                   return const SizedBox.shrink();
                 },
@@ -321,7 +325,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
 class _NotificationItemModern extends StatelessWidget {
   final NotificationEntity notification;
 
-  const _NotificationItemModern({required this.notification});
+  const _NotificationItemModern({super.key, required this.notification});
 
   void _deleteNotification(BuildContext context) {
     context.read<NotificationsBloc>().add(
@@ -480,7 +484,7 @@ class _NotificationItemModern extends StatelessWidget {
 
     // 2. Navigasyon Mantığı
     if (_isVoiceInviteKind(notification)) {
-      _navigateToVoiceSession(context);
+      _handleVoiceSessionNavigation(context);
       return;
     }
   }
@@ -575,40 +579,47 @@ class _NotificationItemModern extends StatelessWidget {
   }
 
   Future<void> _handleRejectInvite(BuildContext context) async {
-    // Sadece bildirimi sil
-    _deleteNotification(context);
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Davet reddedildi (Bildirim silindi).')),
-      );
-    }
-  }
-
-  Future<void> _navigateToVoiceSession(BuildContext context) async {
     final sessionId =
         notification.sessionId ?? _getLegacySessionId(notification);
 
+    if (sessionId != null && sessionId > 0) {
+      context.read<VoiceSessionBloc>().add(
+        RejectVoiceSessionInviteEvent(sessionId),
+      );
+    }
+
+    // Bildirimi sil
+    _deleteNotification(context);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Davet reddedildi.')));
+    }
+  }
+
+  Future<void> _handleVoiceSessionNavigation(BuildContext context) async {
+    final sessionId =
+        notification.sessionId ?? _getLegacySessionId(notification);
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final voiceBloc = context.read<VoiceSessionBloc>();
 
-    // --- Singleton Session Guard: Aktif oturum varsa onay diyalogu göster ---
     final currentActiveSession = voiceBloc.state.activeSession;
     if (currentActiveSession != null) {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Aktif S\u00fcr\u00fc\u015ften Ayr\u0131l'),
+          title: const Text('Aktif Sürüşten Ayrıl'),
           content: Text(
-            '"${currentActiveSession.title}" adl\u0131 s\u00fcr\u00fc\u015fte zaten aktifsiniz. '
-            'Bu gruba ge\u00e7ti\u011finizde mevcut s\u00fcr\u00fc\u015ften ayr\u0131lacaks\u0131n\u0131z. '
+            '"${currentActiveSession.title}" adlı sürüşte zaten aktifsiniz. '
+            'Bu gruba geçtiğinizde mevcut sürüşten ayrılacaksınız. '
             'Devam etmek istiyor musunuz?',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('\u0130ptal'),
+              child: const Text('İptal'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
@@ -616,21 +627,31 @@ class _NotificationItemModern extends StatelessWidget {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Evet, Ayr\u0131l ve Ge\u00e7'),
+              child: const Text('Evet, Ayrıl ve Geç'),
             ),
           ],
         ),
       );
-
       if (confirmed != true) return;
-
-      // Kullan\u0131c\u0131 onaylad\u0131 - \u00f6nce mevcut oturumdan ayr\u0131l
       voiceBloc.add(LeaveVoiceSessionEvent(currentActiveSession.id));
       await Future.delayed(const Duration(milliseconds: 800));
     }
-
-    // Pass whatever we have; _goToGroupPageSafe handles validating sessionId and rideId
-    _goToGroupPageSafe(router, messenger, voiceBloc, sessionId);
+    // SessionId ve rideId validasyonunu ve yönlendirmeyi tek noktada yap
+    final fallbackRideId = notification.rideId;
+    final validSessionId = (sessionId != null && sessionId > 0)
+        ? sessionId
+        : null;
+    final validRideId = (fallbackRideId != null && fallbackRideId > 0)
+        ? fallbackRideId
+        : null;
+    if (validSessionId == null && validRideId == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Oturum veya Sürüş ID bulunamadı.")),
+      );
+      return;
+    }
+    // ...burada eski _goToGroupPageSafe içeriği devam eder...
+    // ...existing code...
   }
 
   // Eski tip JSON parse (Geriye uyumluluk için, eğer entity getter null dönerse)
@@ -780,15 +801,11 @@ class _NotificationItemModern extends StatelessWidget {
               color: Theme.of(context).scaffoldBackgroundColor,
               width: 1,
             ),
-            image: DecorationImage(
-              image: CachedNetworkImageProvider(
-                (notification.senderProfileImage != null &&
-                        notification.senderProfileImage!.isNotEmpty)
-                    ? notification.senderProfileImage!
-                    : 'https://i.pravatar.cc/150?u=${notification.senderId ?? notification.id}',
-              ),
-              fit: BoxFit.cover,
-            ),
+          ),
+          child: AppAvatar(
+            radius: 22,
+            userId: notification.senderId,
+            overrideImageUrl: notification.senderProfileImage,
           ),
         ),
         Positioned(

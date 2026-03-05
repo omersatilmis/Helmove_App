@@ -1,11 +1,16 @@
 import '../api/post_api.dart';
 import '../models/create_post_request.dart';
 import '../models/post_model.dart';
+import '../../../../../core/models/conditional_fetch_result.dart';
 import '../../../../../core/models/paged_result.dart';
 
 abstract class PostRemoteDataSource {
   Future<PostModel> createPost(CreatePostRequest request);
-  Future<PagedResult<PostModel>> getFeed({int page = 1, int limit = 10});
+  Future<ConditionalFetchResult<PagedResult<PostModel>>> getFeed({
+    int page = 1,
+    int limit = 10,
+    String? ifNoneMatch,
+  });
   Future<PagedResult<PostModel>> getUserPosts({
     required int userId,
     int page = 1,
@@ -27,8 +32,12 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   }
 
   @override
-  Future<PagedResult<PostModel>> getFeed({int page = 1, int limit = 10}) {
-    return api.getFeed(page: page, limit: limit);
+  Future<ConditionalFetchResult<PagedResult<PostModel>>> getFeed({
+    int page = 1,
+    int limit = 10,
+    String? ifNoneMatch,
+  }) {
+    return api.getFeed(page: page, limit: limit, ifNoneMatch: ifNoneMatch);
   }
 
   @override

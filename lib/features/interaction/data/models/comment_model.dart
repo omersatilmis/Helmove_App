@@ -11,35 +11,71 @@ class CommentModel extends CommentEntity {
   });
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
-    // JSON logunda "user" objesi var, onu alıyoruz.
     final userObj = json['user'];
-
-    // Güvenli Map dönüşümü
-    final userData = userObj is Map<String, dynamic>
-        ? userObj
+    final userData = userObj is Map
+        ? Map<String, dynamic>.from(userObj)
         : <String, dynamic>{};
 
-    // Helper: Gelen sayı int mi String mi dert etmeden int'e çevirir
-    int toInt(dynamic value) {
-      if (value == null) return 0;
-      if (value is int) return value;
-      return int.tryParse(value.toString()) ?? 0;
-    }
+    final firstName = _pickString([
+      userData['firstName'],
+      json['firstName'],
+    ]);
+    final lastName = _pickString([
+      userData['lastName'],
+      json['lastName'],
+    ]);
+    final fullName = [firstName, lastName]
+        .where((part) => part.isNotEmpty)
+        .join(' ')
+        .trim();
 
     return CommentModel(
-      id: toInt(json['id']), // Ana id (Örn: 13)
-      text: json['text'] as String? ?? '',
-
-      // --- KRİTİK NOKTA BURASI ---
-      // Logda id: 2 olarak user'ın içinde geliyor.
-      userId: toInt(userData['id']),
-
-      username: userData['username'] as String? ?? 'Misafir',
-      userAvatar: userData['profilePictureUrl'] as String?, // Logda null gelmiş
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
-          : DateTime.now(),
+      id: _toInt(json['id']),
+      text: _pickString([json['text'], json['comment']]),
+      userId: _toInt(userData['id'] ?? json['userId']),
+      username: _pickString([
+        userData['username'],
+        json['username'],
+        fullName,
+        'Misafir',
+      ]),
+      userAvatar: _pickNullableString([
+        userData['profilePictureUrl'],
+        userData['avatarUrl'],
+        json['userAvatar'],
+        json['profilePictureUrl'],
+      ]),
+      createdAt: _parseDateTime(json['createdAt']),
     );
+  }
+
+  static int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  static String _pickString(List<dynamic> values) {
+    for (final value in values) {
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) {
+        return text;
+      }
+    }
+    return '';
+  }
+
+  static String? _pickNullableString(List<dynamic> values) {
+    final text = _pickString(values);
+    return text.isEmpty ? null : text;
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is String && value.trim().isNotEmpty) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    return DateTime.now();
   }
 
   Map<String, dynamic> toJson() {

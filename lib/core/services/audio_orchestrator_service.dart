@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/utils/app_logger.dart';
 
@@ -10,7 +14,15 @@ enum AudioMixingMode {
 
 class AudioOrchestratorService {
   AudioSession? _session;
+  bool _initialized = false;
   bool _isDucking = false;
+  StreamSubscription? _routeChangeSub;
+  Timer? _routeWatchdogTimer;
+  DateTime? _lastRouteEventAt;
+  DateTime? _lastSilentRecoveryAt;
+
+  static const Duration _routeWatchdogInterval = Duration(seconds: 7);
+  static const Duration _routeRecoveryCooldown = Duration(seconds: 8);
 
   /// iOS AVAudioSession.setActive durumunu takip eder.
   ///
@@ -23,9 +35,12 @@ class AudioOrchestratorService {
   bool _preferWiredMic = false;
 
   Future<void> init() async {
+    if (_initialized) return;
     _session = await AudioSession.instance;
     await _loadPreferences();
     await _configureSession();
+    _subscribeRouteChanges();
+    _initialized = true;
     AppLogger.info(
       "AudioOrchestratorService: Initialized mode=${_currentMixingMode.name}",
     );
@@ -145,15 +160,20 @@ class AudioOrchestratorService {
   /// `active = false`:
   ///   Ses tamamen durduruluyorsa `deactivateSession()` çağrılır.
   Future<void> manageAudioFocus(bool active) async {
+    if (!_initialized) {
+      await init();
+    }
     if (active) {
       // Her modda session'ı aktifleştir (iOS arkaplan için zorunlu).
       await activateSession();
+      _startRouteWatchdog();
       // 'always' modunda ducking hemen başlar; 'auto' modunda VAD tetikler.
       if (_currentMixingMode == AudioMixingMode.always) {
         await startDucking();
       }
     } else {
       // Ses tamamen durduruluyor — session'ı kapat.
+      _stopRouteWatchdog();
       await deactivateSession();
     }
   }
@@ -167,13 +187,19 @@ class AudioOrchestratorService {
   /// Ducking modundan bağımsız — her zaman çağrılabilir.
   /// İdempotent: zaten aktifse tekrar setActive çağırmaz.
   Future<void> activateSession() async {
+    if (!_initialized) {
+      await init();
+    }
     if (_session == null || _sessionActive) return;
     try {
       await _session!.setActive(true);
       _sessionActive = true;
       AppLogger.info('AudioOrchestratorService: Audio session activated');
     } catch (e) {
-      AppLogger.error('AudioOrchestratorService: Audio session activate failed', e);
+      AppLogger.error(
+        'AudioOrchestratorService: Audio session activate failed',
+        e,
+      );
     }
   }
 
@@ -190,7 +216,136 @@ class AudioOrchestratorService {
       _sessionActive = false;
       AppLogger.info('AudioOrchestratorService: Audio session deactivated');
     } catch (e) {
-      AppLogger.error('AudioOrchestratorService: Audio session deactivate failed', e);
+      AppLogger.error(
+        'AudioOrchestratorService: Audio session deactivate failed',
+        e,
+      );
+    }
+  }
+
+  void _subscribeRouteChanges() {
+    _routeChangeSub?.cancel();
+    _routeChangeSub = _session?.devicesChangedEventStream.listen((event) {
+      _lastRouteEventAt = DateTime.now();
+
+      final removed = event.devicesRemoved
+          .map((d) => d.toString().toLowerCase())
+          .join('|');
+      final added = event.devicesAdded
+          .map((d) => d.toString().toLowerCase())
+          .join('|');
+
+      final bluetoothChange =
+          removed.contains('bluetooth') ||
+          removed.contains('a2dp') ||
+          removed.contains('hfp') ||
+          added.contains('bluetooth') ||
+          added.contains('a2dp') ||
+          added.contains('hfp');
+
+      if (!bluetoothChange || !_sessionActive) return;
+
+      final btRemoved =
+          removed.contains('bluetooth') ||
+          removed.contains('a2dp') ||
+          removed.contains('hfp');
+
+      _silentRouteRecovery(
+        reason: btRemoved ? 'route_bt_removed' : 'route_bt_changed',
+        preferSpeakerFallback: btRemoved,
+      );
+    });
+  }
+
+  void _startRouteWatchdog() {
+    _routeWatchdogTimer?.cancel();
+    _routeWatchdogTimer = Timer.periodic(_routeWatchdogInterval, (_) {
+      _verifyRouteHealth();
+    });
+  }
+
+  void _stopRouteWatchdog() {
+    _routeWatchdogTimer?.cancel();
+    _routeWatchdogTimer = null;
+  }
+
+  Future<void> _verifyRouteHealth() async {
+    if (!_sessionActive || _session == null) return;
+
+    final now = DateTime.now();
+    final sinceRouteEvent = _lastRouteEventAt == null
+        ? null
+        : now.difference(_lastRouteEventAt!);
+
+    // Periyodik doğrulama: route değişimi yokken de session'ı canlı tut.
+    try {
+      await _configureSession();
+      await _session!.setActive(true);
+      _sessionActive = true;
+    } catch (e) {
+      await _silentRouteRecovery(
+        reason: 'route_watchdog_config_failed',
+        preferSpeakerFallback: true,
+      );
+      return;
+    }
+
+    // Uzun süre route event yoksa hafif self-heal (sessiz reconnect).
+    if (sinceRouteEvent != null && sinceRouteEvent.inSeconds >= 45) {
+      await _silentRouteRecovery(
+        reason: 'route_watchdog_stale',
+        preferSpeakerFallback: false,
+      );
+    }
+  }
+
+  Future<void> _silentRouteRecovery({
+    required String reason,
+    required bool preferSpeakerFallback,
+  }) async {
+    if (_session == null) return;
+
+    final now = DateTime.now();
+    if (_lastSilentRecoveryAt != null &&
+        now.difference(_lastSilentRecoveryAt!) < _routeRecoveryCooldown) {
+      return;
+    }
+    _lastSilentRecoveryAt = now;
+
+    AppLogger.warning(
+      'AudioOrchestratorService: Silent route recovery -> $reason',
+    );
+
+    try {
+      // Sessiz reconnect: deactivate -> configure -> activate
+      try {
+        await _session!.setActive(false);
+      } catch (_) {}
+
+      await _configureSession();
+      await _session!.setActive(true);
+      _sessionActive = true;
+
+      // Fallback sırası: speaker -> earpiece.
+      if (Platform.isAndroid || Platform.isIOS) {
+        if (preferSpeakerFallback) {
+          await Helper.setSpeakerphoneOn(true);
+        } else {
+          await Helper.setSpeakerphoneOn(false);
+        }
+      }
+    } catch (e) {
+      AppLogger.error(
+        'AudioOrchestratorService: Silent route recovery failed',
+        e,
+      );
+
+      // 2. fallback: earpiece
+      try {
+        if (Platform.isAndroid || Platform.isIOS) {
+          await Helper.setSpeakerphoneOn(false);
+        }
+      } catch (_) {}
     }
   }
 
@@ -218,5 +373,11 @@ class AudioOrchestratorService {
     );
     // Future native implementations using MethodChannels could go here
     // For now, we rely on AudioSession's voiceChat mode and WEBRTC's internal routing.
+  }
+
+  Future<void> dispose() async {
+    _stopRouteWatchdog();
+    await _routeChangeSub?.cancel();
+    _routeChangeSub = null;
   }
 }

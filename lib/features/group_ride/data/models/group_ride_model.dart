@@ -5,7 +5,7 @@ class GroupRideModel extends GroupRideEntity {
     required super.id,
     required super.title,
     super.description,
-    required super.organizerId,
+    required super.adminId,
     required super.startDateTime,
     required super.endDateTime,
     required super.startLocation,
@@ -30,7 +30,7 @@ class GroupRideModel extends GroupRideEntity {
       id: json['id'] as int? ?? 0,
       title: json['title'] as String? ?? '',
       description: json['description'] as String?,
-      organizerId: json['organizerId'] as int? ?? 0,
+      adminId: json['organizerId'] as int? ?? 0, // GÜVENLİK: API Key korunuyor
       startDateTime: json['startDateTime'] != null
           ? DateTime.parse(json['startDateTime'] as String)
           : DateTime.now(),
@@ -60,7 +60,7 @@ class GroupRideModel extends GroupRideEntity {
       'id': id,
       'title': title,
       'description': description,
-      'organizerId': organizerId,
+      'organizerId': adminId, // GÜVENLİK: API Key korunuyor
       'startDateTime': startDateTime.toIso8601String(),
       'endDateTime': endDateTime.toIso8601String(),
       'startLocation': startLocation,

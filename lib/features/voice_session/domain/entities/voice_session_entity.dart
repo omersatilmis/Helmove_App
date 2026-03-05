@@ -2,14 +2,14 @@ import 'package:equatable/equatable.dart';
 import 'voice_session_participant_entity.dart';
 
 /// Sesli sohbet oturumu entity'si
-/// hostUserId = Captain (sesli oturumun lideri) kullanıcı ID'si
+/// adminId = Admin (sesli oturumun kurucusu/lideri) kullanıcı ID'si
 class VoiceSessionEntity extends Equatable {
   final int id;
-  final int hostUserId; // Captain ID (Backend field adı: hostUserId)
-  final String? hostUsername;
-  final String? hostFirstName;
-  final String? hostLastName;
-  final String? hostProfileImage;
+  final int adminId; // Admin ID (Backend field adı: hostUserId)
+  final String? adminUsername;
+  final String? adminFirstName;
+  final String? adminLastName;
+  final String? adminProfileImage;
   final String title;
   final String roomName;
   final bool isActive;
@@ -24,11 +24,11 @@ class VoiceSessionEntity extends Equatable {
 
   const VoiceSessionEntity({
     required this.id,
-    required this.hostUserId,
-    this.hostUsername,
-    this.hostFirstName,
-    this.hostLastName,
-    this.hostProfileImage,
+    required this.adminId,
+    this.adminUsername,
+    this.adminFirstName,
+    this.adminLastName,
+    this.adminProfileImage,
     required this.title,
     required this.roomName,
     required this.isActive,
@@ -44,11 +44,11 @@ class VoiceSessionEntity extends Equatable {
 
   VoiceSessionEntity copyWith({
     int? id,
-    int? hostUserId,
-    String? hostUsername,
-    String? hostFirstName,
-    String? hostLastName,
-    String? hostProfileImage,
+    int? adminId,
+    String? adminUsername,
+    String? adminFirstName,
+    String? adminLastName,
+    String? adminProfileImage,
     String? title,
     String? roomName,
     bool? isActive,
@@ -63,11 +63,11 @@ class VoiceSessionEntity extends Equatable {
   }) {
     return VoiceSessionEntity(
       id: id ?? this.id,
-      hostUserId: hostUserId ?? this.hostUserId,
-      hostUsername: hostUsername ?? this.hostUsername,
-      hostFirstName: hostFirstName ?? this.hostFirstName,
-      hostLastName: hostLastName ?? this.hostLastName,
-      hostProfileImage: hostProfileImage ?? this.hostProfileImage,
+      adminId: adminId ?? this.adminId,
+      adminUsername: adminUsername ?? this.adminUsername,
+      adminFirstName: adminFirstName ?? this.adminFirstName,
+      adminLastName: adminLastName ?? this.adminLastName,
+      adminProfileImage: adminProfileImage ?? this.adminProfileImage,
       title: title ?? this.title,
       roomName: roomName ?? this.roomName,
       isActive: isActive ?? this.isActive,
@@ -82,16 +82,13 @@ class VoiceSessionEntity extends Equatable {
     );
   }
 
-  /// Captain'in (oturum liderinin) görünen adı
-  String get hostDisplayName {
-    if (hostFirstName != null && hostLastName != null) {
-      return '$hostFirstName $hostLastName';
+  /// Admin'in (oturum liderinin) görünen adı
+  String get adminDisplayName {
+    if (adminFirstName != null && adminLastName != null) {
+      return '$adminFirstName $adminLastName';
     }
-    return hostUsername ?? 'Bilinmeyen';
+    return adminUsername ?? 'Bilinmeyen';
   }
-
-  /// Alias: Captain display name
-  String get captainDisplayName => hostDisplayName;
 
   /// Aktif katılımcı sayısı (Joined, Accepted veya Disconnected status)
   /// Disconnected: Odada ama bağlantısı kopmuş olanlar da sayılır.
@@ -109,8 +106,8 @@ class VoiceSessionEntity extends Equatable {
   @override
   List<Object?> get props => [
     id,
-    hostUserId,
-    hostUsername,
+    adminId,
+    adminUsername,
     title,
     roomName,
     isActive,

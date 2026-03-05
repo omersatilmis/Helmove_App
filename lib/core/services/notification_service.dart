@@ -8,11 +8,28 @@ class NotificationService {
 
   final CallKitIncomingService _callKitIncomingService;
   bool _isInitialized = false;
+  Future<void>? _initializeFuture;
 
   NotificationService(this._callKitIncomingService);
 
-  Future<void> initialize() async {
+  Future<void> ensureInitialized() async {
     if (_isInitialized) return;
+    if (_initializeFuture != null) return _initializeFuture!;
+
+    final future = _doInitialize();
+    _initializeFuture = future;
+    try {
+      await future;
+    } finally {
+      _initializeFuture = null;
+    }
+  }
+
+  Future<void> initialize() async {
+    await ensureInitialized();
+  }
+
+  Future<void> _doInitialize() async {
     _isInitialized = true;
     try {
       OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
@@ -49,6 +66,7 @@ class NotificationService {
         }
       });
     } catch (e, st) {
+      _isInitialized = false;
       AppLogger.error('NotificationService: initialize error', e, st);
     }
   }

@@ -63,9 +63,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       if (raw is! Map) {
         return;
       }
-      final data = raw.map(
-        (key, value) => MapEntry(key.toString(), value),
-      );
+      final data = raw.map((key, value) => MapEntry(key.toString(), value));
 
       // Güvenli Parsing Helper
       int parseInt(dynamic value) {
@@ -115,7 +113,9 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         dataJson: normalizeDataJson(data['dataJson']),
       );
 
-      final alreadyExists = state.notifications.any((n) => n.id == newNotification.id);
+      final alreadyExists = state.notifications.any(
+        (n) => n.id == newNotification.id,
+      );
       if (alreadyExists) {
         return;
       }
@@ -225,7 +225,8 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         )
         .toList();
 
-    final shouldDecrease = target != null && !target.isRead && state.unreadCount > 0;
+    final shouldDecrease =
+        target != null && !target.isRead && state.unreadCount > 0;
     emit(
       state.copyWith(
         notifications: updatedNotifications,
@@ -244,10 +245,13 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     emit(state.copyWith(unreadCount: 0));
     final result = await markAllNotificationsRead(NoParams());
 
-    result.fold(
-      (failure) => null, // Geri almakla uğraşmıyoruz şimdilik
-      (_) => add(const GetNotificationsEvent(page: 1)), // Listeyi tazeleyelim
-    );
+    if (isClosed) return;
+
+    result.fold((failure) => null, (_) {
+      if (!isClosed) {
+        add(const GetNotificationsEvent(page: 1));
+      }
+    });
   }
 
   Future<void> _onDeleteNotification(
@@ -270,31 +274,47 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         .toList();
 
     final nextUnread =
-        (deletedNotification != null && !deletedNotification.isRead && state.unreadCount > 0)
-            ? state.unreadCount - 1
-            : state.unreadCount;
+        (deletedNotification != null &&
+            !deletedNotification.isRead &&
+            state.unreadCount > 0)
+        ? state.unreadCount - 1
+        : state.unreadCount;
 
     emit(state.copyWith(notifications: updatedList, unreadCount: nextUnread));
 
     // 2. API Call
-    final result = await deleteNotification(event.id);
+    try {
+      final result = await deleteNotification(event.id);
 
-    // 3. Rollback on Failure
-    result.fold(
-      (failure) {
-        final rollbackUnread = previousNotifications.where((n) => !n.isRead).length;
-        emit(
-          state.copyWith(
-            notifications: previousNotifications,
-            unreadCount: rollbackUnread,
-            errorMessage: 'Bildirim silinemedi',
-          ),
-        );
-      },
-      (_) {
-        add(GetUnreadCountEvent());
-      },
-    );
+      // Guard: bloc may have been closed during the API call (page navigated away)
+      if (isClosed) return;
+
+      // 3. Rollback on Failure
+      result.fold(
+        (failure) {
+          if (!isClosed) {
+            final rollbackUnread = previousNotifications
+                .where((n) => !n.isRead)
+                .length;
+            emit(
+              state.copyWith(
+                notifications: previousNotifications,
+                unreadCount: rollbackUnread,
+                errorMessage: 'Bildirim silinemedi',
+              ),
+            );
+          }
+        },
+        (_) {
+          if (!isClosed) {
+            add(GetUnreadCountEvent());
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('⚠️ [NotificationsBloc] _onDeleteNotification error: $e');
+      // Don't rethrow — prevent crash if bloc was closed during API call
+    }
   }
 
   Future<void> _onRefreshNotifications(

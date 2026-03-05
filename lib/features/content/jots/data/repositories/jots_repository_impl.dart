@@ -4,6 +4,8 @@ import '../../domain/entities/jot_entity.dart';
 import '../../domain/repositories/jots_repository.dart';
 import '../datasources/jots_remote_datasource.dart';
 import '../dto/jot_dto.dart';
+import '../../../../../core/models/conditional_fetch_result.dart';
+import '../../../../../core/models/paged_result.dart';
 
 class JotsRepositoryImpl implements JotsRepository {
   final JotsRemoteDataSource remoteDataSource;
@@ -34,9 +36,14 @@ class JotsRepositoryImpl implements JotsRepository {
   }
 
   @override
-  Future<Either<Failure, List<JotEntity>>> getFeed({int page = 1}) async {
+  Future<Either<Failure, ConditionalFetchResult<PagedResult<JotEntity>>>>
+  getFeed({int page = 1, int limit = 10, String? ifNoneMatch}) async {
     try {
-      final result = await remoteDataSource.getFeed(page: page);
+      final result = await remoteDataSource.getFeed(
+        page: page,
+        limit: limit,
+        ifNoneMatch: ifNoneMatch,
+      );
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -44,12 +51,17 @@ class JotsRepositoryImpl implements JotsRepository {
   }
 
   @override
-  Future<Either<Failure, List<JotEntity>>> getUserJots(
+  Future<Either<Failure, PagedResult<JotEntity>>> getUserJots(
     int userId, {
     int page = 1,
+    int limit = 10,
   }) async {
     try {
-      final result = await remoteDataSource.getUserJots(userId, page: page);
+      final result = await remoteDataSource.getUserJots(
+        userId,
+        page: page,
+        limit: limit,
+      );
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

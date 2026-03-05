@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../../core/error/failures.dart';
+import '../../../../../core/models/conditional_fetch_result.dart';
 import '../../../../../core/models/paged_result.dart';
 import '../entities/post_entity.dart';
 
@@ -12,9 +13,11 @@ abstract class PostRepository {
     required int visibility,
   });
 
-  Future<Either<Failure, PagedResult<PostEntity>>> getFeed({
+  Future<Either<Failure, ConditionalFetchResult<PagedResult<PostEntity>>>>
+      getFeed({
     int page = 1,
     int limit = 10,
+    String? ifNoneMatch,
   });
 
   Future<Either<Failure, PagedResult<PostEntity>>> getUserPosts({

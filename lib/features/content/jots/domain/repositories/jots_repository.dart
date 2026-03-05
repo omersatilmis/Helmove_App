@@ -1,6 +1,8 @@
 import 'package:dartz/dartz.dart';
 import '../../../../../core/error/failures.dart';
 import '../entities/jot_entity.dart';
+import '../../../../../core/models/conditional_fetch_result.dart';
+import '../../../../../core/models/paged_result.dart';
 
 abstract class JotsRepository {
   /// Creates a new jot
@@ -12,13 +14,15 @@ abstract class JotsRepository {
     required JotVisibility visibility,
   });
 
-  /// Gets the jot feed with pagination
-  Future<Either<Failure, List<JotEntity>>> getFeed({int page = 1});
+  /// Gets the jot feed with pagination and ETag support
+  Future<Either<Failure, ConditionalFetchResult<PagedResult<JotEntity>>>>
+  getFeed({int page = 1, int limit = 10, String? ifNoneMatch});
 
   /// Gets jots for a specific user with pagination
-  Future<Either<Failure, List<JotEntity>>> getUserJots(
+  Future<Either<Failure, PagedResult<JotEntity>>> getUserJots(
     int userId, {
     int page = 1,
+    int limit = 10,
   });
 
   /// Deletes a jot by ID

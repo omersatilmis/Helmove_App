@@ -14,14 +14,20 @@ class SignalRService {
   HubConnection? _hubConnection;
   String? _resolvedBaseUrl;
   final AuthLocalDataSource authLocalDataSource;
+  final Dio _dio;
   final CommunicationBaselineTracker _baselineTracker =
       CommunicationBaselineTracker.instance;
   final Random _reconnectJitterRandom = Random();
 
   /// Race-condition guard: eş zamanlı init() çağrılarını engeller.
   Completer<void>? _initCompleter;
+  bool _startupConnectionAllowed = false;
 
-  SignalRService(this.authLocalDataSource);
+  SignalRService(this.authLocalDataSource, this._dio);
+
+  void enableStartupConnection() {
+    _startupConnectionAllowed = true;
+  }
 
   // Broadcast Streams
   final _rideTerminatedController =
@@ -160,6 +166,12 @@ class SignalRService {
   }
 
   Future<void> init() async {
+    if (!_startupConnectionAllowed) {
+      AppLogger.info(
+        'SignalR init deferred: waiting for bootstrap/auth refresh to complete.',
+      );
+      return;
+    }
     // Guard: Eğer zaten init süreci devam ediyorsa, aynı Future'ı döndür.
     if (_initCompleter != null) {
       return _initCompleter!.future;
@@ -420,7 +432,13 @@ class SignalRService {
         // Backend can send arguments as a single object or positional args
         if (arguments[0] is Map) {
           final data = Map<String, dynamic>.from(arguments[0] as Map);
-          if (!_hasRequiredRealtimeMetadata(data, 'ReceiveCallRequest')) return;
+          if (!_hasRequiredRealtimeMetadata(
+            data,
+            'ReceiveCallRequest',
+            allowMissingMetadata: true,
+          )) {
+            return;
+          }
           callerId =
               _readString(data, const [
                 'callerId',
@@ -480,7 +498,13 @@ class SignalRService {
 
         if (arguments[0] is Map) {
           final payload = Map<String, dynamic>.from(arguments[0] as Map);
-          if (!_hasRequiredRealtimeMetadata(payload, 'CallAccepted')) return;
+          if (!_hasRequiredRealtimeMetadata(
+            payload,
+            'CallAccepted',
+            allowMissingMetadata: true,
+          )) {
+            return;
+          }
           acceptedByUserId =
               _readString(payload, const [
                 'acceptedByUserId',
@@ -524,7 +548,13 @@ class SignalRService {
 
         if (arguments[0] is Map) {
           final payload = Map<String, dynamic>.from(arguments[0] as Map);
-          if (!_hasRequiredRealtimeMetadata(payload, 'CallRejected')) return;
+          if (!_hasRequiredRealtimeMetadata(
+            payload,
+            'CallRejected',
+            allowMissingMetadata: true,
+          )) {
+            return;
+          }
           rejectedByUserId =
               _readString(payload, const [
                 'rejectedByUserId',
@@ -570,7 +600,13 @@ class SignalRService {
 
         if (arguments[0] is Map) {
           final payload = Map<String, dynamic>.from(arguments[0] as Map);
-          if (!_hasRequiredRealtimeMetadata(payload, 'CallEnded')) return;
+          if (!_hasRequiredRealtimeMetadata(
+            payload,
+            'CallEnded',
+            allowMissingMetadata: true,
+          )) {
+            return;
+          }
           endedByUserId =
               _readString(payload, const [
                 'endedByUserId',
@@ -670,7 +706,13 @@ class SignalRService {
 
       if (arguments[0] is Map) {
         final payload = Map<String, dynamic>.from(arguments[0] as Map);
-        if (!_hasRequiredRealtimeMetadata(payload, 'ReceiveOffer')) return;
+        if (!_hasRequiredRealtimeMetadata(
+          payload,
+          'ReceiveOffer',
+          allowMissingMetadata: true,
+        )) {
+          return;
+        }
         callerId =
             _readString(payload, const [
               'callerId',
@@ -714,7 +756,13 @@ class SignalRService {
 
       if (arguments[0] is Map) {
         final payload = Map<String, dynamic>.from(arguments[0] as Map);
-        if (!_hasRequiredRealtimeMetadata(payload, 'ReceiveAnswer')) return;
+        if (!_hasRequiredRealtimeMetadata(
+          payload,
+          'ReceiveAnswer',
+          allowMissingMetadata: true,
+        )) {
+          return;
+        }
         targetUserId =
             _readString(payload, const [
               'targetUserId',
@@ -760,7 +808,11 @@ class SignalRService {
         dynamic candidateData;
         if (arguments[0] is Map) {
           final payload = Map<String, dynamic>.from(arguments[0] as Map);
-          if (!_hasRequiredRealtimeMetadata(payload, 'ReceiveIceCandidate')) {
+          if (!_hasRequiredRealtimeMetadata(
+            payload,
+            'ReceiveIceCandidate',
+            allowMissingMetadata: true,
+          )) {
             return;
           }
           fromUserId = _readString(payload, const ['fromUserId', 'FromUserId']);
@@ -812,7 +864,13 @@ class SignalRService {
 
       if (arguments[0] is Map) {
         final payload = Map<String, dynamic>.from(arguments[0] as Map);
-        if (!_hasRequiredRealtimeMetadata(payload, 'ReceiveIceCandidatesBatch')) return;
+        if (!_hasRequiredRealtimeMetadata(
+          payload,
+          'ReceiveIceCandidatesBatch',
+          allowMissingMetadata: true,
+        )) {
+          return;
+        }
         fromUserId = _readString(payload, const ['fromUserId', 'FromUserId']);
         rawCandidates = payload['candidates'];
       } else {
@@ -875,7 +933,13 @@ class SignalRService {
 
       if (arguments[0] is Map) {
         final payload = Map<String, dynamic>.from(arguments[0] as Map);
-        if (!_hasRequiredRealtimeMetadata(payload, 'ReceiveIceCandidatesBatch')) return;
+        if (!_hasRequiredRealtimeMetadata(
+          payload,
+          'ReceiveIceCandidatesBatch',
+          allowMissingMetadata: true,
+        )) {
+          return;
+        }
         fromUserId = _readString(payload, const ['fromUserId', 'FromUserId']);
         rawCandidates = payload['candidates'];
       } else {
@@ -937,6 +1001,7 @@ class SignalRService {
           if (!_hasRequiredRealtimeMetadata(
             payload,
             'ReceiveHeadlessCallRequest',
+            allowMissingMetadata: true,
           )) {
             return;
           }
@@ -964,7 +1029,11 @@ class SignalRService {
 
         if (arguments[0] is Map) {
           final payload = Map<String, dynamic>.from(arguments[0] as Map);
-          if (!_hasRequiredRealtimeMetadata(payload, 'HeadlessCallAccepted')) {
+          if (!_hasRequiredRealtimeMetadata(
+            payload,
+            'HeadlessCallAccepted',
+            allowMissingMetadata: true,
+          )) {
             return;
           }
           actorId = _readActorId(payload);
@@ -999,7 +1068,11 @@ class SignalRService {
 
         if (arguments[0] is Map) {
           final payload = Map<String, dynamic>.from(arguments[0] as Map);
-          if (!_hasRequiredRealtimeMetadata(payload, 'HeadlessCallEnded')) {
+          if (!_hasRequiredRealtimeMetadata(
+            payload,
+            'HeadlessCallEnded',
+            allowMissingMetadata: true,
+          )) {
             return;
           }
           actorId = _readActorId(payload);
@@ -1038,7 +1111,11 @@ class SignalRService {
         String? targetUserId;
         if (arguments[0] is Map) {
           final payload = Map<String, dynamic>.from(arguments[0] as Map);
-          if (!_hasRequiredRealtimeMetadata(payload, 'HeadlessCallFailed')) {
+          if (!_hasRequiredRealtimeMetadata(
+            payload,
+            'HeadlessCallFailed',
+            allowMissingMetadata: true,
+          )) {
             return;
           }
           targetUserId = _readString(payload, const [
@@ -1241,8 +1318,9 @@ class SignalRService {
 
   bool _hasRequiredRealtimeMetadata(
     Map<String, dynamic> payload,
-    String event,
-  ) {
+    String event, {
+    bool allowMissingMetadata = false,
+  }) {
     final eventId = _readString(payload, const ['eventId', 'EventId']);
     final version = _readInt(payload, const ['version', 'Version']);
     final occurredAt = _readString(payload, const [
@@ -1253,6 +1331,12 @@ class SignalRService {
         eventId.isEmpty ||
         version == null ||
         occurredAt == null) {
+      if (allowMissingMetadata) {
+        AppLogger.warning(
+          'SignalR: $event metadata missing (legacy payload accepted).',
+        );
+        return true;
+      }
       AppLogger.warning(
         'SignalR: $event dropped (missing metadata eventId/version/occurredAtUtc).',
       );
@@ -1622,17 +1706,12 @@ class SignalRService {
     String sdp,
   ) async {
     try {
-      final token = await authLocalDataSource.getToken();
-      _resolvedBaseUrl ??= await NetworkModule.getBaseUrl();
-      final dio = Dio();
-
       final payload = {'type': type, 'sdp': sdp};
 
       // Backend'de "/api/communication/fallback" veya benzer bir endpoint oldugu varsayilir.
       // Eger yoksa 404 yiyecektir ancak sistem cokertecek throw atilmaz, gracefull fallback saglar.
-      await dio.post(
-        '${_resolvedBaseUrl!}api/communication/fallback',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      await _dio.post(
+        'api/communication/fallback',
         data: {
           'method': method,
           'targetUserId': targetUserId,
@@ -1724,13 +1803,7 @@ class SignalRService {
     }
 
     try {
-      final token = await authLocalDataSource.getToken();
-      _resolvedBaseUrl ??= await NetworkModule.getBaseUrl();
-      final dio = Dio();
-      final response = await dio.get(
-        '${_resolvedBaseUrl!}api/turn/ice-servers',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
+      final response = await _dio.get('api/turn/ice-servers');
 
       final rawData = response.data;
       final dynamic rawServers = rawData is Map<String, dynamic>

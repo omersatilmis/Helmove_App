@@ -124,6 +124,7 @@ class _CallView extends StatefulWidget {
 class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _fadeController;
+  bool _endPopScheduled = false;
 
   @override
   void initState() {
@@ -153,9 +154,15 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
     return BlocConsumer<CallBloc, CallState>(
       listener: (context, state) {
         if (state is CallEnded) {
+          if (_endPopScheduled) return;
+          _endPopScheduled = true;
           // 2 saniye bekle, sonra geri dön
           Future.delayed(const Duration(seconds: 2), () {
-            if (context.mounted) Navigator.of(context).pop();
+            if (!context.mounted) return;
+            final navigator = Navigator.maybeOf(context);
+            if (navigator != null && navigator.canPop()) {
+              navigator.pop();
+            }
           });
         }
       },
@@ -251,7 +258,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Arıyor...',
+            'Aranıyor...',
             style: TextStyle(
               color: Colors.white60,
               fontSize: 16,
@@ -384,7 +391,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
           height: 100,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.red.withValues(alpha:0.15),
+            color: Colors.red.withValues(alpha: 0.15),
           ),
           child: const Icon(
             Icons.call_end_rounded,
@@ -438,7 +445,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
           height: 80,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.orange.withValues(alpha:0.15),
+            color: Colors.orange.withValues(alpha: 0.15),
           ),
           child: const Icon(
             Icons.warning_amber_rounded,
@@ -454,7 +461,12 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 32),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            final navigator = Navigator.maybeOf(context);
+            if (navigator != null && navigator.canPop()) {
+              navigator.pop();
+            }
+          },
           child: const Text(
             'Geri Dön',
             style: TextStyle(color: Colors.white, fontSize: 16),
@@ -493,8 +505,8 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha:
-                        0.1 * (1 - _pulseController.value),
+                      color: Colors.white.withValues(
+                        alpha: 0.1 * (1 - _pulseController.value),
                       ),
                       width: 2,
                     ),
@@ -508,7 +520,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha:0.08),
+                      color: Colors.white.withValues(alpha: 0.08),
                       width: 1.5,
                     ),
                   ),
@@ -532,7 +544,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                           (isActive
                                   ? const Color(0xFF22C55E)
                                   : AppColors.primary)
-                              .withValues(alpha:0.3),
+                              .withValues(alpha: 0.3),
                       blurRadius: 24,
                       spreadRadius: 4,
                     ),
@@ -609,7 +621,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFEF4444).withValues(alpha:0.4),
+              color: const Color(0xFFEF4444).withValues(alpha: 0.4),
               blurRadius: 20,
               spreadRadius: 2,
             ),
@@ -634,7 +646,10 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
           onTap: () {
             HapticFeedback.heavyImpact();
             context.read<CallBloc>().add(const CallRejected());
-            Navigator.of(context).pop();
+            final navigator = Navigator.maybeOf(context);
+            if (navigator != null && navigator.canPop()) {
+              navigator.pop();
+            }
           },
           child: Column(
             children: [
@@ -646,7 +661,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                   color: Colors.red.shade700,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.red.withValues(alpha:0.3),
+                      color: Colors.red.withValues(alpha: 0.3),
                       blurRadius: 16,
                     ),
                   ],
@@ -681,7 +696,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                   color: const Color(0xFF22C55E),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF22C55E).withValues(alpha:0.3),
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.3),
                       blurRadius: 16,
                     ),
                   ],
@@ -723,12 +738,12 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: state.isMicrophoneOn
-                      ? Colors.white.withValues(alpha:0.1)
-                      : Colors.red.withValues(alpha:0.3),
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.red.withValues(alpha: 0.3),
                   border: Border.all(
                     color: state.isMicrophoneOn
                         ? Colors.white24
-                        : Colors.red.withValues(alpha:0.5),
+                        : Colors.red.withValues(alpha: 0.5),
                     width: 1.5,
                   ),
                 ),
@@ -769,7 +784,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFEF4444).withValues(alpha:0.4),
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.4),
                       blurRadius: 20,
                       spreadRadius: 2,
                     ),
@@ -799,7 +814,7 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                 height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha:0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   border: Border.all(color: Colors.white24, width: 1.5),
                 ),
                 child: const Icon(

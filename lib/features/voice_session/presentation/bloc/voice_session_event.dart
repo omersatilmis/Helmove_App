@@ -70,21 +70,29 @@ class InviteUsersEvent extends VoiceSessionEvent {
 class GetVoiceSessionDetailsEvent extends VoiceSessionEvent {
   final int sessionId;
   final bool force;
+  final bool immediate;
+  final bool skipIntercomAttach;
 
-  const GetVoiceSessionDetailsEvent(this.sessionId, {this.force = false});
+  const GetVoiceSessionDetailsEvent(
+    this.sessionId, {
+    this.force = false,
+    this.immediate = false,
+    this.skipIntercomAttach = false,
+  });
 
   @override
-  List<Object?> get props => [sessionId, force];
+  List<Object?> get props => [sessionId, force, immediate, skipIntercomAttach];
 }
 
 /// Kullanıcının aktif session'larını getir
 class GetMyVoiceSessionsEvent extends VoiceSessionEvent {
   final bool force;
+  final bool immediate;
 
-  const GetMyVoiceSessionsEvent({this.force = false});
+  const GetMyVoiceSessionsEvent({this.force = false, this.immediate = false});
 
   @override
-  List<Object?> get props => [force];
+  List<Object?> get props => [force, immediate];
 }
 
 /// Daveti kabul et
@@ -92,6 +100,16 @@ class AcceptVoiceSessionInviteEvent extends VoiceSessionEvent {
   final int sessionId;
 
   const AcceptVoiceSessionInviteEvent(this.sessionId);
+
+  @override
+  List<Object?> get props => [sessionId];
+}
+
+/// Daveti reddet
+class RejectVoiceSessionInviteEvent extends VoiceSessionEvent {
+  final int sessionId;
+
+  const RejectVoiceSessionInviteEvent(this.sessionId);
 
   @override
   List<Object?> get props => [sessionId];
@@ -267,4 +285,19 @@ class VoiceSessionNotFoundDetectedEvent extends VoiceSessionEvent {
 
   @override
   List<Object?> get props => [message];
+}
+
+class VoiceSessionInviteReceivedEvent extends VoiceSessionEvent {
+  final int sessionId;
+  final int? rideId;
+  final String? groupName;
+
+  const VoiceSessionInviteReceivedEvent({
+    required this.sessionId,
+    this.rideId,
+    this.groupName,
+  });
+
+  @override
+  List<Object?> get props => [sessionId, rideId, groupName];
 }

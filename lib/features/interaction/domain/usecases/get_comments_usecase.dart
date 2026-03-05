@@ -16,6 +16,7 @@ class GetCommentsUseCase
     return repository.getComments(
       contentId: params.contentId,
       page: params.page,
+      limit: params.limit,
     );
   }
 }
@@ -23,9 +24,14 @@ class GetCommentsUseCase
 class GetCommentsParams extends Equatable {
   final int contentId;
   final int page;
+  final int limit;
 
-  const GetCommentsParams({required this.contentId, this.page = 1});
+  const GetCommentsParams({
+    required this.contentId,
+    this.page = 1,
+    this.limit = 10,
+  });
 
   @override
-  List<Object?> get props => [contentId, page];
+  List<Object?> get props => [contentId, page, limit];
 }

@@ -17,10 +17,15 @@ class MessageSignalRService {
 
   // Streams (Broadcast - Çoklu dinleyici için)
   final _directMessageController = StreamController<dynamic>.broadcast();
-  Stream<dynamic> get onDirectMessageReceived => _directMessageController.stream;
+  Stream<dynamic> get onDirectMessageReceived =>
+      _directMessageController.stream;
 
-  final _messagesReadController = StreamController<void>.broadcast();
-  Stream<void> get onMessagesRead => _messagesReadController.stream;
+  final _messagesReadController = StreamController<List<int>>.broadcast();
+  Stream<List<int>> get onMessagesRead => _messagesReadController.stream;
+
+  final _messagesReadPayloadController = StreamController<dynamic>.broadcast();
+  Stream<dynamic> get onMessagesReadPayload =>
+      _messagesReadPayloadController.stream;
 
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
 
@@ -70,7 +75,19 @@ class MessageSignalRService {
 
     _hubConnection!.on("MessagesRead", (arguments) {
       AppLogger.info("SignalR: MessagesRead event received");
-      _messagesReadController.add(null);
+      if (arguments != null && arguments.length >= 2) {
+        // Backend sends: MessagesRead(readerId, messageIds)
+        final rawIds = arguments[1];
+        List<int> messageIds = [];
+        if (rawIds is List) {
+          messageIds = rawIds
+              .map((e) => (e is int) ? e : int.tryParse(e.toString()) ?? 0)
+              .where((id) => id > 0)
+              .toList();
+        }
+        _messagesReadPayloadController.add(arguments[0]);
+        _messagesReadController.add(messageIds);
+      }
     });
 
     _hubConnection!.on("UserTyping", (arguments) {

@@ -39,6 +39,46 @@ class Message extends Equatable {
     this.timeAgo,
   });
 
+  Message copyWith({
+    int? id,
+    int? senderId,
+    int? receiverId,
+    String? content,
+    int? type,
+    bool? isRead,
+    DateTime? sentAt,
+    DateTime? readAt,
+    String? attachmentUrl,
+    LocationData? locationData,
+    bool? isEdited,
+    DateTime? editedAt,
+    String? senderUsername,
+    String? senderName,
+    String? senderProfilePicture,
+    bool? isMine,
+    String? timeAgo,
+  }) {
+    return Message(
+      id: id ?? this.id,
+      senderId: senderId ?? this.senderId,
+      receiverId: receiverId ?? this.receiverId,
+      content: content ?? this.content,
+      type: type ?? this.type,
+      isRead: isRead ?? this.isRead,
+      sentAt: sentAt ?? this.sentAt,
+      readAt: readAt ?? this.readAt,
+      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      locationData: locationData ?? this.locationData,
+      isEdited: isEdited ?? this.isEdited,
+      editedAt: editedAt ?? this.editedAt,
+      senderUsername: senderUsername ?? this.senderUsername,
+      senderName: senderName ?? this.senderName,
+      senderProfilePicture: senderProfilePicture ?? this.senderProfilePicture,
+      isMine: isMine ?? this.isMine,
+      timeAgo: timeAgo ?? this.timeAgo,
+    );
+  }
+
   @override
   List<Object?> get props => [
     id,

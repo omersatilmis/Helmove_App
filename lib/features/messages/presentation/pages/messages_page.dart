@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection_container.dart';
@@ -21,20 +21,84 @@ class ConversationsPage extends StatelessWidget {
   }
 }
 
-class ConversationsView extends StatelessWidget {
+class ConversationsView extends StatefulWidget {
   const ConversationsView({super.key});
+
+  @override
+  State<ConversationsView> createState() => _ConversationsViewState();
+}
+
+class _ConversationsViewState extends State<ConversationsView> {
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearchMode = false;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      final query = _searchController.text;
+      if (query != _searchQuery) {
+        setState(() => _searchQuery = query);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchMode = !_isSearchMode;
+      if (!_isSearchMode) {
+        _searchController.clear();
+        _searchQuery = '';
+      }
+    });
+  }
 
   String _formatDate(DateTime? date) {
     if (date == null) return '';
     final now = DateTime.now();
     final difference = now.difference(date);
     if (difference.inDays == 0) {
-      return "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+      return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays == 1) {
-      return "Dün";
+      return 'Dun';
     } else {
-      return "${date.day}/${date.month}";
+      return '${date.day}/${date.month}';
     }
+  }
+
+  String _normalize(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('İ', 'i')
+        .replaceAll('ö', 'o')
+        .replaceAll('ü', 'u')
+        .replaceAll('ç', 'c')
+        .replaceAll('ş', 's')
+        .replaceAll('ğ', 'g')
+        .trim();
+  }
+
+  bool _matchesQuery(dynamic conversation) {
+    if (_searchQuery.trim().isEmpty) return true;
+
+    final query = _normalize(_searchQuery);
+    final fullName =
+        '${conversation.firstName ?? ''} ${conversation.lastName ?? ''}'.trim();
+    final fields = <String>[
+      conversation.username,
+      fullName,
+      conversation.lastMessage?.content ?? '',
+    ];
+
+    return fields.any((field) => _normalize(field).contains(query));
   }
 
   @override
@@ -43,22 +107,19 @@ class ConversationsView extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Refined Tones
-    final Color scaffoldBg = isDark
-        ? const Color(0xFF12100E)
-        : const Color(0xFFF7F7F7);
-    final Color itemTileColor = isDark ? const Color(0xFF1C1917) : Colors.white;
+    final Color scaffoldBg =
+        isDark ? const Color(0xFF12100E) : const Color(0xFFF7F7F7);
+    final Color itemTileColor =
+        isDark ? const Color(0xFF1C1917) : Colors.white;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Yeni sohbet başlatma sayfası (Kişi Seçimi)
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const PickFriendPage()),
           ).then((_) {
-            // Döndüğümüzde listeyi yenileyelim (belki sohbet başlatıldı)
             if (context.mounted) {
               context.read<ConversationsBloc>().add(RefreshConversations());
             }
@@ -76,7 +137,6 @@ class ConversationsView extends StatelessWidget {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // 1. MODERN SLIVER APP BAR
             SliverAppBar(
               floating: true,
               pinned: true,
@@ -85,18 +145,34 @@ class ConversationsView extends StatelessWidget {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               centerTitle: false,
-              title: Text(
-                'Sohbetler',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
-                ),
-              ),
+              title: _isSearchMode
+                  ? TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Sohbet ara...',
+                        border: InputBorder.none,
+                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      style: theme.textTheme.bodyLarge,
+                    )
+                  : Text(
+                      'Sohbetler',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.search_rounded),
-                  onPressed: () {},
+                  icon: Icon(
+                    _isSearchMode ? Icons.close_rounded : Icons.search_rounded,
+                  ),
+                  onPressed: _toggleSearch,
                 ),
                 IconButton(
                   icon: const Icon(Icons.more_vert_rounded),
@@ -111,8 +187,6 @@ class ConversationsView extends StatelessWidget {
                 ),
               ),
             ),
-
-            // 2. CONVERSATION LIST
             BlocBuilder<ConversationsBloc, ConversationsState>(
               builder: (context, state) {
                 if (state is ConversationsLoading) {
@@ -127,6 +201,10 @@ class ConversationsView extends StatelessWidget {
                     ),
                   );
                 } else if (state is ConversationsLoaded) {
+                  final filteredConversations = state.conversations
+                      .where(_matchesQuery)
+                      .toList();
+
                   if (state.conversations.isEmpty) {
                     return SliverToBoxAdapter(
                       child: SizedBox(
@@ -138,25 +216,29 @@ class ConversationsView extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primary.withValues(alpha: 0.05),
+                                  color: colorScheme.primary.withValues(
+                                    alpha: 0.05,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   Icons.chat_bubble_outline_rounded,
                                   size: 48,
-                                  color: colorScheme.primary.withValues(alpha: 0.5),
+                                  color: colorScheme.primary.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 24),
                               Text(
-                                'Henüz mesaj yok',
+                                'Henuz mesaj yok',
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Arkadaşlarınla sohbet etmeye başla!',
+                                'Arkadaslarinla sohbet etmeye basla!',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                 ),
@@ -168,9 +250,37 @@ class ConversationsView extends StatelessWidget {
                     );
                   }
 
+                  if (filteredConversations.isEmpty &&
+                      _searchQuery.trim().isNotEmpty) {
+                    return SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: MediaQuery.sizeOf(context).height * 0.7,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 48,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Sonuc bulunamadi',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
                   return SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
-                      final conversation = state.conversations[index];
+                      final conversation = filteredConversations[index];
                       final bool isUnread = conversation.unreadCount > 0;
                       final lastMessageTime = conversation.lastMessage?.sentAt;
 
@@ -210,8 +320,8 @@ class ConversationsView extends StatelessWidget {
                               ).then((_) {
                                 if (context.mounted) {
                                   context.read<ConversationsBloc>().add(
-                                    RefreshConversations(),
-                                  );
+                                        RefreshConversations(),
+                                      );
                                 }
                               });
                             },
@@ -222,38 +332,39 @@ class ConversationsView extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
-                                  // AVATAR
                                   Stack(
                                     children: [
                                       CircleAvatar(
                                         radius: 30,
                                         backgroundColor: colorScheme.primary
-                                          .withValues(alpha: 0.1),
+                                            .withValues(alpha: 0.1),
                                         backgroundImage:
                                             conversation.profilePictureUrl !=
-                                                null
-                                            ? NetworkImage(
-                                                conversation.profilePictureUrl!,
-                                              )
-                                            : null,
+                                                    null
+                                                ? NetworkImage(
+                                                    conversation
+                                                        .profilePictureUrl!,
+                                                  )
+                                                : null,
                                         child:
                                             conversation.profilePictureUrl ==
-                                                null
-                                            ? Text(
-                                                (conversation
-                                                            .username
-                                                            .isNotEmpty
-                                                        ? conversation
-                                                              .username[0]
-                                                        : "?")
-                                                    .toUpperCase(),
-                                                style: TextStyle(
-                                                  color: colorScheme.primary,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 20,
-                                                ),
-                                              )
-                                            : null,
+                                                    null
+                                                ? Text(
+                                                    (conversation.username
+                                                                .isNotEmpty
+                                                            ? conversation
+                                                                .username[0]
+                                                            : '?')
+                                                        .toUpperCase(),
+                                                    style: TextStyle(
+                                                      color:
+                                                          colorScheme.primary,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 20,
+                                                    ),
+                                                  )
+                                                : null,
                                       ),
                                       if (conversation.isOnline)
                                         Positioned(
@@ -275,22 +386,18 @@ class ConversationsView extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(width: 14),
-
-                                  // CONTENT
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        // TOP ROW: Name + Time
                                         Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.spaceBetween,
                                           children: [
                                             Expanded(
                                               child: Text(
-                                                conversation.firstName !=
-                                                            null &&
+                                                conversation.firstName != null &&
                                                         conversation.lastName !=
                                                             null
                                                     ? '${conversation.firstName} ${conversation.lastName}'
@@ -304,10 +411,12 @@ class ConversationsView extends StatelessWidget {
                                                           : FontWeight.w600,
                                                       color: isUnread
                                                           ? colorScheme
-                                                                .onSurface
+                                                              .onSurface
                                                           : colorScheme
-                                                                .onSurface
-                                                                .withValues(alpha: 0.9),
+                                                              .onSurface
+                                                              .withValues(
+                                                                alpha: 0.9,
+                                                              ),
                                                     ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -323,7 +432,7 @@ class ConversationsView extends StatelessWidget {
                                                       color: isUnread
                                                           ? colorScheme.primary
                                                           : colorScheme
-                                                                .onSurfaceVariant,
+                                                              .onSurfaceVariant,
                                                       fontWeight: isUnread
                                                           ? FontWeight.bold
                                                           : FontWeight.normal,
@@ -332,14 +441,11 @@ class ConversationsView extends StatelessWidget {
                                           ],
                                         ),
                                         const SizedBox(height: 4),
-
-                                        // BOTTOM ROW: Message + Badge
                                         Row(
                                           children: [
                                             Expanded(
                                               child: Text(
-                                                conversation
-                                                        .lastMessage
+                                                conversation.lastMessage
                                                         ?.content ??
                                                     '',
                                                 maxLines: 1,
@@ -353,15 +459,16 @@ class ConversationsView extends StatelessWidget {
                                                           : FontWeight.normal,
                                                       color: isUnread
                                                           ? colorScheme
-                                                                .onSurface
+                                                              .onSurface
                                                           : colorScheme
-                                                                .onSurfaceVariant,
+                                                              .onSurfaceVariant,
                                                     ),
                                               ),
                                             ),
                                             if (isUnread)
                                               UnreadCountBadge.message(
-                                                count: conversation.unreadCount,
+                                                count:
+                                                    conversation.unreadCount,
                                                 scheme: colorScheme,
                                               ),
                                           ],
@@ -375,7 +482,7 @@ class ConversationsView extends StatelessWidget {
                           ),
                         ),
                       );
-                    }, childCount: state.conversations.length),
+                    }, childCount: filteredConversations.length),
                   );
                 } else if (state is ConversationsError) {
                   return SliverToBoxAdapter(
@@ -399,3 +506,4 @@ class ConversationsView extends StatelessWidget {
     );
   }
 }
+

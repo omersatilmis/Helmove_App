@@ -129,13 +129,12 @@ class ActiveGroupCard extends StatelessWidget {
               if (riderCards.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-                  child: Column(
-                    children: riderCards.map((card) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: card,
-                      );
-                    }).toList(),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: riderCards.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, index) => riderCards[index],
                   ),
                 ),
             ],

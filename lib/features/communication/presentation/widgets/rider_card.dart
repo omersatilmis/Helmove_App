@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../intercom/domain/intercom_models.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../../attendance_management/domain/entities/group_role.dart';
 
 class RiderCard extends StatelessWidget {
   final String firstName;
   final String lastName;
-  final String profileImageUrl;
+  final String? profileImageUrl;
   final int? phoneBatteryLevel;
   final int? intercomBatteryLevel;
   final int? signalStrength;
@@ -37,7 +38,7 @@ class RiderCard extends StatelessWidget {
     super.key,
     required this.firstName,
     required this.lastName,
-    required this.profileImageUrl,
+    this.profileImageUrl,
     this.phoneBatteryLevel,
     this.intercomBatteryLevel,
     this.signalStrength,
@@ -220,12 +221,10 @@ class RiderCard extends StatelessWidget {
         decoration: const BoxDecoration(shape: BoxShape.circle),
         child: Stack(
           children: [
-            CircleAvatar(
-              radius: 22, // ESKİ: Radius 22
-              backgroundImage: NetworkImage(profileImageUrl),
-              backgroundColor: colorScheme.surfaceContainerHigh,
-              onBackgroundImageError: (_, _) =>
-                  Icon(Icons.person, color: colorScheme.onSurface),
+            AppAvatar(
+              radius: 22,
+              overrideImageUrl: profileImageUrl,
+              isCurrentUser: isMe,
             ),
             // Online Dot (Opsiyonel, connected ise)
             if (isConnected && !isRemoteMuted)
@@ -299,20 +298,25 @@ class RiderCard extends StatelessWidget {
     String label;
 
     switch (connectionQuality) {
-      case IntercomConnectionQuality.excellent:
+      case IntercomConnectionQuality.ultra:
         bars = 4;
         color = Colors.greenAccent;
-        label = "Mükemmel";
+        label = "Ultra";
         break;
-      case IntercomConnectionQuality.good:
+      case IntercomConnectionQuality.high:
         bars = 3;
         color = Colors.greenAccent.withValues(alpha: 0.7);
-        label = "İyi";
+        label = "Yuksek";
         break;
-      case IntercomConnectionQuality.poor:
+      case IntercomConnectionQuality.balanced:
         bars = 2;
         color = Colors.orangeAccent;
-        label = "Zayıf";
+        label = "Dengeli";
+        break;
+      case IntercomConnectionQuality.low:
+        bars = 1;
+        color = Colors.deepOrangeAccent;
+        label = "Dusuk";
         break;
       case IntercomConnectionQuality.lost:
         bars = 1;

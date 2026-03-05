@@ -10,6 +10,8 @@ class PostModel extends PostEntity {
     required super.visibility,
     required super.userId,
     required super.username,
+    super.userFirstName,
+    super.userLastName,
     super.userProfileImage,
     required super.createdAt,
     super.likeCount,
@@ -18,31 +20,83 @@ class PostModel extends PostEntity {
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
-    final userJson = json['user'] as Map<String, dynamic>?;
+    final rawUser = json['user'];
+    final userJson = rawUser is Map
+        ? Map<String, dynamic>.from(rawUser)
+        : <String, dynamic>{};
+    final firstName = _pickString([userJson['firstName'], json['firstName']]);
+    final lastName = _pickString([userJson['lastName'], json['lastName']]);
+    final fullName = [firstName, lastName]
+        .where((part) => part.isNotEmpty)
+        .join(' ')
+        .trim();
 
     return PostModel(
-      id: json['id'] as int? ?? 0,
-      type: json['type'] as int? ?? 0,
-      text: json['text'] as String? ?? '',
-      mediaUrl: json['mediaUrl'] as String?,
-      thumbnailUrl: json['thumbnailUrl'] as String?,
-      visibility: json['visibility'] as int? ?? 0,
-      userId: userJson?['id'] as int? ?? 0,
-      username: userJson?['username'] as String? ?? '',
-      userProfileImage: userJson?['profilePictureUrl'] as String?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
-          : DateTime.now(),
-      likeCount: json['likeCount'] as int? ?? 0,
-      commentCount: json['commentCount'] as int? ?? 0,
-      isLiked: parseBool(json['isLiked'] ?? json['isLikedByMe']),
+      id: _toInt(json['id']),
+      type: _toInt(json['type']),
+      text: _pickString([json['text'], json['description']]),
+      mediaUrl: _pickNullableString([json['mediaUrl'], json['media']]),
+      thumbnailUrl: _pickNullableString([
+        json['thumbnailUrl'],
+        json['thumbnail'],
+      ]),
+      visibility: _toInt(json['visibility']),
+      userId: _toInt(userJson['id'] ?? json['userId']),
+      username: _pickString([userJson['username'], json['username'], fullName]),
+      userFirstName: firstName.isEmpty ? null : firstName,
+      userLastName: lastName.isEmpty ? null : lastName,
+      userProfileImage: _pickNullableString([
+        userJson['profilePictureUrl'],
+        userJson['avatarUrl'],
+        json['userProfileImage'],
+        json['profilePictureUrl'],
+      ]),
+      createdAt: _parseDateTime(json['createdAt']),
+      likeCount: _toInt(json['likeCount'] ?? json['likesCount']),
+      commentCount: _toInt(json['commentCount'] ?? json['commentsCount']),
+      isLiked: _parseBool(
+        json['isLiked'] ?? json['isLikedByMe'] ?? json['likedByCurrentUser'],
+      ),
     );
   }
 
-  static bool parseBool(dynamic value) {
+  static bool _parseBool(dynamic value) {
     if (value is bool) return value;
     if (value is int) return value == 1;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1';
+    }
     return false;
+  }
+
+  static int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  static String _pickString(List<dynamic> values) {
+    for (final value in values) {
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) {
+        return text;
+      }
+    }
+    return '';
+  }
+
+  static String? _pickNullableString(List<dynamic> values) {
+    final text = _pickString(values);
+    return text.isEmpty ? null : text;
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is String && value.trim().isNotEmpty) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    return DateTime.now();
   }
 
   Map<String, dynamic> toJson() {
@@ -55,6 +109,8 @@ class PostModel extends PostEntity {
       'visibility': visibility,
       'userId': userId,
       'username': username,
+      'userFirstName': userFirstName,
+      'userLastName': userLastName,
       'userProfileImage': userProfileImage,
       'createdAt': createdAt.toIso8601String(),
       'likeCount': likeCount,

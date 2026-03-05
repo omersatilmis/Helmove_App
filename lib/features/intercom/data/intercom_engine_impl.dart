@@ -51,10 +51,12 @@ class IntercomEngineImpl implements IntercomEngine {
   StreamSubscription? _offerSub;
   StreamSubscription? _answerSub;
   StreamSubscription? _iceSub;
+  StreamSubscription? _signalDeliveryFailedSub;
   StreamSubscription? _webRtcIceSub;
   StreamSubscription? _webRtcConnectionSub;
   StreamSubscription? _webRtcQualitySub;
   StreamSubscription? _webRtcMetricsSub;
+  StreamSubscription? _webRtcUplinkSub;
   StreamSubscription? _adaptiveBitrateSub;
   // Telefon araması / Siri / alarm gibi OS audio interruption olayları
   StreamSubscription? _audioInterruptionSub;
@@ -88,6 +90,7 @@ class IntercomEngineImpl implements IntercomEngine {
   // _switchToP2p() bu pre-warm'u hazır bulur ve _prepareWebRtcForOffer()'ı
   // tekrar çağırmaz — bağlantı anında kurulur.
   Future<void>? _sfuToP2pPrewarmFuture;
+  Future<void>? _idlePrewarmFuture;
   bool _webRtcPrewarmed = false;
 
   // [NEW] Token Caching
@@ -108,7 +111,17 @@ class IntercomEngineImpl implements IntercomEngine {
   // Yenileme penceresi: TTL dolmadan bu kadar süre önce arka planda yenile.
   static const Duration _iceServerRefreshMargin = Duration(minutes: 5);
 
+  Future<void>? _inFlightTokenFetch;
+  Future<void>? _inFlightIceRefresh;
+
   String? _p2pPeerUserId;
+  final Map<String, DateTime> _offerGuard = <String, DateTime>{};
+  static const Duration _offerGuardWindow = Duration(seconds: 8);
+  DateTime? _p2pHandshakeStartedAt;
+  DateTime? _p2pOfferSentAt;
+  DateTime? _p2pOfferReceivedAt;
+  DateTime? _p2pAnswerSentAt;
+  DateTime? _p2pAnswerReceivedAt;
   bool _disconnectP2pWhenSfuConnected = false;
   bool _disconnectSfuWhenP2pConnected = false;
 
@@ -163,12 +176,8 @@ class IntercomEngineImpl implements IntercomEngine {
     _subscribeLiveKit();
     _subscribeSignalR();
     _subscribeWebRtc();
+    await audioOrchestratorService.init();
     _subscribeAudioSession(); // [NEW] OS audio interruption recovery
-
-    // [NEW] Start Background Service for Android
-    if (Platform.isAndroid) {
-      await AppBackgroundService.start();
-    }
 
     _emitTelemetry(
       IntercomTelemetryEvent.now(
@@ -211,15 +220,37 @@ class IntercomEngineImpl implements IntercomEngine {
 
   @override
   Future<void> attachSession(IntercomSessionContext context) async {
-    // Optimization: Skip if context hasn't changed (same sessionId and participant count)
+    // Optimization: Skip if context hasn't changed (same sessionId, participant count, and admin)
+    // Guard covers connected, connecting, AND evaluating phases to prevent
+    // the re-initialization loop where multiple attachSession calls tear down
+    // an in-progress connection before it can reach 'connected'.
     if (_context?.sessionId == context.sessionId &&
         _context?.activeCount == context.activeCount &&
-        _context?.hostUserId == context.hostUserId &&
-        _state.phase == IntercomPhase.connected) {
+        (_state.phase == IntercomPhase.connected ||
+            _state.phase == IntercomPhase.connecting ||
+            _state.phase == IntercomPhase.evaluating)) {
+      // TransferHost: Admin değişmişse P2P'yi KOPARMADAN context'i güncelle
+      // (Graceful Host Transfer — sıcak geçiş)
+      // P2P bağlantıda roller (offer/answer) sadece ilk el sıkışmada önemli.
+      // Bağlantı kurulmuşken admin değişimi ağ katmanını etkilemez —
+      // sadece iç context güncellenir, ses kesintisi sıfır.
+      if (_context?.adminId != context.adminId &&
+          _state.transport == IntercomTransport.p2p) {
+        _emitTelemetry(
+          IntercomTelemetryEvent.now(
+            command: IntercomCommand.attachSession,
+            name: 'attach_admin_changed_graceful',
+            data: {'oldAdmin': _context?.adminId, 'newAdmin': context.adminId},
+          ),
+        );
+        _context = context;
+        return;
+      }
+
       _emitTelemetry(
         IntercomTelemetryEvent.now(
           command: IntercomCommand.attachSession,
-          name: 'attach_skipped_already_connected',
+          name: 'attach_skipped_same_context',
         ),
       );
       return;
@@ -239,7 +270,7 @@ class IntercomEngineImpl implements IntercomEngine {
           IntercomTelemetryKeys.sessionId: context.sessionId,
           IntercomTelemetryKeys.roomName: context.roomName,
           IntercomTelemetryKeys.localUserId: context.localUserId,
-          IntercomTelemetryKeys.hostUserId: context.hostUserId,
+          IntercomTelemetryKeys.adminId: context.adminId,
           IntercomTelemetryKeys.activeParticipantCount: context.activeCount,
           IntercomTelemetryKeys.activeParticipantUserIds:
               context.activeParticipantUserIds,
@@ -462,7 +493,12 @@ class IntercomEngineImpl implements IntercomEngine {
           // Yeni ICE offer'i karşı tarafa gönder
           final peerId = _p2pPeerUserId;
           if (peerId != null) {
-            signalRService.sendOffer(peerId, offer.sdp!);
+            final restartSdp = offer.sdp;
+            if (restartSdp != null && restartSdp.isNotEmpty) {
+              // ICE restart: host kısıtlaması yok, network switch yapan
+              // taraf (host veya invitee) offer gönderebilmeli
+              await _sendIceRestartOffer(peerId: peerId, sdp: restartSdp);
+            }
           }
 
           // 5 saniye içinde bağlanmazsa full reconnect'e geç
@@ -508,6 +544,7 @@ class IntercomEngineImpl implements IntercomEngine {
     await _offerSub?.cancel();
     await _answerSub?.cancel();
     await _iceSub?.cancel();
+    await _signalDeliveryFailedSub?.cancel();
     _iceBatchTimer?.cancel();
     _iceBatchBuffer.clear();
 
@@ -515,6 +552,7 @@ class IntercomEngineImpl implements IntercomEngine {
     await _webRtcConnectionSub?.cancel();
     await _webRtcQualitySub?.cancel();
     await _webRtcMetricsSub?.cancel();
+    await _webRtcUplinkSub?.cancel();
     await _adaptiveBitrateSub?.cancel();
     await _audioInterruptionSub?.cancel();
 
@@ -649,11 +687,11 @@ class IntercomEngineImpl implements IntercomEngine {
   IntercomConnectionQuality _mapLiveKitQuality(ConnectionQuality lkQuality) {
     switch (lkQuality) {
       case ConnectionQuality.excellent:
-        return IntercomConnectionQuality.excellent;
+        return IntercomConnectionQuality.ultra;
       case ConnectionQuality.good:
-        return IntercomConnectionQuality.good;
+        return IntercomConnectionQuality.high;
       case ConnectionQuality.poor:
-        return IntercomConnectionQuality.poor;
+        return IntercomConnectionQuality.low;
       case ConnectionQuality.lost:
         return IntercomConnectionQuality.lost;
       default:
@@ -692,19 +730,34 @@ class IntercomEngineImpl implements IntercomEngine {
 
     _offerSub?.cancel();
     _offerSub = signalRService.offerStream.listen((payload) {
-      if (_state.transport != IntercomTransport.p2p) return;
+      // Discord yaklaşımı: P2P aktifken VEYA P2P'ye geçiş sürecindeyken
+      // (evaluating/connecting) offer'ları kabul et. Bu sayede host'un
+      // gönderdiği ilk offer kaçırılmaz.
+      if (_state.transport != IntercomTransport.p2p &&
+          _state.phase != IntercomPhase.evaluating &&
+          _state.phase != IntercomPhase.connecting) {
+        return;
+      }
       _onOffer(payload.userId, payload.sdp);
     });
 
     _answerSub?.cancel();
     _answerSub = signalRService.answerStream.listen((payload) {
-      if (_state.transport != IntercomTransport.p2p) return;
+      if (_state.transport != IntercomTransport.p2p &&
+          _state.phase != IntercomPhase.evaluating &&
+          _state.phase != IntercomPhase.connecting) {
+        return;
+      }
       _onAnswer(payload.userId, payload.sdp);
     });
 
     _iceSub?.cancel();
     _iceSub = signalRService.iceCandidateStream.listen((payload) {
-      if (_state.transport != IntercomTransport.p2p) return;
+      if (_state.transport != IntercomTransport.p2p &&
+          _state.phase != IntercomPhase.evaluating &&
+          _state.phase != IntercomPhase.connecting) {
+        return;
+      }
       _onIceCandidate(
         payload.fromUserId,
         payload.candidate,
@@ -712,6 +765,29 @@ class IntercomEngineImpl implements IntercomEngine {
         payload.sdpMLineIndex,
       );
     });
+
+    // [Bileşen 4] SignalDeliveryFailed: Offer/answer teslim edilemezse
+    // 10s headless timeout boşuna beklemek yerine hemen reconnect tetikle.
+    _signalDeliveryFailedSub?.cancel();
+    _signalDeliveryFailedSub = signalRService.signalDeliveryFailedStream.listen(
+      (phase) {
+        if (_state.transport != IntercomTransport.p2p) return;
+        _emitP2pStep(
+          'p2p_signal_delivery_failed',
+          level: IntercomTelemetryLevel.warning,
+          data: {'phase': phase},
+        );
+        _headlessCallTimeoutTimer?.cancel();
+        _enterReconnecting(
+          reason: 'signal_delivery_failed:$phase',
+          failure: IntercomFailure(
+            code: IntercomFailureCode.peerUnavailable,
+            message: 'Signal delivery failed: $phase',
+            recoverable: true,
+          ),
+        );
+      },
+    );
   }
 
   void _subscribeWebRtc() {
@@ -729,6 +805,10 @@ class IntercomEngineImpl implements IntercomEngine {
     _webRtcConnectionSub?.cancel();
     _webRtcConnectionSub = webRTCService.connectionState$.listen((state) {
       if (_state.transport != IntercomTransport.p2p) return;
+      _emitP2pStep(
+        'p2p_connection_state',
+        data: {'connectionState': state.name},
+      );
 
       if (state.name == 'RTCPeerConnectionStateConnected') {
         _cancelReconnectWorkflow();
@@ -758,11 +838,17 @@ class IntercomEngineImpl implements IntercomEngine {
         }
 
         _completeSwitchTelemetry(IntercomTransport.p2p);
+        _emitP2pStep('p2p_connected');
         return;
       }
 
       if (state.name == 'RTCPeerConnectionStateFailed' ||
           state.name == 'RTCPeerConnectionStateDisconnected') {
+        _emitP2pStep(
+          'p2p_connection_failed',
+          level: IntercomTelemetryLevel.warning,
+          data: {'connectionState': state.name},
+        );
         _enterReconnecting(
           reason: 'webrtc.disconnected',
           failure: const IntercomFailure(
@@ -777,9 +863,23 @@ class IntercomEngineImpl implements IntercomEngine {
     _webRtcQualitySub?.cancel();
     _webRtcQualitySub = webRTCService.connectionQualityStream.listen((quality) {
       final normalized = quality.toUpperCase();
-      final mapped = normalized == 'POOR'
-          ? IntercomConnectionQuality.poor
-          : IntercomConnectionQuality.good;
+      final IntercomConnectionQuality mapped;
+      switch (normalized) {
+        case 'LOW':
+          mapped = IntercomConnectionQuality.low;
+          break;
+        case 'ULTRA':
+          mapped = IntercomConnectionQuality.ultra;
+          break;
+        case 'HIGH':
+          mapped = IntercomConnectionQuality.high;
+          break;
+        case 'BALANCED':
+          mapped = IntercomConnectionQuality.balanced;
+          break;
+        default:
+          mapped = IntercomConnectionQuality.balanced;
+      }
       _bitrateController.onQualityChanged(mapped);
     });
 
@@ -806,6 +906,24 @@ class IntercomEngineImpl implements IntercomEngine {
         ),
       );
     });
+
+    _webRtcUplinkSub?.cancel();
+    _webRtcUplinkSub = webRTCService.uplinkStatsStream.listen((stats) {
+      _emitTelemetry(
+        IntercomTelemetryEvent.now(
+          command: IntercomCommand.onAudioSettingsChanged,
+          name: 'webrtc.uplink',
+          data: {
+            'transport': 'p2p',
+            'bytesDelta': stats.bytesDelta,
+            'packetsDelta': stats.packetsDelta,
+            'bitrateKbps': stats.bitrateKbps,
+            'silenceLikely': stats.silenceLikely,
+            'dtxEnabled': stats.dtxEnabled,
+          },
+        ),
+      );
+    });
   }
 
   // ============================================================
@@ -825,59 +943,59 @@ class IntercomEngineImpl implements IntercomEngine {
 
   void _subscribeAudioSession() {
     _audioInterruptionSub?.cancel();
-    _audioInterruptionSub = audioOrchestratorService.interruptionStream.listen(
-      (event) async {
-        if (event.begin) {
-          // ── Interruption Başladı ────────────────────────────────────────
-          // Telefon araması, Siri, alarm vb. OS audio I/O'yu durdurdu.
-          // Biz sadece state'i güncelliyoruz; gerçek I/O OS tarafından
-          // zaten askıya alındı.
-          _emitTelemetry(
-            IntercomTelemetryEvent.now(
-              level: IntercomTelemetryLevel.warning,
-              command: IntercomCommand.onLifecycleChanged,
-              name: 'audio.interruption.began',
-              data: {
-                'transport': _state.transport.name,
-                'phase': _state.phase.name,
-              },
-            ),
-          );
+    _audioInterruptionSub = audioOrchestratorService.interruptionStream.listen((
+      event,
+    ) async {
+      if (event.begin) {
+        // ── Interruption Başladı ────────────────────────────────────────
+        // Telefon araması, Siri, alarm vb. OS audio I/O'yu durdurdu.
+        // Biz sadece state'i güncelliyoruz; gerçek I/O OS tarafından
+        // zaten askıya alındı.
+        _emitTelemetry(
+          IntercomTelemetryEvent.now(
+            level: IntercomTelemetryLevel.warning,
+            command: IntercomCommand.onLifecycleChanged,
+            name: 'audio.interruption.began',
+            data: {
+              'transport': _state.transport.name,
+              'phase': _state.phase.name,
+            },
+          ),
+        );
 
-          // Aktif bir oturum varsa ve zaten reconnecting/idle değilsek
-          // reconnecting'e geç — timer içinde otomatik retry başlar.
-          if (_context != null &&
-              _state.phase != IntercomPhase.idle &&
-              _state.phase != IntercomPhase.reconnecting) {
-            _enterReconnecting(reason: 'audio.interruption.began');
-          }
-        } else {
-          // ── Interruption Bitti ──────────────────────────────────────────
-          // Telefon araması kapandı / Siri bitti vb.
-          // iOS, interruption bittikten sonra setActive(true) çağrılana dek
-          // audio I/O'yu restore etmez (platform quirk). Bunu biz yapıyoruz.
-          _emitTelemetry(
-            IntercomTelemetryEvent.now(
-              command: IntercomCommand.onLifecycleChanged,
-              name: 'audio.interruption.ended',
-              data: {
-                'transport': _state.transport.name,
-                'hasContext': _context != null,
-              },
-            ),
-          );
-
-          if (_context != null) {
-            // Önce session'ı yeniden aktifleştir; sonra transport'u recovery
-            // modunda başlat. Sırası önemli: setActive(true) olmadan
-            // iOS'ta ses gelmez.
-            await audioOrchestratorService.activateSession();
-            _cancelReconnectWorkflow(); // Var olan retry döngüsünü temizle
-            await _evaluateTransport(reason: IntercomDecisionReason.recovery);
-          }
+        // Aktif bir oturum varsa ve zaten reconnecting/idle değilsek
+        // reconnecting'e geç — timer içinde otomatik retry başlar.
+        if (_context != null &&
+            _state.phase != IntercomPhase.idle &&
+            _state.phase != IntercomPhase.reconnecting) {
+          _enterReconnecting(reason: 'audio.interruption.began');
         }
-      },
-    );
+      } else {
+        // ── Interruption Bitti ──────────────────────────────────────────
+        // Telefon araması kapandı / Siri bitti vb.
+        // iOS, interruption bittikten sonra setActive(true) çağrılana dek
+        // audio I/O'yu restore etmez (platform quirk). Bunu biz yapıyoruz.
+        _emitTelemetry(
+          IntercomTelemetryEvent.now(
+            command: IntercomCommand.onLifecycleChanged,
+            name: 'audio.interruption.ended',
+            data: {
+              'transport': _state.transport.name,
+              'hasContext': _context != null,
+            },
+          ),
+        );
+
+        if (_context != null) {
+          // Önce session'ı yeniden aktifleştir; sonra transport'u recovery
+          // modunda başlat. Sırası önemli: setActive(true) olmadan
+          // iOS'ta ses gelmez.
+          await audioOrchestratorService.activateSession();
+          _cancelReconnectWorkflow(); // Var olan retry döngüsünü temizle
+          await _evaluateTransport(reason: IntercomDecisionReason.recovery);
+        }
+      }
+    });
   }
 
   Future<void> _evaluateTransport({
@@ -900,7 +1018,10 @@ class IntercomEngineImpl implements IntercomEngine {
     );
 
     if (context.activeCount <= 1) {
-      await _stopAllAudio();
+      // [IDLE-PREWARM] Sesi durdurmak yerine donanımı hazır tut.
+      // 2. kişi geldiğinde _switchToP2p() _webRtcPrewarmed=true görüp
+      // _prepareWebRtcForOffer()'ı atlayacak → anında el sıkışma.
+      _startIdlePrewarm();
       _emitDecision(
         IntercomDecision(
           target: IntercomTransport.none,
@@ -1070,15 +1191,23 @@ class IntercomEngineImpl implements IntercomEngine {
       ),
     );
 
+    if (Platform.isAndroid) {
+      unawaited(AppBackgroundService.start());
+    }
+
     try {
       String token = '';
       String url = '';
 
       final now = DateTime.now();
-      final useCache = _tokenTimestamp != null && now.difference(_tokenTimestamp!) < _tokenTtl;
+      final useCache =
+          _tokenTimestamp != null &&
+          now.difference(_tokenTimestamp!) < _tokenTtl;
 
       // [FAST-SFU] Eger token ve url onceden prefetch edildiyse, LiveKit baglantisi 0 ms bekler.
-      if (useCache && _cachedLiveKitToken != null && _cachedLiveKitUrl != null) {
+      if (useCache &&
+          _cachedLiveKitToken != null &&
+          _cachedLiveKitUrl != null) {
         token = _cachedLiveKitToken!;
         url = _cachedLiveKitUrl!;
       } else {
@@ -1137,6 +1266,7 @@ class IntercomEngineImpl implements IntercomEngine {
   }) async {
     final context = _context;
     if (context == null) return;
+    _resetP2pStepTimings();
 
     _emitDecision(
       IntercomDecision(
@@ -1149,7 +1279,12 @@ class IntercomEngineImpl implements IntercomEngine {
     );
 
     if (_state.transport == IntercomTransport.p2p &&
-        _state.rtcStatus == RtcConnectionStatus.p2pConnected) {
+        (_state.rtcStatus == RtcConnectionStatus.p2pConnecting ||
+            _state.rtcStatus == RtcConnectionStatus.p2pConnected)) {
+      _emitP2pStep(
+        'p2p_handshake_skipped_state',
+        data: {'rtcStatus': _state.rtcStatus.name},
+      );
       return;
     }
 
@@ -1169,6 +1304,10 @@ class IntercomEngineImpl implements IntercomEngine {
         clearError: true, // [NEW] Clear previous failures
       ),
     );
+
+    if (Platform.isAndroid) {
+      unawaited(AppBackgroundService.start());
+    }
 
     await audioOrchestratorService.manageAudioFocus(true);
 
@@ -1205,11 +1344,46 @@ class IntercomEngineImpl implements IntercomEngine {
     }
 
     final localUserId = context.localUserId;
-    if (localUserId == context.hostUserId) {
+    if (localUserId == context.adminId) {
       final peerId = _resolveP2pPeerId(context);
       if (peerId == null) return;
       _p2pPeerUserId = peerId;
+      _emitP2pStep(
+        'p2p_handshake_started',
+        data: {'peerId': peerId, 'role': 'host'},
+      );
       await signalRService.sendHeadlessCallRequest(peerId);
+
+      try {
+        final offer = await webRTCService.createOffer();
+        final sdp = offer.sdp;
+        if (sdp == null || sdp.trim().isEmpty) {
+          throw StateError('WebRTC offer SDP is empty');
+        }
+
+        await _sendP2pOffer(
+          peerId: peerId,
+          sdp: sdp,
+          step: 'p2p_offer_sent',
+          useGuard: true,
+        );
+      } catch (e, stack) {
+        _emitP2pStep(
+          'p2p_offer_failed',
+          level: IntercomTelemetryLevel.error,
+          data: {'peerId': peerId, 'error': e.toString()},
+        );
+        _enterReconnecting(
+          reason: 'webrtc.offer_failed',
+          failure: IntercomFailure(
+            code: IntercomFailureCode.webrtcOfferFailed,
+            message: 'Failed to create/send WebRTC offer',
+            cause: e,
+            stackTrace: stack,
+          ),
+        );
+        return;
+      }
 
       // ── Headless Call Timeout ──────────────────────────────────
       // Peer 10s içinde kabul etmezse (offline/arka planda olabilir)
@@ -1228,6 +1402,10 @@ class IntercomEngineImpl implements IntercomEngine {
         }
       });
     } else {
+      _emitP2pStep(
+        'p2p_handshake_started',
+        data: {'peerId': _p2pPeerUserId, 'role': 'invitee'},
+      );
       // ── Invitee Side Timeout ──────────────────────────────────────
       // [OFFER-FIRST] Host Offer'ı doğrudan gönderiyor. _onOffer() tetiklenince
       // _headlessCallTimeoutTimer iptal edilecek. Eğer 15s geçmeden Offer gelmezse
@@ -1263,13 +1441,10 @@ class IntercomEngineImpl implements IntercomEngine {
     _headlessCallTimeoutTimer?.cancel();
     if (_state.rtcStatus != RtcConnectionStatus.p2pConnecting) return;
 
-    _emitTelemetry(
-      IntercomTelemetryEvent.now(
-        level: IntercomTelemetryLevel.warning,
-        command: IntercomCommand.attachSession,
-        name: 'headless_call_failed',
-        data: {'targetUserId': targetUserId, 'reason': 'peer_offline'},
-      ),
+    _emitP2pStep(
+      'p2p_headless_failed',
+      level: IntercomTelemetryLevel.warning,
+      data: {'targetUserId': targetUserId, 'reason': 'peer_offline'},
     );
 
     _enterReconnecting(
@@ -1286,13 +1461,7 @@ class IntercomEngineImpl implements IntercomEngine {
     // [OFFER-FIRST] Host artık HeadlessAccepted sinyalini beklemeden Offer gönderiyor.
     // Bu callback kritik yolda değil. Gelirse timeout'u iptal et, telemetri logla.
     _headlessCallTimeoutTimer?.cancel();
-    _emitTelemetry(
-      IntercomTelemetryEvent.now(
-        command: IntercomCommand.attachSession,
-        name: 'offer_first.headless_accepted_late',
-        data: {'peerId': userId},
-      ),
-    );
+    _emitP2pStep('p2p_headless_accepted', data: {'peerId': userId});
   }
 
   Future<void> _onHeadlessEnded(String userId) async {
@@ -1311,6 +1480,10 @@ class IntercomEngineImpl implements IntercomEngine {
   Future<void> _onOffer(String userId, String sdp) async {
     _headlessCallTimeoutTimer?.cancel();
     _p2pPeerUserId = userId;
+    _emitP2pStep(
+      'p2p_offer_received',
+      data: {'peerId': userId, 'sdpLen': sdp.length},
+    );
     try {
       if (_state.transport != IntercomTransport.p2p) return;
 
@@ -1329,13 +1502,22 @@ class IntercomEngineImpl implements IntercomEngine {
       await webRTCService.setRemoteDescription('offer', sdp);
       final answer = await webRTCService.createAnswer();
       final answerSdp = answer.sdp;
-      
+
       if (answerSdp != null) {
         await signalRService.sendAnswer(userId, answerSdp);
+        _emitP2pStep(
+          'p2p_answer_sent',
+          data: {'peerId': userId, 'sdpLen': answerSdp.length},
+        );
       } else {
         throw StateError('Answer SDP is null');
       }
     } catch (e, stack) {
+      _emitP2pStep(
+        'p2p_answer_failed',
+        level: IntercomTelemetryLevel.error,
+        data: {'peerId': userId, 'error': e.toString()},
+      );
       _enterReconnecting(
         reason: 'webrtc.answer_failed',
         failure: IntercomFailure(
@@ -1349,6 +1531,10 @@ class IntercomEngineImpl implements IntercomEngine {
   }
 
   Future<void> _onAnswer(String userId, String sdp) async {
+    _emitP2pStep(
+      'p2p_answer_received',
+      data: {'peerId': userId, 'sdpLen': sdp.length},
+    );
     await webRTCService.handleAnswer(userId, sdp);
   }
 
@@ -1380,7 +1566,8 @@ class IntercomEngineImpl implements IntercomEngine {
     } else {
       // Cache yok veya süresi doldu — senkron olarak yenile
       final ice = await liveKitApi.getIceServers();
-      servers = (ice['iceServers'] as List?)?.cast<Map<String, dynamic>>() ??
+      servers =
+          (ice['iceServers'] as List?)?.cast<Map<String, dynamic>>() ??
           const <Map<String, dynamic>>[];
       _cachedIceServers = servers;
       _iceServerTimestamp = DateTime.now();
@@ -1444,7 +1631,61 @@ class IntercomEngineImpl implements IntercomEngine {
     _sfuToP2pPrewarmFuture = null;
   }
 
+  // ============================================================
+  // IDLE PRE-WARMING (Tek Kişiyken Hazırlık)
+  // ============================================================
+  //
+  // Akış:
+  //   1. _evaluateTransport() → 1 katılımcı (odada yalnız)
+  //   2. _startIdlePrewarm() çağrılır
+  //   3. _runIdlePrewarm() arka planda: ICE fetch + WebRTC init + mikrofon
+  //   4. 2. kişi geldiğinde _evaluateTransport() → 2 katılımcı
+  //   5. _switchToP2p(): _webRtcPrewarmed=true → _prepareWebRtcForOffer() atlanır
+  //      → donanım hazır, bağlantı anında kurulur (~0 ms ek gecikme)
+  //
+  // İptal senaryosu (detachSession veya stop):
+  //   _cancelIdlePrewarm() → stopAll()
+  // ============================================================
+
+  /// [IDLE-PREWARM] Odada tek kişiyken WebRTC donanımını arka planda hazırlar.
+  void _startIdlePrewarm() {
+    // Zaten hazırsa veya çalışıyorsa tekrar başlatma
+    if (_webRtcPrewarmed || _idlePrewarmFuture != null) return;
+    _idlePrewarmFuture = _runIdlePrewarm();
+  }
+
+  Future<void> _runIdlePrewarm() async {
+    try {
+      await audioOrchestratorService.manageAudioFocus(true);
+      await _prepareWebRtcForOffer();
+      _webRtcPrewarmed = true;
+      _emitTelemetry(
+        IntercomTelemetryEvent.now(
+          command: IntercomCommand.attachSession,
+          name: 'idle_prewarm.completed',
+        ),
+      );
+    } catch (_) {
+      // Hata sessizce yutulur.
+      // _switchToP2p() _webRtcPrewarmed=false görünce kendisi yeniden deneyecek.
+      _webRtcPrewarmed = false;
+    } finally {
+      _idlePrewarmFuture = null;
+    }
+  }
+
+  /// Idle pre-warm sırasında başlatılan WebRTC kaynaklarını temizler.
+  void _cancelIdlePrewarm() {
+    if (_idlePrewarmFuture != null || _webRtcPrewarmed) {
+      // Pre-warm tamamlandı veya sürüyor ama artık gerek yok → WebRTC'yi kapat
+      webRTCService.stopAll();
+      _webRtcPrewarmed = false;
+      _idlePrewarmFuture = null;
+    }
+  }
+
   Future<void> _stopAllAudio() async {
+    _cancelIdlePrewarm();
     await _stopP2p();
     await _disconnectLiveKit();
     await audioOrchestratorService.manageAudioFocus(false);
@@ -1452,11 +1693,204 @@ class IntercomEngineImpl implements IntercomEngine {
 
   Future<void> _stopP2p() async {
     _p2pPeerUserId = null;
+    _offerGuard.clear();
+    _resetP2pStepTimings();
     await webRTCService.stopAll();
   }
 
   Future<void> _disconnectLiveKit() async {
     await liveKitRoomService.disconnect();
+  }
+
+  bool _isLocalHost() {
+    final context = _context;
+    if (context == null) return false;
+    return context.localUserId == context.adminId;
+  }
+
+  bool _allowOfferWithGuard(int sessionId, String peerId) {
+    final now = DateTime.now();
+    _offerGuard.removeWhere((_, at) => now.difference(at) >= _offerGuardWindow);
+
+    final key = '$sessionId:$peerId';
+    final lastSentAt = _offerGuard[key];
+    if (lastSentAt != null && now.difference(lastSentAt) < _offerGuardWindow) {
+      return false;
+    }
+
+    _offerGuard[key] = now;
+    return true;
+  }
+
+  Future<void> _sendP2pOffer({
+    required String peerId,
+    required String sdp,
+    required String step,
+    required bool useGuard,
+  }) async {
+    final context = _context;
+    if (context == null) {
+      _emitP2pStep(
+        'p2p_offer_skipped_no_context',
+        level: IntercomTelemetryLevel.warning,
+        data: {'peerId': peerId},
+      );
+      return;
+    }
+
+    if (!_isLocalHost()) {
+      _emitP2pStep(
+        'p2p_offer_skipped_non_host',
+        level: IntercomTelemetryLevel.warning,
+        data: {'peerId': peerId, 'localUserId': context.localUserId},
+      );
+      return;
+    }
+
+    if (useGuard && !_allowOfferWithGuard(context.sessionId, peerId)) {
+      _emitP2pStep(
+        'p2p_offer_suppressed_duplicate',
+        data: {
+          'peerId': peerId,
+          'guardWindowMs': _offerGuardWindow.inMilliseconds,
+        },
+      );
+      return;
+    }
+
+    await signalRService.sendOffer(peerId, sdp);
+    _emitP2pStep(step, data: {'peerId': peerId, 'sdpLen': sdp.length});
+  }
+
+  /// ICE restart için offer gönderimi — host kısıtlaması yok.
+  /// Network switch yapan taraf (host veya invitee) offer gönderebilmeli.
+  Future<void> _sendIceRestartOffer({
+    required String peerId,
+    required String sdp,
+  }) async {
+    final context = _context;
+    if (context == null) return;
+
+    await signalRService.sendOffer(peerId, sdp);
+    _emitP2pStep(
+      'p2p_offer_sent_ice_restart',
+      data: {'peerId': peerId, 'sdpLen': sdp.length},
+    );
+  }
+
+  void _emitP2pStep(
+    String step, {
+    Map<String, Object?>? data,
+    IntercomTelemetryLevel level = IntercomTelemetryLevel.info,
+  }) {
+    final timingData = _captureP2pStepTiming(step);
+    _emitTelemetry(
+      IntercomTelemetryEvent.now(
+        level: level,
+        command: IntercomCommand.attachSession,
+        name: 'p2p.step',
+        data: {
+          'step': step,
+          if (_context != null) 'sessionId': _context!.sessionId,
+          'transport': _state.transport.name,
+          'rtcStatus': _state.rtcStatus.name,
+          if (timingData.isNotEmpty) ...timingData,
+          if (data != null) ...data,
+        },
+      ),
+    );
+  }
+
+  Map<String, Object?> _captureP2pStepTiming(String step) {
+    final now = DateTime.now();
+    final data = <String, Object?>{};
+
+    bool isOfferSentStep() =>
+        step == 'p2p_offer_sent' ||
+        step == 'p2p_offer_sent_reconnect' ||
+        step == 'p2p_offer_sent_ice_restart';
+
+    if (step == 'p2p_handshake_started') {
+      _p2pHandshakeStartedAt = now;
+      _p2pOfferSentAt = null;
+      _p2pOfferReceivedAt = null;
+      _p2pAnswerSentAt = null;
+      _p2pAnswerReceivedAt = null;
+      return data;
+    }
+
+    if (isOfferSentStep()) {
+      _p2pOfferSentAt = now;
+      if (_p2pHandshakeStartedAt != null) {
+        data['offerAfterHandshakeMs'] = now
+            .difference(_p2pHandshakeStartedAt!)
+            .inMilliseconds;
+      }
+      return data;
+    }
+
+    if (step == 'p2p_offer_received') {
+      _p2pOfferReceivedAt = now;
+      if (_p2pHandshakeStartedAt != null) {
+        data['offerAfterHandshakeMs'] = now
+            .difference(_p2pHandshakeStartedAt!)
+            .inMilliseconds;
+      }
+      return data;
+    }
+
+    if (step == 'p2p_answer_sent') {
+      _p2pAnswerSentAt = now;
+      if (_p2pOfferReceivedAt != null) {
+        data['answerAfterOfferMs'] = now
+            .difference(_p2pOfferReceivedAt!)
+            .inMilliseconds;
+      }
+      return data;
+    }
+
+    if (step == 'p2p_answer_received') {
+      _p2pAnswerReceivedAt = now;
+      if (_p2pOfferSentAt != null) {
+        data['answerAfterOfferMs'] = now
+            .difference(_p2pOfferSentAt!)
+            .inMilliseconds;
+      }
+      return data;
+    }
+
+    if (step == 'p2p_connected') {
+      if (_p2pHandshakeStartedAt != null) {
+        data['connectedAfterHandshakeMs'] = now
+            .difference(_p2pHandshakeStartedAt!)
+            .inMilliseconds;
+      }
+      if (_p2pOfferSentAt != null) {
+        data['connectedAfterOfferMs'] = now
+            .difference(_p2pOfferSentAt!)
+            .inMilliseconds;
+      }
+      if (_p2pAnswerReceivedAt != null) {
+        data['connectedAfterAnswerMs'] = now
+            .difference(_p2pAnswerReceivedAt!)
+            .inMilliseconds;
+      } else if (_p2pAnswerSentAt != null) {
+        data['connectedAfterAnswerMs'] = now
+            .difference(_p2pAnswerSentAt!)
+            .inMilliseconds;
+      }
+      return data;
+    }
+
+    return data;
+  }
+
+  void _resetP2pStepTimings() {
+    _p2pHandshakeStartedAt = null;
+    _p2pOfferSentAt = null;
+    _p2pOfferReceivedAt = null;
+    _p2pAnswerSentAt = null;
+    _p2pAnswerReceivedAt = null;
   }
 
   String? _resolveP2pPeerId(IntercomSessionContext context) {
@@ -1620,14 +2054,15 @@ class IntercomEngineImpl implements IntercomEngine {
     // [NEW] ICE Restart Entegrasyonu
     // Baglanti koptugunda P2P modundaysak once ICE Restart deneyerek hizli toparlanma sagla
     if (_state.transport == IntercomTransport.p2p && _p2pPeerUserId != null) {
-        final offer = await webRTCService.restartIce();
-        if (offer != null && offer.sdp != null) {
-            await signalRService.sendOffer(_p2pPeerUserId!, offer.sdp!);
-        } else {
-            await _evaluateTransport(reason: IntercomDecisionReason.recovery);
-        }
-    } else {
+      final offer = await webRTCService.restartIce();
+      if (offer != null && offer.sdp != null && offer.sdp!.isNotEmpty) {
+        // ICE restart: host kısıtlaması yok
+        await _sendIceRestartOffer(peerId: _p2pPeerUserId!, sdp: offer.sdp!);
+      } else {
         await _evaluateTransport(reason: IntercomDecisionReason.recovery);
+      }
+    } else {
+      await _evaluateTransport(reason: IntercomDecisionReason.recovery);
     }
 
     if (_state.rtcStatus == RtcConnectionStatus.p2pConnected ||
@@ -1803,19 +2238,35 @@ class IntercomEngineImpl implements IntercomEngine {
     final context = _context;
     if (context == null) return;
 
-    try {
-      final tokenData = await liveKitApi.getToken(
-        roomName: context.roomName,
-        identity: context.localUserId.toString(),
-        displayName: _contextDisplayName(context),
-      );
-      final token = tokenData['token'];
-      if (token != null && token.isNotEmpty) {
-        _cachedLiveKitToken = token;
-        _tokenTimestamp = DateTime.now();
+    if (_inFlightTokenFetch != null) {
+      await _inFlightTokenFetch;
+      return;
+    }
+
+    Future<void> doFetch() async {
+      try {
+        final tokenData = await liveKitApi.getToken(
+          roomName: context.roomName,
+          identity: context.localUserId.toString(),
+          displayName: _contextDisplayName(context),
+        );
+        final token = tokenData['token'];
+        final url = tokenData['url'];
+        if (token != null && token.isNotEmpty) {
+          _cachedLiveKitToken = token;
+          _cachedLiveKitUrl = url;
+          _tokenTimestamp = DateTime.now();
+        }
+      } catch (e) {
+        // Ignore pre-fetch errors
       }
-    } catch (e) {
-      // Ignore pre-fetch errors
+    }
+
+    _inFlightTokenFetch = doFetch();
+    try {
+      await _inFlightTokenFetch;
+    } finally {
+      _inFlightTokenFetch = null;
     }
   }
 
@@ -1850,33 +2301,47 @@ class IntercomEngineImpl implements IntercomEngine {
   Future<void> _proactivelyRefreshIceServers() async {
     if (_isIceCacheWarm()) return; // Cache zaten sıcak — gerek yok
 
-    try {
-      final ice = await liveKitApi.getIceServers();
-      final servers = (ice['iceServers'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          const <Map<String, dynamic>>[];
+    if (_inFlightIceRefresh != null) {
+      await _inFlightIceRefresh;
+      return;
+    }
 
-      if (servers.isNotEmpty) {
-        _cachedIceServers = servers;
-        _iceServerTimestamp = DateTime.now();
+    Future<void> doRefresh() async {
+      try {
+        final ice = await liveKitApi.getIceServers();
+        final servers =
+            (ice['iceServers'] as List?)?.cast<Map<String, dynamic>>() ??
+            const <Map<String, dynamic>>[];
+
+        if (servers.isNotEmpty) {
+          _cachedIceServers = servers;
+          _iceServerTimestamp = DateTime.now();
+          _emitTelemetry(
+            IntercomTelemetryEvent.now(
+              command: IntercomCommand.attachSession,
+              name: 'ice.proactive_refresh_ok',
+              data: {'serverCount': servers.length},
+            ),
+          );
+        }
+      } catch (e) {
+        // Hata sessizce loglanır; _prepareWebRtcForOffer() fallback yapar.
         _emitTelemetry(
           IntercomTelemetryEvent.now(
+            level: IntercomTelemetryLevel.warning,
             command: IntercomCommand.attachSession,
-            name: 'ice.proactive_refresh_ok',
-            data: {'serverCount': servers.length},
+            name: 'ice.proactive_refresh_failed',
+            data: {'error': e.toString()},
           ),
         );
       }
-    } catch (e) {
-      // Hata sessizce loglanır; _prepareWebRtcForOffer() fallback yapar.
-      _emitTelemetry(
-        IntercomTelemetryEvent.now(
-          level: IntercomTelemetryLevel.warning,
-          command: IntercomCommand.attachSession,
-          name: 'ice.proactive_refresh_failed',
-          data: {'error': e.toString()},
-        ),
-      );
+    }
+
+    _inFlightIceRefresh = doRefresh();
+    try {
+      await _inFlightIceRefresh;
+    } finally {
+      _inFlightIceRefresh = null;
     }
   }
 }

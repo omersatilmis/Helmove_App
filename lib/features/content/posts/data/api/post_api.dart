@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'post_endpoints.dart';
 import '../models/create_post_request.dart';
 import '../models/post_model.dart';
+import '../../../../../core/models/conditional_fetch_result.dart';
 import '../../../../../core/models/paged_result.dart';
 import '../../../../../core/models/pagination_metadata.dart';
 
@@ -18,21 +19,58 @@ class PostApi {
     return PostModel.fromJson(response.data);
   }
 
-  Future<PagedResult<PostModel>> getFeed({int page = 1, int limit = 10}) async {
+  Future<ConditionalFetchResult<PagedResult<PostModel>>> getFeed({
+    int page = 1,
+    int limit = 10,
+    String? ifNoneMatch,
+  }) async {
+    final shouldUseConditionalRequest =
+        page == 1 && ifNoneMatch != null && ifNoneMatch.trim().isNotEmpty;
+
+    final headers = <String, dynamic>{};
+    if (shouldUseConditionalRequest) {
+      headers['If-None-Match'] = ifNoneMatch.trim();
+    }
+
     final response = await _dio.get(
       ApiEndpoints.feed,
       queryParameters: {'page': page, 'limit': limit},
+      options: shouldUseConditionalRequest
+          ? Options(
+              headers: headers,
+              validateStatus: (status) =>
+                  status != null &&
+                  ((status >= 200 && status < 300) || status == 304),
+            )
+          : null,
     );
 
-    final List<dynamic> itemsData = response.data['data'] ?? [];
+    final statusCode = response.statusCode ?? 0;
+    final etag = response.headers.value('etag');
+    if (statusCode == 304) {
+      return ConditionalFetchResult(
+        data: null,
+        etag: etag ?? ifNoneMatch,
+        notModified: true,
+      );
+    }
+
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : <String, dynamic>{};
+    final List<dynamic> itemsData = data['data'] ?? [];
     final items = itemsData.map((e) => PostModel.fromJson(e)).toList();
 
-    final metaData = response.data['meta'];
+    final metaData = data['meta'];
     final meta = metaData != null
         ? PaginationMetadata.fromJson(metaData)
         : PaginationMetadata.initial();
 
-    return PagedResult(items: items, metadata: meta);
+    return ConditionalFetchResult(
+      data: PagedResult(items: items, metadata: meta),
+      etag: etag,
+      notModified: false,
+    );
   }
 
   Future<PagedResult<PostModel>> getUserPosts({

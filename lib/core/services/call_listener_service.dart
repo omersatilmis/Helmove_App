@@ -10,6 +10,7 @@ import 'signalr_service.dart';
 import 'models/signalr_payloads.dart';
 import '../../features/call/presentation/bloc/call_bloc.dart';
 import '../../features/call/presentation/bloc/call_event.dart';
+import '../../features/call/presentation/bloc/call_state.dart';
 import '../../features/messages/presentation/pages/call_page.dart';
 
 /// Widget tree dışında çalışan çağrı dinleyici servisi.
@@ -68,12 +69,19 @@ class CallListenerService {
         case CallKitActionType.accepted:
           if (payload == null) return;
           await callKitService.endAllCalls();
-          _openIncomingCallPage(
+          final opened = _openIncomingCallPage(
             callerId: payload.callerId,
             callId: payload.callId,
             callerDisplayName: payload.callerDisplayName,
             autoAcceptIncoming: true,
           );
+          if (!opened) {
+            _dispatchIncomingAcceptToBloc(
+              callerId: payload.callerId,
+              callId: payload.callId,
+              callerDisplayName: payload.callerDisplayName,
+            );
+          }
           break;
         case CallKitActionType.declined:
           if (payload == null) return;
@@ -89,7 +97,16 @@ class CallListenerService {
           break;
         case CallKitActionType.timeout:
         case CallKitActionType.ended:
-          sl<CallBloc>().add(const CallHangUp());
+          final callBloc = sl<CallBloc>();
+          final callState = callBloc.state;
+          final hasActiveCall =
+              callState is CallOutgoing ||
+              callState is CallIncoming ||
+              callState is CallConnecting ||
+              callState is CallActive;
+          if (hasActiveCall) {
+            callBloc.add(const CallHangUp());
+          }
           await callKitService.endAllCalls();
           break;
         case CallKitActionType.devicePushTokenUpdated:
@@ -102,19 +119,19 @@ class CallListenerService {
     });
   }
 
-  void _openIncomingCallPage({
+  bool _openIncomingCallPage({
     required int callerId,
     required bool autoAcceptIncoming,
     int? callId,
     String? callerDisplayName,
   }) {
-    if (_isOpeningIncomingCall) return;
+    if (_isOpeningIncomingCall) return false;
 
     if (_lastOpenedCallerId == callerId &&
         _lastOpenedAt != null &&
         DateTime.now().difference(_lastOpenedAt!) <
             const Duration(seconds: 4)) {
-      return;
+      return false;
     }
 
     final navigator = rootNavigatorKey.currentState;
@@ -122,7 +139,7 @@ class CallListenerService {
       AppLogger.warning(
         'CallListenerService: rootNavigator is null, incoming call not opened.',
       );
-      return;
+      return false;
     }
 
     final route = MaterialPageRoute(
@@ -141,6 +158,23 @@ class CallListenerService {
     navigator.push(route).whenComplete(() {
       _isOpeningIncomingCall = false;
     });
+    return true;
+  }
+
+  void _dispatchIncomingAcceptToBloc({
+    required int callerId,
+    int? callId,
+    String? callerDisplayName,
+  }) {
+    final bloc = sl<CallBloc>();
+    bloc.add(
+      CallIncomingReceived(
+        callerId: callerId,
+        callerDisplayName: callerDisplayName,
+        callId: callId,
+      ),
+    );
+    bloc.add(const CallAccepted());
   }
 
   int? _toInt(dynamic value) {

@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../../core/error/failures.dart';
+import '../../../../../core/models/conditional_fetch_result.dart';
 import '../../../../../core/models/paged_result.dart';
 import '../../domain/entities/post_entity.dart';
 import '../../domain/repositories/post_repository.dart';
@@ -35,12 +36,18 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
-  Future<Either<Failure, PagedResult<PostEntity>>> getFeed({
+  Future<Either<Failure, ConditionalFetchResult<PagedResult<PostEntity>>>>
+      getFeed({
     int page = 1,
     int limit = 10,
+    String? ifNoneMatch,
   }) async {
     try {
-      final result = await remoteDataSource.getFeed(page: page, limit: limit);
+      final result = await remoteDataSource.getFeed(
+        page: page,
+        limit: limit,
+        ifNoneMatch: ifNoneMatch,
+      );
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

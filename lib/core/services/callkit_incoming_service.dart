@@ -135,6 +135,8 @@ class CallKitAction {
 class CallKitIncomingService {
   final _uuid = const Uuid();
   final _actionController = StreamController<CallKitAction>.broadcast();
+  DateTime? _suppressEndedEventsUntilUtc;
+  static const Duration _endedSuppressionWindow = Duration(seconds: 2);
 
   StreamSubscription<CallEvent?>? _eventSubscription;
   bool _initialized = false;
@@ -163,6 +165,13 @@ class CallKitIncomingService {
           rawBody: body,
           event: event.event,
         );
+
+        // App'in kendi endCall/endAllCalls çağrılarından hemen sonra gelen
+        // native "ended" callback'i tekrar CallHangUp zinciri başlatmasın.
+        if (action.type == CallKitActionType.ended && _isEndedSuppressed()) {
+          AppLogger.info('CallKit: Suppressed programmatic ended callback.');
+          return;
+        }
         _actionController.add(action);
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -245,6 +254,7 @@ class CallKitIncomingService {
 
   Future<void> endCall(String callKitId) async {
     if (callKitId.trim().isEmpty) return;
+    _armEndedSuppression();
 
     // İYİLEŞTİRME: CallKit arayüzünü kapatmadan önce native tarafa bildir.
     // Bu, kilit ekranındaki aramanın takılı kalmasını önler.
@@ -252,6 +262,7 @@ class CallKitIncomingService {
   }
 
   Future<void> endAllCalls() async {
+    _armEndedSuppression();
     await FlutterCallkitIncoming.endAllCalls();
   }
 
@@ -293,6 +304,18 @@ class CallKitIncomingService {
     } catch (_) {
       // no-op on unsupported platforms
     }
+  }
+
+  void _armEndedSuppression() {
+    _suppressEndedEventsUntilUtc = DateTime.now().toUtc().add(
+      _endedSuppressionWindow,
+    );
+  }
+
+  bool _isEndedSuppressed() {
+    final until = _suppressEndedEventsUntilUtc;
+    if (until == null) return false;
+    return DateTime.now().toUtc().isBefore(until);
   }
 
   CallKitActionType _mapEventType(Event event) {

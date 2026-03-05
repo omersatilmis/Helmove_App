@@ -637,6 +637,22 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   }
 
   Future<void> _onCallHangUp(CallHangUp event, Emitter<CallState> emit) async {
+    final hasActiveCallState =
+        state is CallOutgoing ||
+        state is CallIncoming ||
+        state is CallConnecting ||
+        state is CallActive;
+    final hasCallContext =
+        (_remoteUserId != null && _remoteUserId! > 0) ||
+        (_currentCallId != null && _currentCallId! > 0);
+
+    // CallKit timeout/ended gibi sinyaller arka arkaya gelebiliyor.
+    // Aktif çağrı bağlamı yoksa bu HangUp'u yok sayarak duplicate terminal state'i engelle.
+    if (!hasActiveCallState && !hasCallContext) {
+      AppLogger.info('CallBloc: HangUp ignored (no active call context)');
+      return;
+    }
+
     if (_isLocalHangupInProgress) {
       AppLogger.warning('CallBloc: Duplicate local hangup ignored');
       return;
@@ -653,7 +669,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     }
 
     await _cleanupCall();
-    emit(CallEnded(reason: 'Aramayi sonlandirdin', callDuration: duration));
+    emit(CallEnded(reason: 'Aramayı sonlandırdınız.', callDuration: duration));
   }
 
   Future<void> _onCallEndedByRemote(
@@ -702,7 +718,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     await _cleanupCall();
     emit(
       CallEnded(
-        reason: 'Karsi taraf aramayi sonlandirdi',
+        reason: 'Arama karşı taraf tarafından sonlandırıldı.',
         callDuration: duration,
       ),
     );

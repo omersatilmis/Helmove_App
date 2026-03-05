@@ -97,13 +97,22 @@ class AdaptiveBitrateController {
     );
 
     switch (quality) {
-      case IntercomConnectionQuality.excellent:
-      case IntercomConnectionQuality.good:
+      case IntercomConnectionQuality.ultra:
         _qualityCap = _ceilingBitrate;
-        _recomputeAndApply(immediate: false, reason: 'quality_recovered');
+        _recomputeAndApply(immediate: false, reason: 'quality_ultra');
         break;
 
-      case IntercomConnectionQuality.poor:
+      case IntercomConnectionQuality.high:
+        _qualityCap = AudioBitrate.high.clamp(_poorFloor, _ceilingBitrate);
+        _recomputeAndApply(immediate: false, reason: 'quality_high');
+        break;
+
+      case IntercomConnectionQuality.balanced:
+        _qualityCap = AudioBitrate.medium.clamp(_poorFloor, _ceilingBitrate);
+        _recomputeAndApply(immediate: true, reason: 'quality_balanced');
+        break;
+
+      case IntercomConnectionQuality.low:
       case IntercomConnectionQuality.lost:
         // Sinyal kötü — HEMEN düşür (gecikme yok)
         _qualityCap = _poorFloor;
@@ -159,9 +168,8 @@ class AdaptiveBitrateController {
     _hysteresisTimer = Timer(_hysteresisDuration, () {
       // 3 saniye sonra hâlâ iyileşme yönünde mi?
       final stillRecovering =
-          _lastQuality == IntercomConnectionQuality.excellent ||
-          _lastQuality == IntercomConnectionQuality.good ||
-          _lastQuality == IntercomConnectionQuality.unknown;
+          _lastQuality != IntercomConnectionQuality.low &&
+          _lastQuality != IntercomConnectionQuality.lost;
       if (stillRecovering) {
         _applyBitrate(targetBitrate);
         AppLogger.info(
@@ -171,15 +179,9 @@ class AdaptiveBitrateController {
     });
   }
 
-  void _recomputeAndApply({
-    required bool immediate,
-    required String reason,
-  }) {
-    final target =
-        (_qualityCap < _metricsCap ? _qualityCap : _metricsCap).clamp(
-          _poorFloor,
-          _ceilingBitrate,
-        );
+  void _recomputeAndApply({required bool immediate, required String reason}) {
+    final target = (_qualityCap < _metricsCap ? _qualityCap : _metricsCap)
+        .clamp(_poorFloor, _ceilingBitrate);
 
     if (target <= _effectiveBitrate) {
       _hysteresisTimer?.cancel();

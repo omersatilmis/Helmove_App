@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/entities/jot_entity.dart';
 import '../../domain/usecases/create_jot_usecase.dart';
 import '../../domain/usecases/delete_jot_usecase.dart';
 import '../../domain/usecases/get_user_jots_usecase.dart';
@@ -7,6 +8,7 @@ import '../../domain/usecases/like_jot_usecase.dart';
 import '../../domain/usecases/get_feed_usecase.dart';
 import 'jots_event.dart';
 import 'jots_state.dart';
+import '../../data/cache/jot_feed_cache.dart';
 
 class JotsBloc extends Bloc<JotsEvent, JotsState> {
   final GetUserJotsUseCase getUserJots;
@@ -14,6 +16,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
   final CreateJotUseCase createJot;
   final DeleteJotUseCase deleteJot;
   final LikeJotUseCase likeJot;
+  final JotFeedCache jotFeedCache;
 
   static const int _defaultPageSize = 10;
 
@@ -23,6 +26,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     required this.createJot,
     required this.deleteJot,
     required this.likeJot,
+    required this.jotFeedCache,
   }) : super(const JotsState()) {
     on<FetchUserJotsEvent>(_onFetchUserJots);
     on<FetchMoreUserJotsEvent>(_onFetchMoreUserJots);
@@ -56,10 +60,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
       );
     } else {
       emit(
-        state.copyWith(
-          status: JotsStatus.loading,
-          source: JotsSource.profile,
-        ),
+        state.copyWith(status: JotsStatus.loading, source: JotsSource.profile),
       );
     }
 
@@ -78,7 +79,8 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
           ),
         );
       },
-      (jots) {
+      (pagedResult) {
+        final jots = pagedResult.items;
         debugPrint(
           '✅ [JotsBloc] Fetched ${jots.length} jots for user ${event.userId}',
         );
@@ -86,7 +88,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
           state.copyWith(
             status: JotsStatus.success,
             jots: jots,
-            hasReachedMax: jots.isEmpty,
+            hasReachedMax: jots.length < _defaultPageSize,
             currentPage: 1,
             source: JotsSource.profile,
           ),
@@ -124,7 +126,8 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
           source: JotsSource.profile,
         ),
       ),
-      (newJots) {
+      (pagedResult) {
+        final newJots = pagedResult.items;
         if (newJots.isEmpty) {
           emit(state.copyWith(hasReachedMax: true, isFetchingMore: false));
         } else {
@@ -132,7 +135,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
             state.copyWith(
               jots: List.of(state.jots)..addAll(newJots),
               currentPage: nextPage,
-              hasReachedMax: false,
+              hasReachedMax: newJots.length < _defaultPageSize,
               isFetchingMore: false,
               source: JotsSource.profile,
             ),
@@ -151,35 +154,82 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
       return;
     }
 
-    emit(
-      state.copyWith(
-        status: JotsStatus.loading,
-        jots: shouldRefetch ? [] : state.jots,
-        currentPage: 1,
-        hasReachedMax: false,
-        source: JotsSource.feed,
-      ),
+    var cacheApplied = false;
+    String? currentEtag;
+
+    // Load from cache first if it's not a refresh and we don't have jots
+    if (!event.isRefresh && state.jots.isEmpty) {
+      final cachedSnapshot = await jotFeedCache.readFirstPage();
+      if (cachedSnapshot != null && cachedSnapshot.jots.isNotEmpty) {
+        cacheApplied = true;
+        currentEtag = cachedSnapshot.etag;
+        emit(
+          state.copyWith(
+            status: JotsStatus.success,
+            jots: cachedSnapshot.jots,
+            currentPage: 1,
+            hasReachedMax: !cachedSnapshot.hasNextPage,
+            source: JotsSource.feed,
+          ),
+        );
+      }
+    }
+
+    if (!cacheApplied) {
+      emit(
+        state.copyWith(
+          status: JotsStatus.loading,
+          jots: event.isRefresh ? [] : state.jots,
+          currentPage: 1,
+          hasReachedMax: false,
+          source: JotsSource.feed,
+        ),
+      );
+    }
+
+    // Silent background network call
+    final result = await getFeed(
+      GetFeedParams(page: 1, limit: _defaultPageSize, ifNoneMatch: currentEtag),
     );
 
-    final result = await getFeed(const GetFeedParams(page: 1));
-
     result.fold(
-      (failure) => emit(
-        state.copyWith(
-          status: JotsStatus.failure,
-          errorMessage: failure.message,
-          source: JotsSource.feed,
-        ),
-      ),
-      (jots) => emit(
-        state.copyWith(
-          status: JotsStatus.success,
+      (failure) {
+        if (!cacheApplied) {
+          emit(
+            state.copyWith(
+              status: JotsStatus.failure,
+              errorMessage: failure.message,
+              source: JotsSource.feed,
+            ),
+          );
+        }
+      },
+      (fetchResult) {
+        if (fetchResult.notModified) {
+          debugPrint('✅ [JotsBloc] Feed not modified (304). Keeping cache.');
+          return;
+        }
+
+        final jots = fetchResult.data?.items ?? [];
+        final hasReachedMax = jots.length < _defaultPageSize;
+        emit(
+          state.copyWith(
+            status: JotsStatus.success,
+            jots: jots,
+            currentPage: 1,
+            hasReachedMax: hasReachedMax,
+            source: JotsSource.feed,
+          ),
+        );
+
+        // Update cache secretly
+        jotFeedCache.writeFirstPage(
           jots: jots,
-          currentPage: 1,
-          hasReachedMax: jots.length < _defaultPageSize,
-          source: JotsSource.feed,
-        ),
-      ),
+          hasNextPage: !hasReachedMax,
+          limit: _defaultPageSize,
+          etag: fetchResult.etag,
+        );
+      },
     );
   }
 
@@ -207,14 +257,10 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
           source: JotsSource.feed,
         ),
       ),
-      (newJots) {
+      (fetchResult) {
+        final newJots = fetchResult.data?.items ?? [];
         if (newJots.isEmpty) {
-          emit(
-            state.copyWith(
-              hasReachedMax: true,
-              isFetchingMore: false,
-            ),
-          );
+          emit(state.copyWith(hasReachedMax: true, isFetchingMore: false));
         } else {
           emit(
             state.copyWith(
@@ -292,16 +338,65 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
   }
 
   Future<void> _onLikeJot(LikeJotEvent event, Emitter<JotsState> emit) async {
-    // Current state of the jot
-    final jot = state.jots.firstWhere((j) => j.id == event.jotId);
+    final originalJots = List<JotEntity>.from(state.jots);
 
-    // Optimistic UI Update can be added here
-    final result = await likeJot(
-      LikeJotParams(id: event.jotId, isLiked: jot.isLiked),
+    try {
+      // Optimistic UI Update
+      final updatedJots = state.jots.map((jot) {
+        if (jot.id == event.jotId) {
+          final isLiked = !jot.isLiked;
+          return jot.copyWith(
+            isLiked: isLiked,
+            likeCount: isLiked ? jot.likeCount + 1 : jot.likeCount - 1,
+          );
+        }
+        return jot;
+      }).toList();
+
+      emit(state.copyWith(jots: updatedJots));
+
+      // Update cache silently
+      _syncFirstPageCacheIfPossible(updatedJots);
+
+      // Current state of the jot (after optimistic update)
+      final isLiked = updatedJots
+          .firstWhere((j) => j.id == event.jotId)
+          .isLiked;
+
+      final result = await likeJot(
+        LikeJotParams(id: event.jotId, isLiked: isLiked),
+      );
+
+      result.fold(
+        (failure) {
+          // Revert on failure
+          emit(
+            state.copyWith(errorMessage: failure.message, jots: originalJots),
+          );
+        },
+        (_) => null, // Success, already updated optimistically
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          errorMessage: "Unexpected error: $e",
+          jots: originalJots,
+        ),
+      );
+    }
+  }
+
+  void _syncFirstPageCacheIfPossible(List<JotEntity> jots) {
+    if (state.currentPage != 1 || jots.isEmpty) {
+      return;
+    }
+
+    // Actually we can just await or call and forget.
+    // Wait, JotFeedCache uses List<JotEntity>? Yes, writeFirstPage takes List<JotEntity> jots.
+    jotFeedCache.writeFirstPage(
+      jots: jots,
+      hasNextPage: !state.hasReachedMax,
+      limit: _defaultPageSize,
     );
-
-    result.fold((failure) {
-      // Handle failure if needed
-    }, (_) {});
   }
 }
