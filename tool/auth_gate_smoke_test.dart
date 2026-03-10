@@ -106,6 +106,7 @@ void main() {
         path: '/api/content/posts/feed',
         method: 'GET',
       );
+      final completer = Completer<void>();
       final handler = RequestInterceptorHandler();
       final stopwatch = Stopwatch()..start();
 
@@ -115,8 +116,14 @@ void main() {
         }),
       );
 
-      interceptor.onRequest(options, handler);
-      await handler.future;
+      handler.next(options);
+      Future.microtask(() {
+        interceptor.onRequest(options, handler);
+        completer.complete();
+      });
+      
+      await completer.future;
+      await Future.delayed(const Duration(milliseconds: 100));
       stopwatch.stop();
 
       expect(stopwatch.elapsedMilliseconds, greaterThanOrEqualTo(300));

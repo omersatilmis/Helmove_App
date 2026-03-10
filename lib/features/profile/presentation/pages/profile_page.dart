@@ -26,6 +26,8 @@ import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/fri
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_event.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_state.dart';
 import 'package:moto_comm_app_1/features/friendship/domain/entities/friendship_status.dart';
+import 'package:moto_comm_app_1/core/constants/report_enums.dart';
+import 'package:moto_comm_app_1/features/help/presentation/widgets/report_bottom_sheet.dart';
 import 'package:moto_comm_app_1/features/messages/presentation/pages/chat_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -508,12 +510,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                         // 🔥 MANTIK: Tıklanınca yine kimin profili olduğuna bakıyor
                         onTap: () {
-                          if (isOwnProfile) {
-                            _showOptionsMenu(context);
-                          } else {
-                            // Başkasının profili: Şikayet et / Engelle menüsü
-                            // print("Başkasının profili: Şikayet menüsünü aç");
-                          }
+                          _showOptionsMenu(context, isOwnProfile, displayedUser?.id);
                         },
                       ),
                     ),
@@ -527,7 +524,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _showOptionsMenu(BuildContext context) async {
+  Future<void> _showOptionsMenu(BuildContext context, bool isOwnProfile, int? userId) async {
     // Butonun konumunu al
     final RenderBox? renderBox =
         _optionsButtonKey.currentContext?.findRenderObject() as RenderBox?;
@@ -565,22 +562,45 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
-          value: 'settings',
-          child: Row(
-            children: [
-              Icon(Icons.settings_outlined, color: theme.colorScheme.onSurface),
-              const SizedBox(width: 12),
-              Text(
-                "Ayarlar",
-                style: AppTextStyles.medium.copyWith(
+        if (isOwnProfile) ...[
+          const PopupMenuDivider(),
+          PopupMenuItem<String>(
+            value: 'settings',
+            child: Row(
+              children: [
+                Icon(Icons.settings_outlined, color: theme.colorScheme.onSurface),
+                const SizedBox(width: 12),
+                Text(
+                  "Ayarlar",
+                  style: AppTextStyles.medium.copyWith(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (!isOwnProfile) ...[
+          const PopupMenuDivider(),
+          PopupMenuItem<String>(
+            value: 'report',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.report_problem_outlined,
                   color: theme.colorScheme.onSurface,
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Text(
+                  "Bildir",
+                  style: AppTextStyles.medium.copyWith(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
 
@@ -590,6 +610,12 @@ class _ProfilePageState extends State<ProfilePage> {
     } else if (value == 'settings') {
       // ignore: use_build_context_synchronously
       context.push('/settings');
+    } else if (value == 'report' && userId != null) {
+      ReportBottomSheet.show(
+        context,
+        targetId: userId.toString(),
+        targetType: ReportTargetType.user,
+      );
     }
   }
 }

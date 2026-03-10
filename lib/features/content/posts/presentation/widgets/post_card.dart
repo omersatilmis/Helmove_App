@@ -3,6 +3,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
 import '../../../../../core/utils/image_url_extensions.dart';
+import '../../../../../core/constants/report_enums.dart';
+import '../../../../help/presentation/widgets/report_bottom_sheet.dart';
 import '../../domain/entities/post_entity.dart';
 
 class PostCardModern extends StatefulWidget {
@@ -176,7 +178,14 @@ class _PostCardModernState extends State<PostCardModern>
                             _showDeleteConfirmDialog(context);
                           }
                           if (value == 'share') widget.onShare?.call();
-                          if (value == 'report') widget.onReport?.call();
+                          if (value == 'report') {
+                            ReportBottomSheet.show(
+                              context,
+                              targetId: widget.post.id.toString(),
+                              targetType: ReportTargetType.content,
+                            );
+                            widget.onReport?.call();
+                          }
                         },
                         itemBuilder: (context) => [
                           _buildPopupItem(
@@ -187,7 +196,7 @@ class _PostCardModernState extends State<PostCardModern>
                           _buildPopupItem(
                             'report',
                             Icons.report_gmailerrorred_rounded,
-                            'Şikayet Et',
+                            'Bildir',
                           ),
                           if (isOwner)
                             _buildPopupItem(

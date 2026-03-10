@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/constants/report_enums.dart';
+import '../../../../help/presentation/widgets/report_bottom_sheet.dart';
 import '../../domain/entities/jot_entity.dart';
 
 class JotCardWidget extends StatelessWidget {
@@ -122,18 +124,84 @@ class JotCardWidget extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (isCurrentUser)
-                  IconButton(
-                    icon: Icon(
-                      Icons.more_horiz,
-                      size: 20,
-                      color: textSecondary,
-                    ),
-                    onPressed:
-                        onDelete, // Implement delete menu via parent if complex
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                IconButton(
+                  icon: Icon(
+                    Icons.more_horiz,
+                    size: 20,
+                    color: textSecondary,
                   ),
+                  onPressed: () async {
+                    final theme = Theme.of(context);
+                    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                    final offset = renderBox.localToGlobal(Offset.zero);
+
+                    final value = await showMenu<String>(
+                      context: context,
+                      position: RelativeRect.fromLTRB(
+                        offset.dx + renderBox.size.width - 40,
+                        offset.dy + 40,
+                        offset.dx + renderBox.size.width,
+                        offset.dy + 100,
+                      ),
+                      color: theme.colorScheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      items: [
+                        if (isCurrentUser)
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Sil",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (!isCurrentUser)
+                          PopupMenuItem(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.report_problem_outlined,
+                                  color: theme.colorScheme.onSurface,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Bildir",
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurface,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    );
+
+                    if (value == 'delete') {
+                      onDelete?.call();
+                    } else if (value == 'report') {
+                      ReportBottomSheet.show(
+                        context,
+                        targetId: jot.id.toString(),
+                        targetType: ReportTargetType.content,
+                      );
+                    }
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
               ],
             ),
 

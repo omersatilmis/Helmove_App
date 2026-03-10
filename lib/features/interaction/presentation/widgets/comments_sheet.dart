@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/constants/report_enums.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_avatar.dart';
+import '../../../help/presentation/widgets/report_bottom_sheet.dart';
 import '../../domain/entities/comment_entity.dart';
 import '../bloc/comments_bloc.dart';
 import '../bloc/comments_event.dart';
@@ -452,8 +454,10 @@ class _CommentMoreButton extends StatelessWidget {
       onSelected: (value) {
         if (value == 'delete') _showDeleteDialog(context);
         if (value == 'report') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Şikayetiniz iletildi.')),
+          ReportBottomSheet.show(
+            context,
+            targetId: comment.id.toString(),
+            targetType: ReportTargetType.content,
           );
         }
       },

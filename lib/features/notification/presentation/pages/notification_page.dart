@@ -601,7 +601,6 @@ class _NotificationItemModern extends StatelessWidget {
   Future<void> _handleVoiceSessionNavigation(BuildContext context) async {
     final sessionId =
         notification.sessionId ?? _getLegacySessionId(notification);
-    final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final voiceBloc = context.read<VoiceSessionBloc>();
 

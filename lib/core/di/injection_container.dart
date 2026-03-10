@@ -98,6 +98,15 @@ import '../../features/voice_session/domain/usecases/invite_to_voice_session_use
 import '../../features/voice_session/domain/usecases/get_voice_session_details_usecase.dart';
 import '../../features/voice_session/domain/usecases/get_my_voice_sessions_usecase.dart';
 import '../../features/voice_session/domain/usecases/accept_voice_session_invitation_usecase.dart';
+
+// Help Feature
+import '../../features/help/data/api/help_api.dart';
+import '../../features/help/data/datasources/help_remote_data_source.dart';
+import '../../features/help/data/repositories/help_repository_impl.dart';
+import '../../features/help/domain/repositories/help_repository.dart';
+import '../../features/help/domain/usecases/create_report_usecase.dart';
+import '../../features/help/domain/usecases/send_feedback_usecase.dart' as help_feedback;
+import '../../features/help/presentation/bloc/help_bloc.dart';
 import '../../features/voice_session/domain/usecases/reject_voice_session_invitation_usecase.dart';
 import '../../features/voice_session/domain/usecases/end_voice_session_usecase.dart';
 import '../../features/voice_session/domain/usecases/kick_user_usecase.dart';
@@ -157,12 +166,6 @@ import '../../features/settings/domain/usecases/update_units_usecase.dart';
 import '../../features/settings/domain/usecases/update_map_usecase.dart';
 import '../../features/settings/domain/usecases/update_audio_usecase.dart';
 import '../../features/settings/presentation/bloc/settings_bloc.dart';
-
-// Feedback Feature
-import '../../features/settings/data/datasources/feedback_remote_data_source.dart';
-import '../../features/settings/data/repositories/feedback_repository_impl.dart';
-import '../../features/settings/domain/repositories/feedback_repository.dart';
-import '../../features/settings/domain/usecases/send_feedback_usecase.dart';
 
 // Subscription / Plan Feature (data layer + use cases + bloc)
 import '../../features/plan/data/datasources/subscription_remote_data_source.dart';
@@ -649,6 +652,37 @@ void _registerFeatureSingletons() {
       () => VoiceSessionRepositoryImpl(sl()),
     );
   }
+
+  // Help Feature
+  if (!sl.isRegistered<HelpApi>()) {
+    sl.registerLazySingleton(() => HelpApi(sl()));
+  }
+  if (!sl.isRegistered<HelpRemoteDataSource>()) {
+    sl.registerLazySingleton<HelpRemoteDataSource>(
+      () => HelpRemoteDataSourceImpl(api: sl()),
+    );
+  }
+  if (!sl.isRegistered<HelpRepository>()) {
+    sl.registerLazySingleton<HelpRepository>(
+      () => HelpRepositoryImpl(remoteDataSource: sl()),
+    );
+  }
+  if (!sl.isRegistered<CreateReportUseCase>()) {
+    sl.registerLazySingleton(() => CreateReportUseCase(sl()));
+  }
+  if (!sl.isRegistered<help_feedback.SendFeedbackUseCase>()) {
+    sl.registerLazySingleton(() => help_feedback.SendFeedbackUseCase(sl()));
+  }
+
+  // Help Feature Bloc
+  if (!sl.isRegistered<HelpBloc>()) {
+    sl.registerFactory(
+      () => HelpBloc(
+        createReportUseCase: sl(),
+        sendFeedbackUseCase: sl<help_feedback.SendFeedbackUseCase>(),
+      ),
+    );
+  }
   // Voice Session UseCases
   if (!sl.isRegistered<CreateVoiceSessionUseCase>()) {
     sl.registerLazySingleton(() => CreateVoiceSessionUseCase(sl()));
@@ -955,21 +989,6 @@ void _registerFeatureSingletons() {
         updateAudio: sl(),
       ),
     );
-  }
-
-  // Feedback Feature
-  if (!sl.isRegistered<FeedbackRemoteDataSource>()) {
-    sl.registerLazySingleton<FeedbackRemoteDataSource>(
-      () => FeedbackRemoteDataSourceImpl(dio: sl()),
-    );
-  }
-  if (!sl.isRegistered<FeedbackRepository>()) {
-    sl.registerLazySingleton<FeedbackRepository>(
-      () => FeedbackRepositoryImpl(remoteDataSource: sl()),
-    );
-  }
-  if (!sl.isRegistered<SendFeedbackUseCase>()) {
-    sl.registerLazySingleton(() => SendFeedbackUseCase(sl()));
   }
 
   // ────────────────────────────────────────────────────────
