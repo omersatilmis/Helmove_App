@@ -87,8 +87,39 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     on<CallOutgoingTimeoutReached>(_onCallOutgoingTimeoutReached);
     on<CallConnectingTimeoutReached>(_onCallConnectingTimeoutReached);
     on<CallDurationTicked>(_onCallDurationTicked);
+    on<CallAppResumedSyncRequested>(_onAppResumedSyncRequested);
 
     _subscribeToSignalRStreams();
+  }
+
+  Future<void> _onAppResumedSyncRequested(
+    CallAppResumedSyncRequested event,
+    Emitter<CallState> emit,
+  ) async {
+    if (state is CallActive || state is CallConnecting || state is CallIncoming) {
+      // Zaten bir arama akışındaysak (aktif veya çalıyor), sync'e gerek yok;
+      // akışın devam etmesine izin ver.
+      return;
+    }
+
+    try {
+      AppLogger.info('CallBloc: App resumed, checking for missed pending calls...');
+      final pendingCalls = await getPendingCallsUseCase.execute();
+      if (pendingCalls.isNotEmpty) {
+        final latest = pendingCalls.last;
+        // Eğer uygulama kapalıyken (SignalR yokken) bir call gelmişse
+        // buradan yakalayıp UI'ı tetikleyebiliriz.
+        AppLogger.info('CallBloc: Missed pending call found: id=${latest.callId}');
+        
+        add(CallIncomingReceived(
+          callerId: latest.callerId,
+          callerDisplayName: 'Gelen Arama', // CallResponseEntity'de displayName yok, placeholder atıyoruz
+          callId: latest.callId,
+        ));
+      }
+    } catch (e) {
+      AppLogger.warning('CallBloc: App resume sync failed: $e');
+    }
   }
 
   void _subscribeToSignalRStreams() {
@@ -270,7 +301,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       final result = await sendCallRequestUseCase.execute(request);
       _currentCallId = result.callId;
 
-      // START CALLKIT
+      // START CALLKIT & PLAY TONE
       final uuid = callKitIncomingService.generateCallKitId();
       _activeCallKitId = uuid;
       await callKitIncomingService.startOutboundCall(
@@ -278,6 +309,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
         handle: event.targetDisplayName ?? "Kullanıcı",
         nameCaller: event.targetDisplayName ?? "Sesli Arama",
       );
+      await callKitIncomingService.playOutgoingTone();
 
       // Backend REST zaten istegi olusturuyor; yine de Hub uzerinden
       // explicit call request gondererek SignalR routing/state tarafini saglama al.
@@ -343,6 +375,23 @@ class CallBloc extends Bloc<CallEvent, CallState> {
         callerDisplayName: event.callerDisplayName,
       ),
     );
+
+    // [NEW] CallKit: Show incoming UI (WhatsApp Style lock screen)
+    try {
+      final uuid = _activeCallKitId ?? callKitIncomingService.generateCallKitId();
+      _activeCallKitId = uuid;
+      
+      unawaited(callKitIncomingService.showIncomingCall(
+        CallInvitePayload(
+          callKitId: uuid,
+          callerId: event.callerId,
+          callerDisplayName: event.callerDisplayName ?? 'Gelen Arama',
+          callId: event.callId,
+        ),
+      ));
+    } catch (e) {
+      AppLogger.warning('CallBloc: CallKit show failed: $e');
+    }
 
     if (event.callId != null) {
       _currentCallId = event.callId;
@@ -447,21 +496,38 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     Emitter<CallState> emit,
   ) async {
     final remoteUserId = _remoteUserId;
-    if (remoteUserId == null) return;
+    if (remoteUserId == null) {
+      AppLogger.warning('CallBloc: _onCallRejected skipped; remoteUserId is null.');
+      return;
+    }
 
+    // ── [REJECT FALLBACK] ──────────────────────────────────────────────────
+    // Kullanıcı 'Reddet' butonuna bastığında SignalR bağlı olmasa bile 
+    // REST API üzerinden (RejectCallUseCase) bildirimi diğer tarafa ulaştırmalıyız.
+    // Bu sayede karşı tarafta "Arama Çalıyor" ekranı kalmaz, kapanır.
+    
     if (_currentCallId != null && _currentCallId! > 0) {
       try {
+        AppLogger.info('CallBloc: Rejecting call via REST API id=$_currentCallId');
         await rejectCallUseCase.execute(_currentCallId!);
       } catch (e) {
         AppLogger.warning(
-          'CallBloc: Reject call failed, fallback to safe end: $e',
+          'CallBloc: Reject call via REST failed, fallback to safe end: $e',
         );
-        await _safeEndCurrentCall(remoteUserId: remoteUserId);
       }
-    } else {
-      await _safeEndCurrentCall(remoteUserId: remoteUserId);
     }
 
+    // Ek olarak SignalR üzerinden de anlık sinyal gönder (bağlıysa)
+    try {
+      if (signalRService.isConnected) {
+         await signalRService.rejectCall(remoteUserId.toString());
+      }
+    } catch (e) {
+      AppLogger.warning('CallBloc: SignalR reject fallback failed: $e');
+    }
+
+    await _safeEndCurrentCall(remoteUserId: remoteUserId);
+    await callKitIncomingService.stopOutgoingTone();
     await _cleanupCall();
     emit(const CallEnded(reason: 'Arama reddedildi'));
   }
@@ -534,6 +600,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
   ) async {
     await _safeEndCurrentCall(remoteUserId: event.targetUserId);
     await _cleanupCall();
+    await callKitIncomingService.stopOutgoingTone();
     emit(CallEnded(reason: event.reason ?? 'Arama reddedildi'));
   }
 
@@ -669,6 +736,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     }
 
     await _cleanupCall();
+    await callKitIncomingService.stopOutgoingTone();
     emit(CallEnded(reason: 'Aramayı sonlandırdınız.', callDuration: duration));
   }
 
@@ -716,6 +784,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
       signalREnd: false,
     );
     await _cleanupCall();
+    await callKitIncomingService.stopOutgoingTone();
     emit(
       CallEnded(
         reason: 'Arama karşı taraf tarafından sonlandırıldı.',
@@ -1081,6 +1150,13 @@ class CallBloc extends Bloc<CallEvent, CallState> {
 
     await _iceCandidateSub?.cancel();
     _iceCandidateSub = null;
+
+    if (_activeCallKitId != null) {
+      try {
+        await callKitIncomingService.endCall(_activeCallKitId!);
+      } catch (_) {}
+      _activeCallKitId = null;
+    }
 
     await webRTCService.dispose();
   }

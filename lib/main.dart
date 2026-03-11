@@ -21,6 +21,8 @@ import 'package:moto_comm_app_1/core/network/auth_bootstrap_gate.dart';
 import 'package:moto_comm_app_1/core/presentation/widgets/connection_status_overlay.dart';
 import 'package:moto_comm_app_1/core/utils/app_bloc_observer.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:moto_comm_app_1/features/call/presentation/bloc/call_bloc.dart';
+import 'package:moto_comm_app_1/features/call/presentation/bloc/call_event.dart';
 
 void main() async {
   // ── runZonedGuarded: Catches ALL unhandled async errors globally ──
@@ -87,7 +89,7 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final GoRouter _router;
   late final AuthProvider _authProvider;
   late final ThemeProvider _themeProvider;
@@ -95,6 +97,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // GetIt'ten alıyoruz — artık Provider tree'den değil.
     _authProvider = sl<AuthProvider>();
     _themeProvider = sl<ThemeProvider>();
@@ -108,7 +111,25 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Uygulama uykudan uyandığında veya ekrana döndüğünde CallBloc'u tetikle.
+      // Eğer arkaplanda SignalR koptuysa ve bildirim gelmediyse, 
+      // REST API üzerinden cevapsız veya bekleyen aramayı burada yakalarız.
+      try {
+        if (sl.isRegistered<CallBloc>()) {
+          final callBloc = sl<CallBloc>();
+          callBloc.add(const CallAppResumedSyncRequested());
+        }
+      } catch (e) {
+        // Bloc henüz register edilmemiş olabilir veya hata almış olabilir.
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _themeProvider.removeListener(_onThemeChanged);
     super.dispose();
   }

@@ -21,6 +21,7 @@ import '../../../../core/services/signalr_service.dart';
 import '../../../../core/services/app_session.dart';
 import '../../../../core/services/permissions_service.dart';
 import '../../../../core/services/audio_orchestrator_service.dart';
+import '../../../../core/services/app_background_service.dart';
 import '../../../intercom/domain/intercom_engine.dart';
 import '../../../intercom/domain/intercom_models.dart';
 import '../../../intercom/domain/intercom_failure.dart';
@@ -1808,6 +1809,11 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         _activeCallKitId = null;
       }
     }
+
+    // ── Battery Optimization: Arka plan servisini durdur ──
+    try {
+      unawaited(AppBackgroundService.stop());
+    } catch (_) {}
   }
 
   @override

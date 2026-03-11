@@ -52,11 +52,14 @@ class _CallListenerWrapperState extends State<CallListenerWrapper> {
         return;
       }
 
+      // [REFACTOR] CallKit logic updated: CallBloc now handles showing the CallKit UI.
+      // This listener only opens the app UI *if the user is already looking at the phone*.
+      // If the phone is locked, CallKit UI (shown by CallBloc) takes over native flow.
       _openIncomingCallPage(
         callerId: callerId,
         callId: _toInt(payload.callId),
         callerDisplayName: payload.callerDisplayName,
-        autoAcceptIncoming: false,
+        autoAcceptIncoming: false, // User will interact with full screen UI
       );
     });
   }

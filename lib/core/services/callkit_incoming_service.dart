@@ -6,6 +6,7 @@ import 'package:flutter_callkit_incoming/entities/call_event.dart';
 import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
 import 'package:flutter_callkit_incoming/entities/ios_params.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../utils/app_logger.dart';
@@ -135,8 +136,14 @@ class CallKitAction {
 class CallKitIncomingService {
   final _uuid = const Uuid();
   final _actionController = StreamController<CallKitAction>.broadcast();
+  static const _audioChannel = MethodChannel('com.motoapp/audio');
+
   DateTime? _suppressEndedEventsUntilUtc;
   static const Duration _endedSuppressionWindow = Duration(seconds: 2);
+
+  // [NEW] Deduplication cache
+  static final Map<String, DateTime> _shownCallIds = {};
+  static const Duration _dedupWindow = Duration(seconds: 10);
 
   StreamSubscription<CallEvent?>? _eventSubscription;
   bool _initialized = false;
@@ -192,6 +199,26 @@ class CallKitIncomingService {
   }
 
   Future<void> showIncomingCall(CallInvitePayload payload) async {
+    // ── [DEDUPLICATION LOGIC] ──────────────────────────────────────────
+    // Aynı CallId veya UUID ile üst üste gelen ekranları engelle.
+    // (Örn: Hem Push hem SignalR aynı anda gelirse)
+    final cacheKey = payload.callId?.toString() ?? payload.callKitId;
+    final now = DateTime.now();
+
+    if (_shownCallIds.containsKey(cacheKey)) {
+      final lastShown = _shownCallIds[cacheKey]!;
+      if (now.difference(lastShown) < _dedupWindow) {
+        AppLogger.info(
+          'CallKit: showIncomingCall skipped (DEDUP) for id=$cacheKey',
+        );
+        return;
+      }
+    }
+
+    // Temizlik: 1 dakikadan eski cache kayıtlarını sil
+    _shownCallIds.removeWhere((_, time) => now.difference(time).inMinutes > 1);
+    _shownCallIds[cacheKey] = now;
+
     final params = CallKitParams(
       id: payload.callKitId,
       nameCaller: payload.callerDisplayName,
@@ -268,7 +295,24 @@ class CallKitIncomingService {
 
   Future<void> markConnected(String callKitId) async {
     if (callKitId.trim().isEmpty) return;
+    await stopOutgoingTone();
     await FlutterCallkitIncoming.setCallConnected(callKitId);
+  }
+
+  Future<void> playOutgoingTone() async {
+    try {
+      await _audioChannel.invokeMethod('playTone');
+    } catch (e) {
+      AppLogger.error('Tone error: $e');
+    }
+  }
+
+  Future<void> stopOutgoingTone() async {
+    try {
+      await _audioChannel.invokeMethod('stopTone');
+    } catch (e) {
+      AppLogger.error('Tone stop error: $e');
+    }
   }
 
   Future<String?> getVoipToken() async {

@@ -1022,6 +1022,12 @@ class IntercomEngineImpl implements IntercomEngine {
       // 2. kişi geldiğinde _switchToP2p() _webRtcPrewarmed=true görüp
       // _prepareWebRtcForOffer()'ı atlayacak → anında el sıkışma.
       _startIdlePrewarm();
+      
+      // [NEW] Stop Background Service on Android when alone to save battery
+      if (Platform.isAndroid) {
+        unawaited(AppBackgroundService.stop());
+      }
+      
       _emitDecision(
         IntercomDecision(
           target: IntercomTransport.none,

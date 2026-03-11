@@ -57,13 +57,15 @@ class NotificationService {
           'NotificationService: foreground payloadType=${data.runtimeType} payload=$data',
         );
 
-        final handled = await _handleIncomingCallPayload(
+        // ── [SUPPRESSION LOGIC] ───────────────────────────────────────────
+        // Uygulama açıkken (Foreground) OneSignal Popup bildirimini gösterMEYELİM.
+        // Çünkü SignalR veya Push Handler zaten Tam Ekran Arama sayfasını açacak.
+        event.preventDefault();
+
+        await _handleIncomingCallPayload(
           data,
           source: 'foreground',
         );
-        if (handled) {
-          event.preventDefault();
-        }
       });
     } catch (e, st) {
       _isInitialized = false;

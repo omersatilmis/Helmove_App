@@ -146,3 +146,7 @@ class CallConnectingTimeoutReached extends CallEvent {
 class CallDurationTicked extends CallEvent {
   const CallDurationTicked();
 }
+
+class CallAppResumedSyncRequested extends CallEvent {
+  const CallAppResumedSyncRequested();
+}
