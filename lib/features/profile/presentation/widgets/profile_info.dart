@@ -139,14 +139,14 @@ class _AddContentItem extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: AppTextStyles.h4.copyWith(
+                    style: AppTextStyles.bodyMedium.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: AppTextStyles.caption.copyWith(
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
