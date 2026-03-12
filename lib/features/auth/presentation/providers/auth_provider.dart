@@ -7,6 +7,7 @@ import '../../../profile/domain/repositories/profile_repository.dart'; // Import
 import '../../../../core/services/notification_service.dart'; // Import added
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/services/app_session.dart';
+import '../../../../core/services/subscription_service.dart';
 import '../../../../core/di/injection_container.dart' as di;
 
 class AuthProvider extends ChangeNotifier {
@@ -59,6 +60,10 @@ class AuthProvider extends ChangeNotifier {
         currentUser: authEntity,
         token: authEntity.token,
       );
+
+      // RevenueCat Login & Sync
+      await di.sl<SubscriptionService>().logIn(authEntity.id.toString());
+      await di.sl<SubscriptionService>().syncWithBackend();
 
       // OneSignal Login
       await _notificationService.ensureInitialized();
@@ -166,6 +171,30 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Refresh Current User
+  Future<bool> refreshCurrentUser() async {
+    _setLoading(true);
+    clearError();
+
+    try {
+      final authEntity = await _authRepository.refreshCurrentUser();
+      _currentUser = authEntity;
+      _appSession.updateSession(
+        currentUserId: authEntity.id,
+        currentUser: authEntity,
+        token: authEntity.token,
+      );
+
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // Auth check
   Future<bool> checkAuthStatus() async {
     // 0. Check in-memory state first (Sync check)
@@ -206,6 +235,7 @@ class AuthProvider extends ChangeNotifier {
               firstName: profile.firstName,
               lastName: profile.lastName,
               profileImageUrl: profile.profileImageUrl,
+              tier: profile.tier,
             );
 
             // 3. Save to local storage for next time if ID is valid
@@ -217,6 +247,7 @@ class AuthProvider extends ChangeNotifier {
                 firstName: _currentUser!.firstName,
                 lastName: _currentUser!.lastName,
                 profileImageUrl: _currentUser!.profileImageUrl,
+                tier: _currentUser!.tier,
               );
 
               _appSession.updateSession(

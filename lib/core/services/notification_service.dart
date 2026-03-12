@@ -1,10 +1,12 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 import '../utils/app_logger.dart';
 import 'callkit_incoming_service.dart';
 
 class NotificationService {
-  static const String _appId = '826a8fdc-3290-4a00-a14b-74a4c6e8ac20';
+  static String get _appId =>
+      (dotenv.env['ONESIGNAL_APP_ID'] ?? '826a8fdc-3290-4a00-a14b-74a4c6e8ac20').trim();
 
   final CallKitIncomingService _callKitIncomingService;
   bool _isInitialized = false;

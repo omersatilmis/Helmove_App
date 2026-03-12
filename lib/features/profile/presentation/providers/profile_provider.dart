@@ -10,6 +10,8 @@ import 'package:moto_comm_app_1/core/services/app_session.dart';
 import 'package:get_it/get_it.dart';
 import 'package:moto_comm_app_1/features/auth/data/datasources/auth_local_data_source.dart';
 
+import '../../../../core/enums/user_tier.dart';
+
 /// ProfileProvider - Profil verilerini yönetir
 class ProfileProvider extends ChangeNotifier {
   final ProfileRepository _profileRepository;
@@ -58,6 +60,7 @@ class ProfileProvider extends ChangeNotifier {
   String get fullName => _profile?.fullName ?? username;
   String? get profileImageUrl => _profile?.profileImageUrl;
   String? get bio => _profile?.bio;
+  UserTier get userTier => _profile?.tier ?? UserTier.free;
   String? get phoneNumber => _profile?.phoneNumber;
   String? get city => _profile?.city;
   String? get region => _profile?.region;
@@ -76,21 +79,76 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   /// Kendi profilimi yükler
-  Future<void> loadProfile() async {
+  Future<void> loadProfile({bool forceRefresh = false}) async {
+    // Eğer profil zaten yüklüyse ve zorunlu yenileme değilse, isteği atma (Oturum boyu cache)
+    if (_profile != null && !forceRefresh) {
+      return;
+    }
+
     _setLoading(true);
     clearError();
     _visitedProfile = null; // Kendi profilimize geçerken visited'ı temizle
 
     try {
-      _profile = await _profileRepository.getMyProfile();
+      // 1. Önce cache'den veriyi çek (Uygulama açılışında hızlı göstermek için)
+      if (_profile == null) {
+        try {
+          final localAuth = GetIt.I<AuthLocalDataSource>();
+          final firstName = await localAuth.getFirstName();
+          final lastName = await localAuth.getLastName();
+          final username = await localAuth.getUsername();
+          final email = await localAuth.getEmail();
+          final profileImageUrl = await localAuth.getProfileImageUrl();
+          final followersCount = await localAuth.getFollowersCount();
+          final followingCount = await localAuth.getFollowingCount();
+          final friendsCount = await localAuth.getFriendsCount();
 
-      // Cache'i güncelle (Uygulama yeniden açıldığında hızlı yüklenmesi için)
+          if (firstName != null || lastName != null || username != null) {
+            _profile = ProfileEntity(
+              id: _currentUserId ?? 0,
+              username: username ?? '',
+              email: email ?? '',
+              tier: UserTier.free, // Local cache fallback
+              firstName: firstName,
+              lastName: lastName,
+              profileImageUrl: profileImageUrl,
+              followersCount: followersCount ?? 0,
+              followingCount: followingCount ?? 0,
+              friendsCount: friendsCount ?? 0,
+              isFollowing: false,
+            );
+            notifyListeners();
+          }
+        } catch (_) {}
+      }
+
+      // 2. Sunucudan veriyi çek
+      final newProfile = await _profileRepository.getMyProfile();
+
+      // 3. Birleştirme Stratejisi: Eğer yeni profilde arkadaş sayısı 0 ise 
+      // ve eskiden (cache'den) gelen bir sayı varsa, eski sayıyı koru.
+      // Çünkü arkadaş sayısı sadece kedi listesi açılınca güncelleniyor.
+      final existingFriendsCount = _profile?.friendsCount ?? 0;
+      final serverFriendsCount = newProfile.friendsCount;
+      
+      if (serverFriendsCount == 0 && existingFriendsCount > 0) {
+        _profile = newProfile.copyWith(friendsCount: existingFriendsCount);
+      } else {
+        _profile = newProfile;
+      }
+
+      // 4. Cache'i güncelle
       try {
         if (_profile != null) {
           final localAuth = GetIt.I<AuthLocalDataSource>();
           await localAuth.saveFirstName(_profile!.firstName);
           await localAuth.saveLastName(_profile!.lastName);
+          await localAuth.saveUsername(_profile!.username);
+          await localAuth.saveEmail(_profile!.email);
           await localAuth.saveProfileImageUrl(_profile!.profileImageUrl);
+          await localAuth.saveFollowersCount(_profile!.followersCount);
+          await localAuth.saveFollowingCount(_profile!.followingCount);
+          await localAuth.saveFriendsCount(_profile!.friendsCount);
         }
       } catch (_) {
         // Cache yazma hatalarını göz ardı et
@@ -105,7 +163,14 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   /// Başkasının profilini yükler
-  Future<void> loadUserProfile(int userId) async {
+  Future<void> loadUserProfile(int userId, {bool forceRefresh = false}) async {
+    // Eğer bu kullanıcının profili zaten yüklüyse ve zorunlu yenileme değilse, isteği atma
+    if (_visitedProfile != null &&
+        _visitedProfile!.id == userId &&
+        !forceRefresh) {
+      return;
+    }
+
     debugPrint(
       '🔍 [ProfileProvider] loadUserProfile called with userId: $userId',
     );
@@ -128,6 +193,65 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Takip durumunu ve sayılarını yerel olarak günceller (Optimistic Update)
+  void updateFollowStats({
+    required int userId,
+    bool? isFollowing,
+    int? followersCount,
+    int? followingCount,
+  }) {
+    // 1. Eğer başkasının profilindeysek ve o id ise güncelle
+    if (_visitedProfile != null && _visitedProfile!.id == userId) {
+      _visitedProfile = _visitedProfile!.copyWith(
+        isFollowing: isFollowing ?? _visitedProfile!.isFollowing,
+        followersCount: followersCount ??
+            (isFollowing == true
+                ? _visitedProfile!.followersCount + 1
+                : isFollowing == false
+                    ? (_visitedProfile!.followersCount - 1).clamp(0, 999999)
+                    : _visitedProfile!.followersCount),
+      );
+      notifyListeners();
+    }
+
+    // 2. Kendi profilimizdeki "followingCount"u (takip edilen sayısı) her durumda güncellenmeli.
+    if (_profile != null && _profile!.id != userId) {
+      final int currentFollowing = _profile!.followingCount;
+      final int newFollowing = followingCount ??
+          (isFollowing == true
+              ? currentFollowing + 1
+              : isFollowing == false
+                  ? (currentFollowing - 1).clamp(0, 999999)
+                  : currentFollowing);
+
+      _profile = _profile!.copyWith(
+        followingCount: newFollowing,
+      );
+
+      // Cache'i güncelle (Takip edilen sayısı için)
+      try {
+        final localAuth = GetIt.I<AuthLocalDataSource>();
+        localAuth.saveFollowingCount(newFollowing);
+      } catch (_) {}
+
+      notifyListeners();
+    }
+  }
+
+  /// Arkadaş sayısını günceller ve hafızaya kaydeder
+  void updateFriendsCount(int count) {
+    if (_profile != null) {
+      _profile = _profile!.copyWith(friendsCount: count);
+      
+      try {
+        final localAuth = GetIt.I<AuthLocalDataSource>();
+        localAuth.saveFriendsCount(count);
+      } catch (_) {}
+
+      notifyListeners();
+    }
+  }
+
   /// Profili günceller (Optimistic UI ile)
   Future<bool> updateProfile({
     String? firstName,
@@ -139,6 +263,9 @@ class ProfileProvider extends ChangeNotifier {
     String? region,
     bool? shareLocation,
     bool? showProfileToOthers,
+    String? instagramUrl,
+    String? youtubeUrl,
+    String? twitterUrl,
   }) async {
     // 1. Bağlantı kontrolü
     if (!await NetworkService().checkConnection()) {
@@ -162,6 +289,9 @@ class ProfileProvider extends ChangeNotifier {
         shareLocation: shareLocation ?? _profile!.shareLocation,
         showProfileToOthers:
             showProfileToOthers ?? _profile!.showProfileToOthers,
+        instagramUrl: instagramUrl ?? _profile!.instagramUrl,
+        youtubeUrl: youtubeUrl ?? _profile!.youtubeUrl,
+        twitterUrl: twitterUrl ?? _profile!.twitterUrl,
       );
       notifyListeners();
     }
@@ -178,6 +308,9 @@ class ProfileProvider extends ChangeNotifier {
         region: region,
         shareLocation: shareLocation,
         showProfileToOthers: showProfileToOthers,
+        instagramUrl: instagramUrl,
+        youtubeUrl: youtubeUrl,
+        twitterUrl: twitterUrl,
       );
 
       // Cache'i güncelle
@@ -186,6 +319,7 @@ class ProfileProvider extends ChangeNotifier {
           final localAuth = GetIt.I<AuthLocalDataSource>();
           await localAuth.saveFirstName(_profile!.firstName);
           await localAuth.saveLastName(_profile!.lastName);
+          await localAuth.saveUsername(_profile!.username);
         }
       } catch (_) {
         // Cache hatalarını yoksay
@@ -223,6 +357,31 @@ class ProfileProvider extends ChangeNotifier {
       // 3. Yükle
       await _profileRepository.updateProfilePicture(compressedPath);
       await loadProfile(); // Profili yenile
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Kapak resmini günceller
+  Future<bool> updateCoverPhoto(String imagePath) async {
+    if (!await NetworkService().checkConnection()) {
+      _setError('İnternet bağlantısı yok');
+      return false;
+    }
+
+    _setLoading(true);
+    clearError();
+
+    try {
+      final compressedPath = await ImageCompressor.compress(
+        imagePath: imagePath,
+      );
+      await _profileRepository.updateCoverPhoto(compressedPath);
+      await loadProfile(forceRefresh: true);
       _setLoading(false);
       return true;
     } catch (e) {
