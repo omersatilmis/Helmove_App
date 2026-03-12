@@ -83,19 +83,43 @@ class _ProfileTabBarDelegate extends SliverPersistentHeaderDelegate {
       false;
 }
 
-class ProfileTabViews extends StatelessWidget {
+class ProfileTabViews extends StatefulWidget {
   const ProfileTabViews({super.key});
 
   @override
+  State<ProfileTabViews> createState() => _ProfileTabViewsState();
+}
+
+class _ProfileTabViewsState extends State<ProfileTabViews> {
+  // Instagram Mantığı: Başlangıçta sadece ilk tab (About) yüklü.
+  final List<bool> _loadedTabs = [true, false, false, false, false];
+  late TabController _tabController;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // DefaultTabController'dan controller'ı alıyoruz
+    _tabController = DefaultTabController.of(context);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (!_loadedTabs[_tabController.index]) {
+      setState(() {
+        _loadedTabs[_tabController.index] = true;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const TabBarView(
-      //physics: NeverScrollableScrollPhysics(), // Sadece tablara tıklayınca geçiş yapsın.
+    return TabBarView(
       children: [
-        ProfileAboutTab(), // Info (Hakkında)
-        ProfileJotsTab(), // Jots (Yazılar)
-        ProfilePostsTab(), // Posts (Grid)
-        ProfileReelsTab(), // Reels (Video)
-        ProfileTaggedTab(), // Tagged (Şimdilik Post ile aynı)
+        const ProfileAboutTab(),
+        _loadedTabs[1] ? const ProfileJotsTab() : const SizedBox.shrink(),
+        _loadedTabs[2] ? const ProfilePostsTab() : const SizedBox.shrink(),
+        _loadedTabs[3] ? const ProfileReelsTab() : const SizedBox.shrink(),
+        _loadedTabs[4] ? const ProfileTaggedTab() : const SizedBox.shrink(),
       ],
     );
   }

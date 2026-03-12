@@ -8,6 +8,7 @@ enum JotsSource { profile, feed }
 class JotsState extends Equatable {
   final JotsStatus status;
   final List<JotEntity> jots;
+  final int? currentUserId;
   final bool hasReachedMax;
   final int currentPage;
   final String errorMessage;
@@ -19,6 +20,7 @@ class JotsState extends Equatable {
   const JotsState({
     this.status = JotsStatus.initial,
     this.jots = const [],
+    this.currentUserId,
     this.hasReachedMax = false,
     this.currentPage = 1,
     this.errorMessage = "",
@@ -33,6 +35,7 @@ class JotsState extends Equatable {
   JotsState copyWith({
     JotsStatus? status,
     List<JotEntity>? jots,
+    int? currentUserId,
     bool? hasReachedMax,
     int? currentPage,
     String? errorMessage,
@@ -44,6 +47,7 @@ class JotsState extends Equatable {
     return JotsState(
       status: status ?? this.status,
       jots: jots ?? this.jots,
+      currentUserId: currentUserId ?? this.currentUserId,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       currentPage: currentPage ?? this.currentPage,
       errorMessage: errorMessage ?? this.errorMessage,
@@ -58,6 +62,7 @@ class JotsState extends Equatable {
   List<Object?> get props => [
     status,
     jots,
+    currentUserId,
     hasReachedMax,
     currentPage,
     errorMessage,

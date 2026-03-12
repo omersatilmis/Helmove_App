@@ -143,6 +143,9 @@ class _ProfilePostsTabState extends State<ProfilePostsTab>
                                 ? CachedNetworkImage(
                                     imageUrl: post.mediaUrl!,
                                     fit: BoxFit.cover,
+                                    // 🔥 200x200 cache boyutu (3'lü grid için yeterli)
+                                    memCacheWidth: 400,
+                                    memCacheHeight: 400,
                                     placeholder: (context, url) =>
                                         Container(color: placeholderColor),
                                     errorWidget: (context, url, error) =>

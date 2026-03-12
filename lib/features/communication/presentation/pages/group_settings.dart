@@ -188,6 +188,7 @@ class _GroupSettingsState extends State<GroupSettings>
   }
 
   void _onDelete() {
+    // ── STEP 1: Dispatch to BOTH Blocs ──
     context.read<GroupRideBloc>().add(
       DeleteGroupRideEvent(
         widget.data.rideId,
@@ -199,6 +200,9 @@ class _GroupSettingsState extends State<GroupSettings>
         EndVoiceSessionEvent(widget.data.sessionId!),
       );
     }
+
+    // ── STEP 2: Optimistic UI cleanup ──
+    context.read<GroupRideBloc>().add(const ClearGroupDataEvent());
   }
 
   @override

@@ -34,7 +34,6 @@ import 'package:moto_comm_app_1/features/communities/presentation/pages/communit
 import 'package:moto_comm_app_1/features/settings/presentation/pages/settings_page.dart';
 import 'package:moto_comm_app_1/features/help/presentation/pages/help_page.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/pages/my_garage_page.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/pages/support/help_center_page.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/pages/support/feedback_page.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/pages/support/copyright_page.dart';
 import 'package:moto_comm_app_1/features/settings/presentation/pages/support/privacy_policy_page.dart';
@@ -46,6 +45,7 @@ import 'package:moto_comm_app_1/features/notification/presentation/pages/notific
 
 // Profile Jots Tabından açılan sayfa
 import 'package:moto_comm_app_1/features/content/jots/presentation/pages/create_jot_page.dart';
+import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_bloc.dart';
 
 // Arkadaşlık sayfası
 import 'package:moto_comm_app_1/features/friendship/presentation/pages/friends_page.dart';
@@ -183,7 +183,7 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(path: '/help', builder: (context, state) => const HelpPage()),
       GoRoute(
         path: '/help-center',
-        builder: (context, state) => const HelpCenterPage(),
+        builder: (context, state) => const HelpPage(),
       ),
       GoRoute(
         path: '/feedback',
@@ -215,7 +215,10 @@ GoRouter createRouter(AuthProvider authProvider) {
       // Profile Jots Tabından açılan sayfa
       GoRoute(
         path: '/create_jots',
-        builder: (context, state) => const CreateJotsPage(),
+        builder: (context, state) => BlocProvider(
+          create: (context) => sl<JotsBloc>(),
+          child: const CreateJotsPage(),
+        ),
       ),
 
       // Arkadaşlık sayfası

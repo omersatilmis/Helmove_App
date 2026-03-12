@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../../core/constants/report_enums.dart';
 import '../../../../help/presentation/widgets/report_bottom_sheet.dart';
 import '../../domain/entities/jot_entity.dart';
@@ -8,7 +9,7 @@ class JotCardWidget extends StatelessWidget {
   final VoidCallback? onLike;
   final VoidCallback? onComment;
   final VoidCallback? onDelete;
-  final bool isCurrentUser;
+  final int? currentUserId;
 
   const JotCardWidget({
     super.key,
@@ -16,7 +17,7 @@ class JotCardWidget extends StatelessWidget {
     this.onLike,
     this.onComment,
     this.onDelete,
-    this.isCurrentUser = false,
+    this.currentUserId,
   });
 
   @override
@@ -26,12 +27,13 @@ class JotCardWidget extends StatelessWidget {
     final textPrimary = colorScheme.onSurface;
     final textSecondary = colorScheme.onSurface.withValues(alpha: 0.6);
 
+    final isOwner = currentUserId != null && jot.userId == currentUserId;
+
     final firstName = jot.firstName ?? jot.username ?? "Kullanıcı";
     final lastName = jot.lastName ?? "";
     final userName = jot.username ?? "user";
     final content = jot.text ?? "";
-    final profileImage =
-        jot.userProfilePictureUrl ?? 'assets/icons/ic_profile.png';
+    final profileImage = jot.userProfilePictureUrl ?? 'assets/icons/ic_profile.png';
     final timeAgo = _formatDate(jot.createdAt);
     final bikeModel = jot.bikeModel;
 
@@ -86,9 +88,7 @@ class JotCardWidget extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: colorScheme.primary.withValues(
-                                  alpha: 0.1,
-                                ),
+                                color: colorScheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -148,14 +148,14 @@ class JotCardWidget extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       items: [
-                        if (isCurrentUser)
+                        if (isOwner)
                           PopupMenuItem(
                             value: 'delete',
                             child: Row(
                               children: [
                                 const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                                 const SizedBox(width: 10),
-                                Text(
+                                const Text(
                                   "Sil",
                                   style: TextStyle(
                                     color: Colors.red,
@@ -165,7 +165,7 @@ class JotCardWidget extends StatelessWidget {
                               ],
                             ),
                           ),
-                        if (!isCurrentUser)
+                        if (!isOwner)
                           PopupMenuItem(
                             value: 'report',
                             child: Row(
@@ -206,17 +206,81 @@ class JotCardWidget extends StatelessWidget {
             ),
 
             // --- 2. CONTENT ---
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Text(
-                content,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.4,
-                  color: textPrimary.withValues(alpha: 0.9),
+            if (content.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  content,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.4,
+                    color: textPrimary.withValues(alpha: 0.9),
+                  ),
                 ),
               ),
-            ),
+
+            // --- 2.5 MEDIA ---
+            if (jot.mediaUrl != null && jot.mediaUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      maxHeight: 400,
+                    ),
+                    width: double.infinity,
+                    child: Image.network(
+                      jot.mediaUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.broken_image_outlined,
+                                color: textSecondary,
+                                size: 40,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Görsel yüklenemedi",
+                                style: TextStyle(color: textSecondary),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 200,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
 
             // --- 3. ACTIONS ---
             Row(
@@ -234,8 +298,7 @@ class JotCardWidget extends StatelessWidget {
                   onTap: () {},
                 ),
                 _ActionButton(
-                  icon: Icons
-                      .favorite_border_rounded, // TODO: Use isLiked when available
+                  icon: Icons.favorite_border_rounded, // TODO: Use isLiked when available
                   activeIcon: Icons.favorite_rounded,
                   label: jot.likeCount.toString(),
                   activeColor: Colors.red,
@@ -246,7 +309,15 @@ class JotCardWidget extends StatelessWidget {
                   icon: Icons.bookmark_border_rounded,
                   onTap: () {},
                 ),
-                _ActionButton(icon: Icons.share_rounded, onTap: () {}),
+                _ActionButton(
+                  icon: Icons.share_rounded,
+                  onTap: () {
+                    final shareText = jot.text ?? "";
+                    if (shareText.isNotEmpty) {
+                      Share.share(shareText);
+                    }
+                  },
+                ),
               ],
             ),
           ],

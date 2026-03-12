@@ -60,56 +60,65 @@ class _JotFeedViewState extends State<JotFeedView>
       value: _jotsBloc,
       child: BlocBuilder<JotsBloc, JotsState>(
         builder: (context, state) {
-          if (state.status == JotsStatus.loading && state.jots.isEmpty) {
+          // 1. Veri varsa (Cache'den gelmiş olabilir), hata olsa veya yükleniyor olsa bile listeyi göster.
+          if (state.jots.isNotEmpty) {
+            return RefreshIndicator(
+              onRefresh: _onRefresh,
+              child: ListView.builder(
+                key: const PageStorageKey('jot_feed_list'),
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).padding.bottom + 80,
+                ),
+                itemCount: state.hasReachedMax
+                    ? state.jots.length
+                    : state.jots.length + 1,
+                itemBuilder: (context, index) {
+                  if (index >= state.jots.length) {
+                    return state.isFetchingMore
+                        ? const _BottomLoader()
+                        : const SizedBox(height: 48);
+                  }
+
+                  final jot = state.jots[index];
+                  return JotCardWidget(
+                    jot: jot,
+                    currentUserId: state.currentUserId,
+                    onLike: () => _jotsBloc.add(LikeJotEvent(jotId: jot.id)),
+                    onDelete: () => _jotsBloc.add(DeleteJotEvent(jotId: jot.id)),
+                    onComment: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => CommentsSheet(contentId: jot.id),
+                      );
+                    },
+                  );
+                },
+              ),
+            );
+          }
+
+          // 2. Veri yoksa ve yükleniyorsa tam ekran loader göster
+          if (state.status == JotsStatus.loading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (state.status == JotsStatus.failure && state.jots.isEmpty) {
-            return _FeedError(onRetry: () => _jotsBloc.add(const FetchJotsFeedEvent(isRefresh: true)), message: state.errorMessage);
+          // 3. Veri yoksa ve hata varsa hata ekranı göster
+          if (state.status == JotsStatus.failure) {
+            return _FeedError(
+              onRetry: () => _jotsBloc.add(const FetchJotsFeedEvent(isRefresh: true)),
+              message: state.errorMessage,
+            );
           }
 
-          if (state.jots.isEmpty) {
-            return const _FeedEmpty();
-          }
-
-          return RefreshIndicator(
-            onRefresh: _onRefresh,
-            child: ListView.builder(
-              key: const PageStorageKey('jot_feed_list'),
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).padding.bottom + 80,
-              ),
-              itemCount: state.hasReachedMax
-                  ? state.jots.length
-                  : state.jots.length + 1,
-              itemBuilder: (context, index) {
-                if (index >= state.jots.length) {
-                  return state.isFetchingMore
-                      ? const _BottomLoader()
-                      : const SizedBox(height: 48);
-                }
-
-                final jot = state.jots[index];
-                return JotCardWidget(
-                  jot: jot,
-                  onLike: () => _jotsBloc.add(LikeJotEvent(jotId: jot.id)),
-                  onComment: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => CommentsSheet(contentId: jot.id),
-                    );
-                  },
-                );
-              },
-            ),
-          );
+          // 4. Veri yoksa ve durum başarılıysa (gerçekten boşsa) boş ekran göster
+          return const _FeedEmpty();
         },
       ),
-    );
+          );
   }
 
   @override

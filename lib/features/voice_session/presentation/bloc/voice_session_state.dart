@@ -25,7 +25,12 @@ class VoiceSessionState extends Equatable {
   final String? message;
   final int? currentUserId;
   final int? sessionId; // For Created, Left, InviteAccepted
+  
+  /// Kullanıcının şu anda bağlı olduğu aktif oturum ve tüm detayları/katılımcıları.
+  /// BLoC bu alanı tek gerçeklik kaynağı (Source of Truth) olarak kullanır.
+  /// Null ise kullanıcı hiçbir oturumda değildir.
   final VoiceSessionEntity? session;
+  
   final List<VoiceSessionEntity>? mySessions;
   final RtcConnectionStatus rtcStatus;
 
@@ -35,11 +40,6 @@ class VoiceSessionState extends Equatable {
   final List<String> activeSpeakers;
   final String? liveKitError;
   final Map<int, IntercomConnectionQuality> participantQualities;
-
-  /// Kullanıcının şu anda bağlı olduğu tek aktif oturum.
-  /// BLoC tarafından mySessions her güncellendiğinde otomatik ayarlanır.
-  /// UI bu alanı doğrudan okur — hesaplama gerekmez.
-  final VoiceSessionEntity? activeSession;
 
   const VoiceSessionState({
     this.status = VoiceSessionStatus.initial,
@@ -54,7 +54,6 @@ class VoiceSessionState extends Equatable {
     this.liveKitError,
     this.rtcStatus = RtcConnectionStatus.disconnected,
     this.participantQualities = const {},
-    this.activeSession,
   });
 
   VoiceSessionState copyWith({
@@ -70,46 +69,48 @@ class VoiceSessionState extends Equatable {
     String? liveKitError,
     RtcConnectionStatus? rtcStatus,
     Map<int, IntercomConnectionQuality>? participantQualities,
-    VoiceSessionEntity? Function()? activeSessionOverride,
+    VoiceSessionEntity? Function()? sessionOverride,
   }) {
     final newMySessions = mySessions ?? this.mySessions;
 
-    // activeSession senkronizasyonu:
-    //   1. Eğer çağıran kod açıkça activeSessionOverride verdiyse onu kullan
-    //   2. Eğer mySessions güncellendiyse yeni listeden otomatik türet
+    // session senkronizasyonu:
+    //   1. Eğer çağıran kod açıkça sessionOverride verdiyse onu kullan
+    //   2. Eğer mySessions güncellendiyse (ve session null ise) listeden türet
     //   3. Hiçbiri yoksa mevcut değeri koru
-    final VoiceSessionEntity? resolvedActiveSession;
-    if (activeSessionOverride != null) {
-      resolvedActiveSession = activeSessionOverride();
+    VoiceSessionEntity? resolvedSession;
+    if (sessionOverride != null) {
+      resolvedSession = sessionOverride();
+    } else if (session != null) {
+      resolvedSession = session;
     } else if (mySessions != null) {
-      resolvedActiveSession = _deriveActiveSession(newMySessions);
+      resolvedSession = _deriveActiveSessionFromList(newMySessions);
     } else {
-      resolvedActiveSession = activeSession;
+      resolvedSession = this.session;
     }
 
     return VoiceSessionState(
       status: status ?? this.status,
-      message: message, // Transient, usually overridden or null
+      message: message,
       currentUserId: currentUserId ?? this.currentUserId,
       sessionId: sessionId ?? this.sessionId,
-      session: session ?? this.session,
+      session: resolvedSession,
       mySessions: newMySessions,
       isLiveKitConnected: isLiveKitConnected ?? this.isLiveKitConnected,
       isMicOn: isMicOn ?? this.isMicOn,
       activeSpeakers: activeSpeakers ?? this.activeSpeakers,
-      liveKitError: liveKitError, // Transient
+      liveKitError: liveKitError,
       rtcStatus: rtcStatus ?? this.rtcStatus,
       participantQualities: participantQualities ?? this.participantQualities,
-      activeSession: resolvedActiveSession,
     );
   }
 
   /// mySessions listesinden aktif oturumu türetir (tek yerden yönetim).
-  static VoiceSessionEntity? _deriveActiveSession(
+  static VoiceSessionEntity? _deriveActiveSessionFromList(
     List<VoiceSessionEntity>? sessions,
   ) {
     if (sessions == null || sessions.isEmpty) return null;
     for (final s in sessions) {
+      // isActive true olan ilk session'ı "aktif" kabul et
       if (s.isActive) return s;
     }
     return null;
@@ -117,8 +118,8 @@ class VoiceSessionState extends Equatable {
 
   /// Aktif oturumdaki bağlı katılımcıları listeler.
   List<VoiceSessionParticipantEntity> get activeParticipants {
-    if (activeSession == null) return const [];
-    return activeSession!.participants
+    if (session == null) return const [];
+    return session!.participants
         .where(
           (p) =>
               p.status == 'Joined' ||
@@ -134,7 +135,7 @@ class VoiceSessionState extends Equatable {
     if (mySessions == null || currentUserId == null) return 0;
     return mySessions!
         .where(
-          (session) => session.participants.any(
+          (s) => s.participants.any(
             (p) => p.userId == currentUserId && p.status == 'Invited',
           ),
         )
@@ -143,18 +144,17 @@ class VoiceSessionState extends Equatable {
 
   @override
   List<Object?> get props => [
-    status,
-    message,
-    currentUserId,
-    sessionId,
-    session,
-    mySessions,
-    isLiveKitConnected,
-    isMicOn,
-    activeSpeakers,
-    liveKitError,
-    rtcStatus,
-    participantQualities,
-    activeSession,
-  ];
+        status,
+        message,
+        currentUserId,
+        sessionId,
+        session,
+        mySessions,
+        isLiveKitConnected,
+        isMicOn,
+        activeSpeakers,
+        liveKitError,
+        rtcStatus,
+        participantQualities,
+      ];
 }

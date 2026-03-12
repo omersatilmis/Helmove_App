@@ -61,8 +61,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
 
     final bloc = context.read<VoiceSessionBloc>();
 
-    final activeSessionId =
-        bloc.state.session?.id ?? bloc.state.activeSession?.id;
+    final activeSessionId = bloc.state.session?.id;
 
     bloc.add(const GetMyVoiceSessionsEvent(force: true, immediate: true));
 
@@ -117,7 +116,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
       final bloc = context.read<VoiceSessionBloc>();
       final state = bloc.state;
       final hasSessions = state.mySessions?.isNotEmpty ?? false;
-      final activeSessionId = state.activeSession?.id;
+      final activeSessionId = state.session?.id;
       context.read<GroupRideBloc>().add(const LoadActiveGroupRidesEvent());
 
       if (!hasSessions &&
@@ -186,8 +185,8 @@ class _CommunicationPageState extends State<CommunicationPage> {
           bottom: false,
           child: BlocListener<VoiceSessionBloc, VoiceSessionState>(
             listenWhen: (prev, curr) {
-              final prevActiveId = prev.activeSession?.id;
-              final currActiveId = curr.activeSession?.id;
+              final prevActiveId = prev.session?.id;
+              final currActiveId = curr.session?.id;
               if (prevActiveId != currActiveId) {
                 return true;
               }
@@ -201,7 +200,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
               return currNeedsDetails && !prevNeedsDetails;
             },
             listener: (context, state) {
-              final activeSession = state.activeSession;
+              final activeSession = state.session;
               if (activeSession != null &&
                   state.session?.id != activeSession.id &&
                   state.status != VoiceSessionStatus.loading) {
@@ -269,7 +268,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                             onTap: () async {
                               final voiceSessionBloc = context
                                   .read<VoiceSessionBloc>();
-                              if (voiceSessionBloc.state.activeSession !=
+                              if (voiceSessionBloc.state.session !=
                                   null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

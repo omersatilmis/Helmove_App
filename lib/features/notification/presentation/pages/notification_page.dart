@@ -523,7 +523,7 @@ class _NotificationItemModern extends StatelessWidget {
       final notifBloc = context.read<NotificationsBloc>();
 
       // --- Singleton Session Guard: Aktif oturum varsa onay diyalogu göster ---
-      final currentActiveSession = voiceBloc.state.activeSession;
+      final currentActiveSession = voiceBloc.state.session;
       if (currentActiveSession != null) {
         final confirmed = await showDialog<bool>(
           context: context,
@@ -604,7 +604,7 @@ class _NotificationItemModern extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final voiceBloc = context.read<VoiceSessionBloc>();
 
-    final currentActiveSession = voiceBloc.state.activeSession;
+    final currentActiveSession = voiceBloc.state.session;
     if (currentActiveSession != null) {
       final confirmed = await showDialog<bool>(
         context: context,

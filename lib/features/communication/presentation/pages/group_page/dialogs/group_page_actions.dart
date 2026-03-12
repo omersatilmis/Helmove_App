@@ -357,15 +357,18 @@ class GroupPageActions {
   static void _performLeave(BuildContext context, int rideId, int? sessionId) {
     final validSessionId = _resolveValidSessionId(context, sessionId);
 
+    // BLoC Senkronizasyonu: Ayrılma işlemi gerçekleşirken yerel veriyi temizle
+    context.read<GroupRideBloc>().add(const ClearGroupDataEvent());
+
     if (rideId > 0) {
       context.read<GroupRideBloc>().add(
-        LeaveGroupRideEvent(rideId, sessionId: validSessionId),
-      );
+            LeaveGroupRideEvent(rideId, sessionId: validSessionId),
+          );
     }
     if (validSessionId != null && validSessionId > 0) {
       context.read<VoiceSessionBloc>().add(
-        LeaveVoiceSessionEvent(validSessionId),
-      );
+            LeaveVoiceSessionEvent(validSessionId),
+          );
     }
   }
 
@@ -376,15 +379,18 @@ class GroupPageActions {
   ) {
     final validSessionId = _resolveValidSessionId(context, sessionId);
 
+    // BLoC Senkronizasyonu: Sonlandırma işlemi gerçekleşirken yerel veriyi temizle
+    context.read<GroupRideBloc>().add(const ClearGroupDataEvent());
+
     if (rideId > 0) {
       context.read<GroupRideBloc>().add(
-        DeleteGroupRideEvent(rideId, sessionId: validSessionId),
-      );
+            DeleteGroupRideEvent(rideId, sessionId: validSessionId),
+          );
     }
     if (validSessionId != null && validSessionId > 0) {
       context.read<VoiceSessionBloc>().add(
-        EndVoiceSessionEvent(validSessionId),
-      );
+            EndVoiceSessionEvent(validSessionId),
+          );
     }
   }
 }

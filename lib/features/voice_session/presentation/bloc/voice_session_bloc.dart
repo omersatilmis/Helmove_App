@@ -72,6 +72,9 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
   StreamSubscription? _intercomStateSubscription;
   Timer? _syncTimer;
+  Timer? _joinFlightTimer;
+  Timer? _leaveFlightTimer;
+  Timer? _signalRDebounceTimer;
 
   bool _isJoinInFlight = false; // [NEW] Prevent duplicate joins
   bool _isLeaveInFlight = false;
@@ -84,6 +87,27 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
   // Version Conflict Resolution: Session version tracking
   final Map<int, int> _lastSessionVersions = <int, int>{};
+
+  void _startInFlightTimeout(String type) {
+    if (type == 'join') {
+      _joinFlightTimer?.cancel();
+      _joinFlightTimer = Timer(const Duration(seconds: 15), () {
+        if (_isJoinInFlight) {
+          debugPrint("⏰ [VoiceSessionBloc] Join flight timeout reached. Resetting flag.");
+          _isJoinInFlight = false;
+        }
+      });
+    } else if (type == 'leave') {
+      _leaveFlightTimer?.cancel();
+      _leaveFlightTimer = Timer(const Duration(seconds: 15), () {
+        if (_isLeaveInFlight) {
+          debugPrint("⏰ [VoiceSessionBloc] Leave flight timeout reached. Resetting flag.");
+          _isLeaveInFlight = false;
+          _leaveInFlightSessionId = null;
+        }
+      });
+    }
+  }
 
   VoiceSessionBloc({
     required this.createVoiceSessionUseCase,
@@ -199,24 +223,26 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       }
 
       if (event is VoiceSessionRefreshRealtimeEvent) {
-        // Smart Refresh Priority: reason'a göre aksiyon al
-        final reason = event.reason ?? 'unknown';
-        final needsFullRefresh = _shouldTriggerFullRefresh(reason);
+        _signalRDebounceTimer?.cancel();
+        _signalRDebounceTimer = Timer(const Duration(seconds: 2), () {
+          if (isClosed) return;
+          // Smart Refresh Priority: reason'a göre aksiyon al
+          final reason = event.reason ?? 'unknown';
+          final needsFullRefresh = _shouldTriggerFullRefresh(reason);
 
-        if (state.session?.id == event.sessionId && event.sessionId > 0) {
-          if (needsFullRefresh) {
-            refreshCoordinator.requestVoiceSessionDetailsRefresh(
-              event.sessionId,
+          if (state.session?.id == event.sessionId && event.sessionId > 0) {
+            if (needsFullRefresh) {
+              refreshCoordinator.requestVoiceSessionDetailsRefresh(
+                event.sessionId,
+                reason: 'rt_voice_refresh:$reason',
+              );
+            }
+          } else {
+            refreshCoordinator.requestVoiceSessionsRefresh(
               reason: 'rt_voice_refresh:$reason',
             );
           }
-          // Membership changes (user_joined, user_left, user_disconnected)
-          // already handled by delta events, no full refresh needed
-        } else {
-          refreshCoordinator.requestVoiceSessionsRefresh(
-            reason: 'rt_voice_refresh:$reason',
-          );
-        }
+        });
         return;
       }
 
@@ -551,7 +577,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   ) async {
     try {
       // Singleton Session Guard: Aktif bir oturumdayken yeni grup oluşturulamaz
-      if (state.activeSession != null) {
+      if (state.session != null) {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,
@@ -698,6 +724,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       return;
     }
     _isJoinInFlight = true;
+    _startInFlightTimeout('join');
 
     try {
       // ── 1. Permission Check (platform channel - can throw) ──
@@ -850,6 +877,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
     _isLeaveInFlight = true;
     _leaveInFlightSessionId = event.sessionId;
+    _startInFlightTimeout('leave');
 
     try {
       // ── Optimistic UI: Anında UI'ı güncelle, spinner yok ──
@@ -866,13 +894,15 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           activeSpeakers: [],
           isLiveKitConnected: false,
           isMicOn: false,
-          session: null,
           mySessions: optimisticMySessions,
-          activeSessionOverride: () => null, // activeSession'ı sıfırla
+          sessionOverride: () => null, // session'ı sıfırla
         ),
       );
 
       _stopSyncTimer();
+
+      // Clear related group ride data if needed
+      // (This will be done via synchronizing event dispatch in UI as per plan step 2)
 
       // ── Arka planda temizlik ve API çağrısı ──
       await _teardownLocalSession(
@@ -977,9 +1007,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
               activeSpeakers: [],
               isLiveKitConnected: false,
               isMicOn: false,
-              session: null,
               mySessions: optimisticMySessions,
-              activeSessionOverride: () => null,
+              sessionOverride: () => null,
             ),
           );
           _stopSyncTimer();
@@ -1146,6 +1175,16 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
         final maybeFailure = result.fold((failure) => failure, (_) => null);
         if (maybeFailure != null && _isNotFoundFailure(maybeFailure.message)) {
+          // [Self-Healing] Detay bulunamadıysa hem listeden hem de aktif oturumdan sil.
+          final healedMySessions = state.mySessions?.where((s) => s.id != event.sessionId).toList();
+          emit(
+            state.copyWith(
+              status: VoiceSessionStatus.error,
+              message: 'Grup artık mevcut değil',
+              session: null,
+              mySessions: healedMySessions,
+            ),
+          );
           refreshCoordinator.reportNotFound(
             message: 'Grup artık mevcut değil',
             source: RealtimeStateCoordinator.sourceVoiceSession,
@@ -1266,7 +1305,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   ) async {
     try {
       // Singleton Session Guard: Aktif bir oturumdayken yeni davet kabul edilemez
-      if (state.activeSession != null) {
+      if (state.session != null) {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,
@@ -1342,6 +1381,22 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         debugPrint(
           "❌ [VoiceSessionBloc] Accept API failed, rolling back: $apiError",
         );
+
+        if (apiError != null && _isNotFoundFailure(apiError!)) {
+          // [Self-Healing] Eğer sunucu "bulunamadı" diyorsa, 
+          // bu zombi kaydı tüm listelerden (mySessions) hemen temizle.
+          final healedMySessions = state.mySessions?.where((s) => s.id != event.sessionId).toList();
+          emit(
+            state.copyWith(
+              status: VoiceSessionStatus.error,
+              message: 'Bu davet artık geçerli değil (Grup silinmiş)',
+              mySessions: healedMySessions,
+              sessionOverride: () => null, 
+            ),
+          );
+          return;
+        }
+
         emit(
           snapshot.copyWith(
             status: VoiceSessionStatus.error,
@@ -1683,7 +1738,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         isMicOn: false,
         session: null,
         mySessions: optimisticMySessions,
-        activeSessionOverride: () => null,
+        sessionOverride: () => null,
         participantQualities: const {},
         rtcStatus: RtcConnectionStatus.disconnected,
       ),
@@ -1728,7 +1783,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         isMicOn: false,
         session: null,
         mySessions: optimisticMySessions,
-        activeSessionOverride: () => null,
+        sessionOverride: () => null,
         participantQualities: const {},
         rtcStatus: RtcConnectionStatus.disconnected,
       ),
@@ -1819,6 +1874,9 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   @override
   Future<void> close() async {
     _syncTimer?.cancel();
+    _joinFlightTimer?.cancel();
+    _leaveFlightTimer?.cancel();
+    _signalRDebounceTimer?.cancel();
     await _realtimeSubscription?.cancel();
     await _refreshSubscription?.cancel();
     await _errorSubscription?.cancel();

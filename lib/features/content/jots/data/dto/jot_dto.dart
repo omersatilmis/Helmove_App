@@ -18,12 +18,11 @@ class CreateJotRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'type': type,
-      'text': text,
-      'content': text,
-      'mediaUrl': mediaUrl,
-      'thumbnailUrl': thumbnailUrl,
-      'visibility': visibility,
+      'Type': type,
+      'Text': text,
+      'MediaUrl': mediaUrl,
+      'ThumbnailUrl': thumbnailUrl,
+      'Visibility': visibility,
     };
   }
 

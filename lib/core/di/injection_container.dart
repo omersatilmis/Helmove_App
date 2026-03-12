@@ -800,6 +800,9 @@ void _registerFeatureSingletons() {
         deleteJot: sl<DeleteJotUseCase>(),
         likeJot: sl<LikeJotUseCase>(),
         jotFeedCache: sl<JotFeedCache>(),
+        uploadImage: sl<UploadImageUseCase>(),
+        appSession: sl<AppSession>(),
+        getCurrentUserIdUseCase: sl<GetCurrentUserIdUseCase>(),
       ),
     );
   }

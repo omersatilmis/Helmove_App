@@ -128,9 +128,7 @@ class BottomBarWrapper extends StatelessWidget {
                   final voiceSessionBloc = BlocProvider.of<VoiceSessionBloc>(
                     context,
                   );
-                  final activeSessionId =
-                      voiceSessionBloc.state.activeSession?.id ??
-                      voiceSessionBloc.state.session?.id;
+                  final activeSessionId = voiceSessionBloc.state.session?.id;
 
                   voiceSessionBloc.add(
                     const GetMyVoiceSessionsEvent(immediate: true),

@@ -97,7 +97,6 @@ class GroupRideUpdatedReceived extends GroupRideEvent {
   @override
   List<Object?> get props => [rideId, version];
 }
-
 class ClearGroupDataEvent extends GroupRideEvent {
   const ClearGroupDataEvent();
 }

@@ -67,6 +67,10 @@ dependencies:
   flutter_local_notifications: ^20.1.0
   wakelock_plus: ^1.2.10
   package_info_plus: ^9.0.0
+  flutter_map: ^8.2.2
+  geolocator: ^14.0.2
+  latlong2: ^0.9.1
+  share_plus: ^12.0.1
 dev_dependencies:
   build_runner: ^2.4.10
   widgetbook_generator: ^3.6.0

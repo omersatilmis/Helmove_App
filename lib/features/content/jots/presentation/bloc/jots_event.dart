@@ -77,3 +77,12 @@ class LikeJotEvent extends JotsEvent {
   @override
   List<Object?> get props => [jotId];
 }
+
+class JotsCurrentUserChangedEvent extends JotsEvent {
+  final int? currentUserId;
+
+  const JotsCurrentUserChangedEvent({this.currentUserId});
+
+  @override
+  List<Object?> get props => [currentUserId];
+}

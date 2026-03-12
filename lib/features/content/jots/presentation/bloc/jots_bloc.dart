@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../auth/domain/usecases/get_current_user_id_use_case.dart';
+import 'package:moto_comm_app_1/core/services/app_session.dart';
+import '../../../../media/domain/usecases/upload_image_usecase.dart';
 import '../../domain/entities/jot_entity.dart';
 import '../../domain/usecases/create_jot_usecase.dart';
 import '../../domain/usecases/delete_jot_usecase.dart';
@@ -17,6 +22,11 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
   final DeleteJotUseCase deleteJot;
   final LikeJotUseCase likeJot;
   final JotFeedCache jotFeedCache;
+  final UploadImageUseCase uploadImage;
+  final AppSession appSession;
+  final GetCurrentUserIdUseCase getCurrentUserIdUseCase;
+
+  StreamSubscription<int?>? _appSessionUserIdSubscription;
 
   static const int _defaultPageSize = 10;
 
@@ -27,6 +37,9 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     required this.deleteJot,
     required this.likeJot,
     required this.jotFeedCache,
+    required this.uploadImage,
+    required this.appSession,
+    required this.getCurrentUserIdUseCase,
   }) : super(const JotsState()) {
     on<FetchUserJotsEvent>(_onFetchUserJots);
     on<FetchMoreUserJotsEvent>(_onFetchMoreUserJots);
@@ -35,6 +48,122 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     on<CreateJotEvent>(_onCreateJot);
     on<DeleteJotEvent>(_onDeleteJot);
     on<LikeJotEvent>(_onLikeJot);
+    on<JotsCurrentUserChangedEvent>(_onJotsCurrentUserChanged);
+
+    // Initialize bridge
+    Future.microtask(_initializeCurrentUserBridge);
+  }
+
+  Future<void> _initializeCurrentUserBridge() async {
+    final userId = appSession.currentUserId ?? await getCurrentUserIdUseCase();
+    if (!isClosed) {
+      add(JotsCurrentUserChangedEvent(currentUserId: userId));
+    }
+
+    _appSessionUserIdSubscription = appSession.currentUserIdStream.listen((id) {
+      if (!isClosed) {
+        add(JotsCurrentUserChangedEvent(currentUserId: id));
+      }
+    });
+  }
+
+  void _onJotsCurrentUserChanged(
+    JotsCurrentUserChangedEvent event,
+    Emitter<JotsState> emit,
+  ) {
+    emit(state.copyWith(currentUserId: event.currentUserId));
+  }
+
+  @override
+  Future<void> close() {
+    _appSessionUserIdSubscription?.cancel();
+    return super.close();
+  }
+
+  Future<void> _onDeleteJot(
+    DeleteJotEvent event,
+    Emitter<JotsState> emit,
+  ) async {
+    // Optimistic UI: Önce listeden sil
+    final previousJots = List.of(state.jots);
+    final updatedList = List.of(state.jots)
+      ..removeWhere((jot) => jot.id == event.jotId);
+
+    emit(state.copyWith(jots: updatedList));
+
+    final result = await deleteJot(DeleteJotParams(id: event.jotId));
+
+    result.fold(
+      (failure) {
+        // Hata olursa geri al
+        emit(
+          state.copyWith(
+            jots: previousJots,
+            errorMessage: "Silme işlemi başarısız: ${failure.message}",
+          ),
+        );
+      },
+      (_) {
+        // Başarılı, cache'i güncelle
+        syncFirstPageCacheIfPossible(updatedList);
+      },
+    );
+  }
+
+  Future<void> _onLikeJot(
+    LikeJotEvent event,
+    Emitter<JotsState> emit,
+  ) async {
+    final originalJots = List<JotEntity>.from(state.jots);
+
+    try {
+      // Optimistic UI Update
+      final updatedJots = state.jots.map((jot) {
+        if (jot.id == event.jotId) {
+          final isLiked = !jot.isLiked;
+          return jot.copyWith(
+            isLiked: isLiked,
+            likeCount: isLiked ? jot.likeCount + 1 : jot.likeCount - 1,
+          );
+        }
+        return jot;
+      }).toList();
+
+      emit(state.copyWith(jots: updatedJots));
+
+      // Update cache silently
+      syncFirstPageCacheIfPossible(updatedJots);
+
+      // Current state of the jot (after optimistic update)
+      final isLiked = updatedJots
+          .firstWhere((j) => j.id == event.jotId)
+          .isLiked;
+
+      final result = await likeJot(
+        LikeJotParams(id: event.jotId, isLiked: isLiked),
+      );
+
+      result.fold(
+        (failure) {
+          // Revert on failure
+          emit(
+            state.copyWith(
+              errorMessage: "Beğenme işlemi başarısız: ${failure.message}",
+              jots: originalJots,
+            ),
+          );
+          syncFirstPageCacheIfPossible(originalJots);
+        },
+        (_) => null, // Success
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          errorMessage: "Beklenmedik hata: $e",
+          jots: originalJots,
+        ),
+      );
+    }
   }
 
   Future<void> _onFetchUserJots(
@@ -282,11 +411,49 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
   ) async {
     emit(state.copyWith(createStatus: JotsStatus.loading));
 
+    String? finalMediaUrl = event.mediaUrl;
+
+    // Eğer mediaUrl bir dosya yolu ise (http ile başlamıyorsa), önce yükle
+    if (finalMediaUrl != null &&
+        finalMediaUrl.isNotEmpty &&
+        !finalMediaUrl.startsWith('http')) {
+      final file = File(finalMediaUrl);
+      if (file.existsSync()) {
+      debugPrint('📸 [JotsBloc] Uploading image: ${file.path}');
+      final uploadResult = await uploadImage(file);
+      
+      bool uploadFailed = false;
+      String? failureMessage;
+
+      uploadResult.fold(
+        (failure) {
+          debugPrint('❌ [JotsBloc] Upload failed: ${failure.message}');
+          uploadFailed = true;
+          failureMessage = failure.message;
+        },
+        (url) {
+          finalMediaUrl = url;
+          debugPrint('✅ [JotsBloc] Image uploaded success: $url');
+        },
+      );
+
+      if (uploadFailed) {
+        emit(
+          state.copyWith(
+            createStatus: JotsStatus.failure,
+            createError: failureMessage ?? 'Resim yüklenirken hata oluştu',
+          ),
+        );
+        return;
+      }
+    }
+  }
+
     final result = await createJot(
       CreateJotParams(
         type: event.type,
         text: event.text,
-        mediaUrl: event.mediaUrl,
+        mediaUrl: finalMediaUrl,
         visibility: event.visibility,
       ),
     );
@@ -299,7 +466,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
         ),
       ),
       (newJot) {
-        // Optimistic UI: Yeni Jot'u listenin başına ekle
+        // Yeni Jot'u listenin başına ekle
         final updatedList = List.of(state.jots)..insert(0, newJot);
         emit(
           state.copyWith(createStatus: JotsStatus.success, jots: updatedList),
@@ -308,92 +475,12 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     );
   }
 
-  Future<void> _onDeleteJot(
-    DeleteJotEvent event,
-    Emitter<JotsState> emit,
-  ) async {
-    // Optimistic UI: Önce listeden sil
-    final previousJots = List.of(state.jots);
-    final updatedList = List.of(state.jots)
-      ..removeWhere((jot) => jot.id == event.jotId);
-
-    emit(state.copyWith(jots: updatedList));
-
-    final result = await deleteJot(DeleteJotParams(id: event.jotId));
-
-    result.fold(
-      (failure) {
-        // Hata olursa geri al
-        emit(
-          state.copyWith(
-            jots: previousJots,
-            errorMessage: "Silme işlemi başarısız",
-          ),
-        );
-      },
-      (_) {
-        // Başarılı, zaten sildik
-      },
-    );
-  }
-
-  Future<void> _onLikeJot(LikeJotEvent event, Emitter<JotsState> emit) async {
-    final originalJots = List<JotEntity>.from(state.jots);
-
-    try {
-      // Optimistic UI Update
-      final updatedJots = state.jots.map((jot) {
-        if (jot.id == event.jotId) {
-          final isLiked = !jot.isLiked;
-          return jot.copyWith(
-            isLiked: isLiked,
-            likeCount: isLiked ? jot.likeCount + 1 : jot.likeCount - 1,
-          );
-        }
-        return jot;
-      }).toList();
-
-      emit(state.copyWith(jots: updatedJots));
-
-      // Update cache silently
-      _syncFirstPageCacheIfPossible(updatedJots);
-
-      // Current state of the jot (after optimistic update)
-      final isLiked = updatedJots
-          .firstWhere((j) => j.id == event.jotId)
-          .isLiked;
-
-      final result = await likeJot(
-        LikeJotParams(id: event.jotId, isLiked: isLiked),
-      );
-
-      result.fold(
-        (failure) {
-          // Revert on failure
-          emit(
-            state.copyWith(errorMessage: failure.message, jots: originalJots),
-          );
-        },
-        (_) => null, // Success, already updated optimistically
-      );
-    } catch (e) {
-      emit(
-        state.copyWith(
-          errorMessage: "Unexpected error: $e",
-          jots: originalJots,
-        ),
-      );
-    }
-  }
-
-  void _syncFirstPageCacheIfPossible(List<JotEntity> jots) {
+  Future<void> syncFirstPageCacheIfPossible(List<JotEntity> jots) async {
     if (state.currentPage != 1 || jots.isEmpty) {
       return;
     }
 
-    // Actually we can just await or call and forget.
-    // Wait, JotFeedCache uses List<JotEntity>? Yes, writeFirstPage takes List<JotEntity> jots.
-    jotFeedCache.writeFirstPage(
+    await jotFeedCache.writeFirstPage(
       jots: jots,
       hasNextPage: !state.hasReachedMax,
       limit: _defaultPageSize,

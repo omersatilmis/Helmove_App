@@ -24,11 +24,19 @@ class JotsApi {
       );
 
       final dynamic responseData = response.data;
-      final Map<String, dynamic> jotJson =
-          (responseData is Map<String, dynamic> &&
-              responseData.containsKey('data'))
-          ? responseData['data']
-          : responseData;
+      Map<String, dynamic> jotJson;
+
+      if (responseData is Map<String, dynamic>) {
+        if (responseData.containsKey('data')) {
+          jotJson = Map<String, dynamic>.from(responseData['data']);
+        } else if (responseData.containsKey('Data')) {
+          jotJson = Map<String, dynamic>.from(responseData['Data']);
+        } else {
+          jotJson = responseData;
+        }
+      } else {
+        jotJson = <String, dynamic>{};
+      }
 
       return JotModel.fromJson(jotJson);
     } catch (e) {

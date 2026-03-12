@@ -4,6 +4,7 @@ import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile
 import 'package:moto_comm_app_1/features/friendship/domain/entities/friendship_status.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_state.dart';
 import 'package:moto_comm_app_1/core/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileInfo extends StatelessWidget {
   final String firstName;
@@ -59,41 +60,106 @@ class ProfileInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _ProfileHeaderSection(profileImageUrl: profileImageUrl),
+    return RepaintBoundary(
+      child: Column(
+        children: [
+          _ProfileHeaderSection(profileImageUrl: profileImageUrl),
 
-        _NameSection(
-          firstName: firstName,
-          lastName: lastName,
-          username: username,
+          _NameSection(
+            firstName: firstName,
+            lastName: lastName,
+            username: username,
+          ),
+
+          // Bio bölümü (varsa göster)
+          if (bio != null && bio!.isNotEmpty) _BioSection(bio: bio!),
+
+          _StatsSection(
+            friendCount: friendCount ?? "0",
+            onFriendsTap: onFriendsTap,
+            onRatingTap: onRatingTap,
+            onFollowersTap: onFollowersTap,
+            onFollowingTap: onFollowingTap,
+          ),
+
+          // 🔥 Durumu alt widget'a iletiyoruz
+          _ActionButtonsSection(
+            isOwnProfile: isOwnProfile,
+            onMessageTap: onMessageTap,
+            friendshipStatus: friendshipStatus,
+            friendRequestType: friendRequestType,
+            isLoadingStatus: isLoadingStatus,
+            onSendRequest: onSendRequest,
+            onCancelRequest: onCancelRequest,
+            onAcceptRequest: onAcceptRequest,
+            onRejectRequest: onRejectRequest,
+            onRemoveFriend: onRemoveFriend,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddContentItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _AddContentItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: theme.colorScheme.primary, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+          ],
         ),
-
-        // Bio bölümü (varsa göster)
-        if (bio != null && bio!.isNotEmpty) _BioSection(bio: bio!),
-
-        _StatsSection(
-          friendCount: friendCount ?? "0",
-          onFriendsTap: onFriendsTap,
-          onRatingTap: onRatingTap,
-          onFollowersTap: onFollowersTap,
-          onFollowingTap: onFollowingTap,
-        ),
-
-        // 🔥 Durumu alt widget'a iletiyoruz
-        _ActionButtonsSection(
-          isOwnProfile: isOwnProfile,
-          onMessageTap: onMessageTap,
-          friendshipStatus: friendshipStatus,
-          friendRequestType: friendRequestType,
-          isLoadingStatus: isLoadingStatus,
-          onSendRequest: onSendRequest,
-          onCancelRequest: onCancelRequest,
-          onAcceptRequest: onAcceptRequest,
-          onRejectRequest: onRejectRequest,
-          onRemoveFriend: onRemoveFriend,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -284,7 +350,7 @@ class _StatItem extends StatelessWidget {
               label,
               style: AppTextStyles.bodySmall.copyWith(
                 fontSize: 13,
-                color: theme.colorScheme.onSurface.withValues(alpha:0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -293,6 +359,7 @@ class _StatItem extends StatelessWidget {
     );
   }
 }
+
 
 class _ActionButtonsSection extends StatelessWidget {
   final bool isOwnProfile;
@@ -361,7 +428,7 @@ class _ActionButtonsSection extends StatelessWidget {
       const SizedBox(width: 12),
       Expanded(
         child: OutlinedButton.icon(
-          onPressed: () {},
+          onPressed: () => _showAddContentSheet(context),
           icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
           label: const Text(
             "İçerik Ekle",
@@ -374,11 +441,70 @@ class _ActionButtonsSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             side: const BorderSide(color: AppColors.primary, width: 1.5),
-            overlayColor: AppColors.primary.withValues(alpha:0.1),
+            overlayColor: AppColors.primary.withValues(alpha: 0.1),
           ),
         ),
       ),
     ];
+  }
+
+  void _showAddContentSheet(BuildContext context) {
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  "Yeni İçerik Oluştur",
+                  style: AppTextStyles.h3.copyWith(fontSize: 18),
+                ),
+              ),
+              const SizedBox(height: 24),
+              _AddContentItem(
+                icon: Icons.image_outlined,
+                title: "Gönderi",
+                subtitle: "Fotoğraf veya video paylaş",
+                onTap: () {
+                  context.pop();
+                  context.push('/add_post');
+                },
+              ),
+              const SizedBox(height: 8),
+              _AddContentItem(
+                icon: Icons.edit_note_rounded,
+                title: "Jot",
+                subtitle: "Kısa bir yazı veya düşünce paylaş",
+                onTap: () {
+                  context.pop();
+                  context.push('/create_jots');
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   List<Widget> _buildOtherProfileButtons(BuildContext context) {
@@ -405,6 +531,8 @@ class _ActionButtonsSection extends StatelessWidget {
         const Expanded(child: SizedBox()),
       ];
     }
+    // ... rest of the content (collapsed for brevity in actual tool call)
+
 
     Widget mainActionBtn;
     final status = friendshipStatus ?? FriendshipStatus.none;

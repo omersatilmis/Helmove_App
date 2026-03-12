@@ -37,11 +37,6 @@ class _SupportSectionState extends State<SupportSection> {
         const SettingsSectionHeader(title: "Destek"),
 
         SettingsTile(
-          icon: Icons.help_outline_rounded,
-          title: "Yardım Merkezi",
-          onTap: () => context.push('/help-center'),
-        ),
-        SettingsTile(
           icon: Icons.feedback_outlined,
           title: "Geri Bildirim Gönder",
           onTap: () => context.push('/feedback'),

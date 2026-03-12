@@ -242,9 +242,15 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
                         final jot = state.jots[index];
                         return JotCardWidget(
                           jot: jot,
+                          currentUserId: state.currentUserId,
                           onLike: () {
                             context.read<JotsBloc>().add(
                               LikeJotEvent(jotId: jot.id),
+                            );
+                          },
+                          onDelete: () {
+                            context.read<JotsBloc>().add(
+                              DeleteJotEvent(jotId: jot.id),
                             );
                           },
                           onComment: () {
@@ -256,7 +262,6 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
                                   CommentsSheet(contentId: jot.id),
                             );
                           },
-                          isCurrentUser: false, // Or calculate based on ID
                         );
                       },
                       childCount: state.hasReachedMax

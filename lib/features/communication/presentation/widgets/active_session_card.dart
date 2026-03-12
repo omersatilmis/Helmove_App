@@ -9,6 +9,8 @@ import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
 import '../../../attendance_management/domain/entities/group_role.dart';
 import '../../../group_ride/presentation/models/group_ride_args.dart';
+import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
+import '../../../group_ride/presentation/bloc/group_ride_event.dart';
 import 'active_group.dart';
 import 'rider_card.dart';
 
@@ -23,12 +25,7 @@ class ActiveSessionCard extends StatelessWidget {
     final isMicOn = context.select<VoiceSessionBloc, bool>(
       (bloc) => bloc.state.isMicOn,
     );
-    // 1. Aktif oturum özeti (Liste verisinden gelir - Katılımcılar eksik olabilir)
-    final activeSessionSummary = context
-        .select<VoiceSessionBloc, VoiceSessionEntity?>(
-          (bloc) => bloc.state.activeSession,
-        );
-    // 2. Detaylı oturum verisi (Detay endpoint'inden gelir - Katılımcılar tamdır)
+    // Tek gerçeklik kaynağı: Detaylı oturum verisi
     final detailedSession = context
         .select<VoiceSessionBloc, VoiceSessionEntity?>(
           (bloc) => bloc.state.session,
@@ -46,17 +43,10 @@ class ActiveSessionCard extends StatelessWidget {
     }
 
     if (detailedSession == null) {
-      if (activeSessionSummary != null) {
-        return const _ActiveGroupLoadingCard();
-      }
       return const _ActiveGroupEmptyCard();
     }
 
-    // 3. AKILLI VERİ SEÇİMİ (Merge Logic)
-    // Eğer ikisi de varsa ve ID'ler uyuşmuyorsa, optimistic rendering sebebiyle geçici uyumsuzluk olabilir,
-    // spinner göstermek yerine hangisi elverişliyse (currentUser active member ise) onu kullanmayı deneriz.
-    // Ancak daha güvenlisi, elimizde 'detailedSession' varsa doğrudan onu kullanmaktır.
-
+    // ── AKILLI VERİ SEÇİMİ (Single Source) ──
     final displaySession = detailedSession;
 
     final isCurrentUserActiveMember =
@@ -110,8 +100,14 @@ class ActiveSessionCard extends StatelessWidget {
             await Future.delayed(const Duration(milliseconds: 1500));
           }
           if (context.mounted) {
+            // Self-healing: If navigation results in a refresh and we still see a zombie,
+            // we should have a more aggressive clear here if needed, but for now, 
+            // the Bloc status left/ended handles it.
             context.read<VoiceSessionBloc>().add(
               const GetMyVoiceSessionsEvent(force: true),
+            );
+            context.read<GroupRideBloc>().add(
+              const LoadActiveGroupRidesEvent(force: true),
             );
           }
         }
