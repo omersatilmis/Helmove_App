@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../../../core/theme/app_text_styles.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../../../core/theme/text_styles.dart';
+import '../../../../../../core/widgets/app_button.dart';
 
 enum FriendshipCardType { friends, sent, received, discover }
 
@@ -43,14 +45,12 @@ class FriendStatusCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Container(
-      // Kartlar arası boşluk daha az, daha kompakt
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        // Sadece alt tarafa ince bir çizgi (Instagram/Twitter tarzı)
         border: Border(
           bottom: BorderSide(
-            color: theme.dividerColor.withValues(alpha:0.1),
+            color: theme.dividerColor.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -61,30 +61,38 @@ class FriendStatusCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           child: Row(
             children: [
-              // 1. AVATAR (Biraz daha küçük ve zarif)
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: colorScheme.surfaceContainerHighest,
-                backgroundImage: imageUrl.isNotEmpty
-                    ? NetworkImage(imageUrl)
-                    : null,
-                child: imageUrl.isEmpty
-                    ? Text(
-                        firstName.isNotEmpty ? firstName[0].toUpperCase() : "?",
-                        style: TextStyle(color: colorScheme.onSurfaceVariant),
-                      )
-                    : null,
+              // 1. AVATAR
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: colorScheme.primary.withValues(alpha: 0.2),
+                    width: 2,
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  backgroundImage: imageUrl.isNotEmpty
+                      ? CachedNetworkImageProvider(imageUrl)
+                      : null,
+                  child: imageUrl.isEmpty
+                      ? Text(
+                          firstName.isNotEmpty ? firstName[0].toUpperCase() : "?",
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
+                        )
+                      : null,
+                ),
               ),
 
               const SizedBox(width: 16),
 
-              // 2. İSİM VE BİLGİ (Geniş Alan)
+              // 2. İSİM VE BİLGİ
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // İsim
                     Text(
                       "$firstName $lastName",
                       style: AppTextStyles.bold.copyWith(
@@ -94,7 +102,6 @@ class FriendStatusCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    // Kullanıcı Adı ve Durum tek satırda
                     Row(
                       children: [
                         Flexible(
@@ -102,19 +109,18 @@ class FriendStatusCard extends StatelessWidget {
                             "@$username",
                             style: AppTextStyles.medium.copyWith(
                               fontSize: 13,
-                              color: colorScheme.onSurface.withValues(alpha:0.5),
+                              color: colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Araya nokta koyup durumu yazıyoruz
                         if (statusInfo.isNotEmpty) ...[
                           Text(
                             " • $statusInfo",
                             style: AppTextStyles.medium.copyWith(
                               fontSize: 12,
-                              color: colorScheme.onSurface.withValues(alpha:0.4),
+                              color: colorScheme.onSurface.withValues(alpha: 0.4),
                             ),
                           ),
                         ],
@@ -126,7 +132,7 @@ class FriendStatusCard extends StatelessWidget {
 
               const SizedBox(width: 8),
 
-              // 3. AKSİYON BUTONLARI (Minimalize edilmiş)
+              // 3. AKSİYON BUTONLARI
               if (showActions) _buildMinimalActions(context),
             ],
           ),
@@ -141,14 +147,12 @@ class FriendStatusCard extends StatelessWidget {
 
     switch (type) {
       case FriendshipCardType.friends:
-        // Sadece Mesaj ikonu ve 3 nokta.
-        // "Sil" gibi yıkıcı işlemler 3 noktanın içinde olmalı.
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
               onPressed: onMessageTap,
-              icon: Icon(Icons.chat_bubble_outline_rounded),
+              icon: const Icon(Icons.chat_bubble_outline_rounded),
               color: colorScheme.primary,
               iconSize: 22,
               tooltip: "Mesaj",
@@ -157,8 +161,8 @@ class FriendStatusCard extends StatelessWidget {
             ),
             IconButton(
               onPressed: onOptionsTap,
-              icon: Icon(Icons.delete),
-              color: colorScheme.onSurface.withValues(alpha:0.6),
+              icon: const Icon(Icons.delete_outline_rounded),
+              color: colorScheme.error.withValues(alpha: 0.7),
               iconSize: 22,
               tooltip: "Sil",
               constraints: const BoxConstraints(),
@@ -168,66 +172,51 @@ class FriendStatusCard extends StatelessWidget {
         );
 
       case FriendshipCardType.discover:
-        // Net bir "Ekle" butonu. İkon yerine küçük bir buton daha iyi dönüşüm sağlar.
-        return SizedBox(
-          height: 32,
-          child: FilledButton.tonal(
-            onPressed: onAddFriendTap,
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-            ),
-            child: const Text("Ekle", style: TextStyle(fontSize: 13)),
-          ),
+        return AppButton(
+          text: "Ekle",
+          onPressed: onAddFriendTap,
+          variant: AppButtonVariant.primary,
+          style: AppButtonStyle.filled,
+          size: AppButtonSize.small,
+          width: 70,
         );
 
       case FriendshipCardType.sent:
-        // Sadece "Bekliyor" yazısı veya pasif bir ikon. Butona gerek yok.
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha:0.5),
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             "Bekliyor",
-            style: TextStyle(
+            style: AppTextStyles.medium.copyWith(
               fontSize: 12,
               color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
             ),
           ),
         );
 
       case FriendshipCardType.received:
-        // Kabul et (Belirgin) / Reddet (Silik)
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Reddet (Küçük X)
-            InkWell(
-              onTap: onRejectTap,
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 20,
-                  color: colorScheme.error.withValues(alpha:0.8),
-                ),
-              ),
+            AppButton(
+              text: "Reddet",
+              onPressed: onRejectTap,
+              variant: AppButtonVariant.danger,
+              style: AppButtonStyle.text,
+              size: AppButtonSize.small,
+              width: 70,
             ),
-            const SizedBox(width: 4),
-            // Kabul Et (Buton şeklinde)
-            SizedBox(
-              height: 32,
-              child: FilledButton(
-                onPressed: onAcceptTap,
-                style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-                child: const Text("Kabul", style: TextStyle(fontSize: 13)),
-              ),
+            const SizedBox(width: 8),
+            AppButton(
+              text: "Kabul",
+              onPressed: onAcceptTap,
+              variant: AppButtonVariant.primary,
+              style: AppButtonStyle.filled,
+              size: AppButtonSize.small,
+              width: 70,
             ),
           ],
         );
