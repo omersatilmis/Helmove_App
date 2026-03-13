@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../call/presentation/bloc/call_bloc.dart';
@@ -552,15 +553,15 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                 ),
                 child: widget.targetProfileImageUrl != null
                     ? ClipOval(
-                        child: Image.network(
-                          widget.targetProfileImageUrl!,
+                        child: CachedNetworkImage(
+                          imageUrl: widget.targetProfileImageUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Center(
+                          errorWidget: (_, _, _) => Center(
                             child: Text(
-                              initial,
+                              widget.targetDisplayName?[0] ?? '?',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 48,
+                                fontSize: 40,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

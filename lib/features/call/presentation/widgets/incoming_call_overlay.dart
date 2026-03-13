@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/call_bloc.dart';
@@ -169,15 +170,15 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                         ),
                         child: widget.callerProfileImageUrl != null
                             ? ClipOval(
-                                child: Image.network(
-                                  widget.callerProfileImageUrl!,
+                                child: CachedNetworkImage(
+                                  imageUrl: widget.callerProfileImageUrl!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Center(
+                                  errorWidget: (_, _, _) => Center(
                                     child: Text(
-                                      initial,
+                                      widget.callerDisplayName?[0].toUpperCase() ?? '?',
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),

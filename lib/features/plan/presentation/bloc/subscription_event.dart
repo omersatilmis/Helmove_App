@@ -25,3 +25,11 @@ class SubscribeToPlanEvent extends SubscriptionEvent {
   @override
   List<Object?> get props => [planId, paymentProvider, transactionId];
 }
+
+class RestorePurchasesEvent extends SubscriptionEvent {
+  const RestorePurchasesEvent();
+}
+
+class CheckPremiumStatusEvent extends SubscriptionEvent {
+  const CheckPremiumStatusEvent();
+}

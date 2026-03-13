@@ -20,6 +20,7 @@ abstract class AuthRemoteDataSource {
   Future<LoginResponseDto> refreshToken(RefreshTokenRequestDto request);
   Future<void> revokeToken(RevokeTokenRequestDto request);
   Future<List<SessionDto>> getSessions();
+  Future<LoginResponseDto> refreshCurrentUser();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -65,5 +66,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<List<SessionDto>> getSessions() async {
     return await api.getSessions();
+  }
+
+  @override
+  Future<LoginResponseDto> refreshCurrentUser() async {
+    return await api.refreshCurrentUser();
   }
 }
