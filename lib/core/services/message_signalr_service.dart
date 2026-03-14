@@ -27,6 +27,15 @@ class MessageSignalRService {
   Stream<dynamic> get onMessagesReadPayload =>
       _messagesReadPayloadController.stream;
 
+  final _messageEditedController = StreamController<dynamic>.broadcast();
+  Stream<dynamic> get onMessageEdited => _messageEditedController.stream;
+
+  final _messageDeletedController = StreamController<int>.broadcast();
+  Stream<int> get onMessageDeleted => _messageDeletedController.stream;
+
+  final _userTypingStreamController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get onUserTypingStream => _userTypingStreamController.stream;
+
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
 
   Future<void> init() async {
@@ -95,6 +104,23 @@ class MessageSignalRService {
         final senderId = arguments[0] as String;
         final isTyping = arguments[1] as bool;
         _onUserTyping?.call(senderId, isTyping);
+        _userTypingStreamController.add({'senderId': senderId, 'isTyping': isTyping});
+      }
+    });
+
+    _hubConnection!.on("MessageEdited", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final editedMessage = arguments[0];
+        AppLogger.info("SignalR: MessageEdited");
+        _messageEditedController.add(editedMessage);
+      }
+    });
+
+    _hubConnection!.on("MessageDeleted", (arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final messageId = arguments[0] as int;
+        AppLogger.info("SignalR: MessageDeleted");
+        _messageDeletedController.add(messageId);
       }
     });
   }

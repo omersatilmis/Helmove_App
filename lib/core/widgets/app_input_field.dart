@@ -33,6 +33,7 @@ class AppInputField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
   final Iterable<String>? autofillHints;
+  final FocusNode? focusNode;
 
   final String? Function(String?)? validator;
 
@@ -46,6 +47,8 @@ class AppInputField extends StatefulWidget {
   final double radius;
   final Widget? prefixWidget;
   final Widget? suffixWidget;
+  final bool showFocusBorder;
+  final double? verticalPadding;
 
   const AppInputField({
     super.key,
@@ -68,9 +71,12 @@ class AppInputField extends StatefulWidget {
     this.onChanged,
     this.inputFormatters,
     this.autofillHints,
+    this.focusNode,
     this.radius = 12.0, // Dropdown ile uyum için 12 ideal, ama 16 da olur
     this.prefixWidget,
     this.suffixWidget,
+    this.showFocusBorder = true,
+    this.verticalPadding,
   });
 
   @override
@@ -102,6 +108,7 @@ class _AppInputFieldState extends State<AppInputField> {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: TextFormField(
           controller: widget.controller,
+          focusNode: widget.focusNode,
           enabled: widget.enabled,
           validator: widget.validator,
 
@@ -316,6 +323,9 @@ class _AppInputFieldState extends State<AppInputField> {
   }
 
   OutlineInputBorder _focusedBorder(ThemeData theme) {
+    if (!widget.showFocusBorder) {
+      return _border(theme);
+    }
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(widget.radius),
       borderSide: BorderSide(
@@ -344,7 +354,8 @@ class _AppInputFieldState extends State<AppInputField> {
   double get _fontSize => widget.size == AppInputSize.small ? 14 : 16;
 
   EdgeInsets get _contentPadding {
-    final double p = widget.size == AppInputSize.small ? 14 : 18;
-    return EdgeInsets.symmetric(horizontal: p, vertical: p);
+    final double ph = widget.size == AppInputSize.small ? 14 : 18;
+    final double pv = widget.verticalPadding ?? (widget.size == AppInputSize.small ? 14 : 18);
+    return EdgeInsets.symmetric(horizontal: ph, vertical: pv);
   }
 }
