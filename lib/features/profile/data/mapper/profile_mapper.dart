@@ -1,3 +1,5 @@
+import 'package:moto_comm_app_1/core/enums/user_tier.dart';
+
 import '../../domain/entities/profile_entity.dart';
 import '../../domain/entities/motorcycle_entity.dart';
 import '../dto/profile_response_dto.dart';
@@ -25,6 +27,15 @@ class ProfileMapper {
       longitude: dto.longitude,
       lastSeen: dto.lastSeen,
       isOnline: dto.isOnline,
+      followersCount: dto.followersCount,
+      followingCount: dto.followingCount,
+      friendsCount: dto.friendsCount,
+      isFollowing: dto.isFollowing,
+      tier: UserTier.fromString(dto.premiumTier),
+      coverImageUrl: dto.coverImageUrl,
+      instagramUrl: dto.instagramUrl,
+      youtubeUrl: dto.youtubeUrl,
+      twitterUrl: dto.twitterUrl,
     );
   }
 
