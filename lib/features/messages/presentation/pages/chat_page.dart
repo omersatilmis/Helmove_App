@@ -68,7 +68,9 @@ class ChatView extends StatefulWidget {
 class _ChatViewState extends State<ChatView> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isTyping = false;
+  final ValueNotifier<bool> _isTypingNotifier = ValueNotifier<bool>(false);
+  int? _editingMessageId; // Mesaj düzenleme için ID
+
 
   @override
   void initState() {
@@ -76,8 +78,8 @@ class _ChatViewState extends State<ChatView> {
     initializeDateFormatting('tr_TR', null);
     _controller.addListener(() {
       final isNotEmpty = _controller.text.trim().isNotEmpty;
-      if (_isTyping != isNotEmpty) {
-        setState(() => _isTyping = isNotEmpty);
+      if (_isTypingNotifier.value != isNotEmpty) {
+        _isTypingNotifier.value = isNotEmpty;
         // Notify Bloc about typing status
         context.read<ChatBloc>().add(
           UpdateTypingStatus(
@@ -93,6 +95,7 @@ class _ChatViewState extends State<ChatView> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _isTypingNotifier.dispose();
     super.dispose();
   }
 
@@ -101,9 +104,21 @@ class _ChatViewState extends State<ChatView> {
     if (text.isEmpty) return;
 
     HapticFeedback.lightImpact();
-    context.read<ChatBloc>().add(
-      SendMessageEvent(receiverId: widget.otherUserId, content: text),
-    );
+    
+    if (_editingMessageId != null) {
+      // Dzenleme modu
+      context.read<ChatBloc>().add(
+        EditMessageEvent(_editingMessageId!, text),
+      );
+      setState(() {
+        _editingMessageId = null;
+      });
+    } else {
+      // Yeni mesaj
+      context.read<ChatBloc>().add(
+        SendMessageEvent(receiverId: widget.otherUserId, content: text),
+      );
+    }
 
     _controller.clear();
 
@@ -206,13 +221,24 @@ class _ChatViewState extends State<ChatView> {
                       return Column(
                         children: [
                           if (showDate) _DateChip(date: localSentAt),
-                          _MessageBubble(
-                            text: message.content,
-                            time: localSentAt,
-                            isMe: isMe,
-                            isRead: message.isRead,
-                            isFirstInGroup: isFirstInGroup,
-                            isLastInGroup: isLastInGroup,
+                          RepaintBoundary(
+                            child: _MessageBubble(
+                              text: message.content,
+                              time: localSentAt,
+                              isMe: isMe,
+                              isRead: message.isRead,
+                              isFirstInGroup: isFirstInGroup,
+                              isLastInGroup: isLastInGroup,
+                              onEdit: () {
+                                setState(() {
+                                  _editingMessageId = message.id;
+                                  _controller.text = message.content;
+                                });
+                              },
+                              onDelete: () {
+                                context.read<ChatBloc>().add(DeleteMessageEvent(message.id));
+                              },
+                            ),
                           ),
                         ],
                       );
@@ -402,37 +428,75 @@ class _ChatViewState extends State<ChatView> {
                       onPressed: () {},
                     ),
                     Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        decoration: InputDecoration(
-                          hintText: 'Mesaj...',
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          filled: false,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 11,
-                          ),
-                          hintStyle: TextStyle(
-                            color: colorScheme.onSurfaceVariant.withValues(
-                              alpha: 0.6,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_editingMessageId != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withValues(alpha: 0.1),
+                                border: Border(left: BorderSide(color: colorScheme.primary, width: 3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit, size: 14, color: colorScheme.primary),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      "Mesaj Dzenle",
+                                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close, size: 16),
+                                    onPressed: () {
+                                      setState(() {
+                                        _editingMessageId = null;
+                                        _controller.clear();
+                                      });
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                ],
+                              ),
                             ),
+                          TextField(
+                            controller: _controller,
+                            decoration: InputDecoration(
+                              hintText: _editingMessageId != null ? 'Mesaj dzenle...' : 'Mesaj...',
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              filled: false,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 11,
+                                horizontal: 12,
+                              ),
+                              hintStyle: TextStyle(
+                                color: colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
+                              ),
+                            ),
+                            maxLines: 5,
+                            minLines: 1,
+                            style: theme.textTheme.bodyLarge,
+                            textInputAction: TextInputAction.newline,
                           ),
+                        ],
+                      ),
+                    ),
+                    if (_editingMessageId == null)
+                      IconButton(
+                        icon: Icon(
+                          Icons.camera_alt_outlined,
+                          color: colorScheme.onSurfaceVariant,
+                          size: 22,
                         ),
-                        maxLines: 5,
-                        minLines: 1,
-                        style: theme.textTheme.bodyLarge,
-                        textInputAction: TextInputAction.newline,
+                        onPressed: () {},
                       ),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.camera_alt_outlined,
-                        color: colorScheme.onSurfaceVariant,
-                        size: 22,
-                      ),
-                      onPressed: () {},
-                    ),
                     const SizedBox(width: 4),
                   ],
                 ),
@@ -456,10 +520,17 @@ class _ChatViewState extends State<ChatView> {
                   ],
                 ),
                 child: Center(
-                  child: Icon(
-                    _isTyping ? Icons.send_rounded : Icons.mic_rounded,
-                    color: colorScheme.onPrimary,
-                    size: 24,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _isTypingNotifier,
+                    builder: (context, isTyping, child) {
+                      return Icon(
+                        (isTyping || _editingMessageId != null)
+                            ? Icons.send_rounded
+                            : Icons.mic_rounded,
+                        color: colorScheme.onPrimary,
+                        size: 24,
+                      );
+                    },
                   ),
                 ),
               ),
@@ -485,6 +556,8 @@ class _MessageBubble extends StatelessWidget {
   final bool isRead;
   final bool isFirstInGroup;
   final bool isLastInGroup;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const _MessageBubble({
     required this.text,
@@ -493,7 +566,10 @@ class _MessageBubble extends StatelessWidget {
     required this.isRead,
     required this.isFirstInGroup,
     required this.isLastInGroup,
+    this.onEdit,
+    this.onDelete,
   });
+
 
   @override
   Widget build(BuildContext context) {
@@ -513,74 +589,135 @@ class _MessageBubble extends StatelessWidget {
         ? colorScheme.onPrimary.withValues(alpha: 0.7)
         : (isDark ? Colors.white70 : colorScheme.onSurfaceVariant);
 
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-          minWidth: 60,
-        ),
-        margin: EdgeInsets.only(
-          top: isFirstInGroup ? 4 : 1,
-          bottom: 1,
-          left: isMe ? 40 : 12,
-          right: isMe ? 12 : 40,
-        ),
-        child: CustomPaint(
-          painter: _BubblePainter(
-            color: bubbleColor,
-            isMe: isMe,
-            showTail: isFirstInGroup,
-            isDark: isDark,
-          ),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              isMe ? 10 : (isFirstInGroup ? 18 : 10),
-              5,
-              isMe ? (isFirstInGroup ? 18 : 10) : 10,
-              5,
+    return GestureDetector(
+      onLongPress: isMe ? () {
+        HapticFeedback.mediumImpact();
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          builder: (context) => Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.lightBackground,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12, right: 10),
-                  child: Text(
-                    text,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: textColor,
-                      fontSize: 16,
-                      height: 1.2,
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ),
-                Positioned(
-                  bottom: -1,
-                  right: 0,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        DateFormat('HH:mm').format(time),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: timeColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (isMe) ...[
-                        const SizedBox(width: 3),
-                        Icon(
-                          Icons.done_all_rounded,
-                          size: 14,
-                          color: isRead
-                              ? const Color(0xFF69F0AE)
-                              : colorScheme.onPrimary.withValues(alpha: 0.6),
-                        ),
-                      ],
-                    ],
+                  ListTile(
+                    leading: const Icon(Icons.copy_rounded),
+                    title: const Text('Kopyala'),
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: text));
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Kopyalandı'), duration: Duration(seconds: 1)),
+                      );
+                    },
                   ),
-                ),
-              ],
+                  if (onEdit != null)
+                    ListTile(
+                      leading: const Icon(Icons.edit_rounded),
+                      title: const Text('Düzenle'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        onEdit!();
+                      },
+                    ),
+                  if (onDelete != null)
+                    ListTile(
+                      leading: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                      title: const Text('Sil', style: TextStyle(color: Colors.redAccent)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        onDelete!();
+                      },
+                    ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+          ),
+        );
+      } : null,
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.78,
+            minWidth: 60,
+          ),
+          margin: EdgeInsets.only(
+            top: isFirstInGroup ? 4 : 1,
+            bottom: 1,
+            left: isMe ? 40 : 12,
+            right: isMe ? 12 : 40,
+          ),
+          child: CustomPaint(
+            painter: _BubblePainter(
+              color: bubbleColor,
+              isMe: isMe,
+              showTail: isFirstInGroup,
+              isDark: isDark,
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                isMe ? 10 : (isFirstInGroup ? 18 : 10),
+                5,
+                isMe ? (isFirstInGroup ? 18 : 10) : 10,
+                5,
+              ),
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12, right: 10),
+                    child: Text(
+                      text,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: textColor,
+                        fontSize: 16,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -1,
+                    right: 0,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          DateFormat('HH:mm').format(time),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: timeColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (isMe) ...[
+                          const SizedBox(width: 3),
+                          Icon(
+                            Icons.done_all_rounded,
+                            size: 14,
+                            color: isRead
+                                ? const Color(0xFF69F0AE)
+                                : colorScheme.onPrimary.withValues(alpha: 0.6),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
