@@ -171,6 +171,21 @@ class AuthApi {
     }
   }
 
+  /// Mevcut kullanıcı bilgilerini ve token'ını yeniler
+  Future<LoginResponseDto> refreshCurrentUser() async {
+    try {
+      final response = await _dio.post(AuthEndpoints.refreshCurrentUser);
+      return LoginResponseDto.fromJson(response.data);
+    } on DioException catch (e) {
+      final errorMessage =
+          _parseErrorMessage(e.response?.data) ??
+          'Kullanıcı yenileme başarısız: ${e.response?.statusCode}';
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception("Beklenmedik bir hata oluştu: $e");
+    }
+  }
+
   // Logout güncellendi: İsteğe bağlı body alabilir
   Future<void> logout({RevokeTokenRequestDto? request}) async {
     try {

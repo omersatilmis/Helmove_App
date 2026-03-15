@@ -12,7 +12,7 @@ class AppFrostedButton extends StatelessWidget {
     super.key,
     required this.icon,
     required this.onTap,
-    this.size = 44.0, // Mobilde ideal dokunma alanı min 44px'dir
+    this.size = 44.0, 
     this.iconSize = 24,
   });
 
@@ -21,35 +21,38 @@ class AppFrostedButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        // Blur şiddeti
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Material(
-          // InkWell çalışsın diye Material ekledik
           color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                // Renkleri biraz daha soft ve modern ayarladım
+          // Container yerine Ink kullanıyoruz ki dalga efekti (ripple) arkada kalmasın
+          child: Ink(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E1E1E).withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
                 color: isDark
-                    ? const Color(0xFF28140A).withValues(alpha:0.5)
-                    : Colors.white.withValues(alpha:0.6),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha:0.2)
-                      : Colors.black.withValues(alpha:0.1),
-                  width: 1.0,
-                ),
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.5),
+                width: 1.5,
               ),
-              child: Icon(
-                icon,
-                color: isDark ? Colors.white : const Color(0xFF1F1F1F),
-                size: iconSize,
+            ),
+            // InkWell'i Ink'in içine aldık, böylece tıklama animasyonu camın üstünde görünecek
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(20),
+              child: Center( // İkonun tam ortalanmasını garantiye aldık
+                child: Icon(
+                  icon,
+                  color: isDark ? Colors.white : const Color(0xFF1F1F1F),
+                  size: iconSize,
+                ),
               ),
             ),
           ),
@@ -68,9 +71,12 @@ class AppFrostedTextButton extends StatelessWidget {
   final double borderRadius;
   final Color? backgroundColor;
   final Color? textColor;
+  final Color? borderColor;
+  final double borderWidth;
   final double? width;
   final double fontSize;
   final EdgeInsetsGeometry? padding;
+  final Widget? child;
 
   const AppFrostedTextButton({
     super.key,
@@ -78,24 +84,40 @@ class AppFrostedTextButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.height = 52,
-    this.borderRadius = 16,
+    this.borderRadius = 20,
     this.backgroundColor,
     this.textColor,
+    this.borderColor,
+    this.borderWidth = 1.5,
     this.width,
     this.fontSize = 16,
     this.padding,
+    this.child,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     final effectiveTextColor =
         textColor ?? (isDark ? Colors.white : Colors.black);
-    final effectiveBgColor =
-        backgroundColor ??
+        
+    final effectiveBgColor = backgroundColor ??
         (isDark
-            ? Colors.white.withValues(alpha:0.1)
-            : Colors.black.withValues(alpha:0.05));
+            ? const Color(0xFF1E1E1E).withValues(alpha: 0.4)
+            : Colors.white.withValues(alpha: 0.3));
+            
+    final effectiveBorderColor = borderColor ??
+        (isDark
+            ? Colors.white.withValues(alpha: 0.15)
+            : Colors.white.withValues(alpha: 0.5));
+
+    final textStyle = TextStyle(
+      color: effectiveTextColor,
+      fontWeight: FontWeight.w600,
+      fontSize: fontSize,
+      letterSpacing: 0.5,
+    );
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
@@ -112,11 +134,13 @@ class AppFrostedTextButton extends StatelessWidget {
               foregroundColor: effectiveTextColor,
               elevation: 0,
               shadowColor: Colors.transparent,
+              // Material 3'ün kendi renk atamasını kapatıp cam efektinin saf ve net kalmasını sağladık
+              surfaceTintColor: Colors.transparent, 
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
                 side: BorderSide(
-                  color: effectiveTextColor.withValues(alpha:0.1),
-                  width: 1,
+                  color: effectiveBorderColor,
+                  width: borderWidth,
                 ),
               ),
             ),
@@ -129,15 +153,18 @@ class AppFrostedTextButton extends StatelessWidget {
                       strokeWidth: 2.5,
                     ),
                   )
-                : Text(
-                    text,
-                    style: TextStyle(
-                      color: effectiveTextColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: fontSize,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                : (child == null
+                    ? Text(
+                        text,
+                        style: textStyle,
+                      )
+                    : DefaultTextStyle(
+                        style: textStyle,
+                        child: IconTheme(
+                          data: IconThemeData(color: effectiveTextColor),
+                          child: child!,
+                        ),
+                      )),
           ),
         ),
       ),
