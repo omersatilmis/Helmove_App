@@ -17,6 +17,9 @@ abstract class ProfileRepository {
     String? region,
     bool? shareLocation,
     bool? showProfileToOthers,
+    String? instagramUrl,
+    String? youtubeUrl,
+    String? twitterUrl,
   });
 
   /// Başka bir kullanıcının profilini getirir
@@ -24,6 +27,9 @@ abstract class ProfileRepository {
 
   /// Profil resmini günceller
   Future<String> updateProfilePicture(String imagePath);
+
+  /// Kapak fotoğrafını günceller
+  Future<String> updateCoverPhoto(String imagePath);
 
   /// Konumu günceller
   Future<void> updateLocation(double latitude, double longitude);

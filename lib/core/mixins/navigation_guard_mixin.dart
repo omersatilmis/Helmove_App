@@ -4,7 +4,7 @@ import '../navigation/base_navigation_args.dart';
 
 /// Mixin to enforce navigation argument validation and security policies.
 /// Usage:
-/// class _MyPageState extends State<MyPage> with NavigationGuardMixin<MyPage> { ... }
+/// class _MyPageState extends State&lt;MyPage&gt; with NavigationGuardMixin&lt;MyPage&gt; { ... }
 mixin NavigationGuardMixin<T extends StatefulWidget> on State<T> {
   /// The arguments passed to the page.
   BaseNavigationArgs? get args;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:moto_comm_app_1/core/config/app_feature_flags.dart';
 // WebRTC servisi artık doğrudan çağrılmıyor — bitrate yönetimi
 // AdaptiveBitrateController üzerinden IntercomEngine tarafından yapılır.
 import 'package:moto_comm_app_1/core/services/audio_orchestrator_service.dart';
@@ -161,71 +162,73 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
         ),
 
         // 3. ÖLÇÜ BİRİMLERİ
-        SettingsExpansionTile(
-          icon: Icons.straighten_rounded,
-          title: "Ölçü Birimleri",
-          children: [
-            SettingsActionTile(
-              title: "Mesafe",
-              value: _distanceUnit,
-              icon: Icons.directions_car_rounded,
-              onTap: () => showSettingsBottomSheet(
-                context,
-                "Mesafe Birimi",
-                ["Kilometre (km)", "Mil (mi)"],
-                (val) {
-                  setState(() => _distanceUnit = val);
-                  context.read<SettingsBloc>().add(const UpdateUnitsEvent());
-                },
+        if (AppFeatureFlags.showMeasurementUnits)
+          SettingsExpansionTile(
+            icon: Icons.straighten_rounded,
+            title: "Ölçü Birimleri",
+            children: [
+              SettingsActionTile(
+                title: "Mesafe",
+                value: _distanceUnit,
+                icon: Icons.directions_car_rounded,
+                onTap: () => showSettingsBottomSheet(
+                  context,
+                  "Mesafe Birimi",
+                  ["Kilometre (km)", "Mil (mi)"],
+                  (val) {
+                    setState(() => _distanceUnit = val);
+                    context.read<SettingsBloc>().add(const UpdateUnitsEvent());
+                  },
+                ),
               ),
-            ),
-            SettingsActionTile(
-              title: "Sıcaklık",
-              value: _tempUnit,
-              icon: Icons.thermostat_rounded,
-              onTap: () => showSettingsBottomSheet(
-                context,
-                "Sıcaklık Birimi",
-                ["Celsius (°C)", "Fahrenheit (°F)"],
-                (val) {
-                  setState(() => _tempUnit = val);
-                  context.read<SettingsBloc>().add(const UpdateUnitsEvent());
-                },
+              SettingsActionTile(
+                title: "Sıcaklık",
+                value: _tempUnit,
+                icon: Icons.thermostat_rounded,
+                onTap: () => showSettingsBottomSheet(
+                  context,
+                  "Sıcaklık Birimi",
+                  ["Celsius (°C)", "Fahrenheit (°F)"],
+                  (val) {
+                    setState(() => _tempUnit = val);
+                    context.read<SettingsBloc>().add(const UpdateUnitsEvent());
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
 
         // 4. HARİTA AYARLARI
-        SettingsExpansionTile(
-          icon: Icons.map_outlined,
-          title: "Harita Ayarları",
-          children: [
-            SettingsActionTile(
-              title: "Harita Tipi",
-              value: _mapType,
-              icon: Icons.layers_outlined,
-              onTap: () => showSettingsBottomSheet(
-                context,
-                "Harita Tipi",
-                ["Normal", "Uydu", "Arazi", "Hibrit"],
-                (val) {
-                  setState(() => _mapType = val);
+        if (AppFeatureFlags.showMapSettings)
+          SettingsExpansionTile(
+            icon: Icons.map_outlined,
+            title: "Harita Ayarları",
+            children: [
+              SettingsActionTile(
+                title: "Harita Tipi",
+                value: _mapType,
+                icon: Icons.layers_outlined,
+                onTap: () => showSettingsBottomSheet(
+                  context,
+                  "Harita Tipi",
+                  ["Normal", "Uydu", "Arazi", "Hibrit"],
+                  (val) {
+                    setState(() => _mapType = val);
+                    context.read<SettingsBloc>().add(const UpdateMapEvent());
+                  },
+                ),
+              ),
+              SettingsSwitchTile(
+                title: "Trafik Bilgisi",
+                subtitle: "Yoğunluk durumunu göster",
+                value: _trafficEnabled,
+                onChanged: (val) {
+                  setState(() => _trafficEnabled = val);
                   context.read<SettingsBloc>().add(const UpdateMapEvent());
                 },
               ),
-            ),
-            SettingsSwitchTile(
-              title: "Trafik Bilgisi",
-              subtitle: "Yoğunluk durumunu göster",
-              value: _trafficEnabled,
-              onChanged: (val) {
-                setState(() => _trafficEnabled = val);
-                context.read<SettingsBloc>().add(const UpdateMapEvent());
-              },
-            ),
-          ],
-        ),
+            ],
+          ),
 
         // 5. SES & MEDYA (YENİLENEN KISIM)
         SettingsExpansionTile(
@@ -260,7 +263,7 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                         // Bitrate güncellemesi artık UpdateAudioEvent →
                         // SettingsRepo → IntercomEngine.onAudioSettingsChanged()
                         // → AdaptiveBitrateController üzerinden yapılıyor.
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         context.read<SettingsBloc>().add(
                           const UpdateAudioEvent(),
                         );
@@ -322,26 +325,36 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildMusicOption(
-                    title: "Otomatik",
-                    subtitle: "Konuşurken kısılır",
-                    value: AudioMixingMode.auto,
+                  RadioGroup<AudioMixingMode>(
                     groupValue: _musicMode,
-                    onChanged: _updateMusicMode,
-                  ),
-                  _buildMusicOption(
-                    title: "Açık",
-                    subtitle: "Müzik devamlı kısıktır",
-                    value: AudioMixingMode.always,
-                    groupValue: _musicMode,
-                    onChanged: _updateMusicMode,
-                  ),
-                  _buildMusicOption(
-                    title: "Kapalı",
-                    subtitle: "Müzik sesinde değişim olmaz",
-                    value: AudioMixingMode.off,
-                    groupValue: _musicMode,
-                    onChanged: _updateMusicMode,
+                    onChanged: (val) {
+                      if (val != null) _updateMusicMode(val);
+                    },
+                    child: Column(
+                      children: [
+                        _buildMusicOption(
+                          title: "Otomatik",
+                          subtitle: "Konuşurken kısılır",
+                          value: AudioMixingMode.auto,
+                          groupValue: _musicMode,
+                          onChanged: _updateMusicMode,
+                        ),
+                        _buildMusicOption(
+                          title: "Açık",
+                          subtitle: "Müzik devamlı kısıktır",
+                          value: AudioMixingMode.always,
+                          groupValue: _musicMode,
+                          onChanged: _updateMusicMode,
+                        ),
+                        _buildMusicOption(
+                          title: "Kapalı",
+                          subtitle: "Müzik sesinde değişim olmaz",
+                          value: AudioMixingMode.off,
+                          groupValue: _musicMode,
+                          onChanged: _updateMusicMode,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -420,10 +433,6 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
           children: [
             Radio<AudioMixingMode>(
               value: value,
-              groupValue: groupValue,
-              onChanged: (val) {
-                if (val != null) onChanged(val);
-              },
               visualDensity: VisualDensity.compact,
             ),
             Expanded(
