@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/text_styles.dart';
 
 enum InviteStatus { none, pending, accepted, rejected }
@@ -54,7 +55,7 @@ class InviteRiderCard extends StatelessWidget {
                 // 1. SOL: Avatar
                 CircleAvatar(
                   radius: 22,
-                  backgroundImage: NetworkImage(profileImageUrl),
+                  backgroundImage: CachedNetworkImageProvider(profileImageUrl),
                   backgroundColor: colorScheme.surfaceContainerHigh,
                   onBackgroundImageError: (_, _) =>
                       Icon(Icons.person, color: colorScheme.onSurface),

@@ -41,6 +41,8 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   dio: ^5.9.0
   device_info_plus: ^12.3.0
+  url_launcher: ^6.3.1
+  path: ^1.9.1
   get_it: ^9.2.0
   dartz: ^0.10.1
   equatable: ^2.0.8
@@ -67,11 +69,16 @@ dependencies:
   flutter_local_notifications: ^20.1.0
   wakelock_plus: ^1.2.10
   package_info_plus: ^9.0.0
-  flutter_map: ^8.2.2
   geolocator: ^14.0.2
-  latlong2: ^0.9.1
   share_plus: ^12.0.1
+  app_links: ^6.3.2
+  purchases_flutter: ^9.14.0
+  purchases_ui_flutter: ^9.14.0
+  mapbox_maps_flutter: ^2.19.1
+  flutter_dotenv: ^5.1.0
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
   build_runner: ^2.4.10
   widgetbook_generator: ^3.6.0
 
@@ -96,6 +103,7 @@ flutter:
   uses-material-design: true
 
   assets:
+      - .env
       - assets/icons/
       - assets/images/
 

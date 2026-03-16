@@ -78,6 +78,24 @@ class ProfileApi {
     }
   }
 
+  /// PUT /api/Profile/me/cover - Kapak resmini günceller
+  Future<ProfileResponseDto> updateCoverPhoto(String imagePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'CoverPicture': await MultipartFile.fromFile(imagePath),
+      });
+      final response = await _dio.put('/Profile/me/cover', data: formData);
+      return ProfileResponseDto.fromJson(response.data);
+    } on DioException catch (e) {
+      final errorMessage =
+          _parseErrorMessage(e.response?.data) ??
+          'Kapak resmi güncelleme başarısız: ${e.response?.statusCode}';
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception("Beklenmedik bir hata oluştu: $e");
+    }
+  }
+
   /// PUT /api/Profile/me/location - Konumu günceller
   Future<void> updateLocation(UpdateLocationRequestDto request) async {
     try {
