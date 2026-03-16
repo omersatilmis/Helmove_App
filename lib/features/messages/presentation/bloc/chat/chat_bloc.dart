@@ -20,6 +20,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   Timer? _typingTimer;
   StreamSubscription<List<int>>? _messagesReadSubscription;
+  StreamSubscription<dynamic>? _messageEditedSubscription;
+  StreamSubscription<int>? _messageDeletedSubscription;
 
   ChatBloc({
     required this.getMessages,
@@ -35,6 +37,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<DeleteMessageEvent>(_onDeleteMessage);
     on<MarkAsRead>(_onMarkAsRead);
     on<ReceiveMessageEvent>(_onReceiveMessage);
+    on<MessageEditedReceived>(_onMessageEditedReceived);
+    on<MessageDeletedReceived>(_onMessageDeletedReceived);
     on<UpdateTypingStatus>(_onUpdateTypingStatus);
     on<OtherUserTypingReceived>(_onOtherUserTypingReceived);
     on<RefreshMessagesReadStatus>(_onRefreshMessagesReadStatus);
@@ -65,6 +69,24 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     ) {
       if (!isClosed) {
         add(RefreshMessagesReadStatus(messageIds));
+      }
+    });
+
+    // Set up SignalR Message Edited listener
+    _messageEditedSubscription = messageSignalRService.onMessageEdited.listen((
+      messageData,
+    ) {
+      if (!isClosed) {
+        add(MessageEditedReceived(messageData));
+      }
+    });
+
+    // Set up SignalR Message Deleted listener
+    _messageDeletedSubscription = messageSignalRService.onMessageDeleted.listen((
+      messageId,
+    ) {
+      if (!isClosed) {
+        add(MessageDeletedReceived(messageId));
       }
     });
   }
@@ -178,7 +200,23 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     EditMessageEvent event,
     Emitter<ChatState> emit,
   ) async {
-    // TODO: Implement edit logic locally optimistically or refresh
+    final currentState = state;
+    if (currentState is ChatLoaded) {
+      try {
+        final editedMessage = await editMessage(event.messageId, event.newContent);
+        
+        final updatedMessages = currentState.messages.map((m) {
+          if (m.id == event.messageId) {
+            return editedMessage;
+          }
+          return m;
+        }).toList();
+
+        emit(currentState.copyWith(messages: updatedMessages));
+      } catch (e) {
+        // Handle error if needed
+      }
+    }
   }
 
   Future<void> _onDeleteMessage(
@@ -196,6 +234,44 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       } catch (e) {
         // Handle error
       }
+    }
+  }
+
+  Future<void> _onMessageEditedReceived(
+    MessageEditedReceived event,
+    Emitter<ChatState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is ChatLoaded) {
+      try {
+        if (event.messageData is Map<String, dynamic>) {
+          final editedMessage = MessageModel.fromJson(
+            event.messageData as Map<String, dynamic>,
+          );
+
+          final updatedMessages = currentState.messages.map((m) {
+            if (m.id == editedMessage.id) {
+              return editedMessage;
+            }
+            return m;
+          }).toList();
+
+          emit(currentState.copyWith(messages: updatedMessages));
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _onMessageDeletedReceived(
+    MessageDeletedReceived event,
+    Emitter<ChatState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is ChatLoaded) {
+      final updatedMessages = currentState.messages
+          .where((m) => m.id != event.messageId)
+          .toList();
+      emit(currentState.copyWith(messages: updatedMessages));
     }
   }
 
@@ -255,6 +331,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   Future<void> close() {
     _typingTimer?.cancel();
     _messagesReadSubscription?.cancel();
+    _messageEditedSubscription?.cancel();
+    _messageDeletedSubscription?.cancel();
     return super.close();
   }
 }

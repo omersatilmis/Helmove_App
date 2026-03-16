@@ -18,6 +18,7 @@ import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_s
 import 'package:moto_comm_app_1/features/discover/presentation/pages/discover_page.dart';
 import 'package:moto_comm_app_1/features/addpost/presentation/pages/add_post_page.dart';
 import 'package:moto_comm_app_1/features/map/presentation/pages/map_page.dart';
+import 'package:moto_comm_app_1/features/map/presentation/providers/map_bloc.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/communication_page.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/create_group_ride.dart';
 import 'package:moto_comm_app_1/features/communication/presentation/pages/group_page.dart';
@@ -46,6 +47,8 @@ import 'package:moto_comm_app_1/features/notification/presentation/pages/notific
 // Profile Jots Tabından açılan sayfa
 import 'package:moto_comm_app_1/features/content/jots/presentation/pages/create_jot_page.dart';
 import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_bloc.dart';
+import 'package:moto_comm_app_1/features/content/posts/presentation/pages/user_posts_feed_page.dart';
+import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_bloc.dart';
 
 // Arkadaşlık sayfası
 import 'package:moto_comm_app_1/features/friendship/presentation/pages/friends_page.dart';
@@ -161,6 +164,21 @@ GoRouter createRouter(AuthProvider authProvider) {
             return const ProfilePage();
           }
           return ProfilePage(userId: userId);
+        },
+      ),
+      GoRoute(
+        path: '/profile/:userId/posts',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          if (extra == null) return const Scaffold(body: Center(child: Text('Hata: Veri eksik')));
+          
+          final initialIndex = extra['initialIndex'] as int;
+          final postsBloc = extra['postsBloc'] as PostsBloc;
+          
+          return UserPostsFeedPage(
+            initialIndex: initialIndex,
+            postsBloc: postsBloc,
+          );
         },
       ),
       GoRoute(
@@ -284,7 +302,10 @@ GoRouter createRouter(AuthProvider authProvider) {
             routes: [
               GoRoute(
                 path: '/map',
-                builder: (context, state) => const MapPage(),
+                builder: (context, state) => BlocProvider(
+                  create: (context) => sl<MapBloc>(),
+                  child: const MapPage(),
+                ),
               ),
             ],
           ),
