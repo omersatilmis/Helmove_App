@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
@@ -76,7 +77,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _emailController.text != p.email ||
         _bioController.text != (p.bio ?? "") ||
         _cityController.text != (p.city ?? "") ||
-        _regionController.text != (p.region ?? "");
+        _regionController.text != (p.region ?? "") ||
+        _instaController.text != (p.profile?.instagramUrl ?? "") ||
+        _ytController.text != (p.profile?.youtubeUrl ?? "") ||
+        _twitterController.text != (p.profile?.twitterUrl ?? "") ||
+        _localCoverPhoto != null;
 
     if (changed != _isChanged) {
       setState(() => _isChanged = changed);
@@ -204,7 +209,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
-                    onPressed: () {}, // API: PUT /api/Profile/me/location
+                    onPressed: () async {
+                      final success = await context.read<ProfileProvider>().updateLocation(0, 0); // Mock for now or use Geolocation
+                        if (success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Konum güncellendi')),
+                          );
+                        }
+                    },
                     icon: const Icon(Icons.my_location_rounded, size: 18),
                     label: const Text("Konumu Şimdi Güncelle"),
                     style: ElevatedButton.styleFrom(
@@ -299,6 +311,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     children: [
                       if (_localCoverPhoto != null)
                         Image.file(_localCoverPhoto!, fit: BoxFit.cover)
+                      else if (provider.profile?.coverImageUrl != null)
+                        CachedNetworkImage(
+                          imageUrl: provider.profile!.coverImageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: const Center(child: CircularProgressIndicator()),
+                          ),
+                          errorWidget: (context, url, error) => const Icon(Icons.broken_image),
+                        )
                       else
                         Image.asset(
                           'assets/images/profile_bg_photo.png',
@@ -378,7 +400,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       backgroundColor:
                           theme.colorScheme.surfaceContainerHighest,
                       backgroundImage: profileUrl != null
-                          ? NetworkImage(profileUrl) as ImageProvider
+                          ? CachedNetworkImageProvider(profileUrl) as ImageProvider
                           : const AssetImage('assets/icons/ic_profile.png'),
                     ),
                   ),
@@ -546,14 +568,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
       phoneNumber: _phoneController.text.trim(),
       city: _cityController.text.trim(),
       region: _regionController.text.trim(),
+      instagramUrl: _instaController.text.trim(),
+      youtubeUrl: _ytController.text.trim(),
+      twitterUrl: _twitterController.text.trim(),
     );
+
+    // 3. Kapak fotoğrafı değişikliği varsa onu da yükle
+    if (success && _localCoverPhoto != null) {
+      await provider.updateCoverPhoto(_localCoverPhoto!.path);
+    }
 
     if (success && mounted) {
       setState(() => _isChanged = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profil başarıyla güncellendi')),
       );
-      Navigator.pop(context); // İsteğe göre kapatabiliriz veya kalabiliriz
+      if (mounted) Navigator.pop(context);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

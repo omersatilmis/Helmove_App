@@ -64,9 +64,22 @@ class BottomBarWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
-    const double iconSizeUnselected = 26.0;
-    const double iconSizeSelected = 28.0;
+    // RESPONSIVE ÖLÇEKLEME: Ekran genişliğine göre 0.85 ile 1.2 arasında bir çarpan üretir.
+    // Standart 390px genişliği (iPhone 12/13 vs) baz alınmıştır.
+    final double scale = (size.width / 390).clamp(0.85, 1.2);
+
+    // Responsive değişkenler (Sadece scale ile çarpıyoruz)
+    final double iconSizeUnselected = 26.0 * scale;
+    final double iconSizeSelected = 28.0 * scale;
+    final double addIconSize = 48.0 * scale;
+    final double fontSize = 11.0 * scale;
+
+    // Barın yüksekliği: Temel 65px + Cihazın alt boşluğu (Home çizgisi)
+    final double navBarHeight =
+        (65.0 * scale) + (bottomPadding > 0 ? bottomPadding : 15.0);
 
     // Shell indices: 0(Home), 1(Discover), 2(Map), 3(Communication)
     // UI indices:    0(Home), 1(Discover), 2(AddPost), 3(Map), 4(Communication)
@@ -77,6 +90,7 @@ class BottomBarWrapper extends StatelessWidget {
 
     return Scaffold(
       key: mainScaffoldKey,
+      resizeToAvoidBottomInset: false,
       extendBody: true,
       drawer: const AppDrawer(),
       body: navigationShell,
@@ -87,13 +101,13 @@ class BottomBarWrapper extends StatelessWidget {
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
               return AppTextStyles.bold.copyWith(
-                fontSize: 11,
+                fontSize: fontSize, // Responsive font
                 fontStyle: FontStyle.normal,
                 color: theme.colorScheme.primary,
               );
             }
             return AppTextStyles.medium.copyWith(
-              fontSize: 11,
+              fontSize: fontSize, // Responsive font
               fontStyle: FontStyle.normal,
               color: const Color.fromARGB(255, 128, 117, 104),
             );
@@ -103,7 +117,7 @@ class BottomBarWrapper extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: NavigationBar(
-              height: 80,
+              height: navBarHeight, // Responsive yükseklik
               elevation: 0,
               backgroundColor: theme.colorScheme.surface.withAlpha(180),
               selectedIndex: currentIndex,
@@ -184,10 +198,10 @@ class BottomBarWrapper extends StatelessWidget {
                 NavigationDestination(
                   icon: Image.asset(
                     'assets/icons/ic_add2.png',
-                    width: 48,
-                    height: 48,
+                    width: addIconSize,
+                    height: addIconSize,
                   ),
-                  label: 'Gönderi Ekle',
+                  label: 'Ekle',
                 ),
                 NavigationDestination(
                   icon: Image.asset(
