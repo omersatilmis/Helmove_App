@@ -11,6 +11,8 @@ class GlassInputField extends StatefulWidget {
   final bool obscureText;
   final TextInputType? keyboardType;
 
+  final FocusNode? focusNode;
+
   const GlassInputField({
     super.key,
     this.label,
@@ -20,6 +22,7 @@ class GlassInputField extends StatefulWidget {
     this.onChanged,
     this.obscureText = false,
     this.keyboardType,
+    this.focusNode,
   });
 
   @override
@@ -27,22 +30,30 @@ class GlassInputField extends StatefulWidget {
 }
 
 class _GlassInputFieldState extends State<GlassInputField> {
-  final FocusNode _focusNode = FocusNode();
+  late final FocusNode _effectiveFocusNode;
   bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() {
+    _effectiveFocusNode = widget.focusNode ?? FocusNode();
+    _effectiveFocusNode.addListener(_handleFocusChange);
+  }
+
+  void _handleFocusChange() {
+    if (mounted) {
       setState(() {
-        _isFocused = _focusNode.hasFocus;
+        _isFocused = _effectiveFocusNode.hasFocus;
       });
-    });
+    }
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _effectiveFocusNode.removeListener(_handleFocusChange);
+    if (widget.focusNode == null) {
+      _effectiveFocusNode.dispose();
+    }
     super.dispose();
   }
 
@@ -99,7 +110,7 @@ class _GlassInputFieldState extends State<GlassInputField> {
                 child: TextField(
                   controller: widget.controller,
                   onChanged: widget.onChanged,
-                  focusNode: _focusNode,
+                  focusNode: _effectiveFocusNode,
                   obscureText: widget.obscureText,
                   keyboardType: widget.keyboardType,
                   style: AppTextStyles.bodyLarge.copyWith(

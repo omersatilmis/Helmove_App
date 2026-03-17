@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/features/drawer/drawer_item.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:moto_comm_app_1/core/config/app_feature_flags.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 import 'package:moto_comm_app_1/core/widgets/app_avatar.dart';
@@ -167,15 +168,16 @@ class AppDrawer extends StatelessWidget {
                 ),
 
                 // Topluluklar Alanı
-                DrawerItem(
-                  iconPath:
-                      'assets/icons/ic_community.png', // 👈 Senin istediğin topluluk ikonu
-                  title: "Topluluklar",
-                  onTap: () {
-                    context.pop();
-                    context.push('/communities');
-                  },
-                ),
+                if (AppFeatureFlags.showCommunityScreen)
+                  DrawerItem(
+                    iconPath:
+                        'assets/icons/ic_community.png', // 👈 Senin istediğin topluluk ikonu
+                    title: "Topluluklar",
+                    onTap: () {
+                      context.pop();
+                      context.push('/communities');
+                    },
+                  ),
 
                 Padding(
                   padding: const EdgeInsets.symmetric(

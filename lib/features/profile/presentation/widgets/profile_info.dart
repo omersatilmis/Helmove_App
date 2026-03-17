@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile.dart';
 import 'package:moto_comm_app_1/features/friendship/domain/entities/friendship_status.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_state.dart';
 import 'package:moto_comm_app_1/core/theme/app_colors.dart';
+import 'package:moto_comm_app_1/core/config/app_feature_flags.dart';
 import 'package:go_router/go_router.dart';
+import 'package:moto_comm_app_1/core/enums/user_tier.dart';
 
 class ProfileInfo extends StatelessWidget {
   final String firstName;
@@ -18,11 +21,22 @@ class ProfileInfo extends StatelessWidget {
 
   // 🔥 YENİ: İstatistik verileri ve callback'ler
   final String? friendCount;
+  final String? followerCount;
+  final String? followingCount;
+  final String? ratingPoints;
   final VoidCallback? onFriendsTap;
   final VoidCallback? onRatingTap;
   final VoidCallback? onFollowersTap;
   final VoidCallback? onFollowingTap;
   final VoidCallback? onMessageTap;
+
+  // 🔥 YENİ: Takip durumu ve callback'ler
+  final bool isFollowing;
+  final bool isFollowActionLoading;
+  final UserTier tier;
+  final VoidCallback? onFollowTap;
+  final VoidCallback? onUnfollowTap;
+
 
   // 🔥 FRIENDSHIP ACTIONS
   final FriendshipStatus? friendshipStatus;
@@ -43,6 +57,9 @@ class ProfileInfo extends StatelessWidget {
     this.profileImageUrl,
     this.isOwnProfile = false, // Varsayılan olarak başkası
     this.friendCount,
+    this.followerCount,
+    this.followingCount,
+    this.ratingPoints,
     this.onFriendsTap,
     this.onRatingTap,
     this.onFollowersTap,
@@ -56,6 +73,11 @@ class ProfileInfo extends StatelessWidget {
     this.onAcceptRequest,
     this.onRejectRequest,
     this.onRemoveFriend,
+    this.isFollowing = false,
+    this.isFollowActionLoading = false,
+    this.tier = UserTier.free,
+    this.onFollowTap,
+    this.onUnfollowTap,
   });
 
   @override
@@ -69,6 +91,7 @@ class ProfileInfo extends StatelessWidget {
             firstName: firstName,
             lastName: lastName,
             username: username,
+            tier: tier,
           ),
 
           // Bio bölümü (varsa göster)
@@ -76,6 +99,9 @@ class ProfileInfo extends StatelessWidget {
 
           _StatsSection(
             friendCount: friendCount ?? "0",
+            followerCount: followerCount ?? "0",
+            followingCount: followingCount ?? "0",
+            ratingPoints: ratingPoints ?? "0",
             onFriendsTap: onFriendsTap,
             onRatingTap: onRatingTap,
             onFollowersTap: onFollowersTap,
@@ -94,6 +120,10 @@ class ProfileInfo extends StatelessWidget {
             onAcceptRequest: onAcceptRequest,
             onRejectRequest: onRejectRequest,
             onRemoveFriend: onRemoveFriend,
+            isFollowing: isFollowing,
+            isFollowActionLoading: isFollowActionLoading,
+            onFollowTap: onFollowTap,
+            onUnfollowTap: onUnfollowTap,
           ),
         ],
       ),
@@ -207,7 +237,7 @@ class _ProfileHeaderSection extends StatelessWidget {
                 radius: 52,
                 backgroundImage:
                     (profileImageUrl != null && profileImageUrl!.isNotEmpty)
-                    ? NetworkImage(profileImageUrl!)
+                    ? CachedNetworkImageProvider(profileImageUrl!)
                     : const AssetImage('assets/icons/ic_profile.png')
                           as ImageProvider,
               ),
@@ -246,11 +276,13 @@ class _NameSection extends StatelessWidget {
   final String firstName;
   final String lastName;
   final String username;
+  final UserTier tier;
 
   const _NameSection({
     required this.firstName,
     required this.lastName,
     required this.username,
+    this.tier = UserTier.free,
   });
 
   @override
@@ -262,13 +294,26 @@ class _NameSection extends StatelessWidget {
         const SizedBox(height: 30),
 
         // 1. İsim Soyisim Birleşimi
-        Text(
-          "$firstName $lastName", // 👈 Dinamik Veri
-          style: AppTextStyles.h2.copyWith(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: theme.colorScheme.onSurface,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "$firstName $lastName",
+              style: AppTextStyles.h2.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            if (tier != UserTier.free) ...[
+              const SizedBox(width: 6),
+              Icon(
+                Icons.verified_rounded,
+                color: tier == UserTier.plus ? AppColors.primary : Colors.amber,
+                size: 22,
+              ),
+            ],
+          ],
         ),
 
         const SizedBox(height: 2),
@@ -290,6 +335,9 @@ class _NameSection extends StatelessWidget {
 
 class _StatsSection extends StatelessWidget {
   final String friendCount;
+  final String followerCount;
+  final String followingCount;
+  final String ratingPoints;
   final VoidCallback? onFriendsTap;
   final VoidCallback? onRatingTap;
   final VoidCallback? onFollowersTap;
@@ -297,6 +345,9 @@ class _StatsSection extends StatelessWidget {
 
   const _StatsSection({
     required this.friendCount,
+    required this.followerCount,
+    required this.followingCount,
+    required this.ratingPoints,
     this.onFriendsTap,
     this.onRatingTap,
     this.onFollowersTap,
@@ -310,10 +361,11 @@ class _StatsSection extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _StatItem("0", "Derece", onTap: onRatingTap),
+          if (AppFeatureFlags.showRatingsSection)
+            _StatItem(ratingPoints, "Derece", onTap: onRatingTap),
           _StatItem(friendCount, "Arkadaşlar", onTap: onFriendsTap),
-          _StatItem("0", "Takipçi", onTap: onFollowersTap),
-          _StatItem("0", "Takip", onTap: onFollowingTap),
+          _StatItem(followerCount, "Takipçi", onTap: onFollowersTap),
+          _StatItem(followingCount, "Takip", onTap: onFollowingTap),
         ],
       ),
     );
@@ -373,6 +425,12 @@ class _ActionButtonsSection extends StatelessWidget {
   final VoidCallback? onRejectRequest;
   final VoidCallback? onRemoveFriend;
 
+  // 🔥 YENİ
+  final bool isFollowing;
+  final bool isFollowActionLoading;
+  final VoidCallback? onFollowTap;
+  final VoidCallback? onUnfollowTap;
+
   const _ActionButtonsSection({
     required this.isOwnProfile,
     this.isLoadingStatus = false,
@@ -384,6 +442,10 @@ class _ActionButtonsSection extends StatelessWidget {
     this.onAcceptRequest,
     this.onRejectRequest,
     this.onRemoveFriend,
+    this.isFollowing = false,
+    this.isFollowActionLoading = false,
+    this.onFollowTap,
+    this.onUnfollowTap,
   });
 
   @override
@@ -528,11 +590,9 @@ class _ActionButtonsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        const Expanded(child: SizedBox()),
+        const SizedBox(width: 44), // Mesaj butonu alanı kadar boşluk
       ];
     }
-    // ... rest of the content (collapsed for brevity in actual tool call)
-
 
     Widget mainActionBtn;
     final status = friendshipStatus ?? FriendshipStatus.none;
@@ -543,14 +603,14 @@ class _ActionButtonsSection extends StatelessWidget {
         onPressed: () => _showRemoveFriendAction(context),
         icon: const Icon(
           Icons.person_outline_rounded,
-          size: 20,
+          size: 18,
           color: AppColors.primary,
         ),
         label: const Text(
           "Arkadaşsınız",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 13,
+            fontSize: 12,
             color: AppColors.primary,
           ),
         ),
@@ -558,9 +618,9 @@ class _ActionButtonsSection extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           side: const BorderSide(color: AppColors.primary, width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(15),
           ),
-          overlayColor: AppColors.primary.withValues(alpha:0.1),
+          overlayColor: AppColors.primary.withValues(alpha: 0.1),
         ),
       );
     } else if (status == FriendshipStatus.pending) {
@@ -570,17 +630,17 @@ class _ActionButtonsSection extends StatelessWidget {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: onAcceptRequest,
-              icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
               label: const Text(
                 "Onayla",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(15),
                 ),
               ),
             ),
@@ -589,21 +649,23 @@ class _ActionButtonsSection extends StatelessWidget {
           Expanded(
             child: OutlinedButton.icon(
               onPressed: onRejectRequest,
-              icon: const Icon(Icons.cancel_outlined, size: 20),
+              icon: const Icon(Icons.cancel_outlined, size: 18),
               label: const Text(
                 "Reddet",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
                 side: const BorderSide(color: Colors.red, width: 1.5),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(15),
                 ),
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          _buildMessageIconButton(),
         ];
       } else {
         // Giden İstek: Gönderildi (İptal edilebilir)
@@ -611,14 +673,14 @@ class _ActionButtonsSection extends StatelessWidget {
           onPressed: onCancelRequest,
           icon: const Icon(
             Icons.access_time_rounded,
-            size: 20,
+            size: 18,
             color: Colors.grey,
           ),
           label: const Text(
             "Gönderildi",
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 13,
+              fontSize: 12,
               color: Colors.grey,
             ),
           ),
@@ -626,7 +688,7 @@ class _ActionButtonsSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             side: const BorderSide(color: Colors.grey, width: 1.5),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(15),
             ),
           ),
         );
@@ -637,14 +699,14 @@ class _ActionButtonsSection extends StatelessWidget {
         onPressed: onSendRequest,
         icon: const Icon(
           Icons.person_add_alt_1_rounded,
-          size: 20,
+          size: 18,
           color: Colors.white,
         ),
         label: const Text(
           "Arkadaş Ekle",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 13,
+            fontSize: 12,
             color: Colors.white,
           ),
         ),
@@ -654,42 +716,83 @@ class _ActionButtonsSection extends StatelessWidget {
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(15),
           ),
         ),
       );
     }
 
+    // TAKİP ET BUTONU (Outlined Turuncu)
+    final followBtn = OutlinedButton(
+      onPressed: isFollowActionLoading ? null : (isFollowing ? onUnfollowTap : onFollowTap),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        side: BorderSide(color: isFollowActionLoading ? Colors.grey : AppColors.primary, width: 1.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        foregroundColor: isFollowActionLoading ? Colors.grey : AppColors.primary,
+        overlayColor: AppColors.primary.withValues(alpha:0.1),
+      ),
+      child: isFollowActionLoading
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  height: 14,
+                  width: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isFollowing ? "Takibi Bırak" : "Takip Et",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            )
+          : Text(
+              isFollowing ? "Takibi Bırak" : "Takip Et",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+    );
+
     return [
-      Expanded(child: mainActionBtn),
-      const SizedBox(width: 12),
-      Expanded(
-        child: OutlinedButton.icon(
-          onPressed: onMessageTap,
-          icon: const Icon(
+      Expanded(flex: 3, child: mainActionBtn),
+      const SizedBox(width: 8),
+      Expanded(flex: 3, child: followBtn),
+      const SizedBox(width: 8),
+      _buildMessageIconButton(),
+    ];
+  }
+
+  Widget _buildMessageIconButton() {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: Colors.green,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onMessageTap,
+          borderRadius: BorderRadius.circular(12),
+          child: const Icon(
             Icons.mail_outline_rounded,
-            size: 20,
-            color: AppColors.primary,
-          ),
-          label: const Text(
-            "Mesaj",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-              color: AppColors.primary,
-            ),
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            side: const BorderSide(color: AppColors.primary, width: 1.5),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            overlayColor: AppColors.primary.withValues(alpha:0.1),
+            color: Colors.white,
+            size: 22,
           ),
         ),
       ),
-    ];
+    );
   }
 
   void _showRemoveFriendAction(BuildContext context) {

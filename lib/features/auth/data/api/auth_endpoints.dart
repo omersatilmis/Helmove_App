@@ -9,4 +9,5 @@ class AuthEndpoints {
   static const String refreshToken = 'api/auth/refresh-token';
   static const String revokeToken = 'api/auth/revoke-token';
   static const String sessions = 'api/auth/sessions';
+  static const String refreshCurrentUser = 'api/auth/refresh-current-user';
 }
