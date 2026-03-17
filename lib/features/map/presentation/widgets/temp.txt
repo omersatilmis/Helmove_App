@@ -1,0 +1,410 @@
+﻿import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import '../../domain/entities/location_entity.dart';
+import '../../domain/entities/route_entity.dart';
+import '../providers/map_bloc.dart';
+import '../providers/map_event.dart';
+
+class MapBottomSheetRoute extends StatelessWidget {
+  final List<RouteEntity> routes;
+  final int selectedIndex;
+  final LocationEntity? startPoint;
+  final LocationEntity? endPoint;
+
+  const MapBottomSheetRoute({
+    super.key,
+    required this.routes,
+    required this.selectedIndex,
+    this.startPoint,
+    this.endPoint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (routes.isEmpty || selectedIndex < 0 || selectedIndex >= routes.length) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final route = routes[selectedIndex];
+    final trafficLabel = _trafficLabel(route);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // --- 1. EN ÃœST SAÄ: YUVARLAK Ä°KON BUTONLARI ---
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (trafficLabel != null) ...[
+              Text(
+                trafficLabel,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: _getTrafficColor(route, colorScheme),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+            ] else ...[
+              const Spacer(),
+            ],
+            _RoundIconButton(
+              icon: Icons.sports_motorsports_outlined,
+              onTap: () {}, // Kask
+            ),
+            const SizedBox(width: 8),
+            _RoundIconButton(
+              icon: Icons.settings_outlined,
+              onTap: () {}, // Ayarlar
+            ),
+            const SizedBox(width: 8),
+            _RoundIconButton(
+              icon: Icons.share_outlined,
+              onTap: () {}, // PaylaÅŸ
+            ),
+            const SizedBox(width: 8),
+            _RoundIconButton(
+              icon: Icons.close_rounded,
+              onTap: () => context.read<MapBloc>().add(
+                MapClearRoutingRequested(),
+              ), // Ä°ptal
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 0),
+
+        // --- 2. SÜRE, MESAFE VE ETA ---
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              _formatDuration(route.durationSeconds),
+              style: AppTextStyles.h1.copyWith(
+                color: _getTrafficColor(route, colorScheme),
+                fontSize: 30,
+                letterSpacing: -1,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '(${_formatDistance(route.distanceMeters)})',
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                'Varis ${_formatEta(route.durationSeconds)}',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        const SizedBox(height: 20),
+
+        // --- 3. BAÅLANGIÃ‡ VE BÄ°TÄ°Å (Ä°stediÄŸin Kutulu ve Dikey Ã‡izgili YapÄ±) ---
+        if (startPoint != null || endPoint != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (startPoint != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.radio_button_checked,
+                        size: 16,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          startPoint!.label,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                if (startPoint != null && endPoint != null)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 7.5,
+                      top: 4,
+                      bottom: 4,
+                    ),
+                    child: Container(
+                      height: 14,
+                      width: 2,
+                      color: colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.3,
+                      ), // Dikey Ã‡izgi
+                    ),
+                  ),
+                if (endPoint != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          endPoint!.label,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight
+                                .w500, // BitiÅŸ noktasÄ± biraz daha kalÄ±n
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 20),
+
+        // --- 4. POI TABLARI (Geri Getirilen Yatay Liste) ---
+        SizedBox(
+          height: 32, // Ä°nce ve modern bir yÃ¼kseklik
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _poiTabs.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final item = _poiTabs[index];
+              final isSelected =
+                  index == 0; // Ä°lk eleman ÅŸimdilik seÃ§ili gÃ¶rÃ¼nsÃ¼n Ã¶rneÄŸi
+              return ChoiceChip(
+                label: Text(item),
+                selected: isSelected,
+                showCheckmark: false,
+                onSelected: (_) {},
+                labelStyle: AppTextStyles.bodySmall.copyWith(
+                  fontSize: 12,
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+                selectedColor: colorScheme.primaryContainer.withValues(
+                  alpha: 0.5,
+                ),
+                backgroundColor: colorScheme.surface,
+                side: BorderSide(
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 0,
+                ),
+                visualDensity: VisualDensity.compact,
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // --- 5. AKSÄ°YON BUTONLARI (Ufak ve Kibar) ---
+        Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: OutlinedButton(
+                onPressed: () {},
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40), // Ufak Buton YÃ¼ksekliÄŸi
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  foregroundColor: colorScheme.onSurface,
+                  side: BorderSide(color: colorScheme.outlineVariant),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      12,
+                    ), // Pill yerine hafif kavisli kutu
+                  ),
+                ),
+                child: Text(
+                  'Durak Ekle',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 14, // Ufak font
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.navigation_rounded, size: 18),
+                label: const Text('SÃ¼rÃ¼ÅŸÃ¼ BaÅŸlat'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(0, 40), // Ufak Buton YÃ¼ksekliÄŸi
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                  textStyle: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 14, // Ufak font
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // --- YARDIMCI METOTLAR ---
+
+  Color _getTrafficColor(RouteEntity route, ColorScheme colorScheme) {
+    final level = _worstCongestion(route.congestion);
+    if (level == 'Cok Yogun') return colorScheme.error;
+    if (level == 'Yogun') return Colors.orange.shade700;
+    return Colors.green.shade600;
+  }
+
+  String _formatDistance(double meters) {
+    if (meters <= 0) return '--';
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)} km';
+    }
+    return '${meters.round()} m';
+  }
+
+  String _formatDuration(double seconds) {
+    if (seconds <= 0) return '--';
+    final minutes = (seconds / 60).round();
+    if (minutes < 60) return '$minutes dk';
+    final hours = minutes ~/ 60;
+    final remaining = minutes % 60;
+    return '${hours} sa ${remaining} dk';
+  }
+
+  String _formatEta(double durationSeconds) {
+    if (durationSeconds <= 0) return '--:--';
+    final eta = DateTime.now().add(Duration(seconds: durationSeconds.round()));
+    final hour = eta.hour.toString().padLeft(2, '0');
+    final minute = eta.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String? _trafficLabel(RouteEntity route) {
+    final level = _worstCongestion(route.congestion);
+    if (level != null) return level;
+    return null;
+  }
+
+  String? _worstCongestion(List<String>? congestion) {
+    if (congestion == null || congestion.isEmpty) return null;
+    var worstScore = 0;
+    for (final item in congestion) {
+      final score = _congestionScore(item);
+      if (score > worstScore) worstScore = score;
+    }
+    switch (worstScore) {
+      case 4:
+        return 'Ã‡ok YoÄŸun Trafik';
+      case 3:
+        return 'YoÄŸun Trafik';
+      case 2:
+        return 'Orta YoÄŸunlukta Trafik';
+      case 1:
+        return 'Trafik AkÄ±cÄ±';
+      default:
+        return null;
+    }
+  }
+
+  int _congestionScore(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'severe':
+        return 4;
+      case 'heavy':
+        return 3;
+      case 'moderate':
+        return 2;
+      case 'low':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+}
+
+// Yuvarlak ArkaplanlÄ± Butonlar
+class _RoundIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _RoundIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: CircleAvatar(
+        radius: 18,
+        backgroundColor: colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.5,
+        ),
+        child: Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+// Geri Getirilen POI Sekmeleri
+const List<String> _poiTabs = [
+  'â›½ YakÄ±t',
+  'â˜• Dinlenme',
+  'ğŸ”§ Servis',
+  'ğŸï¸ Ekipman',
+];
+
+
+

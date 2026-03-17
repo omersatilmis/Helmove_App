@@ -1,4 +1,4 @@
-﻿class LoginResponseDto {
+class LoginResponseDto {
   final bool success;
   final String? message;
   final LoginDataDto? data;
@@ -36,6 +36,7 @@ class LoginDataDto {
   final String? firstName;
   final String? lastName;
   final String? profileImageUrl;
+  final String? premiumTier;
 
   LoginDataDto({
     required this.token,
@@ -49,6 +50,7 @@ class LoginDataDto {
     this.firstName,
     this.lastName,
     this.profileImageUrl,
+    this.premiumTier,
   });
 
   factory LoginDataDto.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class LoginDataDto {
       if (value is int) return value;
       return int.tryParse(value.toString());
     }
+
 
     DateTime? toDateTime(dynamic value) {
       if (value == null) return null;
@@ -89,6 +92,9 @@ class LoginDataDto {
       firstName: json['firstName'] ?? json['FirstName'],
       lastName: json['lastName'] ?? json['LastName'],
       profileImageUrl: json['profileImageUrl'] ?? json['ProfileImageUrl'],
+      premiumTier:
+          (json['premiumTier'] ?? json['PremiumTier'] ?? json['PremiumTier'])
+              ?.toString(),
     );
   }
 }

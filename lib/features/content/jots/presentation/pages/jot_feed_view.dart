@@ -5,7 +5,7 @@ import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_blo
 import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_event.dart';
 import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_state.dart';
 import 'package:moto_comm_app_1/features/content/jots/presentation/widgets/jot_card_widget.dart';
-import 'package:moto_comm_app_1/features/interaction/presentation/widgets/comments_sheet.dart';
+import 'jot_detail_page.dart';
 
 class JotFeedView extends StatefulWidget {
   const JotFeedView({super.key});
@@ -88,11 +88,14 @@ class _JotFeedViewState extends State<JotFeedView>
                     onLike: () => _jotsBloc.add(LikeJotEvent(jotId: jot.id)),
                     onDelete: () => _jotsBloc.add(DeleteJotEvent(jotId: jot.id)),
                     onComment: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => CommentsSheet(contentId: jot.id),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => JotDetailPage(
+                            jot: jot,
+                            currentUserId: state.currentUserId,
+                          ),
+                        ),
                       );
                     },
                   );

@@ -9,6 +9,7 @@ abstract class ProfileRemoteDataSource {
   Future<ProfileResponseDto> updateProfile(UpdateProfileRequestDto request);
   Future<ProfileResponseDto> getUserProfile(int userId);
   Future<ProfileResponseDto> updateProfilePicture(String imagePath);
+  Future<ProfileResponseDto> updateCoverPhoto(String imagePath);
   Future<void> updateLocation(UpdateLocationRequestDto request);
   Future<MotorcyclesResponseDto> getMotorcycles();
   Future<MotorcycleDto> addMotorcycle(MotorcycleDto motorcycle);
@@ -42,6 +43,10 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<ProfileResponseDto> updateProfilePicture(String imagePath) =>
       api.updateProfilePicture(imagePath);
+
+  @override
+  Future<ProfileResponseDto> updateCoverPhoto(String imagePath) =>
+      api.updateCoverPhoto(imagePath);
 
   @override
   Future<void> updateLocation(UpdateLocationRequestDto request) =>
