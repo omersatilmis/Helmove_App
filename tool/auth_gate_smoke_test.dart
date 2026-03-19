@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moto_comm_app_1/core/network/auth_bootstrap_gate.dart';
 import 'package:moto_comm_app_1/core/network/auth_interceptor.dart';
 import 'package:moto_comm_app_1/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:moto_comm_app_1/core/enums/user_tier.dart';
 
 class FakeAuthLocalDataSource implements AuthLocalDataSource {
   FakeAuthLocalDataSource({this.token, this.refreshToken});
@@ -42,6 +43,15 @@ class FakeAuthLocalDataSource implements AuthLocalDataSource {
   Future<String?> getProfileImageUrl() async => null;
 
   @override
+  Future<int?> getFollowersCount() async => 0;
+
+  @override
+  Future<int?> getFollowingCount() async => 0;
+
+  @override
+  Future<int?> getFriendsCount() async => 0;
+
+  @override
   Future<String?> getRefreshToken() async => refreshToken;
 
   @override
@@ -57,6 +67,18 @@ class FakeAuthLocalDataSource implements AuthLocalDataSource {
   Future<String?> getUsername() async => null;
 
   @override
+  Future<bool> getIsPremium() async => false;
+
+  @override
+  Future<UserTier> getTier() async => UserTier.free;
+
+  @override
+  Future<void> saveIsPremium(bool isPremium) async {}
+
+  @override
+  Future<void> saveTier(UserTier tier) async {}
+
+  @override
   Future<void> saveFirstName(String? firstName) async {}
 
   @override
@@ -67,6 +89,15 @@ class FakeAuthLocalDataSource implements AuthLocalDataSource {
 
   @override
   Future<void> saveProfileImageUrl(String? profileImageUrl) async {}
+
+  @override
+  Future<void> saveFollowersCount(int count) async {}
+
+  @override
+  Future<void> saveFollowingCount(int count) async {}
+
+  @override
+  Future<void> saveFriendsCount(int count) async {}
 
   @override
   Future<void> saveRefreshToken(String refreshToken) async {

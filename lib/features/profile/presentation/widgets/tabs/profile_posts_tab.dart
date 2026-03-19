@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
 import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_bloc.dart';
 import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_event.dart';
@@ -132,7 +133,13 @@ class _ProfilePostsTabState extends State<ProfilePostsTab>
 
                     return InkWell(
                       onTap: () {
-                        // TODO: Detay sayfasına git
+                        GoRouter.of(context).push(
+                          '/profile/${user.id}/posts',
+                          extra: {
+                            'initialIndex': index,
+                            'postsBloc': _postsBloc,
+                          },
+                        );
                       },
                       child: Stack(
                         fit: StackFit.expand,

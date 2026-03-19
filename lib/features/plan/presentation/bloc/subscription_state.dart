@@ -9,6 +9,7 @@ class SubscriptionState extends Equatable {
   final SubscriptionStatus status;
   final PurchaseStatus purchaseStatus;
   final List<SubscriptionPlanEntity> plans;
+  final bool isPremium;
   final String? errorMessage;
   final String? successMessage;
 
@@ -16,6 +17,7 @@ class SubscriptionState extends Equatable {
     this.status = SubscriptionStatus.initial,
     this.purchaseStatus = PurchaseStatus.initial,
     this.plans = const [],
+    this.isPremium = false,
     this.errorMessage,
     this.successMessage,
   });
@@ -24,6 +26,7 @@ class SubscriptionState extends Equatable {
     SubscriptionStatus? status,
     PurchaseStatus? purchaseStatus,
     List<SubscriptionPlanEntity>? plans,
+    bool? isPremium,
     String? errorMessage,
     String? successMessage,
   }) {
@@ -31,6 +34,7 @@ class SubscriptionState extends Equatable {
       status: status ?? this.status,
       purchaseStatus: purchaseStatus ?? this.purchaseStatus,
       plans: plans ?? this.plans,
+      isPremium: isPremium ?? this.isPremium,
       errorMessage: errorMessage ?? this.errorMessage,
       successMessage: successMessage ?? this.successMessage,
     );
@@ -41,6 +45,7 @@ class SubscriptionState extends Equatable {
     status,
     purchaseStatus,
     plans,
+    isPremium,
     errorMessage,
     successMessage,
   ];
