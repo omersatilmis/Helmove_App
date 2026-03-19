@@ -1,6 +1,7 @@
 import 'dart:async';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../data/models/message_model.dart';
+import '../../../domain/entities/conversation.dart';
 import '../../../domain/usecases/delete_conversation_usecase.dart';
 import '../../../domain/usecases/get_conversations_usecase.dart';
 import '../../../domain/usecases/get_unread_count_usecase.dart';
@@ -31,15 +32,19 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
     on<DeleteConversationEvent>(_onDeleteConversation);
     on<MarkConversationReadEvent>(_onMarkConversationRead);
     on<SyncConversationsRealtimeEvent>(_onRealtimeSync);
+    on<SearchConversationsEvent>(_onSearchConversations);
+    on<NewMessageReceivedEvent>(_onNewMessageReceived);
 
     messageSignalRService.init();
-    _incomingMessageSubscription = messageSignalRService.onDirectMessageReceived.listen((_) {
+    _incomingMessageSubscription = messageSignalRService.onDirectMessageReceived.listen((message) {
       if (!isClosed) {
-        add(const SyncConversationsRealtimeEvent());
+        add(NewMessageReceivedEvent(message));
       }
     });
     _messagesReadSubscription = messageSignalRService.onMessagesRead.listen((_) {
       if (!isClosed) {
+        // For read status, we might still want to refresh to get updated counts easily
+        // Or we could potentially update locally if messageIds are available
         add(const SyncConversationsRealtimeEvent());
       }
     });
@@ -56,7 +61,10 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
     SyncConversationsRealtimeEvent event,
     Emitter<ConversationsState> emit,
   ) async {
-    add(RefreshConversations());
+    // Optimized: Only refresh if not already loading
+    if (state is! ConversationsLoading) {
+      add(RefreshConversations());
+    }
   }
 
   Future<void> _onLoadConversations(
@@ -65,12 +73,16 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
   ) async {
     emit(ConversationsLoading());
     try {
-      final conversations = await getConversations();
-      final unreadCount = await getUnreadCount();
+      // Parallel data fetching
+      final results = await Future.wait([
+        getConversations(),
+        getUnreadCount(),
+      ]);
+      
       emit(
         ConversationsLoaded(
-          conversations: conversations,
-          unreadCount: unreadCount,
+          conversations: results[0] as List<Conversation>,
+          unreadCount: results[1] as int,
         ),
       );
     } catch (e) {
@@ -83,19 +95,81 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
     Emitter<ConversationsState> emit,
   ) async {
     try {
-      final conversations = await getConversations();
-      final unreadCount = await getUnreadCount();
-      emit(
-        ConversationsLoaded(
-          conversations: conversations,
-          unreadCount: unreadCount,
-        ),
-      );
+      final results = await Future.wait([
+        getConversations(),
+        getUnreadCount(),
+      ]);
+
+      if (state is ConversationsLoaded) {
+        final currentState = state as ConversationsLoaded;
+        emit(
+          currentState.copyWith(
+            conversations: results[0] as List<Conversation>,
+            unreadCount: results[1] as int,
+          ),
+        );
+      } else {
+        emit(
+          ConversationsLoaded(
+            conversations: results[0] as List<Conversation>,
+            unreadCount: results[1] as int,
+          ),
+        );
+      }
     } catch (e) {
-      // Refresh error doesn't change state usually, but can show snackbar if handled in UI
-      // Keeping previous state if possible, or just re-emitting current loaded state?
-      // For simplicity emitting error
       emit(ConversationsError(e.toString()));
+    }
+  }
+
+  void _onSearchConversations(
+    SearchConversationsEvent event,
+    Emitter<ConversationsState> emit,
+  ) {
+    if (state is ConversationsLoaded) {
+      emit((state as ConversationsLoaded).copyWith(searchQuery: event.query));
+    }
+  }
+
+  Future<void> _onNewMessageReceived(
+    NewMessageReceivedEvent event,
+    Emitter<ConversationsState> emit,
+  ) async {
+    if (state is ConversationsLoaded) {
+      final currentState = state as ConversationsLoaded;
+      
+      try {
+        if (event.messageData is Map<String, dynamic>) {
+          final newMessage = MessageModel.fromJson(event.messageData as Map<String, dynamic>);
+          
+          // Find if conversation exists
+          final otherUserId = newMessage.isMine ? newMessage.receiverId : newMessage.senderId;
+          final conversations = List<Conversation>.from(currentState.conversations);
+          
+          final index = conversations.indexWhere((c) => c.userId == otherUserId);
+          
+          if (index != -1) {
+            final oldConv = conversations[index];
+            final updatedConv = oldConv.copyWith(
+              lastMessage: newMessage,
+              unreadCount: newMessage.isMine ? oldConv.unreadCount : oldConv.unreadCount + 1,
+              lastActivity: newMessage.sentAt,
+            );
+            
+            conversations.removeAt(index);
+            conversations.insert(0, updatedConv);
+            
+            emit(currentState.copyWith(
+              conversations: conversations,
+              unreadCount: newMessage.isMine ? currentState.unreadCount : currentState.unreadCount + 1,
+            ));
+            return;
+          }
+        }
+      } catch (_) {
+        // Fallback to full refresh if parsing or local update fails
+      }
+      
+      add(RefreshConversations());
     }
   }
 
@@ -105,7 +179,7 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
   ) async {
     try {
       await deleteConversation(event.otherUserId);
-      add(LoadConversations());
+      add(RefreshConversations());
     } catch (e) {
       emit(ConversationsError(e.toString()));
     }
@@ -117,7 +191,7 @@ class ConversationsBloc extends Bloc<ConversationsEvent, ConversationsState> {
   ) async {
     try {
       await markConversationAsRead(event.otherUserId);
-      add(LoadConversations()); // Reload to update unread status and count
+      add(RefreshConversations());
     } catch (e) {
       // Silently fail or log?
     }

@@ -36,6 +36,9 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? region,
     bool? shareLocation,
     bool? showProfileToOthers,
+    String? instagramUrl,
+    String? youtubeUrl,
+    String? twitterUrl,
   }) async {
     try {
       final request = UpdateProfileRequestDto(
@@ -48,6 +51,9 @@ class ProfileRepositoryImpl implements ProfileRepository {
         region: region,
         shareLocation: shareLocation,
         showProfileToOthers: showProfileToOthers,
+        instagramUrl: instagramUrl,
+        youtubeUrl: youtubeUrl,
+        twitterUrl: twitterUrl,
       );
       final response = await _remoteDataSource.updateProfile(request);
       if (!response.success || response.data == null) {
@@ -80,6 +86,19 @@ class ProfileRepositoryImpl implements ProfileRepository {
         throw Exception(response.message ?? "Profil resmi güncellenemedi");
       }
       return response.data!.profileImageUrl ?? '';
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<String> updateCoverPhoto(String imagePath) async {
+    try {
+      final response = await _remoteDataSource.updateCoverPhoto(imagePath);
+      if (!response.success || response.data == null) {
+        throw Exception(response.message ?? "Kapak resmi güncellenemedi");
+      }
+      return response.data!.coverImageUrl ?? '';
     } catch (e) {
       throw Exception(ErrorHandler.getErrorMessage(e));
     }

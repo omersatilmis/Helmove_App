@@ -1,3 +1,5 @@
+import '../../../../core/enums/user_tier.dart';
+
 /// Profil Domain Entity
 class ProfileEntity {
   final int id;
@@ -17,11 +19,21 @@ class ProfileEntity {
   final double? longitude;
   final DateTime? lastSeen;
   final bool isOnline;
+  final int followersCount;
+  final int followingCount;
+  final int friendsCount;
+  final UserTier tier;
+  final bool isFollowing;
+  final String? coverImageUrl;
+  final String? instagramUrl;
+  final String? youtubeUrl;
+  final String? twitterUrl;
 
   const ProfileEntity({
     required this.id,
     required this.username,
     required this.email,
+    required this.tier,
     this.firstName,
     this.lastName,
     this.bio,
@@ -36,6 +48,14 @@ class ProfileEntity {
     this.longitude,
     this.lastSeen,
     this.isOnline = false,
+    this.followersCount = 0,
+    this.followingCount = 0,
+    this.friendsCount = 0,
+    this.isFollowing = false,
+    this.coverImageUrl,
+    this.instagramUrl,
+    this.youtubeUrl,
+    this.twitterUrl,
   });
 
   /// Full name helper
@@ -66,11 +86,21 @@ class ProfileEntity {
     double? longitude,
     DateTime? lastSeen,
     bool? isOnline,
+    int? followersCount,
+    int? followingCount,
+    int? friendsCount,
+    bool? isFollowing,
+    String? coverImageUrl,
+    String? instagramUrl,
+    String? youtubeUrl,
+    String? twitterUrl,
+    UserTier? tier,
   }) {
     return ProfileEntity(
       id: id ?? this.id,
       username: username ?? this.username,
       email: email ?? this.email,
+      tier: tier ?? this.tier,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       bio: bio ?? this.bio,
@@ -85,11 +115,19 @@ class ProfileEntity {
       longitude: longitude ?? this.longitude,
       lastSeen: lastSeen ?? this.lastSeen,
       isOnline: isOnline ?? this.isOnline,
+      followersCount: followersCount ?? this.followersCount,
+      followingCount: followingCount ?? this.followingCount,
+      friendsCount: friendsCount ?? this.friendsCount,
+      isFollowing: isFollowing ?? this.isFollowing,
+      coverImageUrl: coverImageUrl ?? this.coverImageUrl,
+      instagramUrl: instagramUrl ?? this.instagramUrl,
+      youtubeUrl: youtubeUrl ?? this.youtubeUrl,
+      twitterUrl: twitterUrl ?? this.twitterUrl,
     );
   }
 
   @override
   String toString() {
-    return 'ProfileEntity(id: $id, username: $username, fullName: $fullName)';
+    return 'ProfileEntity(id: $id, username: $username, fullName: $fullName, isFollowing: $isFollowing, followers: $followersCount)';
   }
 }

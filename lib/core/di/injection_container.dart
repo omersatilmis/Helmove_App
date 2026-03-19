@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../network/network_module.dart';
 import '../network/auth_bootstrap_gate.dart';
+import '../config/env_config.dart';
 import '../../features/auth/data/api/auth_api.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
@@ -26,6 +27,19 @@ import '../../features/friendship/data/api/friendship_api.dart';
 import '../../features/friendship/data/datasources/friendship_remote_datasource.dart';
 import '../../features/friendship/data/repositories/friendship_repository_impl.dart';
 import '../../features/friendship/domain/repositories/friendship_repository.dart';
+
+// Follow Feature
+import '../../features/follow/data/data_sources/follow_remote_data_source.dart';
+import '../../features/follow/data/repositories/follow_repository_impl.dart';
+import '../../features/follow/domain/repositories/follow_repository.dart';
+import '../../features/follow/domain/usecases/follow_user_usecase.dart';
+import '../../features/follow/domain/usecases/unfollow_user_usecase.dart';
+import '../../features/follow/domain/usecases/get_followers_usecase.dart';
+import '../../features/follow/domain/usecases/get_following_usecase.dart';
+import '../../features/follow/domain/usecases/follow_block_user_usecase.dart';
+import '../../features/follow/domain/usecases/follow_unblock_user_usecase.dart';
+import '../../features/follow/presentation/bloc/action/follow_action_bloc.dart';
+import '../../features/follow/presentation/bloc/list/follow_list_bloc.dart';
 
 // Messages Feature
 import '../../features/messages/data/datasources/message_remote_data_source.dart';
@@ -236,13 +250,24 @@ import '../services/audio_orchestrator_service.dart';
 import '../services/connectivity_watcher_service.dart';
 import '../services/home_summary_service.dart';
 import '../services/home_bootstrap_service.dart';
+import '../services/subscription_service.dart';
 import '../../features/voice_session/presentation/bloc/voice_session_bloc.dart';
 
-import '../../features/intercom/domain/intercom_engine.dart';
-import '../../features/intercom/data/intercom_engine_impl.dart';
+import 'package:moto_comm_app_1/features/intercom/domain/intercom_engine.dart';
+import 'package:moto_comm_app_1/features/intercom/data/intercom_engine_impl.dart';
+// Map Feature
+import '../../features/map/data/datasources/map_remote_data_source.dart';
+import '../../features/map/data/repositories/map_repository_impl.dart';
+import '../../features/map/domain/repositories/map_repository.dart';
+import '../../features/map/domain/usecases/get_route_usecase.dart';
+import '../../features/map/domain/usecases/search_location_usecase.dart';
+import '../../features/map/domain/usecases/search_location_suggestions_usecase.dart';
+import '../../features/map/domain/usecases/reverse_geocode_usecase.dart';
+import '../../features/map/presentation/providers/map_bloc.dart';
+import '../../features/map/config/mapbox_config.dart';
 
-import '../../features/auth/presentation/providers/auth_provider.dart';
-import '../../features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
+import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
 import '../../core/theme/theme_provider.dart';
 
 final sl = GetIt.instance;
@@ -393,6 +418,14 @@ Future<void> resetOnLogout() async {
   }
   if (sl.isRegistered<FriendshipApi>()) {
     sl.unregister<FriendshipApi>();
+  }
+
+  // Follow Feature Resets
+  if (sl.isRegistered<FollowRemoteDataSource>()) {
+    sl.unregister<FollowRemoteDataSource>();
+  }
+  if (sl.isRegistered<FollowRepository>()) {
+    sl.unregister<FollowRepository>();
   }
 
   // 4. Profile Feature Resets
@@ -585,6 +618,114 @@ void _registerCoreFeatureSingletons() {
   if (!sl.isRegistered<notif_unread.GetUnreadCountUseCase>()) {
     sl.registerLazySingleton(() => notif_unread.GetUnreadCountUseCase(sl()));
   }
+
+  // Settings Feature
+  // Must be available from app start because Drawer > Settings can be opened
+  // before deferred feature initialization is triggered.
+  if (!sl.isRegistered<SettingsRemoteDataSource>()) {
+    sl.registerLazySingleton<SettingsRemoteDataSource>(
+      () => SettingsRemoteDataSourceImpl(client: sl()),
+    );
+  }
+  if (!sl.isRegistered<SettingsRepository>()) {
+    sl.registerLazySingleton<SettingsRepository>(
+      () =>
+          SettingsRepositoryImpl(remoteDataSource: sl(), intercomEngine: sl()),
+    );
+  }
+  if (!sl.isRegistered<UpdatePrivacyUseCase>()) {
+    sl.registerLazySingleton(() => UpdatePrivacyUseCase(sl()));
+  }
+  if (!sl.isRegistered<UpdateUnitsUseCase>()) {
+    sl.registerLazySingleton(() => UpdateUnitsUseCase(sl()));
+  }
+  if (!sl.isRegistered<UpdateMapUseCase>()) {
+    sl.registerLazySingleton(() => UpdateMapUseCase(sl()));
+  }
+  if (!sl.isRegistered<UpdateAudioUseCase>()) {
+    sl.registerLazySingleton(() => UpdateAudioUseCase(sl()));
+  }
+  if (!sl.isRegistered<SettingsBloc>()) {
+    sl.registerFactory(
+      () => SettingsBloc(
+        updatePrivacy: sl(),
+        updateUnits: sl(),
+        updateMap: sl(),
+        updateAudio: sl(),
+      ),
+    );
+  }
+
+  // Map Feature
+  const mapboxDioName = 'mapboxDio';
+
+  if (!sl.isRegistered<Dio>(instanceName: mapboxDioName)) {
+    sl.registerLazySingleton<Dio>(
+      instanceName: mapboxDioName,
+      () {
+        final dio = Dio(
+          BaseOptions(
+            baseUrl: MapboxConfig.baseUrl,
+            connectTimeout: EnvConfig.connectTimeout,
+            receiveTimeout: EnvConfig.receiveTimeout,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            queryParameters: {
+              'access_token': MapboxConfig.accessToken,
+            },
+          ),
+        );
+
+        dio.interceptors.add(
+          LogInterceptor(
+            request: true,
+            requestBody: true,
+            responseBody: true,
+            error: true,
+          ),
+        );
+
+        return dio;
+      },
+    );
+  }
+
+  if (!sl.isRegistered<MapRemoteDataSource>()) {
+    sl.registerLazySingleton<MapRemoteDataSource>(
+      () => MapRemoteDataSourceImpl(
+        dio: sl<Dio>(instanceName: mapboxDioName),
+      ),
+    );
+  }
+  if (!sl.isRegistered<MapRepository>()) {
+    sl.registerLazySingleton<MapRepository>(
+      () => MapRepositoryImpl(remoteDataSource: sl()),
+    );
+  }
+  if (!sl.isRegistered<SearchLocationUseCase>()) {
+    sl.registerLazySingleton(() => SearchLocationUseCase(sl()));
+  }
+  if (!sl.isRegistered<SearchLocationSuggestionsUseCase>()) {
+    sl.registerLazySingleton(() => SearchLocationSuggestionsUseCase(sl()));
+  }
+  if (!sl.isRegistered<GetRouteUseCase>()) {
+    sl.registerLazySingleton(() => GetRouteUseCase(sl()));
+  }
+  if (!sl.isRegistered<ReverseGeocodeUseCase>()) {
+    sl.registerLazySingleton(() => ReverseGeocodeUseCase(sl()));
+  }
+  if (!sl.isRegistered<MapBloc>()) {
+    sl.registerFactory(
+      () => MapBloc(
+        searchLocation: sl(),
+        searchSuggestions: sl(),
+        getRoute: sl(),
+        reverseGeocode: sl(),
+      ),
+    );
+  }
 }
 
 void _registerFeatureSingletons() {
@@ -635,6 +776,64 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<FriendshipRepository>()) {
     sl.registerLazySingleton<FriendshipRepository>(
       () => FriendshipRepositoryImpl(sl()),
+    );
+  }
+
+  // Follow Feature
+  if (!sl.isRegistered<FollowRemoteDataSource>()) {
+    sl.registerLazySingleton<FollowRemoteDataSource>(
+      () => FollowRemoteDataSourceImpl(dio: sl()),
+    );
+  }
+  if (!sl.isRegistered<FollowRepository>()) {
+    sl.registerLazySingleton<FollowRepository>(
+      () => FollowRepositoryImpl(remoteDataSource: sl()),
+    );
+  }
+
+  // Follow UseCases
+  if (!sl.isRegistered<FollowUserUseCase>()) {
+    sl.registerLazySingleton(() => FollowUserUseCase(sl()));
+  }
+  if (!sl.isRegistered<UnfollowUserUseCase>()) {
+    sl.registerLazySingleton(() => UnfollowUserUseCase(sl()));
+  }
+  if (!sl.isRegistered<FollowBlockUserUseCase>()) {
+    sl.registerLazySingleton(() => FollowBlockUserUseCase(sl()));
+  }
+  if (!sl.isRegistered<FollowUnblockUserUseCase>()) {
+    sl.registerLazySingleton(() => FollowUnblockUserUseCase(sl()));
+  }
+  if (!sl.isRegistered<GetFollowersUseCase>()) {
+    sl.registerLazySingleton(() => GetFollowersUseCase(sl()));
+  }
+  if (!sl.isRegistered<GetFollowingUseCase>()) {
+    sl.registerLazySingleton(() => GetFollowingUseCase(sl()));
+  }
+
+  // Follow Bloc
+  if (!sl.isRegistered<FollowActionBloc>()) {
+    sl.registerFactory(
+      () => FollowActionBloc(
+        followUserUseCase: sl(),
+        unfollowUserUseCase: sl(),
+        blockUserUseCase: sl(),
+        unblockUserUseCase: sl(),
+      ),
+    );
+  }
+  if (!sl.isRegistered<FollowersListBloc>()) {
+    sl.registerFactory(
+      () => FollowersListBloc(
+        getFollowersUseCase: sl(),
+      ),
+    );
+  }
+  if (!sl.isRegistered<FollowingListBloc>()) {
+    sl.registerFactory(
+      () => FollowingListBloc(
+        getFollowingUseCase: sl(),
+      ),
     );
   }
 
@@ -1014,7 +1213,11 @@ void _registerFeatureSingletons() {
     sl.registerLazySingleton(() => SubscribeUseCase(sl()));
   }
   if (!sl.isRegistered<SubscriptionBloc>()) {
-    sl.registerFactory(() => SubscriptionBloc(getPlans: sl(), subscribe: sl()));
+    sl.registerFactory(() => SubscriptionBloc(
+      getPlans: sl(),
+      subscribe: sl(),
+      subscriptionService: sl(),
+    ));
   }
 
   // ────────────────────────────────────────────────────────
@@ -1383,6 +1586,16 @@ Future<void> initCore() async {
 
     sl.registerLazySingleton(() => NotificationService(sl()));
     _logInitProfile('Core service registrations', stopwatch);
+
+    // ────────────────────────────────────────────────────────
+    // 💳 REVENUECAT (SUBSCRIPTION) SERVICE INITIALIZATION
+    // ────────────────────────────────────────────────────────
+    if (!sl.isRegistered<SubscriptionService>()) {
+      final subscriptionService = SubscriptionServiceImpl(sl<Dio>());
+      sl.registerLazySingleton<SubscriptionService>(() => subscriptionService);
+      // Only call initialize once
+      await subscriptionService.initialize();
+    }
 
     // Feature'ları kaydet (Auth, Profile, Friendship, Voice, Discover vb.)
     _registerCoreFeatureSingletons();
