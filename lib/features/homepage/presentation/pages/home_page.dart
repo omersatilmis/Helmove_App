@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart' as di;
@@ -18,7 +19,6 @@ import 'package:moto_comm_app_1/core/services/signalr_service.dart';
 import 'package:moto_comm_app_1/core/services/call_listener_service.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/core/usecases/usecase.dart';
-import 'package:moto_comm_app_1/core/utils/image_url_extensions.dart';
 import 'package:moto_comm_app_1/core/widgets/unread_count_badge.dart';
 import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
 import 'package:moto_comm_app_1/features/content/posts/data/cache/post_feed_cache.dart';
@@ -64,6 +64,13 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
 
     _bootstrapFuture = _bootstrapHomeData();
     _realtimeInitFuture = _initializeRealtimeAfterBootstrap();
+
+    // 🔥 Profil verilerini yükle (Önce cache'den gelir, sonra backend'den güncellenir)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<ProfileProvider>().loadProfile();
+      }
+    });
   }
 
   @override
@@ -553,11 +560,9 @@ class _HomeTopAppBar extends StatelessWidget implements PreferredSizeWidget {
                   final imageProvider =
                       (identity.profileImageUrl != null &&
                           identity.profileImageUrl!.trim().isNotEmpty)
-                      ? NetworkImage(
-                          identity.profileImageUrl.toAvatarThumbnail(),
-                        )
-                      : const AssetImage('assets/icons/ic_profile.png')
-                            as ImageProvider;
+                      ? CachedNetworkImageProvider(identity.profileImageUrl!)
+                          : const AssetImage('assets/icons/ic_profile.png')
+                             as ImageProvider;
 
                   return Row(
                     children: [

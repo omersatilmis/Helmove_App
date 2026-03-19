@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection_container.dart';
@@ -39,7 +40,8 @@ class _ConversationsViewState extends State<ConversationsView> {
     _searchController.addListener(() {
       final query = _searchController.text;
       if (query != _searchQuery) {
-        setState(() => _searchQuery = query);
+        _searchQuery = query;
+        context.read<ConversationsBloc>().add(SearchConversationsEvent(query));
       }
     });
   }
@@ -56,6 +58,7 @@ class _ConversationsViewState extends State<ConversationsView> {
       if (!_isSearchMode) {
         _searchController.clear();
         _searchQuery = '';
+        context.read<ConversationsBloc>().add(const SearchConversationsEvent(''));
       }
     });
   }
@@ -67,38 +70,10 @@ class _ConversationsViewState extends State<ConversationsView> {
     if (difference.inDays == 0) {
       return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays == 1) {
-      return 'Dun';
+      return 'Dün';
     } else {
       return '${date.day}/${date.month}';
     }
-  }
-
-  String _normalize(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll('ı', 'i')
-        .replaceAll('İ', 'i')
-        .replaceAll('ö', 'o')
-        .replaceAll('ü', 'u')
-        .replaceAll('ç', 'c')
-        .replaceAll('ş', 's')
-        .replaceAll('ğ', 'g')
-        .trim();
-  }
-
-  bool _matchesQuery(dynamic conversation) {
-    if (_searchQuery.trim().isEmpty) return true;
-
-    final query = _normalize(_searchQuery);
-    final fullName =
-        '${conversation.firstName ?? ''} ${conversation.lastName ?? ''}'.trim();
-    final fields = <String>[
-      conversation.username,
-      fullName,
-      conversation.lastMessage?.content ?? '',
-    ];
-
-    return fields.any((field) => _normalize(field).contains(query));
   }
 
   @override
@@ -201,9 +176,7 @@ class _ConversationsViewState extends State<ConversationsView> {
                     ),
                   );
                 } else if (state is ConversationsLoaded) {
-                  final filteredConversations = state.conversations
-                      .where(_matchesQuery)
-                      .toList();
+                  final filteredConversations = state.filteredConversations;
 
                   if (state.conversations.isEmpty) {
                     return SliverToBoxAdapter(
@@ -341,7 +314,7 @@ class _ConversationsViewState extends State<ConversationsView> {
                                         backgroundImage:
                                             conversation.profilePictureUrl !=
                                                     null
-                                                ? NetworkImage(
+                                                ? CachedNetworkImageProvider(
                                                     conversation
                                                         .profilePictureUrl!,
                                                   )

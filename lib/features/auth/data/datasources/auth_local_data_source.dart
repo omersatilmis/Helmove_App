@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../../core/enums/user_tier.dart';
 
 abstract class AuthLocalDataSource {
   Future<void> saveToken(String token);
@@ -23,6 +24,17 @@ abstract class AuthLocalDataSource {
   Future<String?> getLastName();
   Future<void> saveProfileImageUrl(String? profileImageUrl);
   Future<String?> getProfileImageUrl();
+  Future<void> saveFollowersCount(int count);
+  Future<int?> getFollowersCount();
+  Future<void> saveFollowingCount(int count);
+  Future<int?> getFollowingCount();
+  Future<void> saveFriendsCount(int count);
+  Future<int?> getFriendsCount();
+  Future<void> saveIsPremium(bool isPremium);
+  Future<bool> getIsPremium();
+
+  Future<void> saveTier(UserTier tier);
+  Future<UserTier> getTier();
 
   Future<void> clearAuthData();
 }
@@ -37,6 +49,11 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   static const String _firstNameKey = 'USER_FIRST_NAME';
   static const String _lastNameKey = 'USER_LAST_NAME';
   static const String _profileImageUrlKey = 'USER_PROFILE_IMAGE_URL';
+  static const String _followersCountKey = 'USER_FOLLOWERS_COUNT';
+  static const String _followingCountKey = 'USER_FOLLOWING_COUNT';
+  static const String _friendsCountKey = 'USER_FRIENDS_COUNT';
+  static const String _isPremiumKey = 'USER_IS_PREMIUM';
+  static const String _tierKey = 'USER_TIER_ENUM';
 
   final SharedPreferences sharedPreferences;
   final FlutterSecureStorage secureStorage;
@@ -175,6 +192,64 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
+  Future<void> saveFollowersCount(int count) async {
+    await sharedPreferences.setInt(_followersCountKey, count);
+  }
+
+  @override
+  Future<int?> getFollowersCount() async {
+    await sharedPreferences.reload();
+    return sharedPreferences.getInt(_followersCountKey);
+  }
+
+  @override
+  Future<void> saveFollowingCount(int count) async {
+    await sharedPreferences.setInt(_followingCountKey, count);
+  }
+
+  @override
+  Future<int?> getFollowingCount() async {
+    await sharedPreferences.reload();
+    return sharedPreferences.getInt(_followingCountKey);
+  }
+
+  @override
+  Future<void> saveFriendsCount(int count) async {
+    await sharedPreferences.setInt(_friendsCountKey, count);
+  }
+
+  @override
+  Future<int?> getFriendsCount() async {
+    await sharedPreferences.reload();
+    return sharedPreferences.getInt(_friendsCountKey);
+  }
+
+  @override
+  Future<void> saveIsPremium(bool isPremium) async {
+    await sharedPreferences.setBool(_isPremiumKey, isPremium);
+  }
+
+  @override
+  Future<bool> getIsPremium() async {
+    await sharedPreferences.reload();
+    return sharedPreferences.getBool(_isPremiumKey) ?? false;
+  }
+
+  @override
+  Future<void> saveTier(UserTier tier) async {
+    await sharedPreferences.setString(_tierKey, tier.name);
+    // Backward compatibility for isPremium
+    await saveIsPremium(tier.isPremium);
+  }
+
+  @override
+  Future<UserTier> getTier() async {
+    await sharedPreferences.reload();
+    final tierStr = sharedPreferences.getString(_tierKey);
+    return UserTier.fromString(tierStr);
+  }
+
+  @override
   Future<void> clearAuthData() async {
     await deleteToken();
     await deleteRefreshToken();
@@ -184,5 +259,10 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     await sharedPreferences.remove(_firstNameKey);
     await sharedPreferences.remove(_lastNameKey);
     await sharedPreferences.remove(_profileImageUrlKey);
+    await sharedPreferences.remove(_followersCountKey);
+    await sharedPreferences.remove(_followingCountKey);
+    await sharedPreferences.remove(_friendsCountKey);
+    await sharedPreferences.remove(_isPremiumKey);
+    await sharedPreferences.remove(_tierKey);
   }
 }

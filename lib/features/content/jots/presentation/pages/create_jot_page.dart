@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:go_router/go_router.dart';
@@ -43,7 +44,9 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
 
   void _onTextChanged() {
     final length = _controller.text.length;
-    final canPost = (_controller.text.trim().isNotEmpty || _selectedImage != null) && length <= 280;
+    final canPost =
+        (_controller.text.trim().isNotEmpty || _selectedImage != null) &&
+        length <= 280;
 
     if (_charCountNotifier.value != length) {
       _charCountNotifier.value = length;
@@ -76,7 +79,9 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                   child: InkWell(
                     onTap: () async {
                       Navigator.pop(context);
-                      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+                      final XFile? image = await _picker.pickImage(
+                        source: ImageSource.camera,
+                      );
                       if (image != null) {
                         setState(() {
                           _selectedImage = File(image.path);
@@ -86,9 +91,18 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                     },
                     child: Column(
                       children: [
-                        const Icon(Icons.camera_alt, color: AppColors.primary, size: 40),
+                        const Icon(
+                          Icons.camera_alt,
+                          color: AppColors.primary,
+                          size: 40,
+                        ),
                         const SizedBox(height: 8),
-                        Text("Fotoğraf Çek", style: AppTextStyles.bodyMedium.copyWith(color: Colors.white)),
+                        Text(
+                          "Fotoğraf Çek",
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -97,7 +111,9 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                   child: InkWell(
                     onTap: () async {
                       Navigator.pop(context);
-                      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+                      final XFile? image = await _picker.pickImage(
+                        source: ImageSource.gallery,
+                      );
                       if (image != null) {
                         setState(() {
                           _selectedImage = File(image.path);
@@ -107,9 +123,18 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                     },
                     child: Column(
                       children: [
-                        const Icon(Icons.photo_library, color: AppColors.primary, size: 40),
+                        const Icon(
+                          Icons.photo_library,
+                          color: AppColors.primary,
+                          size: 40,
+                        ),
                         const SizedBox(height: 8),
-                        Text("Galeriden Seç", style: AppTextStyles.bodyMedium.copyWith(color: Colors.white)),
+                        Text(
+                          "Galeriden Seç",
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -154,13 +179,15 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
             child: BlocConsumer<JotsBloc, JotsState>(
               listener: (context, state) {
                 if (state.createStatus == JotsStatus.success) {
+                  if (!context.mounted) return;
                   context.pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Jot paylaşıldı!')),
                   );
                 } else if (state.createStatus == JotsStatus.failure) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(state.createError ?? 'Hata oluştu')),
+                    SnackBar(content: Text(state.createError.isNotEmpty ? state.createError : 'Hata oluştu')),
                   );
                 }
               },
@@ -174,23 +201,25 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                       onPressed: (canPost && !isLoading)
                           ? () {
                               context.read<JotsBloc>().add(
-                                    CreateJotEvent(
-                                      type: _selectedImage != null
-                                          ? JotType.image
-                                          : JotType.text,
-                                      text: _controller.text.trim(),
-                                      mediaUrl: _selectedImage?.path,
-                                      visibility: JotVisibility.public,
-                                    ),
-                                  );
+                                CreateJotEvent(
+                                  type: _selectedImage != null
+                                      ? JotType.image
+                                      : JotType.text,
+                                  text: _controller.text.trim(),
+                                  mediaUrl: _selectedImage?.path,
+                                  visibility: JotVisibility.public,
+                                ),
+                              );
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                            theme.colorScheme.primary.withOpacity(0.5),
-                        disabledForegroundColor: Colors.white.withOpacity(0.5),
+                        disabledBackgroundColor: theme.colorScheme.primary
+                            .withValues(alpha: 0.5),
+                        disabledForegroundColor: Colors.white.withValues(
+                          alpha: 0.5,
+                        ),
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         shape: RoundedRectangleBorder(
@@ -235,11 +264,12 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                     children: [
                       CircleAvatar(
                         radius: 22,
-                        backgroundImage: (user?.profileImageUrl != null &&
+                        backgroundImage:
+                            (user?.profileImageUrl != null &&
                                 user!.profileImageUrl!.isNotEmpty)
-                            ? NetworkImage(user.profileImageUrl!)
+                            ? CachedNetworkImageProvider(user.profileImageUrl!)
                             : const AssetImage('assets/icons/ic_profile.png')
-                                as ImageProvider,
+                                  as ImageProvider,
                       ),
                       const SizedBox(width: 12),
                       Column(
@@ -258,7 +288,9 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                             style: AppTextStyles.bodySmall.copyWith(
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
-                              color: theme.colorScheme.onSurface.withOpacity(0.5),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                           ),
                         ],
@@ -266,7 +298,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Alt Kısım: Metin Yazma Alanı (Sola Yaslı, PP Altından Başlıyor)
                   TextField(
                     controller: _controller,
@@ -282,11 +314,13 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                       fontWeight: FontWeight.w400,
                       color: theme.colorScheme.onSurface,
                     ),
-                    buildCounter: (context,
-                            {required currentLength,
-                            required isFocused,
-                            maxLength}) =>
-                        const SizedBox.shrink(),
+                    buildCounter:
+                        (
+                          context, {
+                          required currentLength,
+                          required isFocused,
+                          maxLength,
+                        }) => const SizedBox.shrink(),
                     decoration: InputDecoration(
                       hintText: "Bugün ne paylaşmak istersin?",
                       filled: false, // Arka plan rengini tamamen kapattım
@@ -300,7 +334,9 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                       isDense: true,
                       hintStyle: TextStyle(
                         fontSize: 18,
-                        color: theme.colorScheme.onSurface.withOpacity(0.4),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.4,
+                        ),
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -333,7 +369,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                               child: Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.6),
+                                  color: Colors.black.withValues(alpha: 0.6),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -363,7 +399,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
             decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(
-                  color: theme.dividerColor.withOpacity(0.08),
+                  color: theme.dividerColor.withValues(alpha: 0.08),
                 ),
               ),
             ),
@@ -387,12 +423,14 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                       child: CircularProgressIndicator(
                         value: progress > 1.0 ? 1.0 : progress,
                         strokeWidth: 2,
-                        backgroundColor: theme.dividerColor.withOpacity(0.1),
+                        backgroundColor: theme.dividerColor.withValues(
+                          alpha: 0.1,
+                        ),
                         color: count > 280
                             ? Colors.red
                             : isNearLimit
-                                ? Colors.orange
-                                : theme.colorScheme.primary,
+                            ? Colors.orange
+                            : theme.colorScheme.primary,
                       ),
                     );
                   },
@@ -410,11 +448,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
       onPressed: onPressed ?? () {},
       constraints: const BoxConstraints(),
       padding: const EdgeInsets.all(10),
-      icon: Icon(
-        icon,
-        color: theme.colorScheme.primary,
-        size: 22,
-      ),
+      icon: Icon(icon, color: theme.colorScheme.primary, size: 22),
     );
   }
 }
