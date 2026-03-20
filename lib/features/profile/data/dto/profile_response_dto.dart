@@ -29,10 +29,19 @@ class ProfileDataDto {
   final String? profileImageUrl;
   final bool shareLocation;
   final bool showProfileToOthers;
+  final String? coverImageUrl;
+  final String? instagramUrl;
+  final String? youtubeUrl;
+  final String? twitterUrl;
   final double? latitude;
   final double? longitude;
   final DateTime? lastSeen;
   final bool isOnline;
+  final int followersCount;
+  final int followingCount;
+  final int friendsCount;
+  final bool isFollowing;
+  final String? premiumTier;
 
   ProfileDataDto({
     required this.id,
@@ -52,6 +61,15 @@ class ProfileDataDto {
     this.longitude,
     this.lastSeen,
     this.isOnline = false,
+    this.followersCount = 0,
+    this.followingCount = 0,
+    this.friendsCount = 0,
+    this.isFollowing = false,
+    this.premiumTier,
+    this.coverImageUrl,
+    this.instagramUrl,
+    this.youtubeUrl,
+    this.twitterUrl,
   });
 
   factory ProfileDataDto.fromJson(Map<String, dynamic> json) {
@@ -75,7 +93,7 @@ class ProfileDataDto {
       address: json['address'],
       city: json['city'],
       region: json['region'],
-      profileImageUrl: json['profileImageUrl'],
+      profileImageUrl: json['profileImageUrl'] ?? json['profilePictureUrl'], // API returns profilePictureUrl usually
       shareLocation: json['shareLocation'] ?? false,
       showProfileToOthers: json['showProfileToOthers'] ?? true,
       latitude: (json['latitude'] as num?)?.toDouble(),
@@ -84,6 +102,15 @@ class ProfileDataDto {
           ? DateTime.tryParse(json['lastSeen'])
           : null,
       isOnline: json['isOnline'] ?? false,
+      followersCount: toInt(json['followersCount'] ?? json['FollowersCount']) ?? 0,
+      followingCount: toInt(json['followingCount'] ?? json['FollowingCount']) ?? 0,
+      friendsCount: toInt(json['friendsCount'] ?? json['FriendsCount']) ?? 0,
+      isFollowing: json['isFollowing'] ?? false,
+      premiumTier: (json['premiumTier'] ?? json['PremiumTier'])?.toString(),
+      coverImageUrl: json['coverImageUrl'] ?? json['CoverImageUrl'],
+      instagramUrl: json['instagramUrl'] ?? json['InstagramUrl'],
+      youtubeUrl: json['youtubeUrl'] ?? json['YoutubeUrl'],
+      twitterUrl: json['twitterUrl'] ?? json['TwitterUrl'],
     );
   }
 }
