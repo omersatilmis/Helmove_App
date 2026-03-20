@@ -9,6 +9,9 @@ class UpdateProfileRequestDto {
   final String? region;
   final bool? shareLocation;
   final bool? showProfileToOthers;
+  final String? instagramUrl;
+  final String? youtubeUrl;
+  final String? twitterUrl;
 
   UpdateProfileRequestDto({
     this.firstName,
@@ -20,6 +23,9 @@ class UpdateProfileRequestDto {
     this.region,
     this.shareLocation,
     this.showProfileToOthers,
+    this.instagramUrl,
+    this.youtubeUrl,
+    this.twitterUrl,
   });
 
   Map<String, dynamic> toJson() {
@@ -35,6 +41,9 @@ class UpdateProfileRequestDto {
     if (showProfileToOthers != null) {
       json['showProfileToOthers'] = showProfileToOthers;
     }
+    if (instagramUrl != null) json['instagramUrl'] = instagramUrl;
+    if (youtubeUrl != null) json['youtubeUrl'] = youtubeUrl;
+    if (twitterUrl != null) json['twitterUrl'] = twitterUrl;
     return json;
   }
 }

@@ -1,3 +1,4 @@
+import '../../../../core/enums/user_tier.dart';
 import '../../domain/entities/auth_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_data_source.dart';
@@ -12,6 +13,9 @@ import '../dto/session_dto.dart';
 import '../mapper/auth_mapper.dart';
 import '../../../../core/error/error_handler.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/services/subscription_service.dart';
+import 'package:moto_comm_app_1/core/di/injection_container.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
@@ -43,6 +47,19 @@ class AuthRepositoryImpl implements AuthRepository {
       await _localDataSource.saveFirstName(entity.firstName);
       await _localDataSource.saveLastName(entity.lastName);
       await _localDataSource.saveProfileImageUrl(entity.profileImageUrl);
+      await _localDataSource.saveTier(entity.tier);
+
+      // ────────────────────────────────────────────────────────
+      // 💳 REVENUECAT LOGIN SYNC
+      // ────────────────────────────────────────────────────────
+      try {
+        if (sl.isRegistered<SubscriptionService>()) {
+          await sl<SubscriptionService>().logIn(entity.id.toString());
+          debugPrint('✅ RevenueCat user logged in: ${entity.id}');
+        }
+      } catch (e) {
+        debugPrint('❌ RevenueCat login failed: $e');
+      }
 
       return entity;
     } catch (e) {
@@ -93,6 +110,18 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (e) {
       AppLogger.warning("Logout API error: $e");
     } finally {
+      // ────────────────────────────────────────────────────────
+      // 💳 REVENUECAT LOGOUT SYNC
+      // ────────────────────────────────────────────────────────
+      try {
+        if (sl.isRegistered<SubscriptionService>()) {
+          await sl<SubscriptionService>().logOut();
+          debugPrint('✅ RevenueCat user logged out');
+        }
+      } catch (e) {
+        debugPrint('❌ RevenueCat logout error: $e');
+      }
+
       await _localDataSource.clearAuthData();
     }
   }
@@ -111,6 +140,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final firstName = await _localDataSource.getFirstName();
     final lastName = await _localDataSource.getLastName();
     final profileImageUrl = await _localDataSource.getProfileImageUrl();
+    final tier = await _localDataSource.getTier();
 
     if (token != null &&
         token.isNotEmpty &&
@@ -125,6 +155,7 @@ class AuthRepositoryImpl implements AuthRepository {
         firstName: firstName,
         lastName: lastName,
         profileImageUrl: profileImageUrl,
+        tier: tier,
       );
     }
     return null;
@@ -143,6 +174,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? firstName,
     String? lastName,
     String? profileImageUrl,
+    UserTier? tier,
   }) async {
     await _localDataSource.saveUserId(id);
     await _localDataSource.saveUsername(username);
@@ -150,6 +182,9 @@ class AuthRepositoryImpl implements AuthRepository {
     await _localDataSource.saveFirstName(firstName);
     await _localDataSource.saveLastName(lastName);
     await _localDataSource.saveProfileImageUrl(profileImageUrl);
+    if (tier != null) {
+      await _localDataSource.saveTier(tier);
+    }
   }
 
   @override
@@ -211,6 +246,37 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<List<SessionDto>> getSessions() async {
     try {
       return await _remoteDataSource.getSessions();
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<AuthEntity> refreshCurrentUser() async {
+    try {
+      final responseDto = await _remoteDataSource.refreshCurrentUser();
+
+      if (!responseDto.success || responseDto.data == null) {
+        throw Exception(responseDto.message ?? "Kullanıcı yenileme başarısız");
+      }
+
+      final entity = AuthMapper.toEntity(responseDto);
+
+      // Token ve kullanıcı bilgilerini güncelle
+      await _localDataSource.saveToken(entity.token);
+      final refreshToken = responseDto.data?.refreshToken;
+      if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+        await _localDataSource.saveRefreshToken(refreshToken);
+      }
+      await _localDataSource.saveUserId(entity.id);
+      await _localDataSource.saveUsername(entity.username);
+      await _localDataSource.saveEmail(entity.email);
+      await _localDataSource.saveFirstName(entity.firstName);
+      await _localDataSource.saveLastName(entity.lastName);
+      await _localDataSource.saveProfileImageUrl(entity.profileImageUrl);
+      await _localDataSource.saveTier(entity.tier);
+
+      return entity;
     } catch (e) {
       throw Exception(ErrorHandler.getErrorMessage(e));
     }
