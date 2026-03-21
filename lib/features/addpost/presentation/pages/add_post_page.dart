@@ -143,12 +143,9 @@ class _AddPostPageState extends State<AddPostPage> {
                       text: 'Devam Et',
                       variant: AppButtonVariant.primary,
                       onPressed: () {
-                        // TODO: Navigate to editing/caption page
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Sonraki aşama henüz eklenmedi'),
-                          ),
-                        );
+                        if (_imageFile != null) {
+                          context.push('/prepare_media', extra: _imageFile);
+                        }
                       },
                     ),
                   ),

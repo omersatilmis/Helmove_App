@@ -1,3 +1,5 @@
+import 'package:moto_comm_app_1/core/enums/user_tier.dart';
+
 class AuthEntity {
   final int id;
   final String username;
@@ -6,6 +8,7 @@ class AuthEntity {
   final String? firstName;
   final String? lastName;
   final String? profileImageUrl; // İleride lazım olur diye ekledim
+  final UserTier tier;
 
   const AuthEntity({
     required this.id,
@@ -15,7 +18,10 @@ class AuthEntity {
     this.firstName,
     this.lastName,
     this.profileImageUrl,
+    this.tier = UserTier.free,
   });
+
+  bool get isPremium => tier.isPremium;
 
   // 🔥 SENIOR DOKUNUŞU: Helper Getter
   // UI'da "Ali Veli" yazdırmak için her seferinde string birleştirmekle uğraşma.
