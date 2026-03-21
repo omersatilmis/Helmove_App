@@ -13,11 +13,12 @@ class FriendshipActionLoading extends FriendshipActionState {}
 
 class FriendshipActionSuccess extends FriendshipActionState {
   final String message;
+  final int? targetUserId;
 
-  const FriendshipActionSuccess(this.message);
+  const FriendshipActionSuccess(this.message, {this.targetUserId});
 
   @override
-  List<Object> get props => [message];
+  List<Object> get props => targetUserId != null ? [message, targetUserId!] : [message];
 }
 
 class FriendshipActionFailure extends FriendshipActionState {

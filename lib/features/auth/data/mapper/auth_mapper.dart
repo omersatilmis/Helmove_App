@@ -1,3 +1,5 @@
+import 'package:moto_comm_app_1/core/enums/user_tier.dart';
+
 import '../../domain/entities/auth_entity.dart';
 import '../dto/login_response_dto.dart';
 
@@ -15,6 +17,7 @@ class AuthMapper {
       firstName: data.firstName,
       lastName: data.lastName,
       profileImageUrl: data.profileImageUrl,
+      tier: UserTier.fromString(data.premiumTier),
     );
   }
 }

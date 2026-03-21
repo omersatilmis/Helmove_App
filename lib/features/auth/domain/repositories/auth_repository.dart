@@ -1,3 +1,4 @@
+import '../../../../core/enums/user_tier.dart';
 import '../entities/auth_entity.dart';
 import '../../data/dto/refresh_token_request_dto.dart';
 import '../../data/dto/revoke_token_request_dto.dart';
@@ -33,6 +34,7 @@ abstract class AuthRepository {
     String? firstName,
     String? lastName,
     String? profileImageUrl,
+    UserTier? tier,
   });
 
   /// Şifremi unuttum - Email'e sıfırlama linki gönderir
@@ -49,4 +51,7 @@ abstract class AuthRepository {
   Future<void> refreshToken(RefreshTokenRequestDto request);
   Future<void> revokeToken(RevokeTokenRequestDto request);
   Future<List<SessionDto>> getSessions();
+
+  /// Mevcut kullanıcı bilgilerini API'den tekrar çeker ve yerel cache'i günceller
+  Future<AuthEntity> refreshCurrentUser();
 }
