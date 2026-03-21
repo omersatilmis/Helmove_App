@@ -37,20 +37,23 @@ class JotCardWidget extends StatelessWidget {
     final lastName = jot.lastName ?? "";
     final userName = jot.username ?? "user";
     final content = jot.text ?? "";
-    final profileImage = jot.userProfilePictureUrl ?? 'assets/icons/ic_profile.png';
+    final profileImage =
+        jot.userProfilePictureUrl ?? 'assets/icons/ic_profile.png';
     final timeAgo = _formatDate(jot.createdAt);
     final bikeModel = jot.bikeModel;
 
     // KART YAPISI: Alttaki ince çizgiyi kaldırıp Threads/X tarzı 8px "havada duran" kart boşluğu verdik
     return Container(
-      margin: const EdgeInsets.only(bottom: 8, left: 12, right: 12), 
+      margin: const EdgeInsets.only(bottom: 8, left: 12, right: 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             decoration: BoxDecoration(
-              color: colorScheme.surface.withValues(alpha: 0.1), // Çok hafif saydamlık
+              color: colorScheme.surface.withValues(
+                alpha: 0.1,
+              ), // Çok hafif saydamlık
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: colorScheme.onSurface.withValues(alpha: 0.1),
@@ -62,21 +65,23 @@ class JotCardWidget extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => JotDetailPage(
-                      jot: jot,
-                      currentUserId: currentUserId,
-                    ),
+                    builder: (context) =>
+                        JotDetailPage(jot: jot, currentUserId: currentUserId),
                   ),
                 );
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), // Ferahlatılmış padding
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ), // Ferahlatılmış padding
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // --- 1. HEADER ---
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start, // Avatarı tepeye hizaladık
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start, // Avatarı tepeye hizaladık
                       children: [
                         // AVATAR ÇERÇEVESİ: Tatlı bir premium halka eklendi
                         Container(
@@ -93,7 +98,8 @@ class JotCardWidget extends StatelessWidget {
                             backgroundImage: profileImage.startsWith('http')
                                 ? CachedNetworkImageProvider(profileImage)
                                 : AssetImage(profileImage) as ImageProvider,
-                            backgroundColor: colorScheme.surfaceContainerHighest,
+                            backgroundColor:
+                                colorScheme.surfaceContainerHighest,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -122,14 +128,17 @@ class JotCardWidget extends StatelessWidget {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: colorScheme.primary.withValues(alpha: 0.15),
+                                        color: colorScheme.primary.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
-                                            Icons.two_wheeler_rounded, // Minik motor ikonu
+                                            Icons
+                                                .two_wheeler_rounded, // Minik motor ikonu
                                             size: 12,
                                             color: colorScheme.primary,
                                           ),
@@ -148,7 +157,9 @@ class JotCardWidget extends StatelessWidget {
                                   ],
                                 ],
                               ),
-                              const SizedBox(height: 0), // İsim ile username dikeyde yaklaştırıldı
+                              const SizedBox(
+                                height: 0,
+                              ), // İsim ile username dikeyde yaklaştırıldı
                               Row(
                                 children: [
                                   Text(
@@ -170,92 +181,102 @@ class JotCardWidget extends StatelessWidget {
                             ],
                           ),
                         ),
-                        
+
                         // KEBAB MENU
                         Transform.translate(
-                          offset: const Offset(8, -8), // Sağa ve yukarı kaydırarak köşe hizasını iyileştirdik
+                          offset: const Offset(
+                            8,
+                            -8,
+                          ), // Sağa ve yukarı kaydırarak köşe hizasını iyileştirdik
                           child: IconButton(
                             icon: Icon(
                               Icons.more_horiz,
                               size: 20,
                               color: textSecondary,
                             ),
-                          onPressed: () async {
-                            HapticFeedback.lightImpact(); // Menü açılırken hafif titreşim
-                            final renderBox = context.findRenderObject() as RenderBox;
-                            final offset = renderBox.localToGlobal(Offset.zero);
-
-                            final value = await showMenu<String>(
-                              context: context,
-                              position: RelativeRect.fromLTRB(
-                                offset.dx + renderBox.size.width - 40,
-                                offset.dy + 40,
-                                offset.dx + renderBox.size.width,
-                                offset.dy + 100,
-                              ),
-                              color: theme.colorScheme.surface,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              items: [
-                                if (isOwner)
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                                        const SizedBox(width: 10),
-                                        const Text(
-                                          "Sil",
-                                          style: TextStyle(
-                                            color: Colors.red,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                if (!isOwner)
-                                  PopupMenuItem(
-                                    value: 'report',
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.report_problem_outlined,
-                                          color: textPrimary,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          "Bildir",
-                                          style: TextStyle(
-                                            color: textPrimary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            );
-
-                            if (!context.mounted) return;
-                            if (value == 'delete') {
-                              onDelete?.call();
-                            } else if (value == 'report') {
-                              ReportBottomSheet.show(
-                                context,
-                                targetId: jot.id.toString(),
-                                targetType: ReportTargetType.content,
+                            onPressed: () async {
+                              HapticFeedback.lightImpact(); // Menü açılırken hafif titreşim
+                              final renderBox =
+                                  context.findRenderObject() as RenderBox;
+                              final offset = renderBox.localToGlobal(
+                                Offset.zero,
                               );
-                            }
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+
+                              final value = await showMenu<String>(
+                                context: context,
+                                position: RelativeRect.fromLTRB(
+                                  offset.dx + renderBox.size.width - 40,
+                                  offset.dy + 40,
+                                  offset.dx + renderBox.size.width,
+                                  offset.dy + 100,
+                                ),
+                                color: theme.colorScheme.surface,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                items: [
+                                  if (isOwner)
+                                    PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.red,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          const Text(
+                                            "Sil",
+                                            style: TextStyle(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  if (!isOwner)
+                                    PopupMenuItem(
+                                      value: 'report',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.report_problem_outlined,
+                                            color: textPrimary,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            "Bildir",
+                                            style: TextStyle(
+                                              color: textPrimary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              );
+
+                              if (!context.mounted) return;
+                              if (value == 'delete') {
+                                onDelete?.call();
+                              } else if (value == 'report') {
+                                ReportBottomSheet.show(
+                                  context,
+                                  targetId: jot.id.toString(),
+                                  targetType: ReportTargetType.content,
+                                );
+                              }
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
                         ),
-                      ),
-                    ], 
-                  ),
+                      ],
+                    ),
 
                     // --- 2. CONTENT ---
                     if (content.isNotEmpty)
@@ -285,7 +306,9 @@ class JotCardWidget extends StatelessWidget {
                             ),
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(15), // Border içine otursun diye 1px küçük
+                            borderRadius: BorderRadius.circular(
+                              15,
+                            ), // Border içine otursun diye 1px küçük
                             child: Container(
                               constraints: const BoxConstraints(
                                 maxHeight: 350, // Biraz daha dengeli yükseklik
@@ -297,15 +320,19 @@ class JotCardWidget extends StatelessWidget {
                                 placeholder: (context, url) => Container(
                                   height: 200,
                                   width: double.infinity,
-                                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                  color: colorScheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.5),
                                   child: const Center(
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   ),
                                 ),
                                 errorWidget: (context, url, error) => Container(
                                   height: 200,
                                   width: double.infinity,
-                                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                  color: colorScheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.5),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -340,7 +367,9 @@ class JotCardWidget extends StatelessWidget {
                             onComment?.call();
                           },
                         ),
-                        const SizedBox(width: 24), // Butonlar arası ferah boşluk
+                        const SizedBox(
+                          width: 24,
+                        ), // Butonlar arası ferah boşluk
                         _ActionButton(
                           icon: Icons.favorite_border_rounded,
                           activeIcon: Icons.favorite_rounded,
@@ -365,7 +394,9 @@ class JotCardWidget extends StatelessWidget {
                             }
                           },
                         ),
-                        const SizedBox(width: 4), // Paylaş butonunu kebab menü ile aynı hizaya çekmek için sağdan küçük boşluk
+                        const SizedBox(
+                          width: 4,
+                        ), // Paylaş butonunu kebab menü ile aynı hizaya çekmek için sağdan küçük boşluk
                       ],
                     ),
                   ],
