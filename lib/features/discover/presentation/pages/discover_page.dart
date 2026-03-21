@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
@@ -116,7 +117,7 @@ class _DiscoverViewState extends State<_DiscoverView> {
                           backgroundImage:
                               (user.profilePictureUrl != null &&
                                   user.profilePictureUrl!.isNotEmpty)
-                              ? NetworkImage(user.profilePictureUrl!)
+                              ? CachedNetworkImageProvider(user.profilePictureUrl!)
                               : null,
                           child:
                               (user.profilePictureUrl == null ||

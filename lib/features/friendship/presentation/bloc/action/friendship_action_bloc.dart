@@ -61,7 +61,7 @@ class FriendshipActionBloc
     );
     result.fold(
       (failure) => emit(FriendshipActionFailure(failure.message)),
-      (success) => emit(FriendshipActionSuccess("Friend request accepted")),
+      (success) => emit(FriendshipActionSuccess("Friend request accepted", targetUserId: event.friendshipId)),
     );
   }
 
@@ -89,7 +89,7 @@ class FriendshipActionBloc
     );
     result.fold(
       (failure) => emit(FriendshipActionFailure(failure.message)),
-      (success) => emit(FriendshipActionSuccess("Friend removed")),
+      (success) => emit(FriendshipActionSuccess("Friend removed", targetUserId: event.friendId)),
     );
   }
 
@@ -103,7 +103,7 @@ class FriendshipActionBloc
     );
     result.fold(
       (failure) => emit(FriendshipActionFailure(failure.message)),
-      (success) => emit(FriendshipActionSuccess("User blocked")),
+      (success) => emit(FriendshipActionSuccess("User blocked", targetUserId: event.targetUserId)),
     );
   }
 
