@@ -39,4 +39,30 @@ class Conversation extends Equatable {
     unreadCount,
     lastActivity,
   ];
+
+  Conversation copyWith({
+    int? userId,
+    String? username,
+    String? firstName,
+    String? lastName,
+    String? profilePictureUrl,
+    bool? isOnline,
+    DateTime? lastSeen,
+    Message? lastMessage,
+    int? unreadCount,
+    DateTime? lastActivity,
+  }) {
+    return Conversation(
+      userId: userId ?? this.userId,
+      username: username ?? this.username,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
+      isOnline: isOnline ?? this.isOnline,
+      lastSeen: lastSeen ?? this.lastSeen,
+      lastMessage: lastMessage ?? this.lastMessage,
+      unreadCount: unreadCount ?? this.unreadCount,
+      lastActivity: lastActivity ?? this.lastActivity,
+    );
+  }
 }
