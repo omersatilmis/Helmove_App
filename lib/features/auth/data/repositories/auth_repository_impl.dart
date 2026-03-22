@@ -24,7 +24,11 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._remoteDataSource, this._localDataSource);
 
   @override
-  Future<AuthEntity> login(String email, String password) async {
+  Future<AuthEntity> login(
+    String email,
+    String password, {
+    bool rememberMe = true,
+  }) async {
     try {
       final requestDto = LoginRequestDto(email: email, password: password);
       final responseDto = await _remoteDataSource.login(requestDto);
@@ -48,6 +52,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _localDataSource.saveLastName(entity.lastName);
       await _localDataSource.saveProfileImageUrl(entity.profileImageUrl);
       await _localDataSource.saveTier(entity.tier);
+      await _localDataSource.saveRememberMe(rememberMe);
 
       // ────────────────────────────────────────────────────────
       // 💳 REVENUECAT LOGIN SYNC

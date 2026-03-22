@@ -48,6 +48,7 @@ class _LoginPageState extends State<LoginPage> {
       final success = await authProvider.login(
         _emailController.text.trim(), // Boşlukları temizle
         _passwordController.text,
+        rememberMe: _rememberMe,
       );
 
       if (success && mounted) {

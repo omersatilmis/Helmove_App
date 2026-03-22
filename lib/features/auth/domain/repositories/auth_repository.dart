@@ -5,7 +5,11 @@ import '../../data/dto/revoke_token_request_dto.dart';
 import '../../data/dto/session_dto.dart';
 
 abstract class AuthRepository {
-  Future<AuthEntity> login(String email, String password);
+  Future<AuthEntity> login(
+    String email,
+    String password, {
+    bool rememberMe = true,
+  });
 
   Future<void> register({
     required String username,

@@ -48,12 +48,20 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
 
   // Login
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(
+    String email,
+    String password, {
+    bool rememberMe = true,
+  }) async {
     _setLoading(true);
     clearError();
 
     try {
-      final authEntity = await _authRepository.login(email, password);
+      final authEntity = await _authRepository.login(
+        email,
+        password,
+        rememberMe: rememberMe,
+      );
       _currentUser = authEntity;
       _appSession.updateSession(
         currentUserId: authEntity.id,

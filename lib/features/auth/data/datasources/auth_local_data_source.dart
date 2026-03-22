@@ -36,6 +36,9 @@ abstract class AuthLocalDataSource {
   Future<void> saveTier(UserTier tier);
   Future<UserTier> getTier();
 
+  Future<void> saveRememberMe(bool rememberMe);
+  Future<bool> getRememberMe();
+
   Future<void> clearAuthData();
 }
 
@@ -54,6 +57,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   static const String _friendsCountKey = 'USER_FRIENDS_COUNT';
   static const String _isPremiumKey = 'USER_IS_PREMIUM';
   static const String _tierKey = 'USER_TIER_ENUM';
+  static const String _rememberMeKey = 'AUTH_REMEMBER_ME';
 
   final SharedPreferences sharedPreferences;
   final FlutterSecureStorage secureStorage;
@@ -250,6 +254,17 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
+  Future<void> saveRememberMe(bool rememberMe) async {
+    await sharedPreferences.setBool(_rememberMeKey, rememberMe);
+  }
+
+  @override
+  Future<bool> getRememberMe() async {
+    await sharedPreferences.reload();
+    return sharedPreferences.getBool(_rememberMeKey) ?? true;
+  }
+
+  @override
   Future<void> clearAuthData() async {
     await deleteToken();
     await deleteRefreshToken();
@@ -264,5 +279,6 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     await sharedPreferences.remove(_friendsCountKey);
     await sharedPreferences.remove(_isPremiumKey);
     await sharedPreferences.remove(_tierKey);
+    await sharedPreferences.remove(_rememberMeKey);
   }
 }

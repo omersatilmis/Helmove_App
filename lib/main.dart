@@ -63,7 +63,15 @@ void main() async {
       final authBootstrapGate = sl<AuthBootstrapGate>();
       String? bootstrappedToken;
       try {
-        bootstrappedToken = await sl<AuthLocalDataSource>().getToken();
+        final authLocalDataSource = sl<AuthLocalDataSource>();
+        final shouldRemember = await authLocalDataSource.getRememberMe();
+
+        if (!shouldRemember) {
+          await authLocalDataSource.clearAuthData();
+          sl<AppSession>().clearSession();
+        } else {
+          bootstrappedToken = await authLocalDataSource.getToken();
+        }
         if (bootstrappedToken != null && bootstrappedToken.isNotEmpty) {
           final persistedUser = await sl<AuthRepository>().getPersistedUser();
           if (persistedUser != null) {
