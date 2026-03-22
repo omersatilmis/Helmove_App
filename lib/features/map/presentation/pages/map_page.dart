@@ -29,6 +29,8 @@ class _MapPageState extends State<MapPage> {
   static const int _prefetchNormalDelta = 0;
   static const double _maxZoomLevel = 16.0;
   static const Duration _cacheDebounce = Duration(milliseconds: 700);
+  static const Duration _compassUpdateInterval = Duration(milliseconds: 50);
+  static const double _compassDeltaThresholdDeg = 0.8;
   static const String _routeRegionPrefix = 'route_';
   static const double _fabRightPadding = 16.0;
   static const double _fabSpacing = 10.0;
@@ -42,6 +44,9 @@ class _MapPageState extends State<MapPage> {
   CameraOptions? _lastCamera;
   String? _lastTileRegionId;
   double _compassRotation = 0.0;
+  double _lastBearingDeg = 0.0;
+  DateTime _lastCompassUpdateAt = DateTime.fromMillisecondsSinceEpoch(0);
+  String? _lastActiveRouteKey;
 
   CircleAnnotationManager? _markerManager;
   CircleAnnotation? _startMarker;
@@ -236,7 +241,18 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _onCameraChanged(CameraChangedEventData event) {
-    _updateCompassRotation(event.cameraState.bearing);
+    final now = DateTime.now();
+    final bearing = event.cameraState.bearing;
+    final delta = (bearing - _lastBearingDeg).abs();
+    final shouldUpdate =
+        delta >= _compassDeltaThresholdDeg ||
+        now.difference(_lastCompassUpdateAt) >= _compassUpdateInterval;
+
+    if (!shouldUpdate) return;
+
+    _lastBearingDeg = bearing;
+    _lastCompassUpdateAt = now;
+    _updateCompassRotation(bearing);
   }
 
   void _onMapIdle(MapIdleEventData _) async {
@@ -727,6 +743,17 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  String _routeSignature(RouteEntity route) {
+    final coords = route.geometry.coordinates;
+    if (coords.isEmpty) {
+      return '${route.distanceMeters.toStringAsFixed(1)}_${route.durationSeconds}';
+    }
+
+    final first = coords.first;
+    final last = coords.last;
+    return '${coords.length}_${route.distanceMeters.toStringAsFixed(1)}_${route.durationSeconds}_${first.lng.toStringAsFixed(4)}_${first.lat.toStringAsFixed(4)}_${last.lng.toStringAsFixed(4)}_${last.lat.toStringAsFixed(4)}';
+  }
+
   Future<void> _fitCameraToRoute(RouteEntity route) async {
     final mapboxMap = _mapboxMap;
     if (mapboxMap == null) return;
@@ -1128,9 +1155,16 @@ class _MapPageState extends State<MapPage> {
 
           if (state.routeOptions.isNotEmpty) {
             final activeRoute = state.routeOptions[state.selectedRouteIndex];
-            _fitCameraToRoute(activeRoute);
-            _scheduleRouteCache(activeRoute);
-            _scheduleRoutePoiScan(activeRoute);
+            final activeRouteKey = _routeSignature(activeRoute);
+            final routeChanged = _lastActiveRouteKey != activeRouteKey;
+
+            if (routeChanged) {
+              _lastActiveRouteKey = activeRouteKey;
+              _fitCameraToRoute(activeRoute);
+              _scheduleRouteCache(activeRoute);
+              _scheduleRoutePoiScan(activeRoute);
+            }
+
             _renderStepHighlight(activeRoute, state.selectedStepIndex);
           } else {
             final tileStore = _tileStore;
@@ -1139,6 +1173,7 @@ class _MapPageState extends State<MapPage> {
             }
             _renderStepHighlight(null, null);
             _lastPoiSignature = null;
+            _lastActiveRouteKey = null;
           }
 
           _updatePoiMarkers(

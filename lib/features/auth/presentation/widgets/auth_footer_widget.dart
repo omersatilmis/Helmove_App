@@ -17,18 +17,25 @@ class AuthFooterWidget extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 32.0),
+      padding: const EdgeInsets.only(bottom: 16.0), // Biraz aşağı alındı (Eskisi 32.0 idi)
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(questionText, style: theme.textTheme.bodyMedium),
+          Text(
+            questionText, 
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w300,
+            ),
+          ),
           TextButton(
             onPressed: onPressed,
             child: Text(
               actionText,
               style: TextStyle(
                 color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
             ),
           ),

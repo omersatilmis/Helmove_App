@@ -5,12 +5,14 @@ class AuthHeaderWidget extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData? icon;
+  final double verticalOffset;
 
   const AuthHeaderWidget({
     super.key,
     required this.title,
     required this.subtitle,
     this.icon,
+    this.verticalOffset = 0.0,
   });
 
   @override
@@ -40,42 +42,45 @@ class AuthHeaderWidget extends StatelessWidget {
         ),
 
         // İçerik (İkon ve Yazılar)
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (icon != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha:0.2),
-                      borderRadius: BorderRadius.circular(16),
+        Transform.translate(
+          offset: Offset(0, verticalOffset),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (icon != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(icon, size: 40, color: Colors.white),
                     ),
-                    child: Icon(icon, size: 40, color: Colors.white),
+                    const SizedBox(height: 16),
+                  ] else ...[
+                    const SizedBox(height: 20),
+                  ],
+                  Text(
+                    title,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                ] else ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
                 ],
-                Text(
-                  title,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha:0.9),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

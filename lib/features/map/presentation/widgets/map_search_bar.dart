@@ -79,7 +79,6 @@ class _MapSearchBarState extends State<MapSearchBar> {
                 _buildField(
                   controller: _startController,
                   focusNode: _startFocus,
-                  label: 'Başlangıç',
                   hint: 'Nereden?',
                   icon: Icons.circle_outlined,
                   isStart: true,
@@ -89,7 +88,6 @@ class _MapSearchBarState extends State<MapSearchBar> {
                 _buildField(
                   controller: _endController,
                   focusNode: _endFocus,
-                  label: 'Bitiş',
                   hint: 'Nereye?',
                   icon: Icons.flag_outlined,
                   isStart: false,
@@ -107,7 +105,6 @@ class _MapSearchBarState extends State<MapSearchBar> {
   Widget _buildField({
     required TextEditingController controller,
     required FocusNode focusNode,
-    required String label,
     required String hint,
     required IconData icon,
     required bool isStart,
@@ -121,7 +118,6 @@ class _MapSearchBarState extends State<MapSearchBar> {
     return AppInputField(
       controller: controller,
       focusNode: focusNode,
-      label: label,
       hint: hint,
       leadingIcon: icon,
       trailingIcon: trailingIcon,

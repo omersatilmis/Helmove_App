@@ -96,232 +96,240 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
+    // Klavye yüksekliğini al
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     final backgroundGradient = isDark
         ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2A100A), Color(0xFF12100E)],
-            stops: [0.0, 0.4],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF2A100A), Color(0xFF12100E), Color(0xFF0A0808)],
+            stops: [0.0, 0.5, 1.0],
           )
         : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.primary.withValues(alpha: 0.1),
               colorScheme.surface,
-              colorScheme.surface,
+              colorScheme.surfaceContainerLow,
             ],
-            stops: const [0.0, 0.5, 1.0],
+            stops: const [0.0, 0.4, 1.0],
           );
 
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      child: Container(
-        decoration: BoxDecoration(gradient: backgroundGradient),
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          // Stack yerine Column kullanıyoruz. Böylece Header üstte, Buton altta sabit kalır.
-          body: SafeArea(
-            child: Column(
-              children: [
-                // --- 1. HEADER (SABİT) ---
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20.0,
-                    vertical: 16.0,
-                  ),
-                  child: Row(
-                    children: [
-                      AppFrostedButton(
-                        icon: Icons.arrow_back,
-                        size: 44,
-                        onTap: () => context.pop(),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        "Create Group Ride",
-                        style: AppTextStyles.h2.copyWith(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        // Konumlandırmayı biz Stack ile manuel yöneteceğiz
+        resizeToAvoidBottomInset: false,
+        body: Container(
+          decoration: BoxDecoration(gradient: backgroundGradient),
+          child: Column(
+            children: [
+              // --- 1. HEADER (ŞEFFAF ÜST BAR) ---
+              Padding(
+                padding: EdgeInsets.only(
+                  top: topPadding + 6,
+                  bottom: 8,
+                  left: 16,
+                  right: 16,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: () => context.pop(),
+                      child: Container(
+                        height: 42,
+                        width: 42,
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: colorScheme.outline.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 20,
                           color: colorScheme.onSurface,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Text(
+                      "Grup Oluştur",
+                      style: AppTextStyles.h3.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 42), // Balance the row
+                  ],
                 ),
+              ),
 
-                // --- 2. SCROLLABLE CONTENT (ORTA ALAN) ---
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 10),
-
-                        // Grup Adı
-                        AppInputField(
-                          controller: _groupNameController,
-                          hint: "Grup Adı (Örn: Hafta Sonu Turu)",
-                          label: "Grup Adı",
-                          leadingIcon: Icons.group,
+              // --- 2. SCROLLABLE CONTENT & FAB ---
+              Expanded(
+                child: Stack(
+                  children: [
+                    // --- SCROLL CONTENT ---
+                    Positioned.fill(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.only(
+                          top: 8.0,
+                          bottom: bottomInset > 0
+                              ? bottomInset + 100
+                              : bottomPadding + 100,
+                          left: 20.0,
+                          right: 20.0,
                         ),
-
-                        const SizedBox(height: 20),
-
-                        // Maksimum Sürücü
-                        Text(
-                          "Maksimum Sürücü",
-                          style: AppTextStyles.inputLabel.copyWith(
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildGlassDropdown(colorScheme),
-
-                        const SizedBox(height: 20),
-
-                        // Gizlilik
-                        Text(
-                          "Grup Gizliliği",
-                          style: AppTextStyles.inputLabel.copyWith(
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildPrivacyCard(
-                                title: "Herkese Açık",
-                                subtitle: "Herkes katılabilir",
-                                icon: Icons.public,
-                                isSelected: selectedPrivacy == 'Public',
-                                onTap: () =>
-                                    setState(() => selectedPrivacy = 'Public'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildPrivacyCard(
-                                title: "Özel",
-                                subtitle: "Sadece davetliler",
-                                icon: Icons.lock_outline,
-                                isSelected: selectedPrivacy == 'Private',
-                                onTap: () =>
-                                    setState(() => selectedPrivacy = 'Private'),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Hedef
-                        AppInputField(
-                          controller: _destinationController,
-                          hint: "Örn: Abant Gölü, Sapanca",
-                          label: "Rota / Hedef (Opsiyonel)",
-                          leadingIcon: Icons.map,
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Sürüş Tarzı ve Zorluk (Yan Yana veya Accordion)
-                        Row(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Sürüş Tarzı",
-                                    style: AppTextStyles.inputLabel.copyWith(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _buildAccordionSelector(
-                                    context: context,
-                                    title: selectedRidingStyle,
-                                    icon: Icons.two_wheeler,
-                                    options: [
-                                      'Sakin',
-                                      'Tour',
-                                      'Viraj',
-                                      'Sehir',
-                                    ],
-                                    onSelected: (val) => setState(
-                                      () => selectedRidingStyle = val,
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 10),
+
+                            // Grup Adı
+                            _buildFieldLabel("Grup Adı"),
+                            const SizedBox(height: 8),
+                            AppInputField(
+                              controller: _groupNameController,
+                              hint: "Grup Adı (Örn: Hafta Sonu Turu)",
+                              leadingIcon: Icons.group,
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Maksimum Sürücü
+                            _buildFieldLabel("Maksimum Sürücü"),
+                            const SizedBox(height: 8),
+                            _buildGlassDropdown(colorScheme),
+
+                            const SizedBox(height: 16),
+
+                            // Gizlilik
+                            _buildFieldLabel("Grup Gizliliği"),
+                            const SizedBox(height: 8),
+                            _buildAccordionSelector(
+                              context: context,
+                              title: selectedPrivacy == 'Public'
+                                  ? 'Herkese Açık'
+                                  : 'Özel',
+                              options: const ['Herkese Açık', 'Özel'],
+                              onSelected: (val) => setState(
+                                () => selectedPrivacy =
+                                    val == 'Herkese Açık' ? 'Public' : 'Private',
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Zorluk",
-                                    style: AppTextStyles.inputLabel.copyWith(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _buildAccordionSelector(
-                                    context: context,
-                                    title: selectedDifficulty,
-                                    icon: Icons.speed,
-                                    options: [
-                                      'Beginner',
-                                      'Intermediate',
-                                      'Advanced',
-                                      'Expert',
+
+                            const SizedBox(height: 16),
+
+                            // Hedef
+                            _buildFieldLabel("Rota / Hedef (Opsiyonel)"),
+                            const SizedBox(height: 8),
+                            AppInputField(
+                              controller: _destinationController,
+                              hint: "Örn: Abant Gölü, Sapanca",
+                              leadingIcon: Icons.map,
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Sürüş Tarzı ve Zorluk
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFieldLabel("Sürüş Tarzı"),
+                                      const SizedBox(height: 8),
+                                      _buildAccordionSelector(
+                                        context: context,
+                                        title: selectedRidingStyle,
+                                        options: [
+                                          'Sakin',
+                                          'Tour',
+                                          'Viraj',
+                                          'Sehir',
+                                        ],
+                                        onSelected: (val) => setState(
+                                          () => selectedRidingStyle = val,
+                                        ),
+                                      ),
                                     ],
-                                    onSelected: (val) => setState(
-                                      () => selectedDifficulty = val,
-                                    ),
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFieldLabel("Zorluk"),
+                                      const SizedBox(height: 8),
+                                      _buildAccordionSelector(
+                                        context: context,
+                                        title: selectedDifficulty,
+                                        options: [
+                                          'Beginner',
+                                          'Intermediate',
+                                          'Advanced',
+                                          'Expert',
+                                        ],
+                                        onSelected: (val) => setState(
+                                          () => selectedDifficulty = val,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Açıklama
+                            _buildFieldLabel("Açıklama"),
+                            const SizedBox(height: 8),
+                            AppInputField(
+                              controller: _descriptionController,
+                              hint: "Sürüş hakkında kısa bir açıklama yazın...",
+                              leadingIcon: Icons.description,
+                              maxLines: 4,
                             ),
                           ],
                         ),
-
-                        const SizedBox(height: 20),
-
-                        // Açıklama
-                        AppInputField(
-                          controller: _descriptionController,
-                          hint: "Sürüş hakkında kısa bir açıklama yazın...",
-                          label: "Açıklama",
-                          leadingIcon: Icons.description,
-                          maxLines: 3,
-                        ),
-
-                        // Alt kısımda biraz boşluk bırakalım ki en son input klavye açılınca sıkışmasın
-                        const SizedBox(height: 20),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
 
-                // --- 3. FOOTER (SABİT BUTON) ---
-                // GroupPage'deki "Leave Ride" butonu ile aynı padding ve yapı
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-                  child: AppFrostedTextButton(
-                    text: "Kullanıcı Davet Et",
-                    height: 52,
-                    // Turuncu (Primary) Renk
-                    backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
-                    textColor: colorScheme.primary,
-                    onPressed: _onProceed,
-                  ),
+                    // --- 3. FLOATING ACTION BUTTON (KLAVYEYE DUYARLI) ---
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutQuad,
+                      bottom: bottomInset > 0
+                          ? bottomInset + 16
+                          : bottomPadding + 20,
+                      left: 20,
+                      right: 20,
+                      child: AppFrostedTextButton(
+                        text: "Kullanıcı Davet Et",
+                        height: 56,
+                        backgroundColor:
+                            colorScheme.primary, // Turuncu arka plan
+                        textColor: colorScheme.onPrimary, // Beyaz yazı
+                        onPressed: _onProceed,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -332,19 +340,29 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
 
   Widget _buildGlassDropdown(ColorScheme colorScheme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+        color: colorScheme.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selectedMaxParticipantsKey,
-          dropdownColor: colorScheme.surfaceContainerLow,
-          icon: Icon(Icons.keyboard_arrow_down, color: colorScheme.onSurface),
+          dropdownColor: colorScheme.surfaceContainerHigh,
+          icon: Icon(Icons.expand_more_rounded, color: colorScheme.primary),
           isExpanded: true,
-          style: AppTextStyles.bodyLarge.copyWith(color: colorScheme.onSurface),
+          style: AppTextStyles.bodyLarge.copyWith(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.w500,
+          ),
           items: participantOptions.keys.map((String key) {
             return DropdownMenuItem<String>(value: key, child: Text(key));
           }).toList(),
@@ -358,60 +376,13 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     );
   }
 
-  Widget _buildPrivacyCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildFieldLabel(String text) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primary.withValues(alpha: 0.15)
-              : colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? colorScheme.primary
-                : colorScheme.outline.withValues(alpha: 0.1),
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
-              size: 28,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
+    return Text(
+      text,
+      style: AppTextStyles.inputLabel.copyWith(
+        color: colorScheme.onSurface,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
@@ -419,7 +390,6 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   Widget _buildAccordionSelector({
     required BuildContext context,
     required String title,
-    required IconData icon,
     required List<String> options,
     required Function(String) onSelected,
   }) {
@@ -427,38 +397,48 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
 
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+          color: colorScheme.surface.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.15),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: ExpansionTile(
-          leading: Icon(icon, color: colorScheme.primary, size: 20),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
           title: Text(
             title,
             style: AppTextStyles.bodyMedium.copyWith(
               color: colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w300,
             ),
           ),
+          iconColor: colorScheme.primary,
+          collapsedIconColor: colorScheme.onSurfaceVariant,
           children: options.map((opt) {
+            final isOptSelected = opt == title;
             return ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
               title: Text(
                 opt,
                 style: AppTextStyles.bodySmall.copyWith(
-                  color: opt == title
+                  color: isOptSelected
                       ? colorScheme.primary
                       : colorScheme.onSurface,
-                  fontWeight: opt == title
-                      ? FontWeight.bold
-                      : FontWeight.normal,
+                  fontWeight: FontWeight.w300,
                 ),
               ),
               onTap: () {
                 onSelected(opt);
-                // Close accordion manually is not directly possible with ExpansionTile easily without a key,
-                // but for now, the user can tap to close or we can use a custom widget.
               },
             );
           }).toList(),

@@ -69,10 +69,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Kayıt İşlemi
   Future<void> _handleRegister(AuthProvider authProvider) async {
-    // 1. Validasyon Kontrolü
-    if (!_formKey.currentState!.validate()) return;
-
-    // 2. Klavyeyi Kapat
+    // 1. Klavyeyi Kapat
     FocusScope.of(context).unfocus();
 
     // 3. Kayıt İsteği
@@ -120,9 +117,9 @@ class _RegisterPageState extends State<RegisterPage> {
           builder: (context, constraints) {
             final isCompactHeight = constraints.maxHeight < 760;
             final horizontalPadding = constraints.maxWidth < 360 ? 16.0 : 24.0;
-            final headerHeight = (constraints.maxHeight * 0.25).clamp(
-              180.0,
-              260.0,
+            final headerHeight = (constraints.maxHeight * 0.20).clamp(
+              130.0,
+              200.0,
             );
             final formWidth = (constraints.maxWidth - (horizontalPadding * 2))
                 .clamp(220.0, 450.0)
@@ -136,6 +133,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: const AuthHeaderWidget(
                     title: "Aramıza Katılın",
                     subtitle: "Sürüş deneyiminizi başlatın.",
+                    verticalOffset: -20.0,
                   ),
                 ),
 

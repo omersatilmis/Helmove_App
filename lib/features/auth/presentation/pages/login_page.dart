@@ -82,9 +82,9 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(
                   height: headerHeight,
                   child: const AuthHeaderWidget(
-                    title: "Tekrar Hoşgeldiniz!",
+                    title: "Hoşgeldiniz!",
                     subtitle: "Sürüşe başlamak için giriş yapın.",
-                    icon: Icons.two_wheeler,
+                    verticalOffset: -1.0,
                   ),
                 ),
 
@@ -92,12 +92,16 @@ class _LoginPageState extends State<LoginPage> {
                 Expanded(
                   child: Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                      ),
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.center,
                         child: SizedBox(
-                          width: constraints.maxWidth > 450 ? 450 : constraints.maxWidth - (horizontalPadding * 2),
+                          width: constraints.maxWidth > 450
+                              ? 450
+                              : constraints.maxWidth - (horizontalPadding * 2),
                           child: Form(
                             key: _formKey,
                             child: AutofillGroup(
@@ -175,7 +179,8 @@ class _LoginPageState extends State<LoginPage> {
                                                       BorderRadius.circular(4),
                                                 ),
                                                 onChanged: (val) => setState(
-                                                  () => _rememberMe = val ?? false,
+                                                  () => _rememberMe =
+                                                      val ?? false,
                                                 ),
                                               ),
                                             ),
@@ -191,8 +196,8 @@ class _LoginPageState extends State<LoginPage> {
                                           style: TextButton.styleFrom(
                                             padding: EdgeInsets.zero,
                                             minimumSize: const Size(0, 0),
-                                            tapTargetSize:
-                                                MaterialTapTargetSize.shrinkWrap,
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
                                           ),
                                           child: Text(
                                             "Şifremi Unuttum?",

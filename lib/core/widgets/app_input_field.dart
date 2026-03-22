@@ -1,4 +1,4 @@
-import 'dart:ui'; // ImageFilter için gerekli
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -72,7 +72,7 @@ class AppInputField extends StatefulWidget {
     this.inputFormatters,
     this.autofillHints,
     this.focusNode,
-    this.radius = 12.0, // Dropdown ile uyum için 12 ideal, ama 16 da olur
+    this.radius = 16.0,
     this.prefixWidget,
     this.suffixWidget,
     this.showFocusBorder = true,
@@ -83,104 +83,252 @@ class AppInputField extends StatefulWidget {
   State<AppInputField> createState() => _AppInputFieldState();
 }
 
-class _AppInputFieldState extends State<AppInputField> {
+class _AppInputFieldState extends State<AppInputField>
+    with SingleTickerProviderStateMixin {
   bool _obscureText = false;
+  late FocusNode _focusNode;
+  bool _isFocused = false;
+  late AnimationController _animController;
+  late Animation<double> _glowAnimation;
+  final GlobalKey<FormFieldState<String>> _fieldKey =
+      GlobalKey<FormFieldState<String>>();
 
   @override
   void initState() {
     super.initState();
+    widget.controller.addListener(_onControllerChanged);
     _obscureText =
         widget.type == AppInputType.password ||
         widget.type == AppInputType.newPassword;
+
+    _focusNode = widget.focusNode ?? FocusNode();
+    _focusNode.addListener(_handleFocusChange);
+
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _glowAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _onControllerChanged() {
+    if (_fieldKey.currentState != null &&
+        widget.controller.text != _fieldKey.currentState!.value) {
+      _fieldKey.currentState!.didChange(widget.controller.text);
+    }
+  }
+
+  void _handleFocusChange() {
+    if (!mounted) return;
+    setState(() => _isFocused = _focusNode.hasFocus);
+    if (_focusNode.hasFocus) {
+      _animController.forward();
+    } else {
+      _animController.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    _animController.dispose();
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    } else {
+      _focusNode.removeListener(_handleFocusChange);
+    }
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final isPassword =
         widget.type == AppInputType.password ||
         widget.type == AppInputType.newPassword;
 
-    // 🔥 GLASS EFFECT WRAPPER
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: TextFormField(
-          controller: widget.controller,
-          focusNode: widget.focusNode,
-          enabled: widget.enabled,
-          validator: widget.validator,
+    final label = widget.label ?? _defaultLabel;
 
-          // Logic
-          autofillHints: _getAutofillHints,
-          onFieldSubmitted: widget.onFieldSubmitted,
-          onChanged: widget.onChanged,
-          textInputAction: widget.textInputAction,
-          inputFormatters: widget.inputFormatters,
+    return FormField<String>(
+      key: _fieldKey,
+      initialValue: widget.controller.text,
+      validator: widget.validator,
+      builder: (FormFieldState<String> fieldState) {
+        final hasError = fieldState.hasError;
 
-          // Text Config
-          obscureText: _obscureText,
-          keyboardType: _keyboardType,
-          textCapitalization: _capitalization,
-          minLines: isPassword ? 1 : widget.minLines,
-          maxLines: isPassword ? 1 : widget.maxLines,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── LABEL ──
+            if (label != null) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 6),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Urbanist',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: _isFocused
+                        ? cs.primary
+                        : cs.onSurface.withValues(alpha: 0.55),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+            ],
 
-          // Stil (Yazı Rengi)
-          style: TextStyle(
-            fontSize: _fontSize,
-            color: theme.colorScheme.onSurface,
-            fontWeight: FontWeight.w500,
-          ),
-
-          cursorColor: theme.colorScheme.primary,
-
-          decoration: InputDecoration(
-            labelText: widget.label ?? _defaultLabel,
-            hintText: widget.hint ?? _defaultHint,
-            helperText: widget.helperText,
-
-            labelStyle: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha:0.7),
+            // ── INPUT CONTAINER ──
+            AnimatedBuilder(
+              animation: _glowAnimation,
+              builder: (context, child) {
+                final glowValue = _glowAnimation.value;
+                return Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(widget.radius),
+                    // Subtle outer glow on focus
+                    boxShadow: widget.showFocusBorder
+                        ? [
+                            BoxShadow(
+                              color: cs.primary.withValues(
+                                alpha: 0.12 * glowValue,
+                              ),
+                              blurRadius: 12 * glowValue,
+                              spreadRadius: 1 * glowValue,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: child,
+                );
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(widget.radius),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? cs.surfaceContainerLow.withValues(
+                              alpha: _isFocused ? 0.6 : 0.45,
+                            )
+                          : cs.surfaceContainerLow.withValues(
+                              alpha: _isFocused ? 0.8 : 0.5,
+                            ),
+                      borderRadius: BorderRadius.circular(widget.radius),
+                      border: Border.all(
+                        color: hasError
+                            ? cs.error.withValues(alpha: 0.8)
+                            : (_isFocused && widget.showFocusBorder
+                                  ? cs.primary.withValues(alpha: 0.6)
+                                  : cs.outline.withValues(
+                                      alpha: isDark ? 0.08 : 0.12,
+                                    )),
+                        width: _isFocused || hasError ? 1.5 : 1,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: widget.controller,
+                      focusNode: _focusNode,
+                      enabled: widget.enabled,
+                      autofillHints: _getAutofillHints,
+                      onSubmitted: widget.onFieldSubmitted,
+                      onChanged: (val) {
+                        fieldState.didChange(val);
+                        if (widget.onChanged != null) widget.onChanged!(val);
+                      },
+                      textInputAction: widget.textInputAction,
+                      inputFormatters: widget.inputFormatters,
+                      obscureText: _obscureText,
+                      keyboardType: _keyboardType,
+                      textCapitalization: _capitalization,
+                      minLines: isPassword ? 1 : widget.minLines,
+                      maxLines: isPassword ? 1 : widget.maxLines,
+                      style: TextStyle(
+                        fontFamily: 'Urbanist',
+                        fontSize: _fontSize,
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      cursorColor: cs.primary,
+                      cursorWidth: 1.8,
+                      cursorRadius: const Radius.circular(2),
+                      decoration: InputDecoration(
+                        hintText: widget.hint ?? _defaultHint,
+                        helperText: widget.helperText,
+                        hintStyle: TextStyle(
+                          fontFamily: 'Urbanist',
+                          color: cs.onSurface.withValues(alpha: 0.3),
+                          fontSize: _fontSize,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        contentPadding: _contentPadding,
+                        prefixIcon:
+                            widget.prefixWidget ??
+                            (widget.leadingIcon != null
+                                ? Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 14,
+                                      right: 8,
+                                    ),
+                                    child: Icon(
+                                      widget.leadingIcon,
+                                      size: 20,
+                                      color: _isFocused
+                                          ? cs.primary.withValues(alpha: 0.8)
+                                          : cs.onSurface.withValues(alpha: 0.4),
+                                    ),
+                                  )
+                                : null),
+                        prefixIconConstraints: widget.leadingIcon != null
+                            ? const BoxConstraints(minWidth: 42, minHeight: 0)
+                            : null,
+                        suffixIcon: widget.suffixWidget ?? _buildSuffixIcon(cs),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-            hintStyle: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha:0.4),
-            ),
 
-            errorStyle: TextStyle(fontSize: 12, color: theme.colorScheme.error),
-
-            // 🔥 GÜNCELLENEN KISIM: Dropdown rengi ile aynı
-            filled: true,
-            fillColor: _fillColor(theme),
-
-            contentPadding: _contentPadding,
-
-            prefixIcon:
-                widget.prefixWidget ??
-                (widget.leadingIcon != null
-                    ? Icon(
-                        widget.leadingIcon,
-                        size: 20,
-                        color: theme.colorScheme.onSurface.withValues(alpha:0.7),
-                      )
-                    : null),
-
-            suffixIcon: widget.suffixWidget ?? _buildSuffixIcon(theme),
-
-            // 🔥 BORDER AYARLARI: Dropdown border rengi ile aynı
-            border: _border(theme),
-            enabledBorder: _border(theme),
-            focusedBorder: _focusedBorder(theme),
-            errorBorder: _errorBorder(),
-            focusedErrorBorder: _errorBorder(),
-            disabledBorder: _disabledBorder(theme),
-          ),
-        ),
-      ),
+            // ── ERROR TEXT ──
+            if (hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 4),
+                child: Text(
+                  fieldState.errorText!,
+                  style: TextStyle(
+                    fontFamily: 'Urbanist',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: cs.error.withValues(alpha: 0.9),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
-  // --- LOGIC ---
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOGIC
+  // ═══════════════════════════════════════════════════════════════════════════
 
   Iterable<String>? get _getAutofillHints {
     if (widget.autofillHints != null) return widget.autofillHints;
@@ -202,30 +350,38 @@ class _AppInputFieldState extends State<AppInputField> {
     }
   }
 
-  Widget? _buildSuffixIcon(ThemeData theme) {
+  Widget? _buildSuffixIcon(ColorScheme cs) {
     if (widget.type == AppInputType.password ||
         widget.type == AppInputType.newPassword) {
-      return IconButton(
-        icon: Icon(
-          _obscureText
-              ? Icons.visibility_outlined
-              : Icons.visibility_off_outlined,
-          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
+      return Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: IconButton(
+          icon: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: Icon(
+              _obscureText
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              key: ValueKey(_obscureText),
+              size: 20,
+              color: cs.onSurface.withValues(alpha: 0.45),
+            ),
+          ),
+          onPressed: () => setState(() => _obscureText = !_obscureText),
+          splashRadius: 20,
         ),
-        onPressed: () {
-          setState(() {
-            _obscureText = !_obscureText;
-          });
-        },
       );
     }
     if (widget.trailingIcon != null) {
-      return GestureDetector(
-        onTap: widget.onTrailingTap,
-        child: Icon(
-          widget.trailingIcon,
-          size: 20,
-          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
+      return Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: GestureDetector(
+          onTap: widget.onTrailingTap,
+          child: Icon(
+            widget.trailingIcon,
+            size: 20,
+            color: cs.onSurface.withValues(alpha: 0.45),
+          ),
         ),
       );
     }
@@ -278,7 +434,7 @@ class _AppInputFieldState extends State<AppInputField> {
       case AppInputType.phone:
         return "Telefon";
       case AppInputType.discover:
-        return "Ara";
+        return null; // Discover alanında label yok, sadece hint
       default:
         return widget.label;
     }
@@ -300,62 +456,27 @@ class _AppInputFieldState extends State<AppInputField> {
     }
   }
 
-  // --- STYLES (GÜNCELLENEN KISIMLAR) ---
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STYLES
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // 🔥 Dropdown renginin aynısı
-  Color _fillColor(ThemeData theme) {
-    if (!widget.enabled) {
-      return theme.colorScheme.surfaceContainerLow.withValues(alpha:0.2);
+  double get _fontSize {
+    switch (widget.size) {
+      case AppInputSize.small:
+        return 14;
+      case AppInputSize.large:
+        return 17;
+      default:
+        return 15;
     }
-    // Senin beğendiğin renk kodu
-    return theme.colorScheme.surfaceContainerLow.withValues(alpha:0.5);
   }
-
-  // 🔥 Border rengi de outline.opacity(0.1) yapıldı
-  OutlineInputBorder _border(ThemeData theme) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(widget.radius),
-      borderSide: BorderSide(
-        color: theme.colorScheme.outline.withValues(alpha:0.1),
-        width: 1,
-      ),
-    );
-  }
-
-  OutlineInputBorder _focusedBorder(ThemeData theme) {
-    if (!widget.showFocusBorder) {
-      return _border(theme);
-    }
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(widget.radius),
-      borderSide: BorderSide(
-        color: theme.colorScheme.primary.withValues(alpha:0.8),
-        width: 1.5,
-      ),
-    );
-  }
-
-  OutlineInputBorder _errorBorder() {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(widget.radius),
-      borderSide: BorderSide(color: Colors.red.shade400, width: 1),
-    );
-  }
-
-  OutlineInputBorder _disabledBorder(ThemeData theme) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(widget.radius),
-      borderSide: BorderSide(
-        color: theme.colorScheme.onSurface.withValues(alpha:0.05),
-      ),
-    );
-  }
-
-  double get _fontSize => widget.size == AppInputSize.small ? 14 : 16;
 
   EdgeInsets get _contentPadding {
-    final double ph = widget.size == AppInputSize.small ? 14 : 18;
-    final double pv = widget.verticalPadding ?? (widget.size == AppInputSize.small ? 14 : 18);
-    return EdgeInsets.symmetric(horizontal: ph, vertical: pv);
+    final double ph = widget.leadingIcon != null
+        ? 0
+        : (widget.size == AppInputSize.small ? 14 : 16);
+    final double pv =
+        widget.verticalPadding ?? (widget.size == AppInputSize.small ? 12 : 16);
+    return EdgeInsets.fromLTRB(ph, pv, 16, pv);
   }
 }
