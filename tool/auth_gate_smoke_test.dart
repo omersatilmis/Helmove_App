@@ -12,6 +12,7 @@ class FakeAuthLocalDataSource implements AuthLocalDataSource {
 
   String? token;
   String? refreshToken;
+  bool rememberMe = true;
   int tokenReadCount = 0;
 
   @override
@@ -70,10 +71,18 @@ class FakeAuthLocalDataSource implements AuthLocalDataSource {
   Future<bool> getIsPremium() async => false;
 
   @override
+  Future<bool> getRememberMe() async => rememberMe;
+
+  @override
   Future<UserTier> getTier() async => UserTier.free;
 
   @override
   Future<void> saveIsPremium(bool isPremium) async {}
+
+  @override
+  Future<void> saveRememberMe(bool rememberMe) async {
+    this.rememberMe = rememberMe;
+  }
 
   @override
   Future<void> saveTier(UserTier tier) async {}
