@@ -5,6 +5,7 @@ import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/profile/domain/entities/motorcycle_entity.dart';
 import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 
 class BikeCardWidget extends StatefulWidget {
   final MotorcycleEntity bike;
@@ -373,21 +374,11 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
     bool isNumber = false,
     int maxLines = 1,
   }) {
-    return TextField(
+    return AppInputField(
       controller: ctrl,
+      label: label,
       maxLines: maxLines,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.3,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-      ),
+      type: isNumber ? AppInputType.phone : AppInputType.standard, // phone klavyesi sayısal için iş görür
     );
   }
 }

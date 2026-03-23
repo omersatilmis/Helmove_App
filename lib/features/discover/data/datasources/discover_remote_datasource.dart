@@ -1,11 +1,17 @@
 import '../../../friendship/data/dto/friend_user_dto.dart';
-
+import '../../../content/posts/data/models/post_model.dart';
+import '../../../../core/models/paged_result.dart';
 import '../api/discover_api.dart';
 
 abstract class DiscoverRemoteDataSource {
   Future<List<FriendUserModel>> searchUsers(
     String query, {
     String? city,
+    int limit = 20,
+  });
+
+  Future<PagedResult<PostModel>> getExploreContent({
+    int page = 1,
     int limit = 20,
   });
 }
@@ -22,5 +28,13 @@ class DiscoverRemoteDataSourceImpl implements DiscoverRemoteDataSource {
     int limit = 20,
   }) {
     return api.searchUsers(query, city: city, limit: limit);
+  }
+
+  @override
+  Future<PagedResult<PostModel>> getExploreContent({
+    int page = 1,
+    int limit = 20,
+  }) {
+    return api.getExploreContent(page: page, limit: limit);
   }
 }

@@ -142,8 +142,7 @@ class AppDrawer extends StatelessWidget {
               children: [
                 //Profilim Alanı
                 DrawerItem(
-                  iconPath:
-                      'assets/icons/ic_profile.png', // 👈 Dosya ismini kendine göre düzelt
+                  iconPath: 'assets/icons/ic_profile.png',
                   title: "Profilim",
                   onTap: () {
                     context.pop();
@@ -153,8 +152,7 @@ class AppDrawer extends StatelessWidget {
 
                 // Premium Alanı
                 DrawerItem(
-                  iconPath:
-                      'assets/icons/ic_premium.png', // 👈 Premium ikonu (Yoksa ic_star.png falan koy)
+                  iconPath: 'assets/icons/ic_premium.png',
                   title: "Premium Planlar",
                   iconColor: const Color(0xFF9C27B0),
                   textColor: const Color(0xFF9C27B0),
@@ -170,8 +168,7 @@ class AppDrawer extends StatelessWidget {
                 // Topluluklar Alanı
                 if (AppFeatureFlags.showCommunityScreen)
                   DrawerItem(
-                    iconPath:
-                        'assets/icons/ic_community.png', // 👈 Senin istediğin topluluk ikonu
+                    iconPath: 'assets/icons/ic_community.png',
                     title: "Topluluklar",
                     onTap: () {
                       context.pop();
@@ -193,7 +190,7 @@ class AppDrawer extends StatelessWidget {
 
                 // Ayarlar Alanı
                 DrawerItem(
-                  iconPath: 'assets/icons/ic_settings.png', // 👈 Ayarlar ikonu
+                  iconPath: 'assets/icons/ic_settings.png',
                   title: "Ayarlar",
                   onTap: () {
                     context.pop();
@@ -203,7 +200,7 @@ class AppDrawer extends StatelessWidget {
 
                 // Yardım Alanı
                 DrawerItem(
-                  iconPath: 'assets/icons/ic_help.png', // 👈 Yardım ikonu
+                  iconPath: 'assets/icons/ic_help.png',
                   title: "Yardım & Destek",
                   onTap: () {
                     context.pop();
@@ -220,7 +217,7 @@ class AppDrawer extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
             child: DrawerItem(
-              iconPath: 'assets/icons/ic_logout.png', // 👈 Çıkış ikonu
+              iconPath: 'assets/icons/ic_logout.png',
               title: "Çıkış Yap",
               isDestructive: true,
               onTap: () {

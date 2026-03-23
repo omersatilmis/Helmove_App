@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:moto_comm_app_1/core/theme/app_colors.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
@@ -213,57 +214,18 @@ class _FeedbackPageState extends State<FeedbackPage> {
   }
 
   Widget _buildTitleField(bool isDark) {
-    return TextField(
+    return AppInputField(
       controller: _titleController,
-      decoration: InputDecoration(
-        hintText: "Kısa bir başlık...",
-        filled: true,
-        fillColor: isDark ? AppColors.darkSurface : Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black12,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black12,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
-      ),
+      hint: "Kısa bir başlık...",
     );
   }
 
   Widget _buildMessageField(bool isDark) {
-    return TextField(
+    return AppInputField(
       controller: _controller,
       maxLines: 6,
-      decoration: InputDecoration(
-        hintText: "Buraya yazın...",
-        filled: true,
-        fillColor: isDark ? AppColors.darkSurface : Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black12,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black12,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.primary),
-        ),
-      ),
+      minLines: 3,
+      hint: "Buraya yazın...",
     );
   }
 

@@ -11,6 +11,7 @@ import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_eve
 import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_state.dart';
 import 'package:moto_comm_app_1/features/content/jots/domain/entities/jot_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 
 class CreateJotsPage extends StatefulWidget {
   const CreateJotsPage({super.key});
@@ -300,46 +301,16 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                   const SizedBox(height: 16),
 
                   // Alt Kısım: Metin Yazma Alanı (Sola Yaslı, PP Altından Başlıyor)
-                  TextField(
+                  AppInputField(
                     controller: _controller,
                     focusNode: _focusNode,
-                    minLines: 1,
-                    maxLines: null,
-                    maxLength: 280,
-                    keyboardType: TextInputType.multiline,
-                    textCapitalization: TextCapitalization.sentences,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontSize: 18,
-                      height: 1.4,
-                      fontWeight: FontWeight.w400,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    buildCounter:
-                        (
-                          context, {
-                          required currentLength,
-                          required isFocused,
-                          maxLength,
-                        }) => const SizedBox.shrink(),
-                    decoration: InputDecoration(
-                      hintText: "Bugün ne paylaşmak istersin?",
-                      filled: false, // Arka plan rengini tamamen kapattım
-                      fillColor: Colors.transparent,
-                      border: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                      isDense: true,
-                      hintStyle: TextStyle(
-                        fontSize: 18,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.4,
-                        ),
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
+                    minLines: 4,
+                    maxLines: 8,
+                    hint: "Bugün ne paylaşmak istersin?",
+                    size: AppInputSize.large,
+                    radius: 12,
+                    textInputAction: TextInputAction.newline,
+                    onChanged: (_) => _onTextChanged(),
                   ),
 
                   if (_selectedImage != null)

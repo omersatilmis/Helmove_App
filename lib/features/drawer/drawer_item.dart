@@ -31,7 +31,7 @@ class DrawerItem extends StatelessWidget {
     // Renk Ayarları (Çıkış butonu kırmızı, diğerleri tema rengi)
     final effectiveColor = isDestructive 
         ? theme.colorScheme.error 
-        : (iconColor ?? theme.colorScheme.onSurfaceVariant);
+        : (iconColor ?? theme.colorScheme.primary);
 
     final effectiveTextColor = isDestructive
         ? theme.colorScheme.error

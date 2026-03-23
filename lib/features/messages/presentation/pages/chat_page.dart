@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/di/injection_container.dart';
 import '../bloc/chat/chat_bloc.dart';
 import '../bloc/chat/chat_event.dart';
@@ -484,96 +485,72 @@ class _ChatViewState extends State<ChatView> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 48),
-                decoration: BoxDecoration(
-                  color: fieldBg,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: Icon(
-                        Icons.add_circle_outline_rounded,
-                        color: colorScheme.primary,
-                        size: 26,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_editingMessageId != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                        border: Border(left: BorderSide(color: colorScheme.primary, width: 3)),
                       ),
-                      onPressed: () {},
-                    ),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Row(
                         children: [
-                          if (_editingMessageId != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary.withValues(alpha: 0.1),
-                                border: Border(left: BorderSide(color: colorScheme.primary, width: 3)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.edit, size: 14, color: colorScheme.primary),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      "Mesaj Dzenle",
-                                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close, size: 16),
-                                    onPressed: () {
-                                      setState(() {
-                                        _editingMessageId = null;
-                                        _controller.clear();
-                                      });
-                                    },
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                ],
+                          Icon(Icons.edit_rounded, size: 14, color: colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "Mesajı Düzenle",
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          TextField(
-                            controller: _controller,
-                            decoration: InputDecoration(
-                              hintText: _editingMessageId != null ? 'Mesaj dzenle...' : 'Mesaj...',
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              filled: false,
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 11,
-                                horizontal: 12,
-                              ),
-                              hintStyle: TextStyle(
-                                color: colorScheme.onSurfaceVariant.withValues(
-                                  alpha: 0.6,
-                                ),
-                              ),
-                            ),
-                            maxLines: 5,
-                            minLines: 1,
-                            style: theme.textTheme.bodyLarge,
-                            textInputAction: TextInputAction.newline,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                            onPressed: () {
+                              setState(() {
+                                _editingMessageId = null;
+                                _controller.clear();
+                              });
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
                           ),
                         ],
                       ),
                     ),
-                    if (_editingMessageId == null)
-                      IconButton(
-                        icon: Icon(
-                          Icons.camera_alt_outlined,
-                          color: colorScheme.onSurfaceVariant,
-                          size: 22,
-                        ),
-                        onPressed: () {},
+                  AppInputField(
+                    controller: _controller,
+                    hint: _editingMessageId != null ? 'Mesajı düzenle...' : 'Mesaj yaz...',
+                    maxLines: 5,
+                    minLines: 1,
+                    radius: 24,
+                    showFocusBorder: false,
+                    textInputAction: TextInputAction.newline,
+                    prefixWidget: IconButton(
+                      icon: Icon(
+                        Icons.add_circle_outline_rounded,
+                        color: colorScheme.primary,
+                        size: 24,
                       ),
-                    const SizedBox(width: 4),
-                  ],
-                ),
+                      onPressed: () {},
+                    ),
+                    suffixWidget: _editingMessageId == null
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.camera_alt_outlined,
+                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                              size: 22,
+                            ),
+                            onPressed: () {},
+                          )
+                        : null,
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: 8),

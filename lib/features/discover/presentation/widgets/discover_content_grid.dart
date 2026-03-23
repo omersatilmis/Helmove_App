@@ -37,7 +37,7 @@ class _DiscoverContentGridState extends State<DiscoverContentGrid> {
   }
 
   void _onScroll() {
-    if (_isBottom) {
+    if (_isBottom && !widget.hasReachedMax) {
       widget.onLoadMore();
     }
   }
@@ -51,8 +51,17 @@ class _DiscoverContentGridState extends State<DiscoverContentGrid> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     if (widget.content.isEmpty) {
-      return const Center(child: Text("Henüz keşfedilecek bir içerik yok."));
+      return Center(
+        child: Text(
+          "Henüz keşfedilecek bir içerik yok.",
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
     }
 
     return MasonryGridView.count(
@@ -60,20 +69,24 @@ class _DiscoverContentGridState extends State<DiscoverContentGrid> {
       crossAxisCount: 3,
       mainAxisSpacing: 2,
       crossAxisSpacing: 2,
-      itemCount: widget.hasReachedMax ? widget.content.length : widget.content.length + 1,
-      padding: const EdgeInsets.only(top: 10, bottom: 20),
+      itemCount: widget.hasReachedMax
+          ? widget.content.length
+          : widget.content.length + 1,
+      padding: EdgeInsets.zero,
       itemBuilder: (context, index) {
         if (index >= widget.content.length) {
-          return const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: theme.colorScheme.primary,
+              ),
+            ),
           );
         }
         final item = widget.content[index];
-        return _GridItem(
-          item: item,
-          onTap: () => widget.onTap(widget.content, index),
-        );
+        return _GridItem(item: item, onTap: () => widget.onTap(widget.content, index));
       },
     );
   }
@@ -87,44 +100,114 @@ class _GridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final bool isReel = item.type == 2;
-    final String? imageUrl = isReel ? item.thumbnailUrl : item.mediaUrl;
+    // Öncelik: Thumbnail -> MediaUrl
+    final String? imageUrl = (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
+        ? item.thumbnailUrl
+        : item.mediaUrl;
+
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final hasText = item.text.isNotEmpty;
 
     return GestureDetector(
       onTap: onTap,
       child: AspectRatio(
-        // Reels için daha dikey (2:3), Normal postlar için kare (1:1)
         aspectRatio: isReel ? 0.6 : 1.0,
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.grey[900],
-            borderRadius: BorderRadius.circular(2),
+            color: theme.colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(4), // Hafif kavis
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.1),
+              width: 0.5,
+            ),
           ),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (imageUrl != null && imageUrl.isNotEmpty)
+              // 1. GÖRSEL VARSA GÖSTER
+              if (hasImage)
                 CachedNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
-                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                  placeholder: (context, url) => Container(
+                    color: theme.colorScheme.surfaceContainerLow,
+                  ),
+                  errorWidget: (context, url, error) => _buildTextPlaceholder(theme),
                 )
+              // 2. GÖRSEL YOK AMA METİN VARSA (JOTLAR İÇİN)
+              else if (hasText)
+                _buildTextPlaceholder(theme)
+              // 3. HİÇBİR ŞEY YOKSA İKON GÖSTER
               else
-                const Icon(Icons.image, color: Colors.grey),
-              
-              // Reel İkonu
+                Icon(
+                  Icons.image_outlined,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  size: 24,
+                ),
+
+              // Reel İkonu / Video Göstergesi
               if (isReel)
-                const Positioned(
+                Positioned(
                   top: 8,
                   right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+                
+              // Tip Göstergesi (Opsiyonel: Jot için minik ikon)
+              if (item.type == 0 && !hasImage)
+                Positioned(
+                  bottom: 6,
+                  right: 6,
                   child: Icon(
-                    Icons.play_circle_outline,
-                    color: Colors.white70,
-                    size: 20,
+                    Icons.notes_rounded,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    size: 14,
                   ),
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextPlaceholder(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.8),
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+          ],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        item.text,
+        maxLines: 4,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          fontStyle: FontStyle.italic,
         ),
       ),
     );

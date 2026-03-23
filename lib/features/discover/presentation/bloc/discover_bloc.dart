@@ -1,15 +1,15 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/search_users_usecase.dart';
-import '../../../content/posts/domain/usecases/get_feed_usecase.dart';
+import '../../domain/usecases/get_explore_usecase.dart';
 import '../../../content/posts/domain/entities/post_entity.dart';
 import 'discover_event.dart';
 import 'discover_state.dart';
 
 class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
   final SearchUsersUseCase searchUsers;
-  final GetPostsFeedUseCase getPostsFeed;
+  final GetExploreUseCase getExplore;
 
-  DiscoverBloc({required this.searchUsers, required this.getPostsFeed})
+  DiscoverBloc({required this.searchUsers, required this.getExplore})
     : super(DiscoverInitial()) {
     on<SearchUsersEvent>(_onSearchUsers);
     on<LoadDiscoveryContent>(_onLoadDiscoveryContent);
@@ -43,7 +43,7 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     final currentState = state;
     bool isRefresh = event.isRefresh;
 
-    // Eğer zaten yükleniyorsa veya maksimuma ulaşıldıysa (ve refresh değilse) çık
+    // Zaten yükleniyorsa veya maksimuma ulaşıldıysa (ve refresh değilse) çık
     if (!isRefresh &&
         currentState is DiscoverDiscoveryLoaded &&
         currentState.hasReachedMax) {
@@ -58,19 +58,19 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
       oldContent = currentState.content;
     }
 
-    // İlk yükleme veya refresh ise loading emitleyebiliriz (opsiyonel, UI'da shimmer için önemli)
+    // İlk yükleme veya refresh ise shimmer göster
     if (isRefresh || currentState is! DiscoverDiscoveryLoaded) {
       emit(DiscoverLoading());
     }
 
-    final result = await getPostsFeed(
-      GetFeedParams(page: pageToFetch, limit: 20),
+    final result = await getExplore(
+      GetExploreParams(page: pageToFetch, limit: 20),
     );
 
     result.fold(
       (failure) => emit(DiscoverFailure(failure.message)),
-      (fetchResult) {
-        final newItems = fetchResult.data?.items ?? [];
+      (pagedResult) {
+        final newItems = pagedResult.items;
         final hasReachedMax = newItems.length < 20;
 
         emit(

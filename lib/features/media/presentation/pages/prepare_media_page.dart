@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
 import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/create_post_cubit.dart';
 import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/create_post_state.dart';
+import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 
 class PrepareMediaPage extends StatefulWidget {
   final File imageFile;
@@ -118,20 +119,14 @@ class _PrepareMediaPageState extends State<PrepareMediaPage> {
                     const SizedBox(width: 16),
                     // Sağ: Açıklama Alanı
                     Expanded(
-                      child: TextField(
+                      child: AppInputField(
                         controller: _captionController,
                         maxLines: 4,
-                        style: AppTextStyles.medium.copyWith(
-                          color: AppColors.darkTextPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Bir açıklama yaz...',
-                          hintStyle: AppTextStyles.medium.copyWith(
-                            color: AppColors.darkTextSecondary,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                        ),
+                        minLines: 2,
+                        hint: 'Bir açıklama yaz...',
+                        size: AppInputSize.small,
+                        radius: 12,
+                        verticalPadding: 8,
                       ),
                     ),
                   ],

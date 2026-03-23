@@ -10,6 +10,7 @@ import '../../domain/entities/comment_entity.dart';
 import '../bloc/comments_bloc.dart';
 import '../bloc/comments_event.dart';
 import '../bloc/comments_state.dart';
+import '../../../../core/widgets/app_input_field.dart';
 
 const int _commentsPageSize = 10;
 
@@ -639,38 +640,14 @@ class _CommentInputAreaState extends State<_CommentInputArea> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: TextField(
-                  controller: widget.controller,
-                  focusNode: widget.focusNode,
-                  minLines: 1,
-                  maxLines: 5,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Yorum ekle...',
-                    hintStyle: TextStyle(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                      fontSize: 15,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
-                ),
+              child: AppInputField(
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                minLines: 1,
+                maxLines: 5,
+                hint: 'Yorum ekle...',
+                radius: 24,
+                size: AppInputSize.small,
               ),
             ),
             const SizedBox(width: 8),

@@ -5,7 +5,8 @@ import '../../../content/posts/presentation/widgets/post_card.dart';
 import '../../../content/posts/presentation/bloc/posts_bloc.dart';
 import '../../../content/posts/presentation/bloc/posts_event.dart';
 import '../../../content/posts/presentation/bloc/posts_state.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../content/jots/domain/entities/jot_entity.dart';
+import '../../../content/jots/presentation/widgets/jot_card_widget.dart';
 import '../../../interaction/presentation/widgets/comments_sheet.dart';
 import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
@@ -27,18 +28,32 @@ class DiscoveryFeedPage extends StatefulWidget {
 
 class _DiscoveryFeedPageState extends State<DiscoveryFeedPage> {
   late final ScrollController _scrollController;
+  late List<PostEntity> _reorderedPosts;
 
   @override
   void initState() {
     super.initState();
-    // Initial index'e zıplamak için offset hesaplaması (yaklaşık)
-    double offset = 0;
-    for (int i = 0; i < widget.initialIndex; i++) {
-        final post = widget.initialPosts[i];
-        offset += (post.mediaUrl != null && post.mediaUrl!.isNotEmpty ? 450 : 250) + 24;
-    }
-    _scrollController = ScrollController(initialScrollOffset: offset);
+    _reorderedPosts = _buildReorderedList(
+      widget.initialPosts,
+      widget.initialIndex,
+    );
+    _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
+  }
+
+  List<PostEntity> _buildReorderedList(
+    List<PostEntity> posts,
+    int tappedIndex,
+  ) {
+    if (posts.isEmpty || tappedIndex < 0 || tappedIndex >= posts.length) {
+      return posts;
+    }
+    final tappedPost = posts[tappedIndex];
+    final rest = <PostEntity>[
+      ...posts.sublist(tappedIndex + 1),
+      ...posts.sublist(0, tappedIndex),
+    ];
+    return [tappedPost, ...rest];
   }
 
   void _onScroll() {
@@ -60,69 +75,129 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage> {
     super.dispose();
   }
 
+  /// PostEntity → JotEntity dönüşümü (type=0 ise Jot)
+  JotEntity _postToJot(PostEntity post) {
+    return JotEntity(
+      id: post.id,
+      userId: post.userId,
+      type: JotType.text,
+      text: post.text,
+      mediaUrl: post.mediaUrl,
+      thumbnailUrl: post.thumbnailUrl,
+      visibility: JotVisibility.public,
+      createdAt: post.createdAt,
+      username: post.username,
+      firstName: post.userFirstName,
+      lastName: post.userLastName,
+      userProfilePictureUrl: post.userProfileImage,
+      likeCount: post.likeCount,
+      commentCount: post.commentCount,
+      isLiked: post.isLiked,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text("Keşfet"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: BlocBuilder<DiscoverBloc, DiscoverState>(
-        builder: (context, discoverState) {
-          final posts = (discoverState is DiscoverDiscoveryLoaded) 
-              ? discoverState.content 
-              : widget.initialPosts;
-          final hasReachedMax = (discoverState is DiscoverDiscoveryLoaded) 
-              ? discoverState.hasReachedMax 
-              : false;
+      body: SafeArea(
+        child: BlocBuilder<DiscoverBloc, DiscoverState>(
+          builder: (context, discoverState) {
+            List<PostEntity> displayPosts = _reorderedPosts;
+            bool hasReachedMax = false;
 
-          return BlocBuilder<PostsBloc, PostsState>(
-            builder: (context, postsState) {
-              return ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.only(bottom: 100),
-                itemCount: hasReachedMax ? posts.length : posts.length + 1,
-                itemBuilder: (context, index) {
-                  if (index >= posts.length) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32.0),
-                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    );
-                  }
-                  
-                  final post = posts[index];
+            if (discoverState is DiscoverDiscoveryLoaded) {
+              final allBlocPosts = discoverState.content;
+              hasReachedMax = discoverState.hasReachedMax;
 
-                  return PostCardModern(
-                    post: post,
-                    currentUserId: postsState.currentUserId,
-                    onLike: () {
-                      context.read<PostsBloc>().add(LikePostEvent(post.id));
-                    },
-                    onDelete: () {
-                      context.read<PostsBloc>().add(DeletePostEvent(post.id));
-                    },
-                    onComment: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => CommentsSheet(contentId: post.id),
+              final existingIds = _reorderedPosts.map((p) => p.id).toSet();
+              final newPosts = allBlocPosts
+                  .where((p) => !existingIds.contains(p.id))
+                  .toList();
+
+              if (newPosts.isNotEmpty) {
+                displayPosts = [..._reorderedPosts, ...newPosts];
+              }
+            }
+
+            return BlocBuilder<PostsBloc, PostsState>(
+              builder: (context, postsState) {
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.only(bottom: 100),
+                  itemCount: hasReachedMax
+                      ? displayPosts.length
+                      : displayPosts.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index >= displayPosts.length) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32.0),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
                       );
-                    },
-                    onShare: () {},
-                    onReport: () {},
-                  );
-                },
-              );
-            },
-          );
-        },
+                    }
+
+                    final post = displayPosts[index];
+
+                    // type=0 → Jot, type=1 → Post, type=2 → Reel
+                    if (post.type == 0) {
+                      final jot = _postToJot(post);
+                      return JotCardWidget(
+                        jot: jot,
+                        currentUserId: postsState.currentUserId,
+                        onLike: () {
+                          context.read<PostsBloc>().add(LikePostEvent(post.id));
+                        },
+                        onDelete: () {
+                          context.read<PostsBloc>().add(
+                            DeletePostEvent(post.id),
+                          );
+                        },
+                        onComment: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) =>
+                                CommentsSheet(contentId: post.id),
+                          );
+                        },
+                      );
+                    }
+
+                    // Post veya Reel → PostCardModern
+                    return PostCardModern(
+                      post: post,
+                      currentUserId: postsState.currentUserId,
+                      onLike: () {
+                        context.read<PostsBloc>().add(LikePostEvent(post.id));
+                      },
+                      onDelete: () {
+                        context.read<PostsBloc>().add(DeletePostEvent(post.id));
+                      },
+                      onComment: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) =>
+                              CommentsSheet(contentId: post.id),
+                        );
+                      },
+                      onShare: () {},
+                      onReport: () {},
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

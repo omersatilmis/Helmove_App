@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:moto_comm_app_1/core/theme/text_styles.dart';
 import 'package:provider/provider.dart';
 import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 
 class AboutSection extends StatefulWidget {
   const AboutSection({super.key});
@@ -129,19 +130,11 @@ class _AboutSectionState extends State<AboutSection> {
   }
 
   Widget _buildEditField(ThemeData theme) {
-    return TextField(
+    return AppInputField(
       controller: _controller,
       maxLines: null,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.3,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
+      minLines: 3,
+      hint: "Kendinizden bahsedin...",
     );
   }
 }

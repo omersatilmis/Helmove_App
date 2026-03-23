@@ -2,21 +2,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../friendship/data/dto/friend_user_dto.dart';
 import '../../../profile/data/api/profile_endpoints.dart';
+import '../../../content/posts/data/models/post_model.dart';
+import '../../../../core/models/paged_result.dart';
+import '../../../../core/models/pagination_metadata.dart';
 
 class DiscoverApi {
   final Dio _dio;
 
   DiscoverApi(this._dio);
 
-  /// GET /api/Friendship/search?searchTerm=query&city=city&limit=limit
-  /// Reusing Friendship endpoints as the base search is likely similar or the same.
-  /// If there's a specific 'Discover' endpoint, we should use that.
-  /// Based on user request "search users", and existing FriendshipApi, we'll try to use the same endpoint
-  /// but maybe with extra parameters if supported, OR we might need a new endpoint.
-  /// Given the prompt implies "Discover" like Instagram, let's assume we use the existing search
-  /// but maybe we should add query params if the backend supports it.
-  /// for now: queryParameters: {'searchTerm': query}
-
+  /// Kullanıcı arama
   Future<List<FriendUserModel>> searchUsers(
     String query, {
     String? city,
@@ -38,7 +33,7 @@ class DiscoverApi {
       debugPrint('🔍 [DiscoverApi] searchUsers - Params: $queryParams');
 
       final response = await _dio.get(
-        ProfileEndpoints.search, // ✅ Profile search - tüm kullanıcılar
+        ProfileEndpoints.search,
         queryParameters: queryParams,
       );
 
@@ -48,6 +43,34 @@ class DiscoverApi {
       );
     } catch (e) {
       throw _handleError(e, 'Kullanıcı araması başarısız');
+    }
+  }
+
+  /// Keşfet içeriği — herkese açık postlar (arkadaş/takip filtresi yok)
+  Future<PagedResult<PostModel>> getExploreContent({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/api/content/explore',
+        queryParameters: {'page': page, 'limit': limit},
+      );
+
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final List<dynamic> itemsData = data['data'] ?? [];
+      final items = itemsData.map((e) => PostModel.fromJson(e)).toList();
+
+      final metaData = data['meta'];
+      final meta = metaData != null
+          ? PaginationMetadata.fromJson(metaData)
+          : PaginationMetadata.initial();
+
+      return PagedResult(items: items, metadata: meta);
+    } catch (e) {
+      throw _handleError(e, 'Keşfet içeriği yüklenemedi');
     }
   }
 

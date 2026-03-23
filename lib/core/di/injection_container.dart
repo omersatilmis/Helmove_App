@@ -83,6 +83,7 @@ import '../../features/content/posts/presentation/bloc/posts_bloc.dart';
 
 // Search/Discover Feature UseCases/Bloc
 import '../../features/discover/domain/usecases/search_users_usecase.dart';
+import '../../features/discover/domain/usecases/get_explore_usecase.dart';
 import '../../features/discover/presentation/bloc/discover_bloc.dart';
 
 // Media Feature
@@ -1072,13 +1073,16 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<SearchUsersUseCase>()) {
     sl.registerFactory(() => SearchUsersUseCase(sl()));
   }
+  if (!sl.isRegistered<GetExploreUseCase>()) {
+    sl.registerFactory(() => GetExploreUseCase(sl()));
+  }
 
   // Bloc
   if (!sl.isRegistered<DiscoverBloc>()) {
     sl.registerFactory(
       () => DiscoverBloc(
         searchUsers: sl<SearchUsersUseCase>(),
-        getPostsFeed: sl<GetPostsFeedUseCase>(),
+        getExplore: sl<GetExploreUseCase>(),
       ),
     );
   }

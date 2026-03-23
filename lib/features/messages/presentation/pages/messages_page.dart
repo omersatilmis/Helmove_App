@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/widgets/unread_count_badge.dart';
+import '../../../../core/widgets/app_input_field.dart';
 import '../bloc/conversations/conversations_bloc.dart';
 import '../bloc/conversations/conversations_event.dart';
 import '../bloc/conversations/conversations_state.dart';
@@ -116,18 +117,14 @@ class _ConversationsViewState extends State<ConversationsView> {
           elevation: 0,
           centerTitle: false,
           title: _isSearchMode
-              ? TextField(
+              ? AppInputField(
                   controller: _searchController,
-                  autofocus: true,
+                  type: AppInputType.discover,
+                  size: AppInputSize.small,
+                  hint: 'Sohbet ara...',
                   textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: 'Sohbet ara...',
-                    border: InputBorder.none,
-                    hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  style: theme.textTheme.bodyLarge,
+                  showFocusBorder: false,
+                  radius: 12,
                 )
               : Text(
                   'Sohbetler',

@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 import 'package:moto_comm_app_1/core/theme/app_colors.dart';
+import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:go_router/go_router.dart';
 
 // 🔥 BUTON IMPORT
 import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
 
-class HelpPage extends StatelessWidget {
+class HelpPage extends StatefulWidget {
   const HelpPage({super.key});
+
+  @override
+  State<HelpPage> createState() => _HelpPageState();
+}
+
+class _HelpPageState extends State<HelpPage> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,18 +123,11 @@ class HelpPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          TextField(
-            decoration: InputDecoration(
-              hintText: "Sorununuzu arayın...",
-              prefixIcon: const Icon(Icons.search, color: AppColors.primary),
-              filled: true,
-              fillColor: isDark ? AppColors.darkSurface : Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16),
-            ),
+          AppInputField(
+            controller: _searchController,
+            type: AppInputType.discover,
+            hint: "Sorununuzu arayın...",
+            radius: 16,
           ),
         ],
       ),

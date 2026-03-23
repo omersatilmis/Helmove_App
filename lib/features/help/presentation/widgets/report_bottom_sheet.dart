@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/report_enums.dart';
 import '../../domain/entities/report_entity.dart';
@@ -170,28 +171,11 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            AppInputField(
               controller: _descriptionController,
               maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Durumu kısaca açıklayın...',
-                hintStyle: const TextStyle(color: Colors.white24),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Colors.white12),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Colors.white12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Colors.orangeAccent),
-                ),
-              ),
+              hint: 'Durumu kısaca açıklayın...',
+              radius: 16,
             ),
             const SizedBox(height: 32),
 
