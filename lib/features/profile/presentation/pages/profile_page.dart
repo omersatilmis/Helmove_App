@@ -18,7 +18,6 @@ import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_
 import 'package:flutter_bloc/flutter_bloc.dart'
     hide ReadContext, WatchContext, SelectContext;
 import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_bloc.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_event.dart';
 import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_state.dart';
@@ -52,7 +51,6 @@ class _ProfilePageState extends State<ProfilePage> {
   double _statsOpacity = 1.0;
   bool _showPinnedTitle = false;
 
-  FriendshipListBloc? _friendshipBloc;
   FriendshipStatusBloc? _statusBloc;
 
   @override
@@ -138,7 +136,6 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void dispose() {
     _scrollController.dispose();
-    _friendshipBloc?.close();
     _statusBloc?.close();
     super.dispose();
   }
@@ -167,7 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
       providers: [
         BlocProvider<FriendshipActionBloc>(create: (_) => sl<FriendshipActionBloc>()),
         BlocProvider<FollowActionBloc>(create: (_) => sl<FollowActionBloc>()),
-        if (_friendshipBloc != null) BlocProvider.value(value: _friendshipBloc!),
+        if (_statusBloc != null) BlocProvider.value(value: _statusBloc!),
       ],
       child: profileProvider.errorMessage != null
           ? Scaffold(

@@ -89,6 +89,7 @@ class MapBottomSheet extends StatelessWidget {
             forceCollapsed: forceCollapsed ||
                 (state.isSelectingStopFromMap && location == null),
             bottomBarHeight: bottomBarHeight,
+            isExpandable: hasRoute,
           ),
         );
       },
@@ -122,12 +123,14 @@ class _ExpandableSheet extends StatefulWidget {
   final Widget content;
   final bool forceCollapsed;
   final double? bottomBarHeight;
+  final bool isExpandable;
 
   const _ExpandableSheet({
     super.key,
     required this.content,
     required this.forceCollapsed,
     this.bottomBarHeight,
+    this.isExpandable = true,
   });
 
   @override
@@ -144,7 +147,7 @@ class _ExpandableSheetState extends State<_ExpandableSheet> {
   @override
   void initState() {
     super.initState();
-    if (widget.forceCollapsed) {
+    if (widget.forceCollapsed || !widget.isExpandable) {
       _snapIndex = 0;
     }
   }
@@ -152,13 +155,15 @@ class _ExpandableSheetState extends State<_ExpandableSheet> {
   @override
   void didUpdateWidget(covariant _ExpandableSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.forceCollapsed && !oldWidget.forceCollapsed && _snapIndex != 0) {
+    if ((widget.forceCollapsed || !widget.isExpandable) && 
+        !(oldWidget.forceCollapsed || !oldWidget.isExpandable) && 
+        _snapIndex != 0) {
       setState(() {
         _snapIndex = 0;
         _activeHeight = null;
       });
-    } else if (!widget.forceCollapsed &&
-        oldWidget.forceCollapsed &&
+    } else if (!(widget.forceCollapsed || !widget.isExpandable) &&
+        (oldWidget.forceCollapsed || !oldWidget.isExpandable) &&
         _snapIndex == 0) {
       setState(() {
         _snapIndex = 1;
@@ -294,10 +299,10 @@ class _ExpandableSheetState extends State<_ExpandableSheet> {
             children: [
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: _toggleExpand,
-                onVerticalDragStart: _handleDragStart,
-                onVerticalDragUpdate: _handleDragUpdate,
-                onVerticalDragEnd: _handleDragEnd,
+                onTap: widget.isExpandable ? _toggleExpand : null,
+                onVerticalDragStart: widget.isExpandable ? _handleDragStart : null,
+                onVerticalDragUpdate: widget.isExpandable ? _handleDragUpdate : null,
+                onVerticalDragEnd: widget.isExpandable ? _handleDragEnd : null,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Center(

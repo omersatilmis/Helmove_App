@@ -72,6 +72,12 @@ class MapBottomSheetDestination extends StatelessWidget {
                 tooltip: 'Paylaş',
                 onTap: _shareLocation,
               ),
+              const SizedBox(width: 6),
+              _ActionIcon(
+                icon: Icons.close_rounded,
+                tooltip: 'Kapat',
+                onTap: () => context.read<MapBloc>().add(MapSelectLocation(null)),
+              ),
             ],
           ],
         ),

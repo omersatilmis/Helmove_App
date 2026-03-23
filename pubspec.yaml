@@ -81,6 +81,7 @@ dev_dependencies:
     sdk: flutter
   build_runner: ^2.4.10
   widgetbook_generator: ^3.6.0
+  flutter_launcher_icons: ^0.13.1
 
 
 
@@ -158,3 +159,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_logo.png"
+  min_sdk_android: 21

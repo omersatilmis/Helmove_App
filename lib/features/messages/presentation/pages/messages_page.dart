@@ -82,86 +82,104 @@ class _ConversationsViewState extends State<ConversationsView> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    final Color scaffoldBg =
-        isDark ? const Color(0xFF12100E) : const Color(0xFFF7F7F7);
     final Color itemTileColor =
         isDark ? const Color(0xFF1C1917) : Colors.white;
 
-    return Scaffold(
-      backgroundColor: scaffoldBg,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PickFriendPage()),
-          ).then((_) {
-            if (context.mounted) {
-              context.read<ConversationsBloc>().add(RefreshConversations());
-            }
-          });
-        },
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        elevation: 4,
-        child: const Icon(Icons.add_comment_rounded),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          context.read<ConversationsBloc>().add(RefreshConversations());
-        },
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverAppBar(
-              floating: true,
-              pinned: true,
-              expandedHeight: 60.0,
-              backgroundColor: isDark ? const Color(0xFF1C1917) : Colors.white,
-              surfaceTintColor: Colors.transparent,
-              elevation: 0,
-              centerTitle: false,
-              title: _isSearchMode
-                  ? TextField(
-                      controller: _searchController,
-                      autofocus: true,
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        hintText: 'Sohbet ara...',
-                        border: InputBorder.none,
-                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      style: theme.textTheme.bodyLarge,
-                    )
-                  : Text(
-                      'Sohbetler',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5,
-                      ),
+    final backgroundGradient = isDark
+        ? const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF2A100A), // Koyu modda hafif kırmızımsı üst
+              Color(0xFF12100E),
+            ],
+            stops: [0.0, 0.4],
+          )
+        : LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          );
+
+    return Container(
+      decoration: BoxDecoration(gradient: backgroundGradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: false,
+          title: _isSearchMode
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: 'Sohbet ara...',
+                    border: InputBorder.none,
+                    hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
-              actions: [
-                IconButton(
-                  icon: Icon(
-                    _isSearchMode ? Icons.close_rounded : Icons.search_rounded,
                   ),
-                  onPressed: _toggleSearch,
+                  style: theme.textTheme.bodyLarge,
+                )
+              : Text(
+                  'Sohbetler',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.more_vert_rounded),
-                  onPressed: () {},
-                ),
-              ],
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(1.0),
-                child: Container(
-                  color: theme.dividerColor.withValues(alpha: 0.05),
-                  height: 1.0,
-                ),
+          actions: [
+            IconButton(
+              icon: Icon(
+                _isSearchMode ? Icons.close_rounded : Icons.search_rounded,
               ),
+              onPressed: _toggleSearch,
             ),
+            IconButton(
+              icon: const Icon(Icons.more_vert_rounded),
+              onPressed: () {},
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1.0),
+            child: Container(
+              color: theme.dividerColor.withValues(alpha: 0.05),
+              height: 1.0,
+            ),
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PickFriendPage()),
+            ).then((_) {
+              if (context.mounted) {
+                context.read<ConversationsBloc>().add(RefreshConversations());
+              }
+            });
+          },
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          elevation: 4,
+          child: const Icon(Icons.add_comment_rounded),
+        ),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            context.read<ConversationsBloc>().add(RefreshConversations());
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
             BlocBuilder<ConversationsBloc, ConversationsState>(
               builder: (context, state) {
                 if (state is ConversationsLoading) {
@@ -476,6 +494,7 @@ class _ConversationsViewState extends State<ConversationsView> {
           ],
         ),
       ),
+    ),
     );
   }
 }

@@ -93,6 +93,7 @@ class _JotDetailPageState extends State<JotDetailPage> {
                         jot: widget.jot,
                         currentUserId: widget.currentUserId,
                         onComment: () => _commentFocusNode.requestFocus(),
+                        isDetailView: true,
                       ),
                     ),
                     const SliverToBoxAdapter(

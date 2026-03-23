@@ -111,72 +111,76 @@ class _RegisterPageState extends State<RegisterPage> {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        top: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isCompactHeight = constraints.maxHeight < 760;
-            final horizontalPadding = constraints.maxWidth < 360 ? 16.0 : 24.0;
-            final headerHeight = (constraints.maxHeight * 0.20).clamp(
-              130.0,
-              200.0,
-            );
-            final formWidth = (constraints.maxWidth - (horizontalPadding * 2))
-                .clamp(220.0, 450.0)
-                .toDouble();
+      body: MediaQuery.removeViewInsets(
+        removeBottom: true,
+        context: context,
+        child: SafeArea(
+          top: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompactHeight = constraints.maxHeight < 760;
+              final horizontalPadding = constraints.maxWidth < 360 ? 16.0 : 24.0;
+              final headerHeight = (constraints.maxHeight * 0.20).clamp(
+                130.0,
+                200.0,
+              );
+              final formWidth = (constraints.maxWidth - (horizontalPadding * 2))
+                  .clamp(220.0, 450.0)
+                  .toDouble();
 
-            return Column(
-              children: [
-                // 1. HEADER (Dalgalı Tasarım)
-                SizedBox(
-                  height: headerHeight,
-                  child: const AuthHeaderWidget(
-                    title: "Aramıza Katılın",
-                    subtitle: "Sürüş deneyiminizi başlatın.",
-                    verticalOffset: -20.0,
+              return Column(
+                children: [
+                  // 1. HEADER (Dalgalı Tasarım)
+                  SizedBox(
+                    height: headerHeight,
+                    child: const AuthHeaderWidget(
+                      title: "Aramıza Katılın",
+                      subtitle: "Sürüş deneyiminizi başlatın.",
+                      verticalOffset: -20.0,
+                    ),
                   ),
-                ),
 
-                // 2. FORM ALANI
-                Expanded(
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                        vertical: isCompactHeight ? 8 : 12,
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: SizedBox(
-                          width: formWidth,
-                          child: RegisterFormWidget(
-                            formKey: _formKey,
-                            usernameController: _usernameController,
-                            firstNameController: _firstNameController,
-                            lastNameController: _lastNameController,
-                            emailController: _emailController,
-                            passwordController: _passwordController,
-                            confirmPasswordController:
-                                _confirmPasswordController,
-                            authProvider: authProvider,
-                            onRegister: () => _handleRegister(authProvider),
+                  // 2. FORM ALANI
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                          vertical: isCompactHeight ? 8 : 12,
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.center,
+                          child: SizedBox(
+                            width: formWidth,
+                            child: RegisterFormWidget(
+                              formKey: _formKey,
+                              usernameController: _usernameController,
+                              firstNameController: _firstNameController,
+                              lastNameController: _lastNameController,
+                              emailController: _emailController,
+                              passwordController: _passwordController,
+                              confirmPasswordController:
+                                  _confirmPasswordController,
+                              authProvider: authProvider,
+                              onRegister: () => _handleRegister(authProvider),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                // 3. FOOTER
-                AuthFooterWidget(
-                  questionText: "Zaten hesabınız var mı?",
-                  actionText: "Giriş Yap",
-                  onPressed: () => context.pop(),
-                ),
-              ],
-            );
-          },
+                  // 3. FOOTER
+                  AuthFooterWidget(
+                    questionText: "Zaten hesabınız var mı?",
+                    actionText: "Giriş Yap",
+                    onPressed: () => context.pop(),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

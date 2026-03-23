@@ -12,6 +12,7 @@ import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
 import '../widgets/active_session_card.dart';
 import '../widgets/nearby_group.dart';
+import '../../../../core/widgets/app_frosted_button.dart';
 
 void _noop() {}
 
@@ -297,10 +298,9 @@ class _CommunicationPageState extends State<CommunicationPage> {
                         ),
                       ],
                     ),
-
                     SizedBox(height: sectionSpacing),
 
-                    // --- 2. YOUR ACTIVE GROUP BAÅLIÄI & SOS ---
+                    // --- 2. YOUR ACTIVE GROUP BAŞLIĞI & SOS ---
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -312,7 +312,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                                 color: colorScheme.onSurface,
                                 size: isCompact ? 22 : 24,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   "Your Active Group",
@@ -323,62 +323,76 @@ class _CommunicationPageState extends State<CommunicationPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.refresh,
-                                  color: colorScheme.onSurface,
-                                  size: 20,
-                                ),
-                                tooltip: 'Refresh',
-                                onPressed: _isRefreshDisabled
-                                    ? null
-                                    : _refreshCommunicationFast,
-                              ),
                             ],
                           ),
                         ),
-                        SizedBox(width: isCompact ? 8 : 12),
-                        // --- SOS Acil Durum Butonu ---
-                        GestureDetector(
-                          onTap: () {
-                            debugPrint("SOS GÃ¶nderildi!");
-                          },
-                          child: Container(
-                            width: sosWidth,
-                            height: sosHeight,
-                            decoration: BoxDecoration(
-                              color: colorScheme.error.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: colorScheme.error,
-                                width: 2.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colorScheme.error.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Tooltip(
+                              message: 'Refresh',
+                              child: AppFrostedTextButton(
+                                text: '',
+                                onPressed: _isRefreshDisabled
+                                    ? null
+                                    : _refreshCommunicationFast,
+                                width: sosHeight,
+                                height: sosHeight,
+                                borderRadius: 12,
+                                padding: EdgeInsets.zero,
+                                backgroundColor: isDark
+                                    ? Colors.white.withValues(alpha: 0.1)
+                                    : Colors.black.withValues(alpha: 0.05),
+                                child: Icon(
+                                  Icons.refresh_rounded,
+                                  color: colorScheme.onSurface,
+                                  size: 20,
                                 ),
-                              ],
+                              ),
                             ),
-                            child: Center(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  "!SOS",
-                                  style: TextStyle(
+                            const SizedBox(width: 8),
+                            // --- SOS Acil Durum Butonu ---
+                            GestureDetector(
+                              onTap: () {
+                                debugPrint("SOS Gönderildi!");
+                              },
+                              child: Container(
+                                width: sosWidth,
+                                height: sosHeight,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.error.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
                                     color: colorScheme.error,
-                                    fontSize: isCompact ? 14 : 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.8,
+                                    width: 2.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colorScheme.error.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      "!SOS",
+                                      style: TextStyle(
+                                        color: colorScheme.error,
+                                        fontSize: isCompact ? 14 : 16,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.8,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),

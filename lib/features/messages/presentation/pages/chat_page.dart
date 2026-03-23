@@ -12,6 +12,12 @@ import '../bloc/chat/chat_event.dart';
 import '../bloc/chat/chat_state.dart';
 import 'call_page.dart';
 
+import '../../../../features/follow/presentation/bloc/action/follow_action_bloc.dart';
+import '../../../../features/follow/presentation/bloc/action/follow_action_event.dart' as follow_events;
+import '../../../../features/follow/presentation/bloc/action/follow_action_state.dart';
+import '../../../../core/constants/report_enums.dart';
+import '../../../../features/help/presentation/widgets/report_bottom_sheet.dart';
+
 class ChatPage extends StatelessWidget {
   final int otherUserId;
   final String firstName;
@@ -30,10 +36,17 @@ class ChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<ChatBloc>()
-        ..add(LoadMessages(otherUserId))
-        ..add(MarkAsRead(otherUserId)),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => sl<ChatBloc>()
+            ..add(LoadMessages(otherUserId))
+            ..add(MarkAsRead(otherUserId)),
+        ),
+        BlocProvider(
+          create: (_) => sl<FollowActionBloc>(),
+        ),
+      ],
       child: ChatView(
         otherUserId: otherUserId,
         firstName: firstName,
@@ -156,8 +169,21 @@ class _ChatViewState extends State<ChatView> {
     return Scaffold(
       backgroundColor: scaffoldBg,
       appBar: _buildAppBar(theme, appBarBg),
-      body: Column(
-        children: [
+      body: BlocListener<FollowActionBloc, FollowActionState>(
+        listener: (context, state) {
+          if (state is BlockUserSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Kullanıcı engellendi")),
+            );
+            if (Navigator.canPop(context)) Navigator.pop(context);
+          } else if (state is FollowActionError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            );
+          }
+        },
+        child: Column(
+          children: [
           Expanded(
             child: BlocBuilder<ChatBloc, ChatState>(
               builder: (context, state) {
@@ -253,11 +279,13 @@ class _ChatViewState extends State<ChatView> {
           _buildInputArea(theme, inputAreaBg, inputFieldBg),
         ],
       ),
+      ),
     );
   }
 
   PreferredSizeWidget _buildAppBar(ThemeData theme, Color bgColor) {
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return AppBar(
       backgroundColor: bgColor,
       surfaceTintColor: Colors.transparent,
@@ -348,13 +376,59 @@ class _ChatViewState extends State<ChatView> {
             );
           },
         ),
-        IconButton(
+        PopupMenuButton<String>(
           icon: Icon(
             Icons.more_vert_rounded,
             color: colorScheme.primary,
             size: 22,
           ),
-          onPressed: () {},
+          color: isDark ? AppColors.darkSurfaceContainer : AppColors.lightSurfaceContainer,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          onSelected: (value) {
+            // Şimdilik sadece debugPrint ile aksiyonları gösteriyoruz
+            if (value == 'clear') {
+              debugPrint('Sohbeti Temizle');
+            } else if (value == 'block') {
+              context.read<FollowActionBloc>().add(follow_events.BlockUserEvent(widget.otherUserId));
+            } else if (value == 'report') {
+              ReportBottomSheet.show(context, targetId: widget.otherUserId.toString(), targetType: ReportTargetType.user);
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            PopupMenuItem<String>(
+              value: 'clear',
+              child: Row(
+                children: [
+                  Icon(Icons.delete_outline_rounded, color: colorScheme.onSurfaceVariant, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Sohbeti Temizle'),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem<String>(
+              value: 'block',
+              child: Row(
+                children: [
+                  const Icon(Icons.block_rounded, color: Colors.orange, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Engelle', style: TextStyle(color: Colors.orange)),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'report',
+              child: Row(
+                children: [
+                  Icon(Icons.report_problem_outlined, color: colorScheme.error, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Şikayet Et', style: TextStyle(color: colorScheme.error)),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
       bottom: PreferredSize(

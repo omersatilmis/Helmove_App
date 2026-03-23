@@ -14,6 +14,7 @@ class JotCardWidget extends StatelessWidget {
   final VoidCallback? onComment;
   final VoidCallback? onDelete;
   final int? currentUserId;
+  final bool isDetailView;
 
   const JotCardWidget({
     super.key,
@@ -22,6 +23,7 @@ class JotCardWidget extends StatelessWidget {
     this.onComment,
     this.onDelete,
     this.currentUserId,
+    this.isDetailView = false,
   });
 
   @override
@@ -61,15 +63,17 @@ class JotCardWidget extends StatelessWidget {
               ),
             ),
             child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        JotDetailPage(jot: jot, currentUserId: currentUserId),
-                  ),
-                );
-              },
+              onTap: isDetailView
+                  ? null
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              JotDetailPage(jot: jot, currentUserId: currentUserId),
+                        ),
+                      );
+                    },
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,

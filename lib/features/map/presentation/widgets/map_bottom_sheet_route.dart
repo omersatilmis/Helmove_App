@@ -146,19 +146,28 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
             const Spacer(),
             if (AppFeatureFlags.showRouteSettings) ...[
               const SizedBox(width: 8),
-              _RoundIconButton(
+              _RouteActionIcon(
                 icon: Icons.settings_outlined,
+                tooltip: 'Ayarlar',
                 onTap: () {}, // Ayarlar
               ),
             ],
             const SizedBox(width: 8),
-            _RoundIconButton(
+            _RouteActionIcon(
+              icon: Icons.bookmark_border,
+              tooltip: 'Kaydet',
+              onTap: () {}, // Kaydet
+            ),
+            const SizedBox(width: 8),
+            _RouteActionIcon(
               icon: Icons.share_outlined,
+              tooltip: 'Paylaş',
               onTap: _shareRoute, // Paylaş
             ),
             const SizedBox(width: 8),
-            _RoundIconButton(
+            _RouteActionIcon(
               icon: Icons.close_rounded,
+              tooltip: 'İptal',
               onTap: () => context.read<MapBloc>().add(
                 MapClearRoutingRequested(),
               ), // İptal
@@ -1015,27 +1024,29 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
   }
 }
 
-// Yuvarlak Arkaplanlı Butonlar (Düzeltilmiş Hali)
-class _RoundIconButton extends StatelessWidget {
+// Yuvarlak Arkaplanlı Butonlar (Frosted Design)
+class _RouteActionIcon extends StatelessWidget {
   final IconData icon;
+  final String tooltip;
   final VoidCallback onTap;
 
-  const _RoundIconButton({required this.icon, required this.onTap});
+  const _RouteActionIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Material(
-      color: colorScheme.surfaceContainerHighest,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
+    return Transform.translate(
+      offset: const Offset(0, -2),
+      child: Tooltip(
+        message: tooltip,
+        child: AppFrostedButton(
+          icon: icon,
+          onTap: onTap,
+          size: 34,
+          iconSize: 18,
         ),
       ),
     );

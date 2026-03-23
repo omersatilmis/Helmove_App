@@ -75,7 +75,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
             controller: widget.usernameController,
             type: AppInputType.standard,
             autofillHints: const [AutofillHints.username],
-            size: AppInputSize.medium,
             label: "Kullanıcı Adı",
             leadingIcon: Icons.alternate_email,
             textInputAction: TextInputAction.next,
@@ -91,7 +90,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 child: AppInputField(
                   controller: widget.firstNameController,
                   type: AppInputType.firstName,
-                  size: AppInputSize.small,
                   label: "Ad",
                   leadingIcon: Icons.person_outline,
                   textInputAction: TextInputAction.next,
@@ -104,7 +102,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 child: AppInputField(
                   controller: widget.lastNameController,
                   type: AppInputType.lastName,
-                  size: AppInputSize.small,
                   label: "Soyad",
                   leadingIcon: Icons.person_outline,
                   textInputAction: TextInputAction.done,
@@ -129,7 +126,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
           AppInputField(
             controller: widget.emailController,
             type: AppInputType.email,
-            size: AppInputSize.medium,
             label: "E-Posta Adresi",
             leadingIcon: Icons.email_outlined,
             textInputAction: TextInputAction.done,
@@ -152,7 +148,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
           AppInputField(
             controller: widget.passwordController,
             type: AppInputType.newPassword,
-            size: AppInputSize.medium,
             label: "Şifre",
             leadingIcon: Icons.lock_outline,
             textInputAction: TextInputAction.next,
@@ -163,7 +158,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
           AppInputField(
             controller: widget.confirmPasswordController,
             type: AppInputType.password,
-            size: AppInputSize.medium,
             label: "Şifre Tekrar",
             leadingIcon: Icons.lock_reset,
             textInputAction: TextInputAction.done,

@@ -65,191 +65,195 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: theme.colorScheme.surface,
       // Klavye açılınca ekranın yukarı kaymasını engeller (Sabit Kalır)
       resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        top: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isCompactHeight = constraints.maxHeight < 760;
-            final horizontalPadding = constraints.maxWidth < 360 ? 16.0 : 24.0;
-            final headerHeight = (constraints.maxHeight * 0.32).clamp(
-              200.0,
-              360.0,
-            );
-            final sectionGap = isCompactHeight ? 14.0 : 24.0;
+      body: MediaQuery.removeViewInsets(
+        removeBottom: true,
+        context: context,
+        child: SafeArea(
+          top: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompactHeight = constraints.maxHeight < 760;
+              final horizontalPadding = constraints.maxWidth < 360 ? 16.0 : 24.0;
+              final headerHeight = (constraints.maxHeight * 0.32).clamp(
+                200.0,
+                360.0,
+              );
+              final sectionGap = isCompactHeight ? 14.0 : 24.0;
 
-            return Column(
-              children: [
-                // 1. KAVİSLİ HEADER ALANI
-                SizedBox(
-                  height: headerHeight,
-                  child: const AuthHeaderWidget(
-                    title: "Hoşgeldiniz!",
-                    subtitle: "Sürüşe başlamak için giriş yapın.",
-                    verticalOffset: -1.0,
+              return Column(
+                children: [
+                  // 1. KAVİSLİ HEADER ALANI
+                  SizedBox(
+                    height: headerHeight,
+                    child: const AuthHeaderWidget(
+                      title: "Hoşgeldiniz!",
+                      subtitle: "Sürüşe başlamak için giriş yapın.",
+                      verticalOffset: -1.0,
+                    ),
                   ),
-                ),
 
-                // 2. FORM VE İÇERİK ALANI
-                Expanded(
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: SizedBox(
-                          width: constraints.maxWidth > 450
-                              ? 450
-                              : constraints.maxWidth - (horizontalPadding * 2),
-                          child: Form(
-                            key: _formKey,
-                            child: AutofillGroup(
-                              // Otomatik doldurma desteği
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  SizedBox(height: isCompactHeight ? 8 : 12),
+                  // 2. FORM VE İÇERİK ALANI
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.center,
+                          child: SizedBox(
+                            width: constraints.maxWidth > 450
+                                ? 450
+                                : constraints.maxWidth - (horizontalPadding * 2),
+                            child: Form(
+                              key: _formKey,
+                              child: AutofillGroup(
+                                // Otomatik doldurma desteği
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    SizedBox(height: isCompactHeight ? 8 : 12),
 
-                                  // Hata Mesajı (Varsa Göster)
-                                  Consumer<AuthProvider>(
-                                    builder: (context, auth, _) {
-                                      if (auth.errorMessage == null) {
-                                        return const SizedBox.shrink();
-                                      }
-                                      return AuthErrorWidget(
-                                        message: auth.errorMessage!,
-                                      );
-                                    },
-                                  ),
-
-                                  // E-Posta Alanı
-                                  AppInputField(
-                                    controller: _emailController,
-                                    type: AppInputType.email,
-                                    label: "E-Posta",
-                                    leadingIcon: Icons.email_outlined,
-                                    // 🔥 Klavye 'İleri' tuşu çıkar
-                                    textInputAction: TextInputAction.next,
-                                    validator: (val) =>
-                                        (val == null || !val.contains('@'))
-                                        ? 'Geçerli bir e-posta girin'
-                                        : null,
-                                  ),
-
-                                  SizedBox(height: isCompactHeight ? 12 : 16),
-
-                                  // Şifre Alanı
-                                  AppInputField(
-                                    controller: _passwordController,
-                                    type: AppInputType.password,
-                                    label: "Şifre",
-                                    leadingIcon: Icons.lock_outline,
-                                    // 🔥 Klavye 'Tamam' tuşu çıkar
-                                    textInputAction: TextInputAction.done,
-                                    validator: (val) =>
-                                        (val == null || val.length < 6)
-                                        ? 'En az 6 karakter gerekli'
-                                        : null,
-                                  ),
-
-                                  // Beni Hatırla & Şifremi Unuttum
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8.0,
+                                    // Hata Mesajı (Varsa Göster)
+                                    Consumer<AuthProvider>(
+                                      builder: (context, auth, _) {
+                                        if (auth.errorMessage == null) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return AuthErrorWidget(
+                                          message: auth.errorMessage!,
+                                        );
+                                      },
                                     ),
-                                    child: Wrap(
-                                      alignment: WrapAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.center,
-                                      runSpacing: 4,
-                                      spacing: 12,
-                                      children: [
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            SizedBox(
-                                              height: 24,
-                                              width: 24,
-                                              child: Checkbox(
-                                                value: _rememberMe,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                onChanged: (val) => setState(
-                                                  () => _rememberMe =
-                                                      val ?? false,
+
+                                    // E-Posta Alanı
+                                    AppInputField(
+                                      controller: _emailController,
+                                      type: AppInputType.email,
+                                      label: "E-Posta",
+                                      leadingIcon: Icons.email_outlined,
+                                      // 🔥 Klavye 'İleri' tuşu çıkar
+                                      textInputAction: TextInputAction.next,
+                                      validator: (val) =>
+                                          (val == null || !val.contains('@'))
+                                          ? 'Geçerli bir e-posta girin'
+                                          : null,
+                                    ),
+
+                                    SizedBox(height: isCompactHeight ? 12 : 16),
+
+                                    // Şifre Alanı
+                                    AppInputField(
+                                      controller: _passwordController,
+                                      type: AppInputType.password,
+                                      label: "Şifre",
+                                      leadingIcon: Icons.lock_outline,
+                                      // 🔥 Klavye 'Tamam' tuşu çıkar
+                                      textInputAction: TextInputAction.done,
+                                      validator: (val) =>
+                                          (val == null || val.length < 6)
+                                          ? 'En az 6 karakter gerekli'
+                                          : null,
+                                    ),
+
+                                    // Beni Hatırla & Şifremi Unuttum
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8.0,
+                                      ),
+                                      child: Wrap(
+                                        alignment: WrapAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        runSpacing: 4,
+                                        spacing: 12,
+                                        children: [
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                height: 24,
+                                                width: 24,
+                                                child: Checkbox(
+                                                  value: _rememberMe,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(4),
+                                                  ),
+                                                  onChanged: (val) => setState(
+                                                    () => _rememberMe =
+                                                        val ?? false,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              "Beni Hatırla",
-                                              style: theme.textTheme.bodyMedium,
-                                            ),
-                                          ],
-                                        ),
-                                        TextButton(
-                                          onPressed: () {},
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.zero,
-                                            minimumSize: const Size(0, 0),
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                "Beni Hatırla",
+                                                style: theme.textTheme.bodyMedium,
+                                              ),
+                                            ],
                                           ),
-                                          child: Text(
-                                            "Şifremi Unuttum?",
-                                            style: TextStyle(
-                                              color: theme.colorScheme.primary,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 13,
+                                          TextButton(
+                                            onPressed: () {},
+                                            style: TextButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize: MaterialTapTargetSize
+                                                  .shrinkWrap,
+                                            ),
+                                            child: Text(
+                                              "Şifremi Unuttum?",
+                                              style: TextStyle(
+                                                color: theme.colorScheme.primary,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
 
-                                  SizedBox(height: sectionGap),
+                                    SizedBox(height: sectionGap),
 
-                                  // Giriş Butonu
-                                  Consumer<AuthProvider>(
-                                    builder: (context, authProvider, _) {
-                                      return AppButton(
-                                        text: "Giriş Yap",
-                                        isLoading: authProvider.isLoading,
-                                        size: AppButtonSize.large,
-                                        borderRadius: BorderRadius.circular(16),
-                                        isFullWidth: true,
-                                        onPressed: () =>
-                                            _handleLogin(authProvider),
-                                      );
-                                    },
-                                  ),
+                                    // Giriş Butonu
+                                    Consumer<AuthProvider>(
+                                      builder: (context, authProvider, _) {
+                                        return AppButton(
+                                          text: "Giriş Yap",
+                                          isLoading: authProvider.isLoading,
+                                          size: AppButtonSize.large,
+                                          borderRadius: BorderRadius.circular(16),
+                                          isFullWidth: true,
+                                          onPressed: () =>
+                                              _handleLogin(authProvider),
+                                        );
+                                      },
+                                    ),
 
-                                  SizedBox(height: sectionGap),
+                                    SizedBox(height: sectionGap),
 
-                                  // Veya Ayıracı
-                                  const AuthDividerWidget(),
+                                    // Veya Ayıracı
+                                    const AuthDividerWidget(),
 
-                                  SizedBox(height: sectionGap),
+                                    SizedBox(height: sectionGap),
 
-                                  // Google Giriş
-                                  AppButton(
-                                    text: "Google ile devam et",
-                                    onPressed: () {},
-                                    variant: AppButtonVariant.secondary,
-                                    style: AppButtonStyle.outlined,
-                                    isFullWidth: true,
-                                    icon: Icons.g_mobiledata,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
+                                    // Google Giriş
+                                    AppButton(
+                                      text: "Google ile devam et",
+                                      onPressed: () {},
+                                      variant: AppButtonVariant.secondary,
+                                      style: AppButtonStyle.outlined,
+                                      isFullWidth: true,
+                                      icon: Icons.g_mobiledata,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
 
-                                  SizedBox(height: isCompactHeight ? 10 : 16),
-                                ],
+                                    SizedBox(height: isCompactHeight ? 10 : 16),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -257,17 +261,17 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                ),
 
-                // 3. FOOTER ALANI (Alt kısma sabitlenen link)
-                AuthFooterWidget(
-                  questionText: "Hesabınız yok mu?",
-                  actionText: "Kayıt Ol",
-                  onPressed: () => context.push('/register'),
-                ),
-              ],
-            );
-          },
+                  // 3. FOOTER ALANI (Alt kısma sabitlenen link)
+                  AuthFooterWidget(
+                    questionText: "Hesabınız yok mu?",
+                    actionText: "Kayıt Ol",
+                    onPressed: () => context.push('/register'),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
