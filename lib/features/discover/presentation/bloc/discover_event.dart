@@ -16,3 +16,11 @@ class SearchUsersEvent extends DiscoverEvent {
   @override
   List<Object> get props => [query, city ?? ''];
 }
+
+class LoadDiscoveryContent extends DiscoverEvent {
+  final bool isRefresh;
+  const LoadDiscoveryContent({this.isRefresh = false});
+
+  @override
+  List<Object> get props => [isRefresh];
+}

@@ -32,6 +32,4 @@ class AppFeatureFlags {
   static const bool showTaggingling = false;
 
   static const bool showCommunityScreen = false;
-
 }
-

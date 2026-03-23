@@ -7,6 +7,9 @@ import '../../../../core/widgets/app_input_field.dart';
 import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
 import '../bloc/discover_state.dart';
+import '../widgets/discover_content_grid.dart';
+import '../widgets/discover_shimmer.dart';
+import 'discovery_feed_page.dart';
 
 class DiscoverPage extends StatelessWidget {
   const DiscoverPage({super.key});
@@ -34,6 +37,10 @@ class _DiscoverViewState extends State<_DiscoverView> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    // Sayfa açıldığında keşfet içeriğini yükle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DiscoverBloc>().add(const LoadDiscoveryContent());
+    });
   }
 
   @override
@@ -47,6 +54,9 @@ class _DiscoverViewState extends State<_DiscoverView> {
     debugPrint('🔍 [DiscoverPage] _performSearch called with query: "$query"');
     if (query.isNotEmpty) {
       context.read<DiscoverBloc>().add(SearchUsersEvent(query: query));
+    } else {
+      // Boş arama yapıldığında keşfet içeriğine geri dön
+      context.read<DiscoverBloc>().add(const LoadDiscoveryContent());
     }
   }
 
@@ -87,7 +97,7 @@ class _DiscoverViewState extends State<_DiscoverView> {
             child: BlocBuilder<DiscoverBloc, DiscoverState>(
               builder: (context, state) {
                 if (state is DiscoverLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const DiscoverShimmer();
                 } else if (state is DiscoverFailure) {
                   return Center(child: Text(state.message));
                 } else if (state is DiscoverLoaded) {
@@ -152,18 +162,37 @@ class _DiscoverViewState extends State<_DiscoverView> {
                       );
                     },
                   );
+                } else if (state is DiscoverDiscoveryLoaded) {
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      context.read<DiscoverBloc>().add(
+                        const LoadDiscoveryContent(isRefresh: true),
+                      );
+                    },
+                    child: DiscoverContentGrid(
+                      content: state.content,
+                      hasReachedMax: state.hasReachedMax,
+                      onLoadMore: () {
+                        context.read<DiscoverBloc>().add(
+                          const LoadDiscoveryContent(),
+                        );
+                      },
+                      onTap: (content, index) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DiscoveryFeedPage(
+                              initialPosts: content,
+                              initialIndex: index,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
                 }
                 // Initial State
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.search, size: 64, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
-                      const Text("Aramak için yazmaya başlayın..."),
-                    ],
-                  ),
-                );
+                return const SizedBox.shrink();
               },
             ),
           ),

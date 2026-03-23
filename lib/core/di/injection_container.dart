@@ -1076,7 +1076,10 @@ void _registerFeatureSingletons() {
   // Bloc
   if (!sl.isRegistered<DiscoverBloc>()) {
     sl.registerFactory(
-      () => DiscoverBloc(searchUsers: sl<SearchUsersUseCase>()),
+      () => DiscoverBloc(
+        searchUsers: sl<SearchUsersUseCase>(),
+        getPostsFeed: sl<GetPostsFeedUseCase>(),
+      ),
     );
   }
 

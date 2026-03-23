@@ -122,20 +122,9 @@ class ProfileProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // 2. Sunucudan veriyi çek
+      // 3. Sunucudan veriyi çek
       final newProfile = await _profileRepository.getMyProfile();
-
-      // 3. Birleştirme Stratejisi: Eğer yeni profilde arkadaş sayısı 0 ise 
-      // ve eskiden (cache'den) gelen bir sayı varsa, eski sayıyı koru.
-      // Çünkü arkadaş sayısı sadece kedi listesi açılınca güncelleniyor.
-      final existingFriendsCount = _profile?.friendsCount ?? 0;
-      final serverFriendsCount = newProfile.friendsCount;
-      
-      if (serverFriendsCount == 0 && existingFriendsCount > 0) {
-        _profile = newProfile.copyWith(friendsCount: existingFriendsCount);
-      } else {
-        _profile = newProfile;
-      }
+      _profile = newProfile;
 
       // 4. Cache'i güncelle
       try {

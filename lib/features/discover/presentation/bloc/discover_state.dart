@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../friendship/domain/entities/friend_user_entity.dart';
+import '../../../content/posts/domain/entities/post_entity.dart';
 
 abstract class DiscoverState extends Equatable {
   const DiscoverState();
@@ -19,6 +20,21 @@ class DiscoverLoaded extends DiscoverState {
 
   @override
   List<Object> get props => [results];
+}
+
+class DiscoverDiscoveryLoaded extends DiscoverState {
+  final List<PostEntity> content;
+  final int page;
+  final bool hasReachedMax;
+
+  const DiscoverDiscoveryLoaded({
+    required this.content,
+    this.page = 1,
+    this.hasReachedMax = false,
+  });
+
+  @override
+  List<Object> get props => [content, page, hasReachedMax];
 }
 
 class DiscoverFailure extends DiscoverState {

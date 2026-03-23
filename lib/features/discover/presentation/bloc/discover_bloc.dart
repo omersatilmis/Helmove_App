@@ -1,13 +1,18 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/search_users_usecase.dart';
+import '../../../content/posts/domain/usecases/get_feed_usecase.dart';
+import '../../../content/posts/domain/entities/post_entity.dart';
 import 'discover_event.dart';
 import 'discover_state.dart';
 
 class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
   final SearchUsersUseCase searchUsers;
+  final GetPostsFeedUseCase getPostsFeed;
 
-  DiscoverBloc({required this.searchUsers}) : super(DiscoverInitial()) {
+  DiscoverBloc({required this.searchUsers, required this.getPostsFeed})
+    : super(DiscoverInitial()) {
     on<SearchUsersEvent>(_onSearchUsers);
+    on<LoadDiscoveryContent>(_onLoadDiscoveryContent);
   }
 
   Future<void> _onSearchUsers(
@@ -28,6 +33,54 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     result.fold(
       (failure) => emit(DiscoverFailure(failure.message)),
       (results) => emit(DiscoverLoaded(results)),
+    );
+  }
+
+  Future<void> _onLoadDiscoveryContent(
+    LoadDiscoveryContent event,
+    Emitter<DiscoverState> emit,
+  ) async {
+    final currentState = state;
+    bool isRefresh = event.isRefresh;
+
+    // Eğer zaten yükleniyorsa veya maksimuma ulaşıldıysa (ve refresh değilse) çık
+    if (!isRefresh &&
+        currentState is DiscoverDiscoveryLoaded &&
+        currentState.hasReachedMax) {
+      return;
+    }
+
+    int pageToFetch = 1;
+    List<PostEntity> oldContent = [];
+
+    if (!isRefresh && currentState is DiscoverDiscoveryLoaded) {
+      pageToFetch = currentState.page + 1;
+      oldContent = currentState.content;
+    }
+
+    // İlk yükleme veya refresh ise loading emitleyebiliriz (opsiyonel, UI'da shimmer için önemli)
+    if (isRefresh || currentState is! DiscoverDiscoveryLoaded) {
+      emit(DiscoverLoading());
+    }
+
+    final result = await getPostsFeed(
+      GetFeedParams(page: pageToFetch, limit: 20),
+    );
+
+    result.fold(
+      (failure) => emit(DiscoverFailure(failure.message)),
+      (fetchResult) {
+        final newItems = fetchResult.data?.items ?? [];
+        final hasReachedMax = newItems.length < 20;
+
+        emit(
+          DiscoverDiscoveryLoaded(
+            content: isRefresh ? newItems : oldContent + newItems,
+            page: pageToFetch,
+            hasReachedMax: hasReachedMax,
+          ),
+        );
+      },
     );
   }
 }
