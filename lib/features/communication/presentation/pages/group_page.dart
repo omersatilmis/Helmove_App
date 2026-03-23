@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart' as di;
+import 'package:moto_comm_app_1/core/widgets/app_background.dart';
 
 import 'group_page/dialogs/group_page_actions.dart';
 import 'group_page/sections/group_footer_section.dart';
@@ -332,28 +333,11 @@ class _GroupPageState extends State<GroupPage>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
     final currentUserId = context.select<VoiceSessionBloc, int?>(
       (bloc) => bloc.state.currentUserId,
     );
     final showSettingsButton = _canAccessSettings(currentUserId);
 
-    final backgroundGradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2A100A), Color(0xFF12100E)],
-            stops: [0.0, 0.4],
-          )
-        : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.05),
-              colorScheme.surface,
-            ],
-            stops: const [0.0, 0.3],
-          );
 
     final isHydrated = _effectiveRideId > 0 && _rideDetails != null;
     final showResolvingLoader = _isResolvingRideId || !isHydrated;
@@ -518,11 +502,7 @@ class _GroupPageState extends State<GroupPage>
             },
           ),
         ],
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            gradient: backgroundGradient,
-          ),
+        child: AppBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             body: SafeArea(

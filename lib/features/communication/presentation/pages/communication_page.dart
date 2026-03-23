@@ -13,6 +13,7 @@ import '../../../voice_session/presentation/bloc/voice_session_state.dart';
 import '../widgets/active_session_card.dart';
 import '../widgets/nearby_group.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
+import '../../../../core/widgets/app_background.dart';
 
 void _noop() {}
 
@@ -156,30 +157,8 @@ class _CommunicationPageState extends State<CommunicationPage> {
       (bloc) => bloc.state.pendingInvitesCount,
     );
 
-    // Dinamik arka plan gradyanÄ±
-    final backgroundGradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF2A100A), // Koyu modda hafif kÄ±rmÄ±zÄ±msÄ± Ã¼st
-              Color(0xFF12100E),
-            ],
-            stops: [0.0, 0.4],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.08),
-              colorScheme.surface,
-              colorScheme.surface,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          );
 
-    return Container(
-      decoration: BoxDecoration(gradient: backgroundGradient),
+    return AppBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(

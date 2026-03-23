@@ -86,32 +86,9 @@ class _ConversationsViewState extends State<ConversationsView> {
     final Color itemTileColor =
         isDark ? const Color(0xFF1C1917) : Colors.white;
 
-    final backgroundGradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF2A100A), // Koyu modda hafif kırmızımsı üst
-              Color(0xFF12100E),
-            ],
-            stops: [0.0, 0.4],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.08),
-              colorScheme.surface,
-              colorScheme.surface,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          );
 
-    return Container(
-      decoration: BoxDecoration(gradient: backgroundGradient),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
+    return Scaffold(
+      appBar: AppBar(
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
@@ -491,7 +468,6 @@ class _ConversationsViewState extends State<ConversationsView> {
           ],
         ),
       ),
-    ),
     );
   }
 }

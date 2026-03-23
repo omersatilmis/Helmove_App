@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
+import '../../../../core/widgets/app_background.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
@@ -209,25 +210,6 @@ class _GroupSettingsState extends State<GroupSettings>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    final backgroundGradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2A100A), Color(0xFF12100E)],
-            stops: [0.0, 0.4],
-          )
-        : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.08),
-              colorScheme.surface,
-              colorScheme.surface,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          );
 
     final labelStyle = AppTextStyles.inputLabel.copyWith(
       color: colorScheme.onSurface,
@@ -259,11 +241,10 @@ class _GroupSettingsState extends State<GroupSettings>
       },
       child: BlocBuilder<GroupRideBloc, GroupRideState>(
         builder: (context, state) {
-          return Scaffold(
-            backgroundColor: Colors.transparent,
-            body: Container(
-              decoration: BoxDecoration(gradient: backgroundGradient),
-              child: CustomScrollView(
+          return AppBackground(
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: CustomScrollView(
                 controller: widget.scrollController,
                 slivers: [
                   // --- 1. Sabit Başlık (Sticky Header) ---

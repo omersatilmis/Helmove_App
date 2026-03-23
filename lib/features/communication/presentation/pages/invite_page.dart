@@ -9,6 +9,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/widgets/app_background.dart';
 
 // --- DOMAIN & ENTITIES ---
 import '../../../friendship/domain/entities/friend_user_entity.dart';
@@ -125,7 +126,6 @@ class _InviteViewState extends State<_InviteView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
     final session = context.select<VoiceSessionBloc, VoiceSessionEntity?>(
       (bloc) => bloc.state.session,
     );
@@ -210,24 +210,7 @@ class _InviteViewState extends State<_InviteView> {
           },
         ),
       ],
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: isDark
-              ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF2A100A), Color(0xFF12100E)],
-                  stops: [0.0, 0.4],
-                )
-              : LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    colorScheme.surfaceContainerLowest,
-                    colorScheme.surface,
-                  ],
-                ),
-        ),
+      child: AppBackground(
         child: Scaffold(
           backgroundColor: Colors.transparent,
           // 🔥 Stack yerine Column yapısı (Sabit Header ve Footer için)

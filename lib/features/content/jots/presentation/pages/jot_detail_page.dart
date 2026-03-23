@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/di/injection_container.dart';
+import '../../../../../core/widgets/app_background.dart';
 // Fixed relative path
 import '../../../../interaction/presentation/bloc/comments_bloc.dart';
 import '../../../../interaction/presentation/bloc/comments_event.dart';
@@ -46,25 +47,6 @@ class _JotDetailPageState extends State<JotDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    final backgroundGradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2A100A), Color(0xFF12100E)],
-            stops: [0.0, 0.4],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.08),
-              colorScheme.surface,
-              colorScheme.surface,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          );
 
     return BlocProvider(
       create: (context) => sl<CommentsBloc>()
@@ -73,8 +55,7 @@ class _JotDetailPageState extends State<JotDetailPage> {
           page: 1,
           limit: 20,
         )),
-      child: Container(
-        decoration: BoxDecoration(gradient: backgroundGradient),
+      child: AppBackground(
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(

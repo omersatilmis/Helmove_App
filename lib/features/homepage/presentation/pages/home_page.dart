@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:moto_comm_app_1/app/bottom_bar.dart';
+import 'package:moto_comm_app_1/core/widgets/app_background.dart';
 import 'package:moto_comm_app_1/core/di/injection_container.dart' as di;
 import 'package:moto_comm_app_1/features/auth/data/datasources/auth_local_data_source.dart'
     as moto_auth;
@@ -414,26 +415,8 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    final backgroundGradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2A100A), Color(0xFF12100E)],
-            stops: [0.0, 0.4],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.08),
-              colorScheme.surface,
-              colorScheme.surface,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          );
 
-    return Container(
-      decoration: BoxDecoration(gradient: backgroundGradient),
+    return AppBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: _HomeTopAppBar(

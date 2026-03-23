@@ -7,6 +7,7 @@ import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_input_field.dart';
 // Merkezi Butonlar (İkon ve Text için)
 import '../../../../core/widgets/app_frosted_button.dart';
+import '../../../../core/widgets/app_background.dart';
 // import '../../domain/entities/group_ride_data.dart';
 
 class CreateGroupRide extends StatefulWidget {
@@ -94,40 +95,21 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
 
     // Klavye yüksekliğini al
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    final backgroundGradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF2A100A), Color(0xFF12100E), Color(0xFF0A0808)],
-            stops: [0.0, 0.5, 1.0],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.1),
-              colorScheme.surface,
-              colorScheme.surfaceContainerLow,
-            ],
-            stops: const [0.0, 0.4, 1.0],
-          );
 
-    return GestureDetector(
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        // Konumlandırmayı biz Stack ile manuel yöneteceğiz
-        resizeToAvoidBottomInset: false,
-        body: Container(
-          decoration: BoxDecoration(gradient: backgroundGradient),
-          child: Column(
+    return AppBackground(
+      child: GestureDetector(
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          // Konumlandırmayı biz Stack ile manuel yöneteceğiz
+          resizeToAvoidBottomInset: false,
+          body: Column(
             children: [
               // --- 1. HEADER (ŞEFFAF ÜST BAR) ---
               Padding(
