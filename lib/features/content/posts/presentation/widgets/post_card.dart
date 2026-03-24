@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
 import '../../../../../core/utils/image_url_extensions.dart';
 import '../../../../../core/constants/report_enums.dart';
 import '../../../../help/presentation/widgets/report_bottom_sheet.dart';
+import '../../../../../core/config/app_feature_flags.dart';
 import '../../domain/entities/post_entity.dart';
 
 class PostCardModern extends StatefulWidget {
@@ -128,24 +130,126 @@ class _PostCardModernState extends State<PostCardModern>
                       ),
               ),
 
-              // KATMAN 2: SİYAH KARARTMA (GRADIENT)
+              // KATMAN 2: SİYAH KARARTMA (ÜST GRADIENT - PROFİL BİLGİSİ İÇİN)
+              if (!_hideUI)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 120, // Üst kısmı hafifçe karartmak için
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 1.0],
+                          colors: [
+                            Colors.black.withValues(alpha: 0.6),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // KATMAN 2: SİYAH KARARTMA (ALT GRADIENT - İÇERİK İÇİN)
               if (!_hideUI)
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 300, // Okunurluk için 300px derinlik
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.5),
-                          Colors.black.withValues(alpha: 1.0),
-                        ],
+                  height: 180, // Okunurluk için yükseklik 180px'e düşürüldü
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.5),
+                            Colors.black.withValues(alpha: 1.0),
+                          ],
+                        ),
                       ),
+                    ),
+                  ),
+                ),
+
+              // KATMAN 2.5: ÜST BİLGİ (PROFİL) - YENİ KONUM
+              if (!_hideUI)
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 60,
+                  child: GestureDetector(
+                    onTap: () => context.push('/profile/${widget.post.userId}'),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(1.5),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundImage: avatarUrl.isNotEmpty
+                                ? CachedNetworkImageProvider(avatarUrl)
+                                : null,
+                            child: avatarUrl.isEmpty
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 18,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayName,
+                                style: AppTextStyles.h3.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [
+                                    const Shadow(
+                                      color: Colors.black54,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (widget.post.username != displayName)
+                                Text(
+                                  "@${widget.post.username}",
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    fontSize: 11,
+                                    shadows: [
+                                      const Shadow(
+                                        color: Colors.black54,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -188,11 +292,12 @@ class _PostCardModernState extends State<PostCardModern>
                           }
                         },
                         itemBuilder: (context) => [
-                          _buildPopupItem(
-                            'share',
-                            Icons.share_outlined,
-                            'Paylaş',
-                          ),
+                          if (AppFeatureFlags.showPostSend)
+                            _buildPopupItem(
+                              'share',
+                              Icons.share_outlined,
+                              'Paylaş',
+                            ),
                           _buildPopupItem(
                             'report',
                             Icons.report_gmailerrorred_rounded,
@@ -235,18 +340,21 @@ class _PostCardModernState extends State<PostCardModern>
                           ),
                           const SizedBox(height: 20),
                           // Gönder
-                          _SideActionButton(
-                            icon: Icons.send_rounded,
-                            label: "Gönder",
-                            onTap: widget.onShare,
-                          ),
-                          const SizedBox(height: 20),
+                          if (AppFeatureFlags.showPostSend) ...[
+                            _SideActionButton(
+                              icon: Icons.send_rounded,
+                              label: "Gönder",
+                              onTap: widget.onShare,
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                           // Kaydet
-                          _SideActionButton(
-                            icon: Icons.bookmark_border_rounded,
-                            label: "Kaydet",
-                            onTap: widget.onSave,
-                          ),
+                          if (AppFeatureFlags.showPostKaydetButton)
+                            _SideActionButton(
+                              icon: Icons.bookmark_border_rounded,
+                              label: "Kaydet",
+                              onTap: widget.onSave,
+                            ),
                         ],
                       ),
                     ],
@@ -263,44 +371,63 @@ class _PostCardModernState extends State<PostCardModern>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundImage: avatarUrl.isNotEmpty
-                                ? CachedNetworkImageProvider(avatarUrl)
-                                : null,
-                            child: avatarUrl.isEmpty
-                                ? const Icon(
-                                    Icons.person,
-                                    size: 16,
-                                    color: Colors.white,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              displayName,
-                              style: AppTextStyles.h3.copyWith(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
                       if (widget.post.text.isNotEmpty)
-                        Text(
-                          widget.post.text,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            height: 1.3,
-                          ),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final textStyle = const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              height: 1.3,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black54,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            );
+
+                            final span = TextSpan(
+                              text: widget.post.text,
+                              style: textStyle,
+                            );
+
+                            final tp = TextPainter(
+                              text: span,
+                              maxLines: 2,
+                              textDirection: TextDirection.ltr,
+                            );
+                            tp.layout(maxWidth: constraints.maxWidth);
+
+                            if (tp.didExceedMaxLines) {
+                              return RichText(
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: widget.post.text,
+                                      style: textStyle,
+                                    ),
+                                    TextSpan(
+                                      text: " devam...",
+                                      style: textStyle.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return Text(
+                              widget.post.text,
+                              style: textStyle,
+                            );
+                          },
                         ),
                     ],
                   ),

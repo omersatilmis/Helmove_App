@@ -1,4 +1,4 @@
-import 'package:moto_comm_app_1/features/plan/domain/entities/subscription_plan_entity.dart';
+import 'package:helmove/features/plan/domain/entities/subscription_plan_entity.dart';
 import 'dart:convert';
 
 class SubscriptionPlanModel extends SubscriptionPlanEntity {

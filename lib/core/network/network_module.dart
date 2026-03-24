@@ -1,15 +1,15 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../features/auth/data/datasources/auth_local_data_source.dart';
-import '../config/env_config.dart';
-import 'auth_interceptor.dart';
-import 'auth_bootstrap_gate.dart';
-import 'etag_interceptor.dart';
+import 'package:helmove/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:helmove/core/config/env_config.dart';
+import 'package:helmove/core/network/auth_interceptor.dart';
+import 'package:helmove/core/network/auth_bootstrap_gate.dart';
+import 'package:helmove/core/network/etag_interceptor.dart';
 
 class NetworkModule {
   static String? _cachedBaseUrl;

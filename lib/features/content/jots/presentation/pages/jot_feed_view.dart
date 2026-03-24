@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_bloc.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_event.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_state.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/widgets/jot_card_widget.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_bloc.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_event.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_state.dart';
+import 'package:helmove/features/content/jots/presentation/widgets/jot_card_widget.dart';
 import 'jot_detail_page.dart';
 
 class JotFeedView extends StatefulWidget {

@@ -52,9 +52,9 @@ import '../../features/discover/data/datasources/discover_remote_datasource.dart
 import '../../features/discover/data/repositories/discover_repository_impl.dart';
 import '../../features/discover/domain/repositories/discover_repository.dart';
 
-import 'package:moto_comm_app_1/features/interaction/data/datasources/comment_remote_datasource.dart';
-import 'package:moto_comm_app_1/features/interaction/data/repositories/comment_repository_impl.dart';
-import 'package:moto_comm_app_1/features/interaction/domain/repositories/comment_repository.dart';
+import 'package:helmove/features/interaction/data/datasources/comment_remote_datasource.dart';
+import 'package:helmove/features/interaction/data/repositories/comment_repository_impl.dart';
+import 'package:helmove/features/interaction/domain/repositories/comment_repository.dart';
 
 // Jots Feature
 import '../../features/content/jots/data/api/jots_api.dart';
@@ -96,10 +96,10 @@ import '../../features/media/domain/repositories/media_repository.dart';
 // Settings Feature
 
 // Attendance Feature
-import 'package:moto_comm_app_1/features/attendance_management/data/api/attendance_api.dart';
-import 'package:moto_comm_app_1/features/attendance_management/data/datasources/attendance_remote_data_source.dart';
-import 'package:moto_comm_app_1/features/attendance_management/data/repositories/attendance_repository_impl.dart';
-import 'package:moto_comm_app_1/features/attendance_management/domain/repositories/attendance_repository.dart';
+import 'package:helmove/features/attendance_management/data/api/attendance_api.dart';
+import 'package:helmove/features/attendance_management/data/datasources/attendance_remote_data_source.dart';
+import 'package:helmove/features/attendance_management/data/repositories/attendance_repository_impl.dart';
+import 'package:helmove/features/attendance_management/domain/repositories/attendance_repository.dart';
 
 // Voice Session Feature
 import '../../features/voice_session/data/api/voice_session_api.dart';
@@ -254,8 +254,8 @@ import '../services/home_bootstrap_service.dart';
 import '../services/subscription_service.dart';
 import '../../features/voice_session/presentation/bloc/voice_session_bloc.dart';
 
-import 'package:moto_comm_app_1/features/intercom/domain/intercom_engine.dart';
-import 'package:moto_comm_app_1/features/intercom/data/intercom_engine_impl.dart';
+import 'package:helmove/features/intercom/domain/intercom_engine.dart';
+import 'package:helmove/features/intercom/data/intercom_engine_impl.dart';
 // Map Feature
 import '../../features/map/data/datasources/map_remote_data_source.dart';
 import '../../features/map/data/repositories/map_repository_impl.dart';
@@ -267,8 +267,8 @@ import '../../features/map/domain/usecases/reverse_geocode_usecase.dart';
 import '../../features/map/presentation/providers/map_bloc.dart';
 import '../../features/map/config/mapbox_config.dart';
 
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 import '../../core/theme/theme_provider.dart';
 
 final sl = GetIt.instance;

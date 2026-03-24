@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:moto_comm_app_1/core/error/app_exceptions.dart';
+import 'package:helmove/core/error/app_exceptions.dart';
 
 class ErrorHandler {
   /// Hata mesajını döndürür (kullanıcıya gösterilebilir)

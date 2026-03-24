@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:moto_comm_app_1/features/intercom/domain/intercom_models.dart';
+import 'package:helmove/features/intercom/domain/intercom_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart' as di;
-import 'package:moto_comm_app_1/core/widgets/app_background.dart';
+import 'package:helmove/core/widgets/app_background.dart';
 
 import 'group_page/dialogs/group_page_actions.dart';
 import 'group_page/sections/group_footer_section.dart';
@@ -24,7 +24,7 @@ import '../../../group_ride/domain/entities/group_ride_entity.dart';
 import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
 import '../../../group_ride/presentation/bloc/group_ride_event.dart';
 import '../../../group_ride/presentation/bloc/group_ride_state.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
+import 'package:helmove/features/group_ride/presentation/models/group_ride_args.dart';
 import '../../../../core/navigation/base_navigation_args.dart';
 import '../../../../core/mixins/navigation_guard_mixin.dart';
 import '../../../attendance_management/domain/entities/group_role.dart';

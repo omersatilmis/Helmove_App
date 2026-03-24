@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_state.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_state.dart';
-import 'package:moto_comm_app_1/core/resilience/ride_stability_handler.dart';
-import 'package:moto_comm_app_1/core/resilience/voice_stability_handler.dart';
-import 'package:moto_comm_app_1/core/utils/debouncer.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/group_ride_bloc.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/group_ride_state.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_state.dart';
+import 'package:helmove/core/resilience/ride_stability_handler.dart';
+import 'package:helmove/core/resilience/voice_stability_handler.dart';
+import 'package:helmove/core/utils/debouncer.dart';
 
 class AppBlocListener extends StatefulWidget {
   final Widget child;

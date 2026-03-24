@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Haptic Feedback (Titreşim) için eklendi
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 import '../../../../../core/constants/report_enums.dart';
 import '../../../../help/presentation/widgets/report_bottom_sheet.dart';
@@ -53,9 +54,14 @@ class JotCardWidget extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             decoration: BoxDecoration(
-              color: colorScheme.surface.withValues(
-                alpha: 0.1,
-              ), // Çok hafif saydamlık
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  colorScheme.onSurface.withValues(alpha: 0.08),
+                  colorScheme.onSurface.withValues(alpha: 0.03),
+                ],
+              ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: colorScheme.onSurface.withValues(alpha: 0.1),
@@ -84,105 +90,125 @@ class JotCardWidget extends StatelessWidget {
                   children: [
                     // --- 1. HEADER ---
                     Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start, // Avatarı tepeye hizaladık
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // AVATAR ÇERÇEVESİ: Tatlı bir premium halka eklendi
-                        Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: colorScheme.primary.withValues(alpha: 0.4),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: CircleAvatar(
-                            radius: 20,
-                            backgroundImage: profileImage.startsWith('http')
-                                ? CachedNetworkImageProvider(profileImage)
-                                : AssetImage(profileImage) as ImageProvider,
-                            backgroundColor:
-                                colorScheme.surfaceContainerHighest,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
+                        // AVATAR VE İSİM GRUBU (TIKLANABİLİR)
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      "$firstName $lastName",
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                      ),
+                          child: GestureDetector(
+                            onTap: () => context.push('/profile/${jot.userId}'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // AVATAR ÇERÇEVESİ: Tatlı bir premium halka eklendi
+                                Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: colorScheme.primary
+                                          .withValues(alpha: 0.4),
+                                      width: 1.5,
                                     ),
                                   ),
-                                  if (bikeModel != null) ...[
-                                    const SizedBox(width: 8),
-                                    // MOTOR ROZETİ: İkonlu, tok ve rütbe gibi duran etiket
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.primary.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                  child: CircleAvatar(
+                                    radius: 20,
+                                    backgroundImage:
+                                        profileImage.startsWith('http')
+                                            ? CachedNetworkImageProvider(
+                                                profileImage)
+                                            : AssetImage(profileImage)
+                                                as ImageProvider,
+                                    backgroundColor:
+                                        colorScheme.surfaceContainerHighest,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
                                         children: [
-                                          Icon(
-                                            Icons
-                                                .two_wheeler_rounded, // Minik motor ikonu
-                                            size: 12,
-                                            color: colorScheme.primary,
+                                          Flexible(
+                                            child: Text(
+                                              "$firstName $lastName",
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 15,
+                                              ),
+                                            ),
                                           ),
-                                          const SizedBox(width: 4),
+                                          if (bikeModel != null) ...[
+                                            const SizedBox(width: 8),
+                                            // MOTOR ROZETİ: İkonlu, tok ve rütbe gibi duran etiket
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 6,
+                                                vertical: 3,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: colorScheme.primary
+                                                    .withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .two_wheeler_rounded, // Minik motor ikonu
+                                                    size: 12,
+                                                    color: colorScheme.primary,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    bikeModel,
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w800,
+                                                      color:
+                                                          colorScheme.primary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(
+                                        height: 0,
+                                      ), // İsim ile username dikeyde yaklaştırıldı
+                                      Row(
+                                        children: [
                                           Text(
-                                            bikeModel,
+                                            "@$userName",
                                             style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w800,
-                                              color: colorScheme.primary,
+                                              fontSize: 13,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                          Text(
+                                            " • $timeAgo",
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: textSecondary,
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 0,
-                              ), // İsim ile username dikeyde yaklaştırıldı
-                              Row(
-                                children: [
-                                  Text(
-                                    "@$userName",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: textSecondary,
-                                    ),
+                                    ],
                                   ),
-                                  Text(
-                                    " • $timeAgo",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
 
@@ -199,7 +225,8 @@ class JotCardWidget extends StatelessWidget {
                               color: textSecondary,
                             ),
                             onPressed: () async {
-                              HapticFeedback.lightImpact(); // Menü açılırken hafif titreşim
+                              HapticFeedback
+                                  .lightImpact(); // Menü açılırken hafif titreşim
                               final renderBox =
                                   context.findRenderObject() as RenderBox;
                               final offset = renderBox.localToGlobal(

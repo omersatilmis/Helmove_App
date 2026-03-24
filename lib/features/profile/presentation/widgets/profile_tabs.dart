@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/theme/app_colors.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/core/theme/text_styles.dart';
 
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/profile_about_tab.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/profile_posts_tab.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/profile_jots_tab.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/profile_reels_tab.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/profile_tagged_tab.dart';
+import 'package:helmove/features/profile/presentation/widgets/tabs/profile_about_tab.dart';
+import 'package:helmove/features/profile/presentation/widgets/tabs/profile_posts_tab.dart';
+import 'package:helmove/features/profile/presentation/widgets/tabs/profile_jots_tab.dart';
+import 'package:helmove/features/profile/presentation/widgets/tabs/profile_reels_tab.dart';
+import 'package:helmove/features/profile/presentation/widgets/tabs/profile_tagged_tab.dart';
 
 class ProfileTabBarSliver extends StatelessWidget {
   const ProfileTabBarSliver({super.key});

@@ -1,11 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:dio/dio.dart';
 
-import '../../features/auth/data/datasources/auth_local_data_source.dart';
-import '../../features/auth/data/dto/login_response_dto.dart';
-import '../services/communication_baseline_tracker.dart';
-import 'auth_bootstrap_gate.dart';
+import 'package:helmove/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:helmove/features/auth/data/dto/login_response_dto.dart';
+import 'package:helmove/core/services/communication_baseline_tracker.dart';
+import 'package:helmove/core/network/auth_bootstrap_gate.dart';
 
 class AuthInterceptor extends Interceptor {
   final Dio _dio;

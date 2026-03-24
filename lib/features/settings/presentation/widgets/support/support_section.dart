@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_tile.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
-import 'package:moto_comm_app_1/core/theme/app_colors.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/settings_tile.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/settings_section_header.dart';
+import 'package:helmove/core/theme/app_colors.dart';
 
 class SupportSection extends StatefulWidget {
   const SupportSection({super.key});

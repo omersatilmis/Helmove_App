@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/di/injection_container.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/create_post_cubit.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/create_post_state.dart';
-import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/create_post_cubit.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/create_post_state.dart';
+import 'package:helmove/core/widgets/app_input_field.dart';
 
 class PrepareMediaPage extends StatefulWidget {
   final File imageFile;

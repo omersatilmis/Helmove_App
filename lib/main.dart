@@ -7,25 +7,25 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app_links/app_links.dart';
 
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
+import 'package:helmove/core/di/injection_container.dart';
 
-import 'package:moto_comm_app_1/app/app_router.dart';
-import 'package:moto_comm_app_1/core/theme/app_theme.dart';
-import 'package:moto_comm_app_1/core/theme/theme_provider.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/app/app_router.dart';
+import 'package:helmove/core/theme/app_theme.dart';
+import 'package:helmove/core/theme/theme_provider.dart';
+import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/auth/domain/repositories/auth_repository.dart';
-import 'package:moto_comm_app_1/features/auth/data/datasources/auth_local_data_source.dart';
-import 'package:moto_comm_app_1/core/services/app_session.dart';
-import 'package:moto_comm_app_1/core/services/subscription_service.dart';
-import 'package:moto_comm_app_1/core/network/auth_bootstrap_gate.dart';
-import 'package:moto_comm_app_1/core/presentation/widgets/connection_status_overlay.dart';
-import 'package:moto_comm_app_1/core/utils/app_bloc_observer.dart';
-import 'package:moto_comm_app_1/core/services/deep_link_store.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/auth/domain/repositories/auth_repository.dart';
+import 'package:helmove/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:helmove/core/services/app_session.dart';
+import 'package:helmove/core/services/subscription_service.dart';
+import 'package:helmove/core/network/auth_bootstrap_gate.dart';
+import 'package:helmove/core/presentation/widgets/connection_status_overlay.dart';
+import 'package:helmove/core/utils/app_bloc_observer.dart';
+import 'package:helmove/core/services/deep_link_store.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:moto_comm_app_1/features/call/presentation/bloc/call_bloc.dart';
-import 'package:moto_comm_app_1/features/call/presentation/bloc/call_event.dart';
+import 'package:helmove/features/call/presentation/bloc/call_bloc.dart';
+import 'package:helmove/features/call/presentation/bloc/call_event.dart';
 
 void main() async {
   // ── runZonedGuarded: Catches ALL unhandled async errors globally ──
@@ -216,7 +216,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: sl<ProfileProvider>()),
       ],
       child: MaterialApp.router(
-        title: 'Rider App',
+        title: 'Helmove',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: _themeProvider.themeMode,

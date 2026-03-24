@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/widgets/wave_painter.dart';
+import 'package:helmove/core/widgets/wave_painter.dart';
 
 class AuthHeaderWidget extends StatelessWidget {
   final String title;

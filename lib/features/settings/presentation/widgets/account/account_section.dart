@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_tile.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/settings_tile.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/settings_section_header.dart';
 import 'package:go_router/go_router.dart';
 
 class AccountSection extends StatelessWidget {

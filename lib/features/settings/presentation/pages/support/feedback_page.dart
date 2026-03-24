@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
+import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:moto_comm_app_1/core/theme/app_colors.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/core/constants/feedback_enums.dart';
-import 'package:moto_comm_app_1/features/help/presentation/bloc/help_bloc.dart';
-import 'package:moto_comm_app_1/features/help/presentation/bloc/help_event.dart';
-import 'package:moto_comm_app_1/features/help/presentation/bloc/help_state.dart';
-import 'package:moto_comm_app_1/features/help/domain/entities/feedback_entity.dart';
+import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/constants/feedback_enums.dart';
+import 'package:helmove/features/help/presentation/bloc/help_bloc.dart';
+import 'package:helmove/features/help/presentation/bloc/help_event.dart';
+import 'package:helmove/features/help/presentation/bloc/help_state.dart';
+import 'package:helmove/features/help/domain/entities/feedback_entity.dart';
 
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});

@@ -13,11 +13,11 @@ import '../bloc/notifications_state.dart';
 import '../../domain/entities/notification_entity.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/app_avatar.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_event.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_state.dart';
-// import 'package:moto_comm_app_1/features/communication/domain/entities/group_ride_data.dart';
+import 'package:helmove/features/group_ride/presentation/models/group_ride_args.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_event.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_state.dart';
+// import 'package:helmove/features/communication/domain/entities/group_ride_data.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});

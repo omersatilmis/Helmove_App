@@ -2,56 +2,56 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/app/bottom_bar.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/pages/login_page.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/pages/register_page.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/communication/presentation/models/invite_args.dart';
+import 'package:helmove/app/bottom_bar.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/features/auth/presentation/pages/login_page.dart';
+import 'package:helmove/features/auth/presentation/pages/register_page.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/communication/presentation/models/invite_args.dart';
 import '../../features/communication/presentation/pages/invite_page.dart';
-import 'package:moto_comm_app_1/core/widgets/app_bloc_listener.dart';
+import 'package:helmove/core/widgets/app_bloc_listener.dart';
 // Removed CallListenerWrapper import
 
 // 🔥 YENİ SAYFALARIN IMPORTLARI
-import 'package:moto_comm_app_1/features/homepage/presentation/pages/home_page.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
-import 'package:moto_comm_app_1/features/discover/presentation/pages/discover_page.dart';
-import 'package:moto_comm_app_1/features/addpost/presentation/pages/add_post_page.dart';
-import 'package:moto_comm_app_1/features/map/presentation/pages/map_page.dart';
-import 'package:moto_comm_app_1/features/map/presentation/providers/map_bloc.dart';
-import 'package:moto_comm_app_1/features/communication/presentation/pages/communication_page.dart';
-import 'package:moto_comm_app_1/features/communication/presentation/pages/create_group_ride.dart';
-import 'package:moto_comm_app_1/features/communication/presentation/pages/group_page.dart';
-import 'package:moto_comm_app_1/features/communication/presentation/pages/group_settings.dart';
-import 'package:moto_comm_app_1/features/media/presentation/pages/prepare_media_page.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
+import 'package:helmove/features/homepage/presentation/pages/home_page.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
+import 'package:helmove/features/discover/presentation/pages/discover_page.dart';
+import 'package:helmove/features/addpost/presentation/pages/add_post_page.dart';
+import 'package:helmove/features/map/presentation/pages/map_page.dart';
+import 'package:helmove/features/map/presentation/providers/map_bloc.dart';
+import 'package:helmove/features/communication/presentation/pages/communication_page.dart';
+import 'package:helmove/features/communication/presentation/pages/create_group_ride.dart';
+import 'package:helmove/features/communication/presentation/pages/group_page.dart';
+import 'package:helmove/features/communication/presentation/pages/group_settings.dart';
+import 'package:helmove/features/media/presentation/pages/prepare_media_page.dart';
+import 'package:helmove/features/group_ride/presentation/models/group_ride_args.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/group_ride_bloc.dart';
 
 // Drawer Sayfalarının Importları
-import 'package:moto_comm_app_1/features/profile/presentation/pages/profile_page.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile.dart';
-import 'package:moto_comm_app_1/features/plan/presentation/pages/plan_page.dart';
-import 'package:moto_comm_app_1/features/communities/presentation/pages/communities_page.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/pages/settings_page.dart';
-import 'package:moto_comm_app_1/features/help/presentation/pages/help_page.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/pages/my_garage_page.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/pages/support/feedback_page.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/pages/support/copyright_page.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/pages/support/privacy_policy_page.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/pages/support/about_app_page.dart';
+import 'package:helmove/features/profile/presentation/pages/profile_page.dart';
+import 'package:helmove/features/profile/presentation/pages/edit_profile.dart';
+import 'package:helmove/features/plan/presentation/pages/plan_page.dart';
+import 'package:helmove/features/communities/presentation/pages/communities_page.dart';
+import 'package:helmove/features/settings/presentation/pages/settings_page.dart';
+import 'package:helmove/features/help/presentation/pages/help_page.dart';
+import 'package:helmove/features/settings/presentation/pages/my_garage_page.dart';
+import 'package:helmove/features/settings/presentation/pages/support/feedback_page.dart';
+import 'package:helmove/features/settings/presentation/pages/support/copyright_page.dart';
+import 'package:helmove/features/settings/presentation/pages/support/privacy_policy_page.dart';
+import 'package:helmove/features/settings/presentation/pages/support/about_app_page.dart';
 
 // Homepage den girilen sayfaların Importları
-import 'package:moto_comm_app_1/features/messages/presentation/pages/messages_page.dart';
-import 'package:moto_comm_app_1/features/notification/presentation/pages/notification_page.dart';
+import 'package:helmove/features/messages/presentation/pages/messages_page.dart';
+import 'package:helmove/features/notification/presentation/pages/notification_page.dart';
 
 // Profile Jots Tabından açılan sayfa
-import 'package:moto_comm_app_1/features/content/jots/presentation/pages/create_jot_page.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_bloc.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/pages/user_posts_feed_page.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_bloc.dart';
+import 'package:helmove/features/content/jots/presentation/pages/create_jot_page.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_bloc.dart';
+import 'package:helmove/features/content/posts/presentation/pages/user_posts_feed_page.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/posts_bloc.dart';
 
 // Arkadaşlık sayfası
-import 'package:moto_comm_app_1/features/friendship/presentation/pages/friends_page.dart';
+import 'package:helmove/features/friendship/presentation/pages/friends_page.dart';
 
 // --- Placeholder (Hala yapmadığımız yan sayfalar için kalsın) ---
 class PlaceholderScreen extends StatelessWidget {

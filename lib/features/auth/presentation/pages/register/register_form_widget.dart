@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/widgets/app_button.dart';
-import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_divider_widget.dart';
+import 'package:helmove/core/widgets/app_button.dart';
+import 'package:helmove/core/widgets/app_input_field.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/auth/presentation/widgets/auth_divider_widget.dart';
 
 class RegisterFormWidget extends StatefulWidget {
   final GlobalKey<FormState> formKey;
@@ -179,7 +179,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 450),
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      // padding kaldırıldı (RegisterPage'de zaten LayoutBuilder ile veriliyor)
       child: AutofillGroup(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -233,7 +233,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                       onPressed: _prevStep,
                       variant: AppButtonVariant.secondary,
                       style: AppButtonStyle.outlined, // Outlined siyah olacak şekilde tasarlanmış AppButton kuralına uyar
-                      size: AppButtonSize.medium,
+                      size: AppButtonSize.large,
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
@@ -245,7 +245,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                     text: _currentStep == 2 ? "Hesap Oluştur" : "Devam Et",
                     isLoading: widget.authProvider.isLoading,
                     onPressed: _currentStep == 2 ? _submit : _nextStep,
-                    size: AppButtonSize.medium,
+                    size: AppButtonSize.large,
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
@@ -264,6 +264,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 style: AppButtonStyle.outlined,
                 isFullWidth: true,
                 icon: Icons.g_mobiledata,
+                size: AppButtonSize.large,
                 borderRadius: BorderRadius.circular(16),
               ),
             ],

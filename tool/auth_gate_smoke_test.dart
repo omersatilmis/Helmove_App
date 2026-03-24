@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moto_comm_app_1/core/network/auth_bootstrap_gate.dart';
-import 'package:moto_comm_app_1/core/network/auth_interceptor.dart';
-import 'package:moto_comm_app_1/features/auth/data/datasources/auth_local_data_source.dart';
-import 'package:moto_comm_app_1/core/enums/user_tier.dart';
+import 'package:helmove/core/network/auth_bootstrap_gate.dart';
+import 'package:helmove/core/network/auth_interceptor.dart';
+import 'package:helmove/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:helmove/core/enums/user_tier.dart';
 
 class FakeAuthLocalDataSource implements AuthLocalDataSource {
   FakeAuthLocalDataSource({this.token, this.refreshToken});

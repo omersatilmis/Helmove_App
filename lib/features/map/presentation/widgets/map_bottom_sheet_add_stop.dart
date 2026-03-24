@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/config/app_feature_flags.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/config/app_feature_flags.dart';
 import '../providers/map_bloc.dart';
 import '../providers/map_event.dart';
 import 'poi_business_card.dart';

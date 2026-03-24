@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
-import 'package:moto_comm_app_1/features/communication/presentation/widgets/rider_card.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
-import 'package:moto_comm_app_1/features/intercom/domain/intercom_models.dart';
-import 'package:moto_comm_app_1/features/voice_session/domain/entities/voice_session_entity.dart';
-import 'package:moto_comm_app_1/features/attendance_management/domain/entities/group_role.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/widgets/app_frosted_button.dart';
+import 'package:helmove/features/communication/presentation/widgets/rider_card.dart';
+import 'package:helmove/features/group_ride/presentation/models/group_ride_args.dart';
+import 'package:helmove/features/intercom/domain/intercom_models.dart';
+import 'package:helmove/features/voice_session/domain/entities/voice_session_entity.dart';
+import 'package:helmove/features/attendance_management/domain/entities/group_role.dart';
 
 class GroupParticipantsSection extends StatelessWidget {
   final GroupRideArgs data;

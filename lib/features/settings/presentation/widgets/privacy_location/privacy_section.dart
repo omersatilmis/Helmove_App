@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:moto_comm_app_1/core/config/app_feature_flags.dart';
-import 'package:moto_comm_app_1/features/settings/domain/entities/privacy_settings_entity.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_event.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_tile.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/helper_widgets.dart'; // 🔥 Helper'ı dahil ettik
+import 'package:helmove/core/config/app_feature_flags.dart';
+import 'package:helmove/features/settings/domain/entities/privacy_settings_entity.dart';
+import 'package:helmove/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:helmove/features/settings/presentation/bloc/settings_event.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/settings_tile.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/settings_section_header.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/helper_widgets.dart'; // 🔥 Helper'ı dahil ettik
 
 class PrivacySection extends StatefulWidget {
   const PrivacySection({super.key});

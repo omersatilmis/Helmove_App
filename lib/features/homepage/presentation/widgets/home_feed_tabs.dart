@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/pages/jot_feed_view.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/pages/feed_page.dart';
+import 'package:helmove/features/content/jots/presentation/pages/jot_feed_view.dart';
+import 'package:helmove/features/content/posts/presentation/pages/feed_page.dart';
 
 class HomeFeedTabs extends StatefulWidget {
   const HomeFeedTabs({super.key});
@@ -44,15 +44,18 @@ class _HomeFeedTabsState extends State<HomeFeedTabs>
 
     return Column(
       children: [
-        Material(
-          color: Colors.transparent,
-          elevation: 0,
+        SizedBox(
+          height:
+              40, // Boyutu biraz küçülterek yazıları yukarı taşıyoruz (Varsayılan 46)
           child: TabBar(
             controller: _tabController,
+            labelPadding: const EdgeInsets.symmetric(
+              vertical: 0,
+            ), // Dikey padding'i sıfırladık
             labelColor: colorScheme.primary,
             unselectedLabelColor: colorScheme.onSurface.withValues(alpha: 0.6),
             indicatorColor: colorScheme.primary,
-            indicatorWeight: 3,
+            indicatorWeight: 2, // Çizgiyi de biraz incelttik
             dividerColor: Colors.transparent,
             tabs: const [
               Tab(text: 'Posts'),
@@ -65,9 +68,7 @@ class _HomeFeedTabsState extends State<HomeFeedTabs>
             controller: _tabController,
             children: [
               const _PostsFeedTab(),
-              _hasOpenedJots
-                  ? const _JotsFeedTab()
-                  : const SizedBox.shrink(),
+              _hasOpenedJots ? const _JotsFeedTab() : const SizedBox.shrink(),
             ],
           ),
         ),

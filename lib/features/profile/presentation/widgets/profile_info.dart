@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/pages/edit_profile.dart';
-import 'package:moto_comm_app_1/features/friendship/domain/entities/friendship_status.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_state.dart';
-import 'package:moto_comm_app_1/core/theme/app_colors.dart';
-import 'package:moto_comm_app_1/core/config/app_feature_flags.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/features/profile/presentation/pages/edit_profile.dart';
+import 'package:helmove/features/friendship/domain/entities/friendship_status.dart';
+import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_state.dart';
+import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/enums/user_tier.dart';
+import 'package:helmove/core/enums/user_tier.dart';
 
 class ProfileInfo extends StatelessWidget {
   final String firstName;

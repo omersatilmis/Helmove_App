@@ -1,4 +1,4 @@
-import 'package:moto_comm_app_1/core/enums/user_tier.dart';
+import 'package:helmove/core/enums/user_tier.dart';
 
 class AuthEntity {
   final int id;

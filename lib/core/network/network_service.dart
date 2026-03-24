@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:moto_comm_app_1/core/utils/app_logger.dart';
+import 'package:helmove/core/utils/app_logger.dart';
 
 /// NetworkService - İnternet bağlantısını yönetir
 class NetworkService {

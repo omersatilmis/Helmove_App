@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/config/app_feature_flags.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/config/app_feature_flags.dart';
 import '../../domain/entities/location_entity.dart';
 import '../../domain/entities/route_entity.dart';
 import '../../domain/entities/route_step_entity.dart';

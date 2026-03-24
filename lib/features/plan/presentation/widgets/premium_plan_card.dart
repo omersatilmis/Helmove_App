@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/features/plan/presentation/widgets/plan_model.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/features/plan/presentation/widgets/plan_model.dart';
 
 class PremiumPlanCard extends StatelessWidget {
   final PlanModel plan;

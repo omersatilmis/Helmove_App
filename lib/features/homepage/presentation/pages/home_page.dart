@@ -7,30 +7,30 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import 'package:moto_comm_app_1/app/bottom_bar.dart';
-import 'package:moto_comm_app_1/core/widgets/app_background.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart' as di;
-import 'package:moto_comm_app_1/features/auth/data/datasources/auth_local_data_source.dart'
+import 'package:helmove/app/bottom_bar.dart';
+import 'package:helmove/core/widgets/app_background.dart';
+import 'package:helmove/core/di/injection_container.dart' as di;
+import 'package:helmove/features/auth/data/datasources/auth_local_data_source.dart'
     as moto_auth;
-import 'package:moto_comm_app_1/core/services/app_session.dart';
-import 'package:moto_comm_app_1/core/services/home_bootstrap_service.dart';
-import 'package:moto_comm_app_1/core/services/home_summary_service.dart';
-import 'package:moto_comm_app_1/core/services/message_signalr_service.dart';
-import 'package:moto_comm_app_1/core/services/signalr_service.dart';
-import 'package:moto_comm_app_1/core/services/call_listener_service.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/usecases/usecase.dart';
-import 'package:moto_comm_app_1/core/widgets/unread_count_badge.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/content/posts/data/cache/post_feed_cache.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_bloc.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_event.dart';
-import 'package:moto_comm_app_1/features/homepage/presentation/widgets/home_feed_tabs.dart';
-import 'package:moto_comm_app_1/features/messages/domain/usecases/get_unread_count_usecase.dart'
+import 'package:helmove/core/services/app_session.dart';
+import 'package:helmove/core/services/home_bootstrap_service.dart';
+import 'package:helmove/core/services/home_summary_service.dart';
+import 'package:helmove/core/services/message_signalr_service.dart';
+import 'package:helmove/core/services/signalr_service.dart';
+import 'package:helmove/core/services/call_listener_service.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/usecases/usecase.dart';
+import 'package:helmove/core/widgets/unread_count_badge.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/content/posts/data/cache/post_feed_cache.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/posts_bloc.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/posts_event.dart';
+import 'package:helmove/features/homepage/presentation/widgets/home_feed_tabs.dart';
+import 'package:helmove/features/messages/domain/usecases/get_unread_count_usecase.dart'
     as msg_unread;
-import 'package:moto_comm_app_1/features/notification/domain/usecases/get_unread_count_usecase.dart'
+import 'package:helmove/features/notification/domain/usecases/get_unread_count_usecase.dart'
     as notif_unread;
-import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 
 class HomePageWithDrawer extends StatefulWidget {
   const HomePageWithDrawer({super.key});
@@ -509,7 +509,7 @@ class _HomeTopAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 50);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 42);
 
   @override
   Widget build(BuildContext context) {
@@ -646,10 +646,10 @@ class _HomeTopAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ],
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(50),
+        preferredSize: const Size.fromHeight(42),
         child: Container(
           width: double.infinity,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: isDark

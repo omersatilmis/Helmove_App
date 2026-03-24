@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/resilience/stability_handler.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_event.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_state.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_event.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_state.dart';
+import 'package:helmove/core/resilience/stability_handler.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/group_ride_bloc.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/group_ride_event.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/group_ride_state.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_event.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_state.dart';
 
 class RideStabilityHandler
     extends StabilityHandler<GroupRideBloc, GroupRideState> {

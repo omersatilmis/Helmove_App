@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_footer_widget.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_header_widget.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/auth/presentation/widgets/auth_footer_widget.dart';
+import 'package:helmove/features/auth/presentation/widgets/auth_header_widget.dart';
 import 'register/register_form_widget.dart';
-import 'package:moto_comm_app_1/core/presentation/widgets/professional_error_bottom_sheet.dart';
+import 'package:helmove/core/presentation/widgets/professional_error_bottom_sheet.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});

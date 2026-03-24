@@ -1,4 +1,4 @@
-import 'package:moto_comm_app_1/core/enums/user_tier.dart';
+import 'package:helmove/core/enums/user_tier.dart';
 
 import '../../domain/entities/profile_entity.dart';
 import '../../domain/entities/motorcycle_entity.dart';

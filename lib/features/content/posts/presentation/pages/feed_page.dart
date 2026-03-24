@@ -7,7 +7,7 @@ import '../bloc/posts_event.dart';
 import '../bloc/posts_state.dart';
 import '../widgets/post_card.dart';
 import '../../../../interaction/presentation/widgets/comments_sheet.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
+import 'package:helmove/core/di/injection_container.dart';
 
 class FeedView extends StatefulWidget {
   const FeedView({super.key});

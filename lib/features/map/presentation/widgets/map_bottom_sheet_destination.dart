@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:helmove/core/theme/text_styles.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../domain/entities/location_entity.dart';
@@ -76,7 +76,13 @@ class MapBottomSheetDestination extends StatelessWidget {
               _ActionIcon(
                 icon: Icons.close_rounded,
                 tooltip: 'Kapat',
-                onTap: () => context.read<MapBloc>().add(MapSelectLocation(null)),
+                onTap: () {
+                  final bloc = context.read<MapBloc>();
+                  bloc.add(MapSelectLocation(null));
+                  if (isSelectionMode) {
+                    bloc.add(MapToggleStopSelectionMode(false));
+                  }
+                },
               ),
             ],
           ],

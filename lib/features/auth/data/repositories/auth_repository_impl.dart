@@ -14,7 +14,7 @@ import '../mapper/auth_mapper.dart';
 import '../../../../core/error/error_handler.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/services/subscription_service.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
+import 'package:helmove/core/di/injection_container.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthRepositoryImpl implements AuthRepository {

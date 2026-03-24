@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/theme/text_styles.dart';
 
 // 🔥 BUTON IMPORT (Core'dan çekiyoruz)
-import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
+import 'package:helmove/core/widgets/app_frosted_button.dart';
 
 // Parçaları import ediyoruz
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/account/account_section.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/experience/app_experience_section.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/app_settings/app_settings_section.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/privacy_location/privacy_section.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/support/support_section.dart';
+import 'package:helmove/features/settings/presentation/widgets/account/account_section.dart';
+import 'package:helmove/features/settings/presentation/widgets/experience/app_experience_section.dart';
+import 'package:helmove/features/settings/presentation/widgets/app_settings/app_settings_section.dart';
+import 'package:helmove/features/settings/presentation/widgets/privacy_location/privacy_section.dart';
+import 'package:helmove/features/settings/presentation/widgets/support/support_section.dart';
 import '../bloc/settings_bloc.dart';
 import '../bloc/settings_state.dart';
 

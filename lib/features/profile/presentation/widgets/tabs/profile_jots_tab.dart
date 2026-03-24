@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_bloc.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_event.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_state.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/widgets/jot_card_widget.dart';
-import 'package:moto_comm_app_1/features/interaction/presentation/widgets/comments_sheet.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_bloc.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_event.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_state.dart';
+import 'package:helmove/features/content/jots/presentation/widgets/jot_card_widget.dart';
+import 'package:helmove/features/interaction/presentation/widgets/comments_sheet.dart';
+import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 
 class ProfileJotsTab extends StatefulWidget {
   const ProfileJotsTab({super.key});

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:moto_comm_app_1/core/constants/audio_bitrate.dart';
+import 'package:helmove/core/constants/audio_bitrate.dart';
 
 /// LiveKit SFU room bağlantı yönetimi.
 /// Ses iletişimi için room'a bağlanma, mikrofon kontrolü ve participant

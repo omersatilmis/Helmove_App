@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:moto_comm_app_1/core/constants/audio_bitrate.dart';
+import 'package:helmove/core/constants/audio_bitrate.dart';
 import '../utils/app_logger.dart';
 
 class WebRtcNetworkMetrics {

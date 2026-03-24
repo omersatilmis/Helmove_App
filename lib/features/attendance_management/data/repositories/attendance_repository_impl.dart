@@ -2,7 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/participant_entity.dart';
 import '../../domain/entities/participation_status_entity.dart';
-import 'package:moto_comm_app_1/features/attendance_management/domain/repositories/attendance_repository.dart';
+import 'package:helmove/features/attendance_management/domain/repositories/attendance_repository.dart';
 import '../datasources/attendance_remote_data_source.dart';
 
 class AttendanceRepositoryImpl implements AttendanceRepository {

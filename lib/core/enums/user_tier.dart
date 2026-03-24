@@ -21,4 +21,4 @@ enum UserTier {
   bool get isPremium => level >= plus.level;
   bool get isPlus => meets(UserTier.plus);
   bool get isPro => meets(UserTier.pro);
-}
+}

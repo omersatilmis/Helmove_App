@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:moto_comm_app_1/features/profile/domain/entities/profile_entity.dart';
-import 'package:moto_comm_app_1/features/profile/domain/entities/motorcycle_entity.dart';
-import 'package:moto_comm_app_1/features/profile/domain/repositories/profile_repository.dart';
-import 'package:moto_comm_app_1/core/utils/app_logger.dart';
-import 'package:moto_comm_app_1/core/network/network_service.dart';
-import 'package:moto_comm_app_1/core/utils/image_compressor.dart';
-import 'package:moto_comm_app_1/core/services/app_session.dart';
+import 'package:helmove/features/profile/domain/entities/profile_entity.dart';
+import 'package:helmove/features/profile/domain/entities/motorcycle_entity.dart';
+import 'package:helmove/features/profile/domain/repositories/profile_repository.dart';
+import 'package:helmove/core/utils/app_logger.dart';
+import 'package:helmove/core/network/network_service.dart';
+import 'package:helmove/core/utils/image_compressor.dart';
+import 'package:helmove/core/services/app_session.dart';
 import 'package:get_it/get_it.dart';
-import 'package:moto_comm_app_1/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:helmove/features/auth/data/datasources/auth_local_data_source.dart';
 
 import '../../../../core/enums/user_tier.dart';
 

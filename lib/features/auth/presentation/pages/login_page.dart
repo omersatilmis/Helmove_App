@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/widgets/app_button.dart';
-import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_divider_widget.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_header_widget.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_footer_widget.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/widgets/auth_error_widget.dart';
+import 'package:helmove/core/widgets/app_button.dart';
+import 'package:helmove/core/widgets/app_input_field.dart';
+import 'package:helmove/features/auth/presentation/widgets/auth_divider_widget.dart';
+import 'package:helmove/features/auth/presentation/widgets/auth_header_widget.dart';
+import 'package:helmove/features/auth/presentation/widgets/auth_footer_widget.dart';
+import 'package:helmove/features/auth/presentation/widgets/auth_error_widget.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 

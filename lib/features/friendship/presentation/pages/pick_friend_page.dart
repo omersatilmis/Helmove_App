@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
-import 'package:moto_comm_app_1/features/messages/presentation/pages/chat_page.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/widgets/app_frosted_button.dart';
+import 'package:helmove/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
+import 'package:helmove/features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
+import 'package:helmove/features/messages/presentation/pages/chat_page.dart';
 import 'widgets/friends_list.dart';
 
 class PickFriendPage extends StatelessWidget {

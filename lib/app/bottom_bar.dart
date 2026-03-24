@@ -3,13 +3,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/core/services/callkit_incoming_service.dart';
-import 'package:moto_comm_app_1/core/services/permissions_service.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/features/drawer/app_drawer.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_event.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/services/callkit_incoming_service.dart';
+import 'package:helmove/core/services/permissions_service.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/features/drawer/app_drawer.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_event.dart';
 
 final GlobalKey<ScaffoldState> mainScaffoldKey = GlobalKey<ScaffoldState>();
 

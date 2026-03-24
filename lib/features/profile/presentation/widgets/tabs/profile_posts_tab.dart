@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_bloc.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_event.dart';
-import 'package:moto_comm_app_1/features/content/posts/presentation/bloc/posts_state.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/posts_bloc.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/posts_event.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/posts_state.dart';
+import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 
 class ProfilePostsTab extends StatefulWidget {
   const ProfilePostsTab({super.key});

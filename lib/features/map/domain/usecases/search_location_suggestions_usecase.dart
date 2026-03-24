@@ -1,4 +1,4 @@
-﻿import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import '../entities/location_entity.dart';
 import '../repositories/map_repository.dart';
 

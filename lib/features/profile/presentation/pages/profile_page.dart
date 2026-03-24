@@ -1,36 +1,36 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/enums/user_tier.dart';
+import 'package:helmove/core/enums/user_tier.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 
 // --- KENDİ PROJE IMPORTLARIN ---
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_info.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/profile_tabs.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/widgets/app_frosted_button.dart';
+import 'package:helmove/features/profile/presentation/widgets/profile_info.dart';
+import 'package:helmove/features/profile/presentation/widgets/profile_tabs.dart';
 
 // 🔥 PROVIDER IMPORTLARI
-import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 
 // 🔥 FRIENDSHIP BLOC IMPORTLARI
 import 'package:flutter_bloc/flutter_bloc.dart'
     hide ReadContext, WatchContext, SelectContext;
-import 'package:moto_comm_app_1/core/di/injection_container.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_bloc.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_event.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/status/friendship_status_state.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_event.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/bloc/action/friendship_action_state.dart';
-import 'package:moto_comm_app_1/features/friendship/domain/entities/friendship_status.dart';
-import 'package:moto_comm_app_1/core/constants/report_enums.dart';
-import 'package:moto_comm_app_1/features/help/presentation/widgets/report_bottom_sheet.dart';
-import 'package:moto_comm_app_1/features/follow/presentation/bloc/action/follow_action_bloc.dart';
-import 'package:moto_comm_app_1/features/follow/presentation/bloc/action/follow_action_event.dart' as follow_events;
-import 'package:moto_comm_app_1/features/follow/presentation/bloc/action/follow_action_state.dart';
-import 'package:moto_comm_app_1/features/follow/presentation/pages/follow_list_page.dart';
+import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_bloc.dart';
+import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_event.dart';
+import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_state.dart';
+import 'package:helmove/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
+import 'package:helmove/features/friendship/presentation/bloc/action/friendship_action_event.dart';
+import 'package:helmove/features/friendship/presentation/bloc/action/friendship_action_state.dart';
+import 'package:helmove/features/friendship/domain/entities/friendship_status.dart';
+import 'package:helmove/core/constants/report_enums.dart';
+import 'package:helmove/features/help/presentation/widgets/report_bottom_sheet.dart';
+import 'package:helmove/features/follow/presentation/bloc/action/follow_action_bloc.dart';
+import 'package:helmove/features/follow/presentation/bloc/action/follow_action_event.dart' as follow_events;
+import 'package:helmove/features/follow/presentation/bloc/action/follow_action_state.dart';
+import 'package:helmove/features/follow/presentation/pages/follow_list_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final String? userId;

@@ -8,7 +8,7 @@ import '../../../../core/widgets/app_input_field.dart';
 import '../bloc/conversations/conversations_bloc.dart';
 import '../bloc/conversations/conversations_event.dart';
 import '../bloc/conversations/conversations_state.dart';
-import 'package:moto_comm_app_1/features/friendship/presentation/pages/pick_friend_page.dart';
+import 'package:helmove/features/friendship/presentation/pages/pick_friend_page.dart';
 import 'chat_page.dart';
 
 class ConversationsPage extends StatelessWidget {

@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:moto_comm_app_1/core/utils/app_logger.dart';
+import 'package:helmove/core/utils/app_logger.dart';
 
 /// ImageCompressor - Resimleri sıkıştırır
 class ImageCompressor {

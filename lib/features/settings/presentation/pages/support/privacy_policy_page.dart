@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/theme/app_colors.dart';
+import 'package:helmove/core/theme/app_colors.dart';
 
 class PrivacyPolicyPage extends StatelessWidget {
   const PrivacyPolicyPage({super.key});

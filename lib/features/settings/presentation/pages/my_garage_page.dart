@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
-import 'package:moto_comm_app_1/features/profile/domain/entities/motorcycle_entity.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/providers/profile_provider.dart';
-import 'package:moto_comm_app_1/features/profile/presentation/widgets/tabs/about/bike_card_widget.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/widgets/app_frosted_button.dart';
+import 'package:helmove/features/profile/domain/entities/motorcycle_entity.dart';
+import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/features/profile/presentation/widgets/tabs/about/bike_card_widget.dart';
 import 'package:provider/provider.dart';
 
 class MyGaragePage extends StatefulWidget {

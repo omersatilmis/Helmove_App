@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
-import 'package:moto_comm_app_1/features/group_ride/domain/entities/group_ride_entity.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/models/group_ride_args.dart';
-import 'package:moto_comm_app_1/features/voice_session/domain/entities/voice_session_entity.dart';
-import 'package:moto_comm_app_1/features/voice_session/domain/enums/rtc_state.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/widgets/app_frosted_button.dart';
+import 'package:helmove/features/group_ride/domain/entities/group_ride_entity.dart';
+import 'package:helmove/features/group_ride/presentation/models/group_ride_args.dart';
+import 'package:helmove/features/voice_session/domain/entities/voice_session_entity.dart';
+import 'package:helmove/features/voice_session/domain/enums/rtc_state.dart';
 
 class GroupHeaderSection extends StatelessWidget {
   final GroupRideArgs data;

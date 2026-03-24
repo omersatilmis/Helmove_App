@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_bloc.dart';
-import 'package:moto_comm_app_1/features/group_ride/presentation/bloc/group_ride_event.dart';
-import 'package:moto_comm_app_1/features/voice_session/domain/entities/voice_session_entity.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_bloc.dart';
-import 'package:moto_comm_app_1/features/voice_session/presentation/bloc/voice_session_event.dart';
-import 'package:moto_comm_app_1/features/attendance_management/domain/entities/group_role.dart';
+import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/group_ride_bloc.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/group_ride_event.dart';
+import 'package:helmove/features/voice_session/domain/entities/voice_session_entity.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
+import 'package:helmove/features/voice_session/presentation/bloc/voice_session_event.dart';
+import 'package:helmove/features/attendance_management/domain/entities/group_role.dart';
 
 class GroupPageActions {
   const GroupPageActions._();

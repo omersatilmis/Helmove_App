@@ -1,8 +1,8 @@
 // expansion, switch, bottom sheet gibi yardımcı widgetlar
 
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/theme/app_colors.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/core/theme/text_styles.dart';
 
 // -----------------------------------------------------------------------------
 // 1. GENEL EXPANSION TILE

@@ -7,11 +7,11 @@ import '../../domain/usecases/get_active_group_rides_usecase.dart';
 import '../../domain/usecases/update_group_ride_usecase.dart';
 import '../../domain/usecases/get_group_ride_by_id_usecase.dart';
 import '../../domain/entities/group_ride_entity.dart';
-import 'package:moto_comm_app_1/features/voice_session/domain/usecases/get_voice_session_details_usecase.dart';
-import 'package:moto_comm_app_1/features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
-import 'package:moto_comm_app_1/core/services/communication_realtime_bus.dart';
-import 'package:moto_comm_app_1/core/services/communication_refresh_coordinator.dart';
-import 'package:moto_comm_app_1/core/services/signalr_service.dart';
+import 'package:helmove/features/voice_session/domain/usecases/get_voice_session_details_usecase.dart';
+import 'package:helmove/features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
+import 'package:helmove/core/services/communication_realtime_bus.dart';
+import 'package:helmove/core/services/communication_refresh_coordinator.dart';
+import 'package:helmove/core/services/signalr_service.dart';
 import 'group_ride_event.dart';
 import 'group_ride_state.dart';
 

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../auth/domain/usecases/get_current_user_id_use_case.dart';
-import 'package:moto_comm_app_1/core/services/app_session.dart';
+import 'package:helmove/core/services/app_session.dart';
 import '../../../../media/domain/usecases/upload_image_usecase.dart';
 import '../../domain/entities/jot_entity.dart';
 import '../../domain/usecases/create_jot_usecase.dart';

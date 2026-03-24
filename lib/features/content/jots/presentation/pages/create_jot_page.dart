@@ -2,16 +2,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:helmove/core/theme/text_styles.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moto_comm_app_1/core/theme/app_colors.dart';
-import 'package:moto_comm_app_1/features/auth/presentation/providers/auth_provider.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_bloc.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_event.dart';
-import 'package:moto_comm_app_1/features/content/jots/presentation/bloc/jots_state.dart';
-import 'package:moto_comm_app_1/features/content/jots/domain/entities/jot_entity.dart';
+import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_bloc.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_event.dart';
+import 'package:helmove/features/content/jots/presentation/bloc/jots_state.dart';
+import 'package:helmove/features/content/jots/domain/entities/jot_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
+import 'package:helmove/core/widgets/app_input_field.dart';
 
 class CreateJotsPage extends StatefulWidget {
   const CreateJotsPage({super.key});

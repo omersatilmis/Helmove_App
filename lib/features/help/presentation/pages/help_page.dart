@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/widgets/app_input_field.dart';
-import 'package:moto_comm_app_1/core/theme/app_colors.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:helmove/core/widgets/app_input_field.dart';
+import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/core/theme/text_styles.dart';
 import 'package:go_router/go_router.dart';
 
 // 🔥 BUTON IMPORT
-import 'package:moto_comm_app_1/core/widgets/app_frosted_button.dart';
+import 'package:helmove/core/widgets/app_frosted_button.dart';
 
 class HelpPage extends StatefulWidget {
   const HelpPage({super.key});

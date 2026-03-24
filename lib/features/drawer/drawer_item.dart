@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:moto_comm_app_1/core/theme/text_styles.dart';
+import 'package:helmove/core/theme/text_styles.dart';
 
 class DrawerItem extends StatelessWidget {
   final String title;

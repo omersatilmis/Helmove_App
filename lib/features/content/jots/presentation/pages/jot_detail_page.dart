@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/di/injection_container.dart';
 import '../../../../../core/widgets/app_background.dart';
@@ -46,7 +47,6 @@ class _JotDetailPageState extends State<JotDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return BlocProvider(
       create: (context) => sl<CommentsBloc>()
@@ -112,29 +112,35 @@ class _JotDetailPageState extends State<JotDetailPage> {
                             (context, index) {
                               final comment = state.comments[index];
                               return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundImage: comment.userAvatar != null
-                                      ? CachedNetworkImageProvider(comment.userAvatar!)
-                                      : null,
-                                  child: comment.userAvatar == null 
-                                      ? Text(comment.username[0].toUpperCase())
-                                      : null,
+                                leading: GestureDetector(
+                                  onTap: () => context.push('/profile/${comment.userId}'),
+                                  child: CircleAvatar(
+                                    backgroundImage: comment.userAvatar != null
+                                        ? CachedNetworkImageProvider(comment.userAvatar!)
+                                        : null,
+                                    child: comment.userAvatar == null 
+                                        ? Text(comment.username[0].toUpperCase())
+                                        : null,
+                                  ),
                                 ),
-                                title: Row(
-                                  children: [
-                                    Text(
-                                      comment.username,
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _formatTimeAgo(comment.createdAt),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                title: GestureDetector(
+                                  onTap: () => context.push('/profile/${comment.userId}'),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        comment.username,
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _formatTimeAgo(comment.createdAt),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 subtitle: Text(comment.text),
                               );

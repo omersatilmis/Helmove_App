@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:moto_comm_app_1/core/config/app_feature_flags.dart';
+import 'package:helmove/core/config/app_feature_flags.dart';
 // WebRTC servisi artık doğrudan çağrılmıyor — bitrate yönetimi
 // AdaptiveBitrateController üzerinden IntercomEngine tarafından yapılır.
-import 'package:moto_comm_app_1/core/services/audio_orchestrator_service.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/bloc/settings_event.dart';
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/settings_section_header.dart';
+import 'package:helmove/core/services/audio_orchestrator_service.dart';
+import 'package:helmove/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:helmove/features/settings/presentation/bloc/settings_event.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/settings_section_header.dart';
 
 // 🔥 YENİ OLUŞTURDUĞUMUZ HELPER DOSYASINI IMPORT ET
-import 'package:moto_comm_app_1/features/settings/presentation/widgets/structure/helper_widgets.dart';
+import 'package:helmove/features/settings/presentation/widgets/structure/helper_widgets.dart';
+import 'package:helmove/core/theme/theme_provider.dart';
 
 class AppSettingsSection extends StatefulWidget {
   const AppSettingsSection({super.key});
@@ -138,8 +139,10 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                 ["Sistem", "Aydınlık", "Karanlık"],
                 (val) async {
                   setState(() => _themeMode = val);
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('theme_mode', val);
+                  // Global temayı güncelle (Persistence artık ThemeProvider içinde)
+                  if (context.mounted) {
+                    context.read<ThemeProvider>().setTheme(val);
+                  }
                 },
               ),
             ),
