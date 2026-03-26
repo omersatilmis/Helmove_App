@@ -12,6 +12,7 @@ import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/features/drawer/app_drawer.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_event.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 final GlobalKey<ScaffoldState> mainScaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -29,6 +30,10 @@ class BottomBarWrapper extends StatelessWidget {
     _communicationPermissionsBootstrapped = true;
 
     try {
+      final l10n = AppLocalizations.of(context);
+      if (l10n == null) {
+        return;
+      }
       final permissionsService = sl<PermissionsService>();
       final granted = await permissionsService.requestAllStartupPermissions();
 
@@ -39,15 +44,13 @@ class BottomBarWrapper extends StatelessWidget {
       if (!granted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Tam sesli sohbet deneyimi icin Mikrofon, Bluetooth, Konum ve Arama izinleri gereklidir.',
-            ),
+            content: Text(l10n.communicationPermissionsRequired),
             padding: const EdgeInsets.all(16),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 4),
             action: SnackBarAction(
-              label: 'Ayarlar',
+              label: l10n.settings,
               textColor: Colors.white,
               onPressed: PermissionsService.openSettings,
             ),
@@ -68,6 +71,10 @@ class BottomBarWrapper extends StatelessWidget {
     final theme = Theme.of(context);
     final size = MediaQuery.sizeOf(context);
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const SizedBox.shrink();
+    }
 
     // RESPONSIVE ÖLÇEKLEME: Ekran genişliğine göre 0.85 ile 1.2 arasında bir çarpan üretir.
     // Standart 390px genişliği (iPhone 12/13 vs) baz alınmıştır.
@@ -182,7 +189,7 @@ class BottomBarWrapper extends StatelessWidget {
                     width: iconSizeSelected,
                     height: iconSizeSelected,
                   ),
-                  label: 'Ana Sayfa',
+                  label: l10n.home,
                 ),
                 NavigationDestination(
                   icon: Image.asset(
@@ -195,7 +202,7 @@ class BottomBarWrapper extends StatelessWidget {
                     width: iconSizeSelected,
                     height: iconSizeSelected,
                   ),
-                  label: 'Keşfet',
+                  label: l10n.bottomNavDiscover,
                 ),
                 NavigationDestination(
                   icon: Image.asset(
@@ -203,7 +210,7 @@ class BottomBarWrapper extends StatelessWidget {
                     width: addIconSize,
                     height: addIconSize,
                   ),
-                  label: 'Ekle',
+                  label: l10n.add,
                 ),
                 NavigationDestination(
                   icon: Image.asset(
@@ -216,7 +223,7 @@ class BottomBarWrapper extends StatelessWidget {
                     width: iconSizeSelected,
                     height: iconSizeSelected,
                   ),
-                  label: 'Harita',
+                  label: l10n.map,
                 ),
                 NavigationDestination(
                   icon: Image.asset(
@@ -229,7 +236,7 @@ class BottomBarWrapper extends StatelessWidget {
                     width: iconSizeSelected,
                     height: iconSizeSelected,
                   ),
-                  label: 'İletişim',
+                  label: l10n.bottomNavCommunication,
                 ),
               ],
             ),
@@ -242,6 +249,10 @@ class BottomBarWrapper extends StatelessWidget {
   void _showAddOptionsBottomSheet(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return;
+    }
 
     showModalBottomSheet(
       context: context,
@@ -272,7 +283,7 @@ class BottomBarWrapper extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                "Ne paylaşmak istersin?",
+                l10n.shareSheetTitle,
                 style: AppTextStyles.h3.copyWith(
                   fontWeight: FontWeight.bold,
                   color: colorScheme.onSurface,
@@ -282,8 +293,8 @@ class BottomBarWrapper extends StatelessWidget {
               _buildAddOption(
                 context,
                 icon: Icons.camera_alt_outlined,
-                title: "Kamera",
-                subtitle: "Anlık bir kare veya video çek",
+                title: l10n.shareSheetCameraTitle,
+                subtitle: l10n.shareSheetCameraSubtitle,
                 onTap: () {
                   context.pop();
                   context.push('/add_post');
@@ -293,8 +304,8 @@ class BottomBarWrapper extends StatelessWidget {
               _buildAddOption(
                 context,
                 icon: Icons.photo_library_outlined,
-                title: "Galeri",
-                subtitle: "Kütüphanenden içerik seç",
+                title: l10n.shareSheetGalleryTitle,
+                subtitle: l10n.shareSheetGallerySubtitle,
                 onTap: () async {
                   context.pop();
                   final picker = ImagePicker();
@@ -310,8 +321,8 @@ class BottomBarWrapper extends StatelessWidget {
               _buildAddOption(
                 context,
                 icon: Icons.edit_note_outlined,
-                title: "Jots",
-                subtitle: "Düşüncelerini kısa not et",
+                title: l10n.shareSheetJotsTitle,
+                subtitle: l10n.shareSheetJotsSubtitle,
                 onTap: () {
                   context.pop();
                   context.push('/create_jots');

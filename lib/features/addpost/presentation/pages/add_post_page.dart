@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -77,19 +78,25 @@ class _AddPostPageState extends State<AddPostPage> {
       debugPrint('Error picking image: $e');
       if (mounted) {
         Navigator.pop(context); // Hata durumunda da çık
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kamera erişiminde hata oluştu')),
-        );
+        final curL10n = AppLocalizations.of(context);
+        if (curL10n != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(curL10n.cameraError)),
+          );
+        }
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
-        title: Text('Paylaşım Yap', style: AppTextStyles.h3),
+        title: Text(l10n.addPost, style: AppTextStyles.h3),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -132,7 +139,7 @@ class _AddPostPageState extends State<AddPostPage> {
                 children: [
                   Expanded(
                     child: AppButton(
-                      text: 'Tekrar Çek',
+                      text: l10n.retake,
                       variant: AppButtonVariant.secondary,
                       onPressed: _pickImage,
                     ),
@@ -140,7 +147,7 @@ class _AddPostPageState extends State<AddPostPage> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: AppButton(
-                      text: 'Devam Et',
+                      text: l10n.continueText,
                       variant: AppButtonVariant.primary,
                       onPressed: () {
                         if (_imageFile != null) {
