@@ -12,6 +12,9 @@ import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/app/app_router.dart';
 import 'package:helmove/core/theme/app_theme.dart';
 import 'package:helmove/core/theme/theme_provider.dart';
+import 'package:helmove/core/localization/language_provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
@@ -132,6 +135,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final GoRouter _router;
   late final AuthProvider _authProvider;
   late final ThemeProvider _themeProvider;
+  late final LanguageProvider _languageProvider;
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSub;
 
@@ -142,9 +146,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // GetIt'ten alıyoruz — artık Provider tree'den değil.
     _authProvider = sl<AuthProvider>();
     _themeProvider = sl<ThemeProvider>();
+    _languageProvider = sl<LanguageProvider>();
     _router = createRouter(_authProvider);
-    // Tema değiştiğinde MaterialApp'ı yeniden çizdir
+    // Tema ve Dil değiştiğinde MaterialApp'ı yeniden çizdir
     _themeProvider.addListener(_onThemeChanged);
+    _languageProvider.addListener(_onLanguageChanged);
     _initDeepLinks();
   }
 
@@ -179,6 +185,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (mounted) setState(() {});
   }
 
+  void _onLanguageChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -200,6 +210,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _themeProvider.removeListener(_onThemeChanged);
+    _languageProvider.removeListener(_onLanguageChanged);
     _linkSub?.cancel();
     super.dispose();
   }
@@ -213,6 +224,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       providers: [
         ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider.value(value: _themeProvider),
+        ChangeNotifierProvider.value(value: _languageProvider),
         ChangeNotifierProvider.value(value: sl<ProfileProvider>()),
       ],
       child: MaterialApp.router(
@@ -220,6 +232,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: _themeProvider.themeMode,
+        locale: _languageProvider.locale,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: _router,
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();

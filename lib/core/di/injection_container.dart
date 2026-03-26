@@ -1,10 +1,10 @@
 import 'dart:async';
-
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:helmove/l10n/app_localizations_en.dart';
 
 import '../network/network_module.dart';
 import '../network/auth_bootstrap_gate.dart';
@@ -271,6 +271,7 @@ import '../../features/map/config/mapbox_config.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../core/localization/language_provider.dart';
 
 final sl = GetIt.instance;
 bool _coreInitialized = false;
@@ -1694,6 +1695,7 @@ Future<void> initCore() async {
           promoteParticipantUseCase: sl(),
           demoteParticipantUseCase: sl(),
           kickParticipantUseCase: sl(),
+          l10n: AppLocalizationsEn(), // Placeholder during init
         ),
       );
     }
@@ -1713,6 +1715,7 @@ Future<void> initCore() async {
       () => ProfileProvider(sl<ProfileRepository>(), sl<AppSession>()),
     );
     sl.registerLazySingleton(() => ThemeProvider());
+    sl.registerLazySingleton(() => LanguageProvider());
     _logInitProfile('Root provider registrations', stopwatch);
 
     _coreInitialized = true;
