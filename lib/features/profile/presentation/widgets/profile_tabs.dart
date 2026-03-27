@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/core/theme/app_colors.dart';
 import 'package:helmove/core/theme/text_styles.dart';
 
@@ -33,6 +34,15 @@ class _ProfileTabBarDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final theme = Theme.of(context);
+    final tabs = <Tab>[
+      const Tab(text: "About", icon: Icon(Icons.info_outline_rounded)),
+      const Tab(text: "Jots", icon: Icon(Icons.edit_note_rounded)),
+      const Tab(text: "Posts", icon: Icon(Icons.grid_view_rounded)),
+      if (AppFeatureFlags.showReelsTab)
+        const Tab(text: "Reels", icon: Icon(Icons.video_collection_outlined)),
+      if (AppFeatureFlags.showTaggedTab)
+        const Tab(text: "Tagged", icon: Icon(Icons.assignment_ind_outlined)),
+    ];
 
     return Container(
       color: theme.scaffoldBackgroundColor,
@@ -64,16 +74,7 @@ class _ProfileTabBarDelegate extends SliverPersistentHeaderDelegate {
           fontSize: 12,
         ),
 
-        tabs: const [
-          // Icon ve Text alt alta (Column gibi) durursa daha az yer kaplar ama
-          // TabBar default olarak yan yana veya duruma göre ayarlar.
-          // Sığma sorunu olursa sadece Icon kullanmayı düşünebilirsin.
-          Tab(text: "About", icon: Icon(Icons.info_outline_rounded)),
-          Tab(text: "Jots", icon: Icon(Icons.edit_note_rounded)),
-          Tab(text: "Posts", icon: Icon(Icons.grid_view_rounded)),
-          Tab(text: "Reels", icon: Icon(Icons.video_collection_outlined)),
-          Tab(text: "Tagged", icon: Icon(Icons.assignment_ind_outlined)),
-        ],
+        tabs: tabs,
       ),
     );
   }
@@ -92,8 +93,22 @@ class ProfileTabViews extends StatefulWidget {
 
 class _ProfileTabViewsState extends State<ProfileTabViews> {
   // Instagram Mantığı: Başlangıçta sadece ilk tab (About) yüklü.
-  final List<bool> _loadedTabs = [true, false, false, false, false];
+  late final List<bool> _loadedTabs;
   late TabController _tabController;
+
+  int get _tabCount {
+    var count = 3;
+    if (AppFeatureFlags.showReelsTab) count++;
+    if (AppFeatureFlags.showTaggedTab) count++;
+    return count;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadedTabs = List<bool>.filled(_tabCount, false);
+    _loadedTabs[0] = true;
+  }
 
   @override
   void didChangeDependencies() {
@@ -113,14 +128,28 @@ class _ProfileTabViewsState extends State<ProfileTabViews> {
 
   @override
   Widget build(BuildContext context) {
+    final tabViews = <Widget>[
+      const ProfileAboutTab(),
+      _loadedTabs[1] ? const ProfileJotsTab() : const SizedBox.shrink(),
+      _loadedTabs[2] ? const ProfilePostsTab() : const SizedBox.shrink(),
+    ];
+
+    var dynamicIndex = 3;
+    if (AppFeatureFlags.showReelsTab) {
+      tabViews.add(
+        _loadedTabs[dynamicIndex] ? const ProfileReelsTab() : const SizedBox.shrink(),
+      );
+      dynamicIndex++;
+    }
+
+    if (AppFeatureFlags.showTaggedTab) {
+      tabViews.add(
+        _loadedTabs[dynamicIndex] ? const ProfileTaggedTab() : const SizedBox.shrink(),
+      );
+    }
+
     return TabBarView(
-      children: [
-        const ProfileAboutTab(),
-        _loadedTabs[1] ? const ProfileJotsTab() : const SizedBox.shrink(),
-        _loadedTabs[2] ? const ProfilePostsTab() : const SizedBox.shrink(),
-        _loadedTabs[3] ? const ProfileReelsTab() : const SizedBox.shrink(),
-        _loadedTabs[4] ? const ProfileTaggedTab() : const SizedBox.shrink(),
-      ],
+      children: tabViews,
     );
   }
 }

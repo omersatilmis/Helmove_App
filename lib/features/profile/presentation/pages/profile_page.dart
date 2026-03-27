@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/core/enums/user_tier.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
@@ -159,6 +160,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final isFollowing = displayedUser?.isFollowing ?? false;
 
     final double minAppBarHeight = kToolbarHeight + topSafe + 20;
+    final int tabCount = 3 +
+      (AppFeatureFlags.showReelsTab ? 1 : 0) +
+      (AppFeatureFlags.showTaggedTab ? 1 : 0);
 
     return MultiBlocProvider(
       providers: [
@@ -203,7 +207,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             )
           : DefaultTabController(
-              length: 5,
+              length: tabCount,
               child: Scaffold(
           backgroundColor: theme.scaffoldBackgroundColor,
           body: RefreshIndicator(
