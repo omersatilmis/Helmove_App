@@ -346,10 +346,24 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _editField(theme, "CC", _ccCtrl, isNumber: true)),
+            Expanded(
+              child: _editField(
+                theme,
+                "CC",
+                _ccCtrl,
+                isNumber: true,
+                hint: "xxxx",
+              ),
+            ),
             const SizedBox(width: 10),
             Expanded(
-              child: _editField(theme, "Yıl", _yearCtrl, isNumber: true),
+              child: _editField(
+                theme,
+                "Yıl",
+                _yearCtrl,
+                isNumber: true,
+                hint: "xxxx",
+              ),
             ),
           ],
         ),
@@ -373,12 +387,16 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
     TextEditingController ctrl, {
     bool isNumber = false,
     int maxLines = 1,
+    String? hint,
   }) {
     return AppInputField(
       controller: ctrl,
       label: label,
+      hint: hint,
       maxLines: maxLines,
-      type: isNumber ? AppInputType.phone : AppInputType.standard, // phone klavyesi sayısal için iş görür
+      type: isNumber
+          ? AppInputType.phone
+          : AppInputType.standard, // phone klavyesi sayısal için iş görür
     );
   }
 }

@@ -14,6 +14,7 @@ import '../widgets/active_session_card.dart';
 import '../widgets/nearby_group.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../../../core/widgets/app_background.dart';
+import '../../../../core/config/app_feature_flags.dart';
 
 void _noop() {}
 
@@ -211,23 +212,24 @@ class _CommunicationPageState extends State<CommunicationPage> {
                     // --- 1. ÃœST BUTONLAR (Saved Sessions & Create Ride) ---
                     Row(
                       children: [
-                        // --- SAVED SESSIONS (NÃ¶tr Cam) ---
-                        Expanded(
-                          child: _buildTopButton(
-                            context,
-                            title: "Saved\nSessions",
-                            icon: Icons.bookmark_border,
-                            glassTint: colorScheme.onSurface,
-                            iconColor: colorScheme.primary,
-                            textColor: colorScheme.onSurface,
-                            height: topButtonHeight,
-                            iconSize: topButtonIconSize,
-                            fontSize: topButtonFontSize,
-                            onTap: () {},
+                        // --- SAVED SESSIONS (Nötr Cam) ---
+                        if (AppFeatureFlags.showSavedSessions) ...[
+                          Expanded(
+                            child: _buildTopButton(
+                              context,
+                              title: "Saved\nSessions",
+                              icon: Icons.bookmark_border,
+                              glassTint: colorScheme.onSurface,
+                              iconColor: colorScheme.primary,
+                              textColor: colorScheme.onSurface,
+                              height: topButtonHeight,
+                              iconSize: topButtonIconSize,
+                              fontSize: topButtonFontSize,
+                              onTap: () {},
+                            ),
                           ),
-                        ),
-
-                        SizedBox(width: cardSpacing),
+                          SizedBox(width: cardSpacing),
+                        ],
 
                         // --- CREATE RIDE GROUP (Renkli Cam) ---
                         Expanded(
@@ -422,56 +424,58 @@ class _CommunicationPageState extends State<CommunicationPage> {
                     // --- 3. ACTIVE GROUP KARTI (VoiceSession'dan yÃ¼klenir) ---
                     const ActiveSessionCard(),
 
-                    SizedBox(height: sectionSpacing),
+                    if (AppFeatureFlags.showNearbyGroups) ...[
+                      SizedBox(height: sectionSpacing),
 
-                    // --- 4. NEARBY GROUPS BAÅLIÄI ---
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.signal_cellular_alt,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Nearby Groups",
-                          style: AppTextStyles.h3.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.bold,
+                      // --- 4. NEARBY GROUPS BAŞLIĞI ---
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.signal_cellular_alt,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                            size: 20,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Nearby Groups",
+                            style: AppTextStyles.h3.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
 
-                    SizedBox(height: cardSpacing),
+                      SizedBox(height: cardSpacing),
 
-                    // --- 5. NEARBY GROUPS LÄ°STESÄ° (Dummy UI) ---
-                    Column(
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: NearbyGroupCard(
-                            groupName: "Weekend Riders",
-                            distance: "1.2 km",
-                            currentParticipants: 3,
-                            maxParticipants: 10,
-                            signalStatus: "Strong",
-                            onJoinPressed: _noop,
+                      // --- 5. NEARBY GROUPS LİSTESİ (Dummy UI) ---
+                      Column(
+                        children: const [
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: NearbyGroupCard(
+                              groupName: "Weekend Riders",
+                              distance: "1.2 km",
+                              currentParticipants: 3,
+                              maxParticipants: 10,
+                              signalStatus: "Strong",
+                              onJoinPressed: _noop,
+                            ),
                           ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: NearbyGroupCard(
-                            groupName: "Mountain Tour",
-                            distance: "5.4 km",
-                            currentParticipants: 8,
-                            maxParticipants: 12,
-                            signalStatus: "Good",
-                            onJoinPressed: _noop,
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: NearbyGroupCard(
+                              groupName: "Mountain Tour",
+                              distance: "5.4 km",
+                              currentParticipants: 8,
+                              maxParticipants: 12,
+                              signalStatus: "Good",
+                              onJoinPressed: _noop,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                     // --- 6. BOTTOM PADDING (for extendBody: true) ---
                     SizedBox(height: isCompact ? 84 : 100),
                   ],

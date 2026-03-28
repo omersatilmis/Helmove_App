@@ -39,6 +39,9 @@ import 'package:helmove/features/settings/presentation/pages/support/feedback_pa
 import 'package:helmove/features/settings/presentation/pages/support/copyright_page.dart';
 import 'package:helmove/features/settings/presentation/pages/support/privacy_policy_page.dart';
 import 'package:helmove/features/settings/presentation/pages/support/about_app_page.dart';
+import 'package:helmove/features/settings/presentation/pages/blocked_users_page.dart';
+import 'package:helmove/features/settings/presentation/pages/security_page.dart';
+import 'package:helmove/features/settings/presentation/pages/change_password_page.dart';
 
 // Homepage den girilen sayfaların Importları
 import 'package:helmove/features/messages/presentation/pages/messages_page.dart';
@@ -218,6 +221,18 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/about',
         builder: (context, state) => const AboutAppPage(),
+      ),
+      GoRoute(
+        path: '/blocked-users',
+        builder: (context, state) => const BlockedUsersPage(),
+      ),
+      GoRoute(
+        path: '/security',
+        builder: (context, state) => const SecurityPage(),
+      ),
+      GoRoute(
+        path: '/change-password',
+        builder: (context, state) => const ChangePasswordPage(),
       ),
 
       // Homepage topbarından  gidilen sayfalar

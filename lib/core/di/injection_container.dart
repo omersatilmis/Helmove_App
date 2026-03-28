@@ -38,6 +38,7 @@ import '../../features/follow/domain/usecases/get_followers_usecase.dart';
 import '../../features/follow/domain/usecases/get_following_usecase.dart';
 import '../../features/follow/domain/usecases/follow_block_user_usecase.dart';
 import '../../features/follow/domain/usecases/follow_unblock_user_usecase.dart';
+import '../../features/follow/domain/usecases/get_blocked_users_usecase.dart';
 import '../../features/follow/presentation/bloc/action/follow_action_bloc.dart';
 import '../../features/follow/presentation/bloc/list/follow_list_bloc.dart';
 
@@ -811,6 +812,9 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<GetFollowingUseCase>()) {
     sl.registerLazySingleton(() => GetFollowingUseCase(sl()));
   }
+  if (!sl.isRegistered<GetBlockedUsersUseCase>()) {
+    sl.registerLazySingleton(() => GetBlockedUsersUseCase(sl()));
+  }
 
   // Follow Bloc
   if (!sl.isRegistered<FollowActionBloc>()) {
@@ -834,6 +838,13 @@ void _registerFeatureSingletons() {
     sl.registerFactory(
       () => FollowingListBloc(
         getFollowingUseCase: sl(),
+      ),
+    );
+  }
+  if (!sl.isRegistered<BlockedListBloc>()) {
+    sl.registerFactory(
+      () => BlockedListBloc(
+        getBlockedUsersUseCase: sl(),
       ),
     );
   }

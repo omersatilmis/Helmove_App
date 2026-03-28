@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/core/services/callkit_incoming_service.dart';
 import 'package:helmove/core/services/permissions_service.dart';
@@ -124,7 +126,7 @@ class BottomBarWrapper extends StatelessWidget {
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               onDestinationSelected: (index) async {
                 if (index == 2) {
-                  context.push('/add_post');
+                  _showAddOptionsBottomSheet(context);
                   return;
                 }
 
@@ -231,6 +233,165 @@ class BottomBarWrapper extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddOptionsBottomSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface.withValues(alpha: 0.9),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                "Ne paylaşmak istersin?",
+                style: AppTextStyles.h3.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 32),
+              _buildAddOption(
+                context,
+                icon: Icons.camera_alt_outlined,
+                title: "Kamera",
+                subtitle: "Anlık bir kare veya video çek",
+                onTap: () {
+                  context.pop();
+                  context.push('/add_post');
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildAddOption(
+                context,
+                icon: Icons.photo_library_outlined,
+                title: "Galeri",
+                subtitle: "Kütüphanenden içerik seç",
+                onTap: () async {
+                  context.pop();
+                  final picker = ImagePicker();
+                  final XFile? image = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (image != null && context.mounted) {
+                    context.push('/prepare_media', extra: File(image.path));
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildAddOption(
+                context,
+                icon: Icons.edit_note_outlined,
+                title: "Jots",
+                subtitle: "Düşüncelerini kısa not et",
+                onTap: () {
+                  context.pop();
+                  context.push('/create_jots');
+                },
+              ),
+              // Bottom safely padding for mobile devices
+              SizedBox(height: MediaQuery.viewPaddingOf(context).bottom + 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: colorScheme.onSurface.withValues(alpha: 0.1),
+              width: 1,
+            ),
+            color: colorScheme.onSurface.withValues(alpha: 0.03),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  icon,
+                  color: colorScheme.primary,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
+              ),
+            ],
           ),
         ),
       ),
