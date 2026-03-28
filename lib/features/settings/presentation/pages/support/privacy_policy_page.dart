@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helmove/core/theme/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicyPage extends StatelessWidget {
   const PrivacyPolicyPage({super.key});
@@ -84,12 +85,55 @@ class PrivacyPolicyPage extends StatelessWidget {
               isDark: isDark,
             ),
 
+            const SizedBox(height: 16),
+            _buildWebLink(isDark),
+
             const SizedBox(height: 40),
             _buildBottomBanner(isDark),
             const SizedBox(height: 40),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildWebLink(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Daha fazla bilgi için web sitemizi ziyaret ediniz.",
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: () async {
+            final url = Uri.parse('https://helmove.com/privacy-policy');
+            try {
+              if (await canLaunchUrl(url)) {
+                await launchUrl(
+                  url,
+                  mode: LaunchMode.inAppBrowserView,
+                );
+              }
+            } catch (e) {
+              debugPrint('Url açılamadı: $e');
+            }
+          },
+          child: const Text(
+            "Helmove Gizlilik Politikası",
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.blue,
+              decoration: TextDecoration.underline,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -39,3 +39,11 @@ class UpdateUserFollowStatusEvent extends FollowListEvent {
   @override
   List<Object?> get props => [userId, isFollowing];
 }
+class LoadBlockedUsersEvent extends FollowListEvent {
+  final bool refresh;
+
+  const LoadBlockedUsersEvent({this.refresh = false});
+
+  @override
+  List<Object?> get props => [refresh];
+}

@@ -35,7 +35,9 @@ class AccountSection extends StatelessWidget {
         SettingsTile(
           icon: Icons.lock_outline_rounded,
           title: "Güvenlik",
-          onTap: () {},
+          onTap: () {
+            context.push('/security');
+          },
         ),
       ],
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/features/settings/domain/entities/privacy_settings_entity.dart';
 import 'package:helmove/features/settings/presentation/bloc/settings_bloc.dart';
@@ -94,7 +95,7 @@ class _PrivacySectionState extends State<PrivacySection> {
           icon: Icons.block_flipped,
           title: "Engellenen Hesaplar",
           onTap: () {
-            // context.push('/blocked-users');
+            context.push('/blocked-users');
           },
         ),
       ],

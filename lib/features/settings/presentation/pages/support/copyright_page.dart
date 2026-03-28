@@ -127,6 +127,7 @@ class _CopyrightPageState extends State<CopyrightPage> {
         ),
         Text(
           "Advanced Communication and Social Rider Ecosystem",
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,

@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/usecases/get_followers_usecase.dart';
 import '../../../domain/usecases/get_following_usecase.dart';
+import '../../../domain/usecases/get_blocked_users_usecase.dart';
+import '../../../../../core/usecases/usecase.dart';
 import 'follow_list_event.dart';
 import 'follow_list_state.dart';
 
@@ -139,6 +141,41 @@ class FollowingListBloc extends Bloc<FollowListEvent, FollowListState> {
           );
           _currentPage++;
         }
+      },
+    );
+  }
+}
+class BlockedListBloc extends Bloc<FollowListEvent, FollowListState> {
+  final GetBlockedUsersUseCase getBlockedUsersUseCase;
+
+  BlockedListBloc({
+    required this.getBlockedUsersUseCase,
+  }) : super(FollowListInitial()) {
+    on<LoadBlockedUsersEvent>(_onLoadBlockedUsers);
+  }
+
+  Future<void> _onLoadBlockedUsers(
+    LoadBlockedUsersEvent event,
+    Emitter<FollowListState> emit,
+  ) async {
+    if (event.refresh) {
+      emit(FollowListInitial());
+    }
+
+    emit(FollowListLoading());
+
+    // Blocked users list typically doesn't have pagination in the current backend impl
+    final result = await getBlockedUsersUseCase(NoParams());
+
+    result.fold(
+      (failure) => emit(FollowListError(failure.message)),
+      (users) {
+        emit(
+          FollowListLoaded(
+            users: users,
+            hasReachedMax: true, // Assuming no pagination for blocked list initially
+          ),
+        );
       },
     );
   }

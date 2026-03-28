@@ -1,0 +1,195 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/text_styles.dart';
+import '../../../../core/widgets/app_button.dart';
+import '../../../follow/presentation/bloc/list/follow_list_bloc.dart';
+import '../../../follow/presentation/bloc/list/follow_list_event.dart';
+import '../../../follow/presentation/bloc/list/follow_list_state.dart';
+import '../../../follow/presentation/bloc/action/follow_action_bloc.dart';
+import '../../../follow/presentation/bloc/action/follow_action_event.dart';
+import '../../../follow/presentation/bloc/action/follow_action_state.dart';
+import '../../../follow/domain/entities/follow_user.dart';
+
+class BlockedUsersPage extends StatelessWidget {
+  const BlockedUsersPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<BlockedListBloc>(
+          create: (context) => sl<BlockedListBloc>()..add(const LoadBlockedUsersEvent()),
+        ),
+        BlocProvider<FollowActionBloc>(
+          create: (context) => sl<FollowActionBloc>(),
+        ),
+      ],
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Engellenen Hesaplar'),
+          centerTitle: true,
+        ),
+        body: const _BlockedUsersView(),
+      ),
+    );
+  }
+}
+
+class _BlockedUsersView extends StatelessWidget {
+  const _BlockedUsersView();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BlocListener<FollowActionBloc, FollowActionState>(
+      listener: (context, state) {
+        if (state is UnblockUserSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Kullanıcının engeli kaldırıldı'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Refresh the list after unblocking
+          context.read<BlockedListBloc>().add(const LoadBlockedUsersEvent(refresh: true));
+        } else if (state is FollowActionError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: BlocBuilder<BlockedListBloc, FollowListState>(
+        builder: (context, state) {
+          if (state is FollowListLoading) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+
+          if (state is FollowListError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Hata: ${state.message}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<BlockedListBloc>().add(const LoadBlockedUsersEvent(refresh: true));
+                    },
+                    child: const Text('Tekrar Dene'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (state is FollowListLoaded) {
+            final users = state.users;
+
+            if (users.isEmpty) {
+              return const Center(child: Text('Engellenmiş hesap bulunmuyor.'));
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                context.read<BlockedListBloc>().add(const LoadBlockedUsersEvent(refresh: true));
+              },
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: users.length,
+                separatorBuilder: (context, index) => Divider(height: 1, color: theme.dividerColor.withOpacity(0.1)),
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  return _BlockedUserTile(user: user);
+                },
+              ),
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+}
+
+class _BlockedUserTile extends StatelessWidget {
+  final FollowUser user;
+
+  const _BlockedUserTile({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          // PP
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                width: 2,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 28,
+              backgroundColor: theme.colorScheme.surfaceContainerLow,
+              backgroundImage: user.profilePictureUrl != null && user.profilePictureUrl!.isNotEmpty
+                  ? CachedNetworkImageProvider(user.profilePictureUrl!) as ImageProvider
+                  : const AssetImage('assets/images/default_avatar.png'),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Info (Center)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.fullName.isNotEmpty ? user.fullName : user.username,
+                  style: AppTextStyles.bold.copyWith(
+                    fontSize: 16,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  "@${user.username}",
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Action (Right)
+          BlocBuilder<FollowActionBloc, FollowActionState>(
+            builder: (context, state) {
+              final isLoading = state is FollowActionLoading && state.userId == user.id;
+
+              return AppButton(
+                text: "Engeli Kaldır",
+                onPressed: () {
+                  context.read<FollowActionBloc>().add(UnblockUserEvent(user.id));
+                },
+                variant: AppButtonVariant.primary,
+                style: AppButtonStyle.outlined,
+                size: AppButtonSize.small,
+                width: 110,
+                isLoading: isLoading,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
