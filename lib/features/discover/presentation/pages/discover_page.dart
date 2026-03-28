@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/di/injection_container.dart' as di;
@@ -36,118 +35,79 @@ class _DiscoverPageState extends State<DiscoverPage> {
     super.dispose();
   }
 
-  void _performSearch(BuildContext? blocContext) {
-    if (blocContext == null) return;
-    final query = _searchController.text.trim();
-    if (query.isNotEmpty) {
-      blocContext.read<DiscoverBloc>().add(SearchUsersEvent(query: query));
-    } else {
-      blocContext.read<DiscoverBloc>().add(const LoadDiscoveryContent(isRefresh: true));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            // ARAMA ÇUBUĞU - Her zaman görünür
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: AppInputField(
-                controller: _searchController,
-                type: AppInputType.discover,
-                hint: "Kullanıcı ara...",
-                leadingIcon: Icons.search,
-                suffixWidget: FutureBuilder(
-                  future: _initFuture,
-                  builder: (context, snapshot) {
-                    final ready = snapshot.connectionState == ConnectionState.done;
-                    return TextButton(
-                      onPressed: ready ? () => _performSearch(context) : null,
-                      style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+        child: FutureBuilder(
+          future: _initFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const DiscoverShimmer();
+            }
+
+            return BlocProvider(
+              create: (context) =>
+                  sl<DiscoverBloc>()..add(const LoadDiscoveryContent()),
+              child: Builder(
+                builder: (blocContext) {
+                  return Column(
+                    children: [
+                      // ARAMA ÇUBUĞU - Tıklandığında Arama Sayfasına Gider
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
+                        ),
+                        child: GestureDetector(
+                          onTap: () {
+                            context.push('/discover/search');
+                          },
+                          child: AbsorbPointer(
+                            child: AppInputField(
+                              controller: _searchController,
+                              type: AppInputType.discover,
+                              hint: "Kullanıcı ara...",
+                              leadingIcon: Icons.search,
+                            ),
+                          ),
+                        ),
                       ),
-                      child: const Text("Ara"),
-                    );
-                  },
-                ),
-                textInputAction: TextInputAction.search,
-                onFieldSubmitted: (_) => _performSearch(context),
-              ),
-            ),
 
-            // İÇERİK ALANI - Altyapıyı ve Veriyi Bekleyen Kısım
-            Expanded(
-              child: FutureBuilder(
-                future: _initFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const DiscoverShimmer();
-                  }
-
-                  // Altyapı (GetIt) hazır, BLoC'u kur
-                  return BlocProvider(
-                    create: (context) => sl<DiscoverBloc>()..add(const LoadDiscoveryContent()),
-                    child: Builder(
-                      builder: (blocContext) {
-                        return BlocBuilder<DiscoverBloc, DiscoverState>(
+                      // İÇERİK ALANI - Sadece Keşfet Izgarası
+                      Expanded(
+                        child: BlocBuilder<DiscoverBloc, DiscoverState>(
                           builder: (context, state) {
                             if (state is DiscoverLoading) {
                               return const DiscoverShimmer();
                             } else if (state is DiscoverFailure) {
                               return Center(child: Text(state.message));
-                            } else if (state is DiscoverLoaded) {
-                              return _buildSearchResults(state, theme);
                             } else if (state is DiscoverDiscoveryLoaded) {
-                              return _buildDiscoveryGrid(state, theme, blocContext);
+                              return _buildDiscoveryGrid(state, theme, context);
+                            }
+                            // Eğer başka bir state (örn. DiscoverLoaded) gelirse
+                            // tekrar grid yüklemesini tetikle (fallback)
+                            if (state is DiscoverLoaded ||
+                                state is DiscoverInitial) {
+                              context.read<DiscoverBloc>().add(
+                                const LoadDiscoveryContent(),
+                              );
+                              return const DiscoverShimmer();
                             }
                             return const SizedBox.shrink();
                           },
-                        );
-                      },
-                    ),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
-    );
-  }
-
-  Widget _buildSearchResults(DiscoverLoaded state, ThemeData theme) {
-    final results = state.results;
-    if (results.isEmpty) {
-      return const Center(child: Text("Sonuç bulunamadı."));
-    }
-
-    return ListView.builder(
-      itemCount: results.length,
-      padding: const EdgeInsets.all(16),
-      itemBuilder: (context, index) {
-        final user = results[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundImage: user.profilePictureUrl != null
-                  ? CachedNetworkImageProvider(user.profilePictureUrl!)
-                  : null,
-              child: user.profilePictureUrl == null ? const Icon(Icons.person) : null,
-            ),
-            title: Text("${user.firstName ?? ''} ${user.lastName ?? ''}"),
-            subtitle: Text("@${user.username}"),
-            onTap: () {
-              context.push('/profile/${user.id}');
-            },
-          ),
-        );
-      },
     );
   }
 

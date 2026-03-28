@@ -15,7 +15,9 @@ import 'package:helmove/core/widgets/app_bloc_listener.dart';
 // 🔥 YENİ SAYFALARIN IMPORTLARI
 import 'package:helmove/features/homepage/presentation/pages/home_page.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
+import 'package:helmove/features/discover/presentation/bloc/discover_bloc.dart';
 import 'package:helmove/features/discover/presentation/pages/discover_page.dart';
+import 'package:helmove/features/discover/presentation/pages/discover_search_page.dart';
 import 'package:helmove/features/addpost/presentation/pages/add_post_page.dart';
 import 'package:helmove/features/map/presentation/pages/map_page.dart';
 import 'package:helmove/features/map/presentation/providers/map_bloc.dart';
@@ -309,6 +311,15 @@ GoRouter createRouter(AuthProvider authProvider) {
               GoRoute(
                 path: '/discover',
                 builder: (context, state) => const DiscoverPage(),
+                routes: [
+                  GoRoute(
+                    path: 'search',
+                    builder: (context, state) => BlocProvider(
+                      create: (context) => sl<DiscoverBloc>(),
+                      child: const DiscoverSearchPage(),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
