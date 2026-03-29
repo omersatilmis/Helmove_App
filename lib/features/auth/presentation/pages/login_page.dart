@@ -58,6 +58,11 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _openForgotPasswordPage() async {
+    if (!mounted) return;
+    context.push('/forgot-password');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -75,7 +80,9 @@ class _LoginPageState extends State<LoginPage> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final isCompactHeight = constraints.maxHeight < 760;
-              final horizontalPadding = constraints.maxWidth < 360 ? 16.0 : 24.0;
+              final horizontalPadding = constraints.maxWidth < 360
+                  ? 16.0
+                  : 24.0;
               final headerHeight = (constraints.maxHeight * 0.32).clamp(
                 200.0,
                 360.0,
@@ -107,14 +114,16 @@ class _LoginPageState extends State<LoginPage> {
                           child: SizedBox(
                             width: constraints.maxWidth > 450
                                 ? 450
-                                : constraints.maxWidth - (horizontalPadding * 2),
+                                : constraints.maxWidth -
+                                      (horizontalPadding * 2),
                             child: Form(
                               key: _formKey,
                               child: AutofillGroup(
                                 // Otomatik doldurma desteği
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
                                     SizedBox(height: isCompactHeight ? 8 : 12),
 
@@ -182,7 +191,9 @@ class _LoginPageState extends State<LoginPage> {
                                                   value: _rememberMe,
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
-                                                        BorderRadius.circular(4),
+                                                        BorderRadius.circular(
+                                                          4,
+                                                        ),
                                                   ),
                                                   onChanged: (val) => setState(
                                                     () => _rememberMe =
@@ -193,22 +204,25 @@ class _LoginPageState extends State<LoginPage> {
                                               const SizedBox(width: 8),
                                               Text(
                                                 l10n.rememberMe,
-                                                style: theme.textTheme.bodyMedium,
+                                                style:
+                                                    theme.textTheme.bodyMedium,
                                               ),
                                             ],
                                           ),
                                           TextButton(
-                                            onPressed: () {},
+                                            onPressed: _openForgotPasswordPage,
                                             style: TextButton.styleFrom(
                                               padding: EdgeInsets.zero,
                                               minimumSize: const Size(0, 0),
-                                              tapTargetSize: MaterialTapTargetSize
-                                                  .shrinkWrap,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
                                             ),
                                             child: Text(
                                               l10n.forgotPassword,
                                               style: TextStyle(
-                                                color: theme.colorScheme.primary,
+                                                color:
+                                                    theme.colorScheme.primary,
                                                 fontWeight: FontWeight.w700,
                                                 fontSize: 13,
                                               ),
@@ -227,7 +241,9 @@ class _LoginPageState extends State<LoginPage> {
                                           text: l10n.login,
                                           isLoading: authProvider.isLoading,
                                           size: AppButtonSize.large,
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
                                           isFullWidth: true,
                                           onPressed: () =>
                                               _handleLogin(authProvider),

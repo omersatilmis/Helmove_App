@@ -3,16 +3,22 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 import '../utils/app_logger.dart';
 import 'callkit_incoming_service.dart';
+import 'sos_alert_listener_service.dart';
 
 class NotificationService {
   static String get _appId =>
-      (dotenv.env['ONESIGNAL_APP_ID'] ?? '826a8fdc-3290-4a00-a14b-74a4c6e8ac20').trim();
+      (dotenv.env['ONESIGNAL_APP_ID'] ?? '826a8fdc-3290-4a00-a14b-74a4c6e8ac20')
+          .trim();
 
   final CallKitIncomingService _callKitIncomingService;
+  final SosAlertListenerService _sosAlertListenerService;
   bool _isInitialized = false;
   Future<void>? _initializeFuture;
 
-  NotificationService(this._callKitIncomingService);
+  NotificationService(
+    this._callKitIncomingService,
+    this._sosAlertListenerService,
+  );
 
   Future<void> ensureInitialized() async {
     if (_isInitialized) return;
@@ -38,6 +44,7 @@ class NotificationService {
       OneSignal.initialize(_appId);
 
       await _callKitIncomingService.initialize();
+      _sosAlertListenerService.start();
 
       // [FIX] Permission Centralization:
       // Don't request here. HomePage will handle it.
@@ -51,6 +58,7 @@ class NotificationService {
         );
 
         await _handleIncomingCallPayload(data, source: 'click');
+        await _handleSosPayload(data, source: 'click');
       });
 
       OneSignal.Notifications.addForegroundWillDisplayListener((event) async {
@@ -64,10 +72,8 @@ class NotificationService {
         // Çünkü SignalR veya Push Handler zaten Tam Ekran Arama sayfasını açacak.
         event.preventDefault();
 
-        await _handleIncomingCallPayload(
-          data,
-          source: 'foreground',
-        );
+        await _handleIncomingCallPayload(data, source: 'foreground');
+        await _handleSosPayload(data, source: 'foreground');
       });
     } catch (e, st) {
       _isInitialized = false;
@@ -113,5 +119,15 @@ class NotificationService {
 
     await _callKitIncomingService.showIncomingCall(payload);
     return true;
+  }
+
+  Future<bool> _handleSosPayload(dynamic raw, {required String source}) async {
+    final handled = await _sosAlertListenerService.showFromPushData(raw);
+    if (handled) {
+      AppLogger.warning(
+        'NotificationService: sos_alert detected source=$source',
+      );
+    }
+    return handled;
   }
 }

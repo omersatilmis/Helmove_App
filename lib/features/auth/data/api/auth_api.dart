@@ -5,6 +5,7 @@ import '../dto/login_response_dto.dart';
 import '../dto/register_request_dto.dart';
 import '../dto/register_response_dto.dart';
 import '../dto/forgot_password_request_dto.dart';
+import '../dto/confirm_forgot_password_request_dto.dart';
 import '../dto/reset_password_request_dto.dart';
 import '../dto/refresh_token_request_dto.dart';
 import '../dto/revoke_token_request_dto.dart';
@@ -92,6 +93,25 @@ class AuthApi {
       final errorMessage =
           _parseErrorMessage(e.response?.data) ??
           'Şifre sıfırlama isteği başarısız: ${e.response?.statusCode}';
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception("Beklenmedik bir hata oluştu: $e");
+    }
+  }
+
+  /// Forgot password doğrulama - Token ile yeni şifre belirleme
+  Future<void> confirmForgotPassword(
+    ConfirmForgotPasswordRequestDto request,
+  ) async {
+    try {
+      await _dio.post(
+        AuthEndpoints.confirmForgotPassword,
+        data: request.toJson(),
+      );
+    } on DioException catch (e) {
+      final errorMessage =
+          _parseErrorMessage(e.response?.data) ??
+          'Şifre sıfırlama onayı başarısız: ${e.response?.statusCode}';
       throw Exception(errorMessage);
     } catch (e) {
       throw Exception("Beklenmedik bir hata oluştu: $e");

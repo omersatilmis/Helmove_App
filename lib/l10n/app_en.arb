@@ -1056,6 +1056,43 @@
     "send_invitation": "Send Invitation",
     "invite_sent": "Invitation Sent",
     "sos_sent": "SOS Sent!",
+    "sos_send_failed": "Failed to send SOS.",
+    "sos_no_active_ride": "No active group ride found.",
+    "sos_location_services_disabled": "Location services are disabled.",
+    "sos_location_permission_denied": "Location permission denied.",
+    "sos_location_permission_denied_forever": "Location permission permanently denied.",
+    "sos_sending": "Sending SOS alert...",
+    "sos_countdown_warning": "SOS will be sent in {seconds}s!",
+    "@sos_countdown_warning": {
+        "placeholders": {
+            "seconds": {
+                "type": "int"
+            }
+        }
+    },
+    "sos_alert_title": "EMERGENCY SOS ALERT",
+    "sos_default_sender_name": "A rider",
+    "sos_sender_needs_help": "{sender} needs help",
+    "@sos_sender_needs_help": {
+        "placeholders": {
+            "sender": {
+                "type": "String"
+            }
+        }
+    },
+    "sos_location_label": "Location: {latitude}, {longitude}",
+    "@sos_location_label": {
+        "placeholders": {
+            "latitude": {
+                "type": "String"
+            },
+            "longitude": {
+                "type": "String"
+            }
+        }
+    },
+    "sos_go_help": "Go Help",
+    "sos_close_tooltip": "Close",
     "image_upload_error": "Error uploading image",
     "delete_failed": "Delete operation failed",
     "like_failed": "Like operation failed",

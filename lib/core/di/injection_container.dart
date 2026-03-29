@@ -121,7 +121,8 @@ import '../../features/help/data/datasources/help_remote_data_source.dart';
 import '../../features/help/data/repositories/help_repository_impl.dart';
 import '../../features/help/domain/repositories/help_repository.dart';
 import '../../features/help/domain/usecases/create_report_usecase.dart';
-import '../../features/help/domain/usecases/send_feedback_usecase.dart' as help_feedback;
+import '../../features/help/domain/usecases/send_feedback_usecase.dart'
+    as help_feedback;
 import '../../features/help/presentation/bloc/help_bloc.dart';
 import '../../features/voice_session/domain/usecases/reject_voice_session_invitation_usecase.dart';
 import '../../features/voice_session/domain/usecases/end_voice_session_usecase.dart';
@@ -242,6 +243,7 @@ import '../services/message_signalr_service.dart';
 import '../services/callkit_incoming_service.dart';
 import '../services/call_listener_service.dart';
 import '../services/notification_service.dart';
+import '../services/sos_alert_listener_service.dart';
 import '../services/app_session.dart';
 import '../services/real_time_service.dart';
 import '../services/livekit_api.dart';
@@ -332,6 +334,7 @@ Future<void> ensureCommunicationRuntimeStarted() async {
   try {
     sl<RealTimeService>().start();
     sl<CallListenerService>().start();
+    sl<SosAlertListenerService>().start();
     await sl<IntercomEngine>().start();
     _communicationRuntimeStarted = true;
     completer.complete();
@@ -663,43 +666,36 @@ void _registerCoreFeatureSingletons() {
   const mapboxDioName = 'mapboxDio';
 
   if (!sl.isRegistered<Dio>(instanceName: mapboxDioName)) {
-    sl.registerLazySingleton<Dio>(
-      instanceName: mapboxDioName,
-      () {
-        final dio = Dio(
-          BaseOptions(
-            baseUrl: MapboxConfig.baseUrl,
-            connectTimeout: EnvConfig.connectTimeout,
-            receiveTimeout: EnvConfig.receiveTimeout,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            queryParameters: {
-              'access_token': MapboxConfig.accessToken,
-            },
-          ),
-        );
+    sl.registerLazySingleton<Dio>(instanceName: mapboxDioName, () {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: MapboxConfig.baseUrl,
+          connectTimeout: EnvConfig.connectTimeout,
+          receiveTimeout: EnvConfig.receiveTimeout,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          queryParameters: {'access_token': MapboxConfig.accessToken},
+        ),
+      );
 
-        dio.interceptors.add(
-          LogInterceptor(
-            request: true,
-            requestBody: true,
-            responseBody: true,
-            error: true,
-          ),
-        );
+      dio.interceptors.add(
+        LogInterceptor(
+          request: true,
+          requestBody: true,
+          responseBody: true,
+          error: true,
+        ),
+      );
 
-        return dio;
-      },
-    );
+      return dio;
+    });
   }
 
   if (!sl.isRegistered<MapRemoteDataSource>()) {
     sl.registerLazySingleton<MapRemoteDataSource>(
-      () => MapRemoteDataSourceImpl(
-        dio: sl<Dio>(instanceName: mapboxDioName),
-      ),
+      () => MapRemoteDataSourceImpl(dio: sl<Dio>(instanceName: mapboxDioName)),
     );
   }
   if (!sl.isRegistered<MapRepository>()) {
@@ -829,25 +825,13 @@ void _registerFeatureSingletons() {
     );
   }
   if (!sl.isRegistered<FollowersListBloc>()) {
-    sl.registerFactory(
-      () => FollowersListBloc(
-        getFollowersUseCase: sl(),
-      ),
-    );
+    sl.registerFactory(() => FollowersListBloc(getFollowersUseCase: sl()));
   }
   if (!sl.isRegistered<FollowingListBloc>()) {
-    sl.registerFactory(
-      () => FollowingListBloc(
-        getFollowingUseCase: sl(),
-      ),
-    );
+    sl.registerFactory(() => FollowingListBloc(getFollowingUseCase: sl()));
   }
   if (!sl.isRegistered<BlockedListBloc>()) {
-    sl.registerFactory(
-      () => BlockedListBloc(
-        getBlockedUsersUseCase: sl(),
-      ),
-    );
+    sl.registerFactory(() => BlockedListBloc(getBlockedUsersUseCase: sl()));
   }
 
   // Voice Session Feature
@@ -1232,11 +1216,13 @@ void _registerFeatureSingletons() {
     sl.registerLazySingleton(() => SubscribeUseCase(sl()));
   }
   if (!sl.isRegistered<SubscriptionBloc>()) {
-    sl.registerFactory(() => SubscriptionBloc(
-      getPlans: sl(),
-      subscribe: sl(),
-      subscriptionService: sl(),
-    ));
+    sl.registerFactory(
+      () => SubscriptionBloc(
+        getPlans: sl(),
+        subscribe: sl(),
+        subscriptionService: sl(),
+      ),
+    );
   }
 
   // ────────────────────────────────────────────────────────
@@ -1602,8 +1588,13 @@ Future<void> initCore() async {
         () => CallKitIncomingService(),
       );
     }
+    if (!sl.isRegistered<SosAlertListenerService>()) {
+      sl.registerLazySingleton<SosAlertListenerService>(
+        () => SosAlertListenerService(sl<SignalRService>()),
+      );
+    }
 
-    sl.registerLazySingleton(() => NotificationService(sl()));
+    sl.registerLazySingleton(() => NotificationService(sl(), sl()));
     _logInitProfile('Core service registrations', stopwatch);
 
     // ────────────────────────────────────────────────────────

@@ -3566,6 +3566,84 @@ abstract class AppLocalizations {
   /// **'SOS Sent!'**
   String get sos_sent;
 
+  /// No description provided for @sos_send_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send SOS.'**
+  String get sos_send_failed;
+
+  /// No description provided for @sos_no_active_ride.
+  ///
+  /// In en, this message translates to:
+  /// **'No active group ride found.'**
+  String get sos_no_active_ride;
+
+  /// No description provided for @sos_location_services_disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Location services are disabled.'**
+  String get sos_location_services_disabled;
+
+  /// No description provided for @sos_location_permission_denied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission denied.'**
+  String get sos_location_permission_denied;
+
+  /// No description provided for @sos_location_permission_denied_forever.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission permanently denied.'**
+  String get sos_location_permission_denied_forever;
+
+  /// No description provided for @sos_sending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending SOS alert...'**
+  String get sos_sending;
+
+  /// No description provided for @sos_countdown_warning.
+  ///
+  /// In en, this message translates to:
+  /// **'SOS will be sent in {seconds}s!'**
+  String sos_countdown_warning(int seconds);
+
+  /// No description provided for @sos_alert_title.
+  ///
+  /// In en, this message translates to:
+  /// **'EMERGENCY SOS ALERT'**
+  String get sos_alert_title;
+
+  /// No description provided for @sos_default_sender_name.
+  ///
+  /// In en, this message translates to:
+  /// **'A rider'**
+  String get sos_default_sender_name;
+
+  /// No description provided for @sos_sender_needs_help.
+  ///
+  /// In en, this message translates to:
+  /// **'{sender} needs help'**
+  String sos_sender_needs_help(String sender);
+
+  /// No description provided for @sos_location_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Location: {latitude}, {longitude}'**
+  String sos_location_label(String latitude, String longitude);
+
+  /// No description provided for @sos_go_help.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Help'**
+  String get sos_go_help;
+
+  /// No description provided for @sos_close_tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get sos_close_tooltip;
+
   /// No description provided for @image_upload_error.
   ///
   /// In en, this message translates to:

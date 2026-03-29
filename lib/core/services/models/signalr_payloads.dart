@@ -140,10 +140,10 @@ class RideRealtimePayload {
       ),
       eventId: _readString(map, const ['eventId', 'EventId']),
       version: _readInt(map, const ['version', 'Version']),
-      occurredAtUtc: _readDateTime(
-        map,
-        const ['occurredAtUtc', 'OccurredAtUtc'],
-      ),
+      occurredAtUtc: _readDateTime(map, const [
+        'occurredAtUtc',
+        'OccurredAtUtc',
+      ]),
       eventType: _readString(map, const ['eventType', 'EventType', 'type']),
     );
   }
@@ -186,10 +186,10 @@ class VoiceSessionRefreshRealtimePayload {
       ),
       eventId: _readString(map, const ['eventId', 'EventId']),
       version: _readInt(map, const ['version', 'Version']),
-      occurredAtUtc: _readDateTime(
-        map,
-        const ['occurredAtUtc', 'OccurredAtUtc'],
-      ),
+      occurredAtUtc: _readDateTime(map, const [
+        'occurredAtUtc',
+        'OccurredAtUtc',
+      ]),
       eventType: _readString(map, const ['eventType', 'EventType', 'type']),
       reason: _readString(map, const ['reason', 'Reason']),
     );
@@ -231,12 +231,112 @@ class VoiceSessionMembershipRealtimePayload {
           0,
       eventId: _readString(map, const ['eventId', 'EventId']),
       version: _readInt(map, const ['version', 'Version']),
-      occurredAtUtc: _readDateTime(
-        map,
-        const ['occurredAtUtc', 'OccurredAtUtc'],
-      ),
+      occurredAtUtc: _readDateTime(map, const [
+        'occurredAtUtc',
+        'OccurredAtUtc',
+      ]),
       eventType: _readString(map, const ['eventType', 'EventType', 'type']),
     );
+  }
+}
+
+class SosAlertPayload {
+  final int groupRideId;
+  final int senderId;
+  final String senderFullName;
+  final String senderUsername;
+  final String? senderProfilePictureUrl;
+  final double latitude;
+  final double longitude;
+  final DateTime sentAt;
+
+  const SosAlertPayload({
+    required this.groupRideId,
+    required this.senderId,
+    required this.senderFullName,
+    required this.senderUsername,
+    this.senderProfilePictureUrl,
+    required this.latitude,
+    required this.longitude,
+    required this.sentAt,
+  });
+
+  factory SosAlertPayload.fromMap(Map<String, dynamic> map) {
+    final groupRideId =
+        _readCanonicalInt(
+          map,
+          canonicalKeys: const ['groupRideId', 'GroupRideId'],
+          legacyKeys: const ['rideId', 'RideId'],
+        ) ??
+        0;
+    final senderId =
+        _readCanonicalInt(
+          map,
+          canonicalKeys: const ['senderId', 'SenderId'],
+          legacyKeys: const ['actorId', 'ActorId', 'userId', 'UserId'],
+        ) ??
+        0;
+    final latitude = _readDouble(map, const [
+      'latitude',
+      'Latitude',
+      'lat',
+      'Lat',
+    ]);
+    final longitude = _readDouble(map, const [
+      'longitude',
+      'Longitude',
+      'lng',
+      'Lng',
+    ]);
+    final sentAt =
+        _readDateTime(map, const ['sentAt', 'SentAt', 'createdAt']) ??
+        DateTime.now().toUtc();
+
+    return SosAlertPayload(
+      groupRideId: groupRideId,
+      senderId: senderId,
+      senderFullName:
+          _readString(map, const ['senderFullName', 'SenderFullName']) ?? '',
+      senderUsername:
+          _readString(map, const ['senderUsername', 'SenderUsername']) ?? '',
+      senderProfilePictureUrl: _readString(map, const [
+        'senderProfilePictureUrl',
+        'SenderProfilePictureUrl',
+      ]),
+      latitude: latitude ?? 0,
+      longitude: longitude ?? 0,
+      sentAt: sentAt,
+    );
+  }
+
+  static SosAlertPayload? tryParse(dynamic raw) {
+    if (raw is Map<String, dynamic>) {
+      final payload = SosAlertPayload.fromMap(raw);
+      if (payload.isValid) return payload;
+      final nested = raw['data'];
+      if (nested is Map<String, dynamic>) {
+        final nestedPayload = SosAlertPayload.fromMap(nested);
+        return nestedPayload.isValid ? nestedPayload : null;
+      }
+      if (nested is Map) {
+        final nestedPayload = SosAlertPayload.fromMap(
+          Map<String, dynamic>.from(nested),
+        );
+        return nestedPayload.isValid ? nestedPayload : null;
+      }
+      return null;
+    }
+    if (raw is Map) {
+      return tryParse(Map<String, dynamic>.from(raw));
+    }
+    return null;
+  }
+
+  bool get isValid {
+    if (groupRideId <= 0 || senderId <= 0) return false;
+    if (latitude < -90 || latitude > 90) return false;
+    if (longitude < -180 || longitude > 180) return false;
+    return true;
   }
 }
 
@@ -265,6 +365,18 @@ int? _readInt(Map<String, dynamic> data, List<String> keys) {
     if (value == null || value is Map || value is List) continue;
     if (value is int) return value;
     final parsed = int.tryParse(value.toString().trim());
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
+double? _readDouble(Map<String, dynamic> data, List<String> keys) {
+  for (final key in keys) {
+    final value = data[key];
+    if (value == null || value is Map || value is List) continue;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    final parsed = double.tryParse(value.toString().trim());
     if (parsed != null) return parsed;
   }
   return null;

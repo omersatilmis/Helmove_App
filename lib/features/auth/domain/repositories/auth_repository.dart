@@ -44,6 +44,13 @@ abstract class AuthRepository {
   /// Şifremi unuttum - Email'e sıfırlama linki gönderir
   Future<void> forgotPassword(String email);
 
+  /// Şifremi unuttum - Token ile yeni şifre belirleme
+  Future<void> confirmForgotPassword({
+    required String token,
+    required String newPassword,
+    required String confirmNewPassword,
+  });
+
   /// Şifre sıfırlama - Mevcut şifre ile yeni şifre belirleme
   Future<void> resetPassword({
     required String email,

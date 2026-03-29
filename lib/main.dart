@@ -37,7 +37,7 @@ void main() async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      
+
       // ⚠️ GLOBAL ERROR HANDLING (Synchronous & Platform)
       FlutterError.onError = (FlutterErrorDetails details) {
         FlutterError.presentError(details);
@@ -87,7 +87,9 @@ void main() async {
             // 💳 Sync RevenueCat Session
             try {
               if (sl.isRegistered<SubscriptionService>()) {
-                await sl<SubscriptionService>().logIn(persistedUser.id.toString());
+                await sl<SubscriptionService>().logIn(
+                  persistedUser.id.toString(),
+                );
                 debugPrint('✅ RevenueCat session synced: ${persistedUser.id}');
               }
             } catch (e) {
@@ -165,20 +167,42 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // Best-effort deep link handling.
     }
 
-    _linkSub = _appLinks.uriLinkStream.listen(
-      (uri) {
-        _handleIncomingUri(uri);
-      },
-      onError: (_) {},
-    );
+    _linkSub = _appLinks.uriLinkStream.listen((uri) {
+      _handleIncomingUri(uri);
+    }, onError: (_) {});
   }
 
   void _handleIncomingUri(Uri uri) {
-    if (uri.scheme != 'helmove' || uri.host != 'share') {
+    if (uri.scheme != 'helmove') {
       return;
     }
-    DeepLinkStore.instance.push(uri);
-    _router.go('/map');
+
+    if (uri.host == 'share') {
+      DeepLinkStore.instance.push(uri);
+      _router.go('/map');
+      return;
+    }
+
+    if (uri.host == 'reset-password') {
+      final token = uri.queryParameters['token']?.trim();
+      final email = uri.queryParameters['email']?.trim();
+
+      if (token == null || token.isEmpty) {
+        _router.go('/forgot-password');
+        return;
+      }
+
+      final query = <String, String>{'token': token};
+      if (email != null && email.isNotEmpty) {
+        query['email'] = email;
+      }
+
+      final route = Uri(
+        path: '/forgot-password/confirm',
+        queryParameters: query,
+      ).toString();
+      _router.go(route);
+    }
   }
 
   void _onThemeChanged() {
@@ -193,7 +217,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Uygulama uykudan uyandığında veya ekrana döndüğünde CallBloc'u tetikle.
-      // Eğer arkaplanda SignalR koptuysa ve bildirim gelmediyse, 
+      // Eğer arkaplanda SignalR koptuysa ve bildirim gelmediyse,
       // REST API üzerinden cevapsız veya bekleyen aramayı burada yakalarız.
       try {
         if (sl.isRegistered<CallBloc>()) {

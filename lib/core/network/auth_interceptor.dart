@@ -140,6 +140,7 @@ class AuthInterceptor extends Interceptor {
         p.contains('api/auth/register') ||
         p.contains('api/auth/refresh-token') ||
         p.contains('api/auth/forgot-password') ||
+        p.contains('api/auth/confirm-forgot-password') ||
         p.contains('api/auth/reset-password');
   }
 

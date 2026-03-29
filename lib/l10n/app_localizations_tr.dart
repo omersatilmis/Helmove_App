@@ -1836,6 +1836,52 @@ class AppLocalizationsTr extends AppLocalizations {
   String get sos_sent => 'SOS Gönderildi!';
 
   @override
+  String get sos_send_failed => 'SOS gönderilemedi.';
+
+  @override
+  String get sos_no_active_ride => 'Aktif grup sürüşü bulunamadı.';
+
+  @override
+  String get sos_location_services_disabled => 'Konum servisleri kapalı.';
+
+  @override
+  String get sos_location_permission_denied => 'Konum izni reddedildi.';
+
+  @override
+  String get sos_location_permission_denied_forever =>
+      'Konum izni kalıcı olarak reddedildi.';
+
+  @override
+  String get sos_sending => 'SOS bildirimi gönderiliyor...';
+
+  @override
+  String sos_countdown_warning(int seconds) {
+    return 'SOS $seconds sn içinde gönderilecek!';
+  }
+
+  @override
+  String get sos_alert_title => 'ACİL SOS UYARISI';
+
+  @override
+  String get sos_default_sender_name => 'Bir sürücü';
+
+  @override
+  String sos_sender_needs_help(String sender) {
+    return '$sender yardım istiyor';
+  }
+
+  @override
+  String sos_location_label(String latitude, String longitude) {
+    return 'Konum: $latitude, $longitude';
+  }
+
+  @override
+  String get sos_go_help => 'Yardıma Git';
+
+  @override
+  String get sos_close_tooltip => 'Kapat';
+
+  @override
   String get image_upload_error => 'Resim yüklenirken hata oluştu';
 
   @override

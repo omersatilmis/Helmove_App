@@ -45,6 +45,7 @@ class SignalRService {
   final _notificationReceivedController = StreamController<dynamic>.broadcast();
   final _rideLocationUpdateController =
       StreamController<Map<String, dynamic>>.broadcast();
+  final _sosAlertController = StreamController<SosAlertPayload>.broadcast();
 
   // Connection State Stream — BehaviorSubject so new subscribers always get the latest state
   final _connectionStateController = BehaviorSubject<HubConnectionState>.seeded(
@@ -122,6 +123,7 @@ class SignalRService {
       _notificationReceivedController.stream;
   Stream<Map<String, dynamic>> get rideLocationUpdateStream =>
       _rideLocationUpdateController.stream;
+  Stream<SosAlertPayload> get sosAlertStream => _sosAlertController.stream;
 
   final _voiceSessionRefreshController =
       StreamController<VoiceSessionRefreshRealtimePayload>.broadcast();
@@ -382,6 +384,17 @@ class SignalRService {
         AppLogger.info("SignalR: Received Notification -> $notification");
         _notificationReceivedController.add(notification);
       }
+    });
+
+    _hubConnection!.on("ReceiveSosAlert", (arguments) {
+      _trackSignalREvent('ReceiveSosAlert');
+      if (arguments == null || arguments.isEmpty) return;
+      final payload = SosAlertPayload.tryParse(arguments[0]);
+      if (payload == null) return;
+      AppLogger.warning(
+        "SignalR: SOS Alert -> Ride:${payload.groupRideId} Sender:${payload.senderId}",
+      );
+      _sosAlertController.add(payload);
     });
 
     _hubConnection!.on("ParticipantStatusUpdated", (arguments) {

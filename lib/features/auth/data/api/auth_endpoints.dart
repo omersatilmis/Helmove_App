@@ -5,6 +5,8 @@ class AuthEndpoints {
   static const String register = 'api/auth/register';
   static const String logout = 'api/auth/logout';
   static const String forgotPassword = 'api/auth/forgot-password';
+  static const String confirmForgotPassword =
+      'api/auth/confirm-forgot-password';
   static const String resetPassword = 'api/auth/reset-password';
   static const String refreshToken = 'api/auth/refresh-token';
   static const String revokeToken = 'api/auth/revoke-token';

@@ -4,6 +4,7 @@ import '../dto/login_response_dto.dart';
 import '../dto/register_request_dto.dart';
 import '../dto/register_response_dto.dart';
 import '../dto/forgot_password_request_dto.dart';
+import '../dto/confirm_forgot_password_request_dto.dart';
 import '../dto/reset_password_request_dto.dart';
 import '../dto/refresh_token_request_dto.dart';
 import '../dto/revoke_token_request_dto.dart';
@@ -14,6 +15,7 @@ abstract class AuthRemoteDataSource {
   Future<RegisterResponseDto> register(RegisterRequestDto request);
   Future<void> logout({RevokeTokenRequestDto? request});
   Future<void> forgotPassword(ForgotPasswordRequestDto request);
+  Future<void> confirmForgotPassword(ConfirmForgotPasswordRequestDto request);
   Future<void> resetPassword(ResetPasswordRequestDto request);
 
   // New methods
@@ -46,6 +48,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> forgotPassword(ForgotPasswordRequestDto request) async {
     return await api.forgotPassword(request);
+  }
+
+  @override
+  Future<void> confirmForgotPassword(
+    ConfirmForgotPasswordRequestDto request,
+  ) async {
+    return await api.confirmForgotPassword(request);
   }
 
   @override

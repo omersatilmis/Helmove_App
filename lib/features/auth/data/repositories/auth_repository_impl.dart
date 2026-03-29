@@ -6,6 +6,7 @@ import '../datasources/auth_remote_data_source.dart';
 import '../dto/login_request_dto.dart';
 import '../dto/register_request_dto.dart';
 import '../dto/forgot_password_request_dto.dart';
+import '../dto/confirm_forgot_password_request_dto.dart';
 import '../dto/reset_password_request_dto.dart';
 import '../dto/refresh_token_request_dto.dart';
 import '../dto/revoke_token_request_dto.dart';
@@ -142,6 +143,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final token = await _localDataSource.getToken();
     final id = await _localDataSource.getUserId();
     final username = await _localDataSource.getUsername();
+    final email = await _localDataSource.getEmail();
     final firstName = await _localDataSource.getFirstName();
     final lastName = await _localDataSource.getLastName();
     final profileImageUrl = await _localDataSource.getProfileImageUrl();
@@ -155,7 +157,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return AuthEntity(
         id: id,
         username: username,
-        email: '',
+        email: email ?? '',
         token: token,
         firstName: firstName,
         lastName: lastName,
@@ -197,6 +199,24 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final requestDto = ForgotPasswordRequestDto(email: email);
       await _remoteDataSource.forgotPassword(requestDto);
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<void> confirmForgotPassword({
+    required String token,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) async {
+    try {
+      final requestDto = ConfirmForgotPasswordRequestDto(
+        token: token,
+        newPassword: newPassword,
+        confirmNewPassword: confirmNewPassword,
+      );
+      await _remoteDataSource.confirmForgotPassword(requestDto);
     } catch (e) {
       throw Exception(ErrorHandler.getErrorMessage(e));
     }

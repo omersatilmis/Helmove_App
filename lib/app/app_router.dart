@@ -6,6 +6,8 @@ import 'package:helmove/app/bottom_bar.dart';
 import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/features/auth/presentation/pages/login_page.dart';
 import 'package:helmove/features/auth/presentation/pages/register_page.dart';
+import 'package:helmove/features/auth/presentation/pages/forgot_password_page.dart';
+import 'package:helmove/features/auth/presentation/pages/forgot_password_confirm_page.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/communication/presentation/models/invite_args.dart';
 import '../../features/communication/presentation/pages/invite_page.dart';
@@ -132,11 +134,19 @@ GoRouter createRouter(AuthProvider authProvider) {
         isLoggedIn = await authProvider.checkAuthStatus();
       }
 
-      final isLoggingIn = state.uri.toString() == '/login';
-      final isRegistering = state.uri.toString() == '/register';
+      final path = state.uri.path;
+      final isLoggingIn = path == '/login';
+      final isRegistering = path == '/register';
+      final isForgotPassword = path == '/forgot-password';
+      final isForgotPasswordConfirm = path == '/forgot-password/confirm';
+      final isPublicAuthRoute =
+          isLoggingIn ||
+          isRegistering ||
+          isForgotPassword ||
+          isForgotPasswordConfirm;
 
       if (!isLoggedIn) {
-        if (!isLoggingIn && !isRegistering) {
+        if (!isPublicAuthRoute) {
           return '/login';
         }
       } else {
@@ -154,6 +164,25 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/forgot-password/confirm',
+        redirect: (context, state) {
+          final token = state.uri.queryParameters['token'];
+          if (token == null || token.trim().isEmpty) {
+            return '/forgot-password';
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final token = state.uri.queryParameters['token']!;
+          final email = state.uri.queryParameters['email'];
+          return ForgotPasswordConfirmPage(token: token, email: email);
+        },
       ),
 
       // Drawer içinden gidilen sayfalar
@@ -175,11 +204,15 @@ GoRouter createRouter(AuthProvider authProvider) {
         path: '/profile/:userId/posts',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          if (extra == null) return const Scaffold(body: Center(child: Text('Hata: Veri eksik')));
-          
+          if (extra == null) {
+            return const Scaffold(
+              body: Center(child: Text('Hata: Veri eksik')),
+            );
+          }
+
           final initialIndex = extra['initialIndex'] as int;
           final postsBloc = extra['postsBloc'] as PostsBloc;
-          
+
           return UserPostsFeedPage(
             initialIndex: initialIndex,
             postsBloc: postsBloc,

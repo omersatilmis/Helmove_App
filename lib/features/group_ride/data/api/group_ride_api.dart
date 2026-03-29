@@ -76,6 +76,21 @@ class GroupRideApi implements GroupRideRemoteDataSource {
     }
   }
 
+  Future<void> sendSosAlert({
+    required int rideId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      await _dio.post(
+        '/api/GroupRide/$rideId/sos',
+        data: {'latitude': latitude, 'longitude': longitude},
+      );
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e));
+    }
+  }
+
   String _parseErrorMessage(dynamic error) {
     if (error is DioException) {
       switch (error.type) {

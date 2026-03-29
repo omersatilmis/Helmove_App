@@ -683,6 +683,43 @@
     "send_invitation": "Davet Gönder",
     "invite_sent": "Davet Gönderildi",
     "sos_sent": "SOS Gönderildi!",
+    "sos_send_failed": "SOS gönderilemedi.",
+    "sos_no_active_ride": "Aktif grup sürüşü bulunamadı.",
+    "sos_location_services_disabled": "Konum servisleri kapalı.",
+    "sos_location_permission_denied": "Konum izni reddedildi.",
+    "sos_location_permission_denied_forever": "Konum izni kalıcı olarak reddedildi.",
+    "sos_sending": "SOS bildirimi gönderiliyor...",
+    "sos_countdown_warning": "SOS {seconds} sn içinde gönderilecek!",
+    "@sos_countdown_warning": {
+        "placeholders": {
+            "seconds": {
+                "type": "int"
+            }
+        }
+    },
+    "sos_alert_title": "ACİL SOS UYARISI",
+    "sos_default_sender_name": "Bir sürücü",
+    "sos_sender_needs_help": "{sender} yardım istiyor",
+    "@sos_sender_needs_help": {
+        "placeholders": {
+            "sender": {
+                "type": "String"
+            }
+        }
+    },
+    "sos_location_label": "Konum: {latitude}, {longitude}",
+    "@sos_location_label": {
+        "placeholders": {
+            "latitude": {
+                "type": "String"
+            },
+            "longitude": {
+                "type": "String"
+            }
+        }
+    },
+    "sos_go_help": "Yardıma Git",
+    "sos_close_tooltip": "Kapat",
     "image_upload_error": "Resim yüklenirken hata oluştu",
     "delete_failed": "Silme işlemi başarısız",
     "like_failed": "Beğenme işlemi başarısız",

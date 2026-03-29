@@ -132,6 +132,30 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Şifremi Unuttum Onayı (Token ile)
+  Future<bool> confirmForgotPassword({
+    required String token,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) async {
+    _setLoading(true);
+    clearError();
+
+    try {
+      await _authRepository.confirmForgotPassword(
+        token: token,
+        newPassword: newPassword,
+        confirmNewPassword: confirmNewPassword,
+      );
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // Şifre Sıfırlama
   Future<bool> resetPassword({
     required String email,

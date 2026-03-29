@@ -1840,6 +1840,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sos_sent => 'SOS Sent!';
 
   @override
+  String get sos_send_failed => 'Failed to send SOS.';
+
+  @override
+  String get sos_no_active_ride => 'No active group ride found.';
+
+  @override
+  String get sos_location_services_disabled =>
+      'Location services are disabled.';
+
+  @override
+  String get sos_location_permission_denied => 'Location permission denied.';
+
+  @override
+  String get sos_location_permission_denied_forever =>
+      'Location permission permanently denied.';
+
+  @override
+  String get sos_sending => 'Sending SOS alert...';
+
+  @override
+  String sos_countdown_warning(int seconds) {
+    return 'SOS will be sent in ${seconds}s!';
+  }
+
+  @override
+  String get sos_alert_title => 'EMERGENCY SOS ALERT';
+
+  @override
+  String get sos_default_sender_name => 'A rider';
+
+  @override
+  String sos_sender_needs_help(String sender) {
+    return '$sender needs help';
+  }
+
+  @override
+  String sos_location_label(String latitude, String longitude) {
+    return 'Location: $latitude, $longitude';
+  }
+
+  @override
+  String get sos_go_help => 'Go Help';
+
+  @override
+  String get sos_close_tooltip => 'Close';
+
+  @override
   String get image_upload_error => 'Error uploading image';
 
   @override
