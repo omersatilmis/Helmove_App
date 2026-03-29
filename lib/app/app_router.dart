@@ -8,6 +8,7 @@ import 'package:helmove/features/auth/presentation/pages/login_page.dart';
 import 'package:helmove/features/auth/presentation/pages/register_page.dart';
 import 'package:helmove/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:helmove/features/auth/presentation/pages/forgot_password_confirm_page.dart';
+import 'package:helmove/features/auth/presentation/pages/pre_auth_page.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/communication/presentation/models/invite_args.dart';
 import '../../features/communication/presentation/pages/invite_page.dart';
@@ -121,7 +122,7 @@ GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     refreshListenable: authProvider,
-    initialLocation: '/homepage',
+    initialLocation: '/pre-auth',
 
     // Unified Redirect Guard (Auth)
     redirect: (context, state) async {
@@ -135,11 +136,13 @@ GoRouter createRouter(AuthProvider authProvider) {
       }
 
       final path = state.uri.path;
+      final isPreAuth = path == '/pre-auth';
       final isLoggingIn = path == '/login';
       final isRegistering = path == '/register';
       final isForgotPassword = path == '/forgot-password';
       final isForgotPasswordConfirm = path == '/forgot-password/confirm';
       final isPublicAuthRoute =
+          isPreAuth ||
           isLoggingIn ||
           isRegistering ||
           isForgotPassword ||
@@ -147,10 +150,10 @@ GoRouter createRouter(AuthProvider authProvider) {
 
       if (!isLoggedIn) {
         if (!isPublicAuthRoute) {
-          return '/login';
+          return '/pre-auth';
         }
       } else {
-        if (isLoggingIn || isRegistering) {
+        if (isPublicAuthRoute) {
           return '/homepage';
         }
       }
@@ -160,6 +163,10 @@ GoRouter createRouter(AuthProvider authProvider) {
 
     routes: [
       // --- 1. TAM EKRAN SAYFALAR ---
+      GoRoute(
+        path: '/pre-auth',
+        builder: (context, state) => const PreAuthPage(),
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(
         path: '/register',

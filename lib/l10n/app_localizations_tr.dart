@@ -75,6 +75,22 @@ class AppLocalizationsTr extends AppLocalizations {
   String get continueWithGoogle => 'Google ile Devam Et';
 
   @override
+  String get continueWithApple => 'Apple ile Devam Et';
+
+  @override
+  String get preAuthWelcomeTitle => 'Dünyayı keşfetmeye ne dersin?';
+
+  @override
+  String get preAuthSubtitle =>
+      'Arkadaşlarını bul, iletişime geç, özgürlüğün tadını çıkar';
+
+  @override
+  String get preAuthSocialDivider => 'veya devam et';
+
+  @override
+  String get socialSignInNotReady => 'Sosyal giriş tamamlanamadı.';
+
+  @override
   String get dontHaveAccount => 'Hesabınız yok mu?';
 
   @override
@@ -1122,6 +1138,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get createPost => 'Gönderi Oluştur';
+
+  @override
+  String get newMessageCreate => 'Yeni Mesaj Oluştur';
 
   @override
   String get whatIsOnYourMind => 'Neler düşünüyorsun?';

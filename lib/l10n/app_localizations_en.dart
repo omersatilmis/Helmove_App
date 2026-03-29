@@ -75,6 +75,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get continueWithGoogle => 'Continue with Google';
 
   @override
+  String get continueWithApple => 'Continue with Apple';
+
+  @override
+  String get preAuthWelcomeTitle => 'How about exploring the world?';
+
+  @override
+  String get preAuthSubtitle => 'Find your friends, connect, and taste freedom';
+
+  @override
+  String get preAuthSocialDivider => 'continue with';
+
+  @override
+  String get socialSignInNotReady => 'Social sign-in could not be completed.';
+
+  @override
   String get dontHaveAccount => 'Don\'t have an account?';
 
   @override
@@ -1126,6 +1141,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createPost => 'Create Post';
+
+  @override
+  String get newMessageCreate => 'Create New Message';
 
   @override
   String get whatIsOnYourMind => 'What\'s on your mind?';

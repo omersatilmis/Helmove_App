@@ -66,6 +66,15 @@ class _ConversationsViewState extends State<ConversationsView> {
     });
   }
 
+  Future<void> _openNewMessageFlow() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PickFriendPage()),
+    );
+    if (!mounted) return;
+    context.read<ConversationsBloc>().add(RefreshConversations());
+  }
+
   String _formatDate(DateTime? date, BuildContext context) {
     if (date == null) return '';
     final l10n = AppLocalizations.of(context)!;
@@ -123,9 +132,19 @@ class _ConversationsViewState extends State<ConversationsView> {
               onPressed: _toggleSearch,
             ),
             if (AppFeatureFlags.showMoreButton)
-              IconButton(
+              PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert_rounded),
-                onPressed: () {},
+                onSelected: (value) {
+                  if (value == 'new_message') {
+                    _openNewMessageFlow();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'new_message',
+                    child: Text(l10n.newMessageCreate),
+                  ),
+                ],
               ),
           ],
           bottom: PreferredSize(
@@ -137,16 +156,7 @@ class _ConversationsViewState extends State<ConversationsView> {
           ),
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PickFriendPage()),
-            ).then((_) {
-              if (context.mounted) {
-                context.read<ConversationsBloc>().add(RefreshConversations());
-              }
-            });
-          },
+          onPressed: _openNewMessageFlow,
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           elevation: 4,

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'auth_endpoints.dart';
 import '../dto/login_request_dto.dart';
 import '../dto/login_response_dto.dart';
+import '../dto/social_sign_in_request_dto.dart';
 import '../dto/register_request_dto.dart';
 import '../dto/register_response_dto.dart';
 import '../dto/forgot_password_request_dto.dart';
@@ -49,6 +50,35 @@ class AuthApi {
       AppLogger.error("======== LOGIN END ========");
       throw Exception("Beklenmedik bir hata oluştu: $e");
     }
+  }
+
+  Future<LoginResponseDto> socialSignIn(SocialSignInRequestDto request) async {
+    DioException? notFoundError;
+    final candidatePaths = <String>[
+      AuthEndpoints.socialLogin,
+      ...AuthEndpoints.socialLoginFallbacks,
+    ];
+
+    for (final path in candidatePaths) {
+      try {
+        final response = await _dio.post(path, data: request.toJson());
+        return LoginResponseDto.fromJson(response.data);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          notFoundError = e;
+          continue;
+        }
+        final errorMessage =
+            _parseErrorMessage(e.response?.data) ??
+            'Sosyal giriş başarısız: ${e.response?.statusCode}';
+        throw Exception(errorMessage);
+      } catch (e) {
+        throw Exception("Beklenmedik bir hata oluştu: $e");
+      }
+    }
+
+    final statusCode = notFoundError?.response?.statusCode;
+    throw Exception('Sosyal giriş endpointi bulunamadı: $statusCode');
   }
 
   Future<RegisterResponseDto> register(RegisterRequestDto request) async {

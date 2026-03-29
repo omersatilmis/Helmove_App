@@ -86,6 +86,51 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> socialSignIn({
+    required String provider,
+    required String idToken,
+    String? accessToken,
+    String? authorizationCode,
+    String? email,
+    String? displayName,
+    bool rememberMe = true,
+  }) async {
+    _setLoading(true);
+    clearError();
+
+    try {
+      final authEntity = await _authRepository.socialSignIn(
+        provider: provider,
+        idToken: idToken,
+        accessToken: accessToken,
+        authorizationCode: authorizationCode,
+        email: email,
+        displayName: displayName,
+        rememberMe: rememberMe,
+      );
+
+      _currentUser = authEntity;
+      _appSession.updateSession(
+        currentUserId: authEntity.id,
+        currentUser: authEntity,
+        token: authEntity.token,
+      );
+
+      await di.sl<SubscriptionService>().logIn(authEntity.id.toString());
+      await di.sl<SubscriptionService>().syncWithBackend();
+
+      await _notificationService.ensureInitialized();
+      await _notificationService.login(authEntity.id.toString());
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // Register
   Future<bool> register({
     required String username,

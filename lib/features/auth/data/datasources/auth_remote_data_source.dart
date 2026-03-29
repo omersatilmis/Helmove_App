@@ -1,6 +1,7 @@
 import '../api/auth_api.dart';
 import '../dto/login_request_dto.dart';
 import '../dto/login_response_dto.dart';
+import '../dto/social_sign_in_request_dto.dart';
 import '../dto/register_request_dto.dart';
 import '../dto/register_response_dto.dart';
 import '../dto/forgot_password_request_dto.dart';
@@ -12,6 +13,7 @@ import '../dto/session_dto.dart';
 
 abstract class AuthRemoteDataSource {
   Future<LoginResponseDto> login(LoginRequestDto request);
+  Future<LoginResponseDto> socialSignIn(SocialSignInRequestDto request);
   Future<RegisterResponseDto> register(RegisterRequestDto request);
   Future<void> logout({RevokeTokenRequestDto? request});
   Future<void> forgotPassword(ForgotPasswordRequestDto request);
@@ -33,6 +35,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<LoginResponseDto> login(LoginRequestDto request) async {
     return await api.login(request);
+  }
+
+  @override
+  Future<LoginResponseDto> socialSignIn(SocialSignInRequestDto request) async {
+    return await api.socialSignIn(request);
   }
 
   @override

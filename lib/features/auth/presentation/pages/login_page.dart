@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/widgets/app_button.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
-import 'package:helmove/features/auth/presentation/widgets/auth_divider_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_header_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_footer_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_error_widget.dart';
@@ -252,22 +251,6 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
 
                                     SizedBox(height: sectionGap),
-
-                                    // Veya Ayıracı
-                                    const AuthDividerWidget(),
-
-                                    SizedBox(height: sectionGap),
-
-                                    // Google Giriş
-                                    AppButton(
-                                      text: l10n.continueWithGoogle,
-                                      onPressed: () {},
-                                      variant: AppButtonVariant.secondary,
-                                      style: AppButtonStyle.outlined,
-                                      isFullWidth: true,
-                                      icon: Icons.g_mobiledata,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
 
                                     SizedBox(height: isCompactHeight ? 10 : 16),
                                   ],

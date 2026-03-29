@@ -77,6 +77,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
         top: false,
@@ -101,11 +102,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                 ),
                 Expanded(
-                  child: Center(
-                    child: SingleChildScrollView(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
                       padding: EdgeInsets.fromLTRB(
                         horizontalPadding,
-                        12,
+                        8,
                         horizontalPadding,
                         20,
                       ),

@@ -12,4 +12,13 @@ class AuthEndpoints {
   static const String revokeToken = 'api/auth/revoke-token';
   static const String sessions = 'api/auth/sessions';
   static const String refreshCurrentUser = 'api/auth/refresh-current-user';
+  static const String socialLogin = 'api/auth/social-login';
+
+  // Some backend branches use alternative naming for social auth.
+  // We try these as fallback when the primary path returns 404.
+  static const List<String> socialLoginFallbacks = [
+    'api/auth/social-signin',
+    'api/auth/social-sign-in',
+    'api/auth/external-login',
+  ];
 }

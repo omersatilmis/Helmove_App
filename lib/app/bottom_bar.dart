@@ -41,23 +41,34 @@ class BottomBarWrapper extends StatelessWidget {
         return;
       }
 
-      if (!granted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.communicationPermissionsRequired),
-            padding: const EdgeInsets.all(16),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Theme.of(context).colorScheme.error,
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: l10n.settings,
-              textColor: Colors.white,
-              onPressed: PermissionsService.openSettings,
+        if (!granted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Expanded(
+                    child: Text(l10n.communicationPermissionsRequired),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () =>
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(16),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: l10n.settings,
+                textColor: Colors.white,
+                onPressed: PermissionsService.openSettings,
+              ),
             ),
-          ),
-        );
-        return;
-      }
+          );
+          return;
+        }
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       await sl<CallKitIncomingService>().requestPermissions();
@@ -370,11 +381,7 @@ class BottomBarWrapper extends StatelessWidget {
                   color: colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(
-                  icon,
-                  color: colorScheme.primary,
-                  size: 28,
-                ),
+                child: Icon(icon, color: colorScheme.primary, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(

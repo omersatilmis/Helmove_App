@@ -230,6 +230,36 @@ abstract class AppLocalizations {
   /// **'Continue with Google'**
   String get continueWithGoogle;
 
+  /// No description provided for @continueWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Apple'**
+  String get continueWithApple;
+
+  /// No description provided for @preAuthWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How about exploring the world?'**
+  String get preAuthWelcomeTitle;
+
+  /// No description provided for @preAuthSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find your friends, connect, and taste freedom'**
+  String get preAuthSubtitle;
+
+  /// No description provided for @preAuthSocialDivider.
+  ///
+  /// In en, this message translates to:
+  /// **'continue with'**
+  String get preAuthSocialDivider;
+
+  /// No description provided for @socialSignInNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Social sign-in could not be completed.'**
+  String get socialSignInNotReady;
+
   /// No description provided for @dontHaveAccount.
   ///
   /// In en, this message translates to:
@@ -2209,6 +2239,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create Post'**
   String get createPost;
+
+  /// No description provided for @newMessageCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create New Message'**
+  String get newMessageCreate;
 
   /// No description provided for @whatIsOnYourMind.
   ///

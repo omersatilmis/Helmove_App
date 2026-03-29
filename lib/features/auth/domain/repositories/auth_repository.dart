@@ -11,6 +11,16 @@ abstract class AuthRepository {
     bool rememberMe = true,
   });
 
+  Future<AuthEntity> socialSignIn({
+    required String provider,
+    required String idToken,
+    String? accessToken,
+    String? authorizationCode,
+    String? email,
+    String? displayName,
+    bool rememberMe = true,
+  });
+
   Future<void> register({
     required String username,
     required String firstName,

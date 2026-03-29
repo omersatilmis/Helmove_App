@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:helmove/core/widgets/app_button.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
-import 'package:helmove/features/auth/presentation/widgets/auth_divider_widget.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
 class RegisterFormWidget extends StatefulWidget {
@@ -80,9 +79,8 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
             label: l10n.username,
             leadingIcon: Icons.alternate_email,
             textInputAction: TextInputAction.next,
-            validator: (val) => (val == null || val.length < 3)
-                ? l10n.usernameTooShort
-                : null,
+            validator: (val) =>
+                (val == null || val.length < 3) ? l10n.usernameTooShort : null,
           ),
           const SizedBox(height: 12),
           Row(
@@ -95,8 +93,9 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                   label: l10n.firstName,
                   leadingIcon: Icons.person_outline,
                   textInputAction: TextInputAction.next,
-                  validator: (val) =>
-                      (val == null || val.trim().isEmpty) ? l10n.required : null,
+                  validator: (val) => (val == null || val.trim().isEmpty)
+                      ? l10n.required
+                      : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -108,8 +107,9 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                   leadingIcon: Icons.person_outline,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _nextStep(),
-                  validator: (val) =>
-                      (val == null || val.trim().isEmpty) ? l10n.required : null,
+                  validator: (val) => (val == null || val.trim().isEmpty)
+                      ? l10n.required
+                      : null,
                 ),
               ),
             ],
@@ -133,9 +133,8 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
             leadingIcon: Icons.email_outlined,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _nextStep(),
-            validator: (val) => (val == null || !val.contains('@'))
-                ? l10n.invalidMail
-                : null,
+            validator: (val) =>
+                (val == null || !val.contains('@')) ? l10n.invalidMail : null,
           ),
         ],
       ),
@@ -193,12 +192,12 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
             Text(
               "${AppLocalizations.of(context)!.step} ${_currentStep + 1} / 3",
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
             const SizedBox(height: 16),
-            
+
             // FORM FIELDS
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
@@ -219,13 +218,13 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 child: _currentStep == 0
                     ? _buildStep1()
                     : _currentStep == 1
-                        ? _buildStep2()
-                        : _buildStep3(),
+                    ? _buildStep2()
+                    : _buildStep3(),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // NAVIGATION BUTTONS
             Row(
               children: [
@@ -236,7 +235,8 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                       text: AppLocalizations.of(context)!.back,
                       onPressed: _prevStep,
                       variant: AppButtonVariant.secondary,
-                      style: AppButtonStyle.outlined, // Outlined siyah olacak şekilde tasarlanmış AppButton kuralına uyar
+                      style: AppButtonStyle
+                          .outlined, // Outlined siyah olacak şekilde tasarlanmış AppButton kuralına uyar
                       size: AppButtonSize.large,
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -246,7 +246,9 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 Expanded(
                   flex: 2,
                   child: AppButton(
-                    text: _currentStep == 2 ? AppLocalizations.of(context)!.createAccount : AppLocalizations.of(context)!.continueText,
+                    text: _currentStep == 2
+                        ? AppLocalizations.of(context)!.createAccount
+                        : AppLocalizations.of(context)!.continueText,
                     isLoading: widget.authProvider.isLoading,
                     onPressed: _currentStep == 2 ? _submit : _nextStep,
                     size: AppButtonSize.large,
@@ -255,23 +257,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 ),
               ],
             ),
-
-            // OAUTH OPTIONS (Only on step 1)
-            if (_currentStep == 0) ...[
-              const SizedBox(height: 16),
-              const AuthDividerWidget(),
-              const SizedBox(height: 16),
-              AppButton(
-                text: AppLocalizations.of(context)!.continueWithGoogle,
-                onPressed: () {},
-                variant: AppButtonVariant.secondary,
-                style: AppButtonStyle.outlined,
-                isFullWidth: true,
-                icon: Icons.g_mobiledata,
-                size: AppButtonSize.large,
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ],
             const SizedBox(height: 8),
           ],
         ),

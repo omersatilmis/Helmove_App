@@ -4,6 +4,7 @@ import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../dto/login_request_dto.dart';
+import '../dto/social_sign_in_request_dto.dart';
 import '../dto/register_request_dto.dart';
 import '../dto/forgot_password_request_dto.dart';
 import '../dto/confirm_forgot_password_request_dto.dart';
@@ -58,6 +59,62 @@ class AuthRepositoryImpl implements AuthRepository {
       // ────────────────────────────────────────────────────────
       // 💳 REVENUECAT LOGIN SYNC
       // ────────────────────────────────────────────────────────
+      try {
+        if (sl.isRegistered<SubscriptionService>()) {
+          await sl<SubscriptionService>().logIn(entity.id.toString());
+          debugPrint('✅ RevenueCat user logged in: ${entity.id}');
+        }
+      } catch (e) {
+        debugPrint('❌ RevenueCat login failed: $e');
+      }
+
+      return entity;
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<AuthEntity> socialSignIn({
+    required String provider,
+    required String idToken,
+    String? accessToken,
+    String? authorizationCode,
+    String? email,
+    String? displayName,
+    bool rememberMe = true,
+  }) async {
+    try {
+      final requestDto = SocialSignInRequestDto(
+        provider: provider,
+        idToken: idToken,
+        accessToken: accessToken,
+        authorizationCode: authorizationCode,
+        email: email,
+        displayName: displayName,
+      );
+      final responseDto = await _remoteDataSource.socialSignIn(requestDto);
+
+      if (!responseDto.success || responseDto.data == null) {
+        throw Exception(responseDto.message ?? "Sosyal giriş başarısız");
+      }
+
+      final entity = AuthMapper.toEntity(responseDto);
+
+      await _localDataSource.saveToken(entity.token);
+      final refreshToken = responseDto.data?.refreshToken;
+      if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+        await _localDataSource.saveRefreshToken(refreshToken);
+      }
+      await _localDataSource.saveUserId(entity.id);
+      await _localDataSource.saveUsername(entity.username);
+      await _localDataSource.saveEmail(entity.email);
+      await _localDataSource.saveFirstName(entity.firstName);
+      await _localDataSource.saveLastName(entity.lastName);
+      await _localDataSource.saveProfileImageUrl(entity.profileImageUrl);
+      await _localDataSource.saveTier(entity.tier);
+      await _localDataSource.saveRememberMe(rememberMe);
+
       try {
         if (sl.isRegistered<SubscriptionService>()) {
           await sl<SubscriptionService>().logIn(entity.id.toString());
