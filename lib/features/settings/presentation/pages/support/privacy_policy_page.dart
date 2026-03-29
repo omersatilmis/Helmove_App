@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicyPage extends StatelessWidget {
@@ -9,15 +10,19 @@ class PrivacyPolicyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // Tema kontrolü (Dark/Light)
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const SizedBox.shrink();
+    }
 
     return Scaffold(
       backgroundColor: isDark
           ? AppColors.darkBackground
           : AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text(
-          "Gizlilik Politikası",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.privacyPolicy,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         centerTitle: true,
@@ -32,64 +37,50 @@ class PrivacyPolicyPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildLastUpdated(isDark),
+            _buildLastUpdated(isDark, l10n),
             const SizedBox(height: 24),
 
             _buildSection(
-              title: "1. Giriş",
-              content:
-                  "Helmove olarak gizliliğinize önem veriyoruz. Bu gizlilik politikası, uygulamamızı kullandığınızda verilerinizin nasıl toplandığını, kullanıldığını ve korunduğunu açıklar.",
+              title: l10n.privacySection1Title,
+              content: l10n.privacySection1Content,
               isDark: isDark,
             ),
 
             _buildSection(
-              title: "2. Toplanan Veriler",
-              content:
-                  "Uygulamamızı kullanırken aşağıdaki verileri toplayabiliriz:\n\n"
-                  "• Profil Bilgileri: Adınız, e-posta adresiniz ve profil fotoğrafınız.\n"
-                  "• Konum Verileri: Grup sürüşlerinde diğer sürücülerle konumunuzu paylaşabilmeniz için (Hayalet Mod kapalıyken).\n"
-                  "• Medya: Paylaştığınız gönderiler, 'jot'lar ve fotoğraflar.\n"
-                  "• Cihaz Bilgileri: Uygulama performansı ve hata takibi için gerekli teknik veriler.",
+              title: l10n.privacySection2Title,
+              content: l10n.privacySection2Content,
               isDark: isDark,
             ),
 
             _buildSection(
-              title: "3. Veri Kullanımı",
-              content:
-                  "Topladığımız verileri şu amaçlarla kullanıyoruz:\n\n"
-                  "• İletişim özelliklerini (Sesli oturumlar, mesajlaşma) sağlamak.\n"
-                  "• Sürüş güvenliği ve grup koordinasyonunu artırmak.\n"
-                  "• Uygulama deneyimini kişiselleştirmek ve iyileştirmek.\n"
-                  "• Teknik sorunları gidermek ve güvenliği sağlamak.",
+              title: l10n.privacySection3Title,
+              content: l10n.privacySection3Content,
               isDark: isDark,
             ),
 
             _buildSection(
-              title: "4. Veri Paylaşımı",
-              content:
-                  "Verileriniz, yasal zorunluluklar haricinde üçüncü şahıslarla reklam amaçlı paylaşılmaz. Sesli iletişim için LiveKit gibi altyapı sağlayıcıları kullanılırken sadece gerekli teknik kimlikler paylaşılır.",
+              title: l10n.privacySection4Title,
+              content: l10n.privacySection4Content,
               isDark: isDark,
             ),
 
             _buildSection(
-              title: "5. Haklarınız",
-              content:
-                  "Dilediğiniz zaman profilinizi düzenleyebilir, verilerinize erişebilir veya hesabınızı silerek tüm kişisel verilerinizin kaldırılmasını talep edebilirsiniz. Gizlilik ayarlarından konum paylaşımınızı her an kapatabilirsiniz.",
+              title: l10n.privacySection5Title,
+              content: l10n.privacySection5Content,
               isDark: isDark,
             ),
 
             _buildSection(
-              title: "6. İletişim",
-              content:
-                  "Gizlilik politikamız hakkında sorularınız için destek@Helmove.app adresinden bize ulaşabilirsiniz.",
+              title: l10n.privacySection6Title,
+              content: l10n.privacySection6Content,
               isDark: isDark,
             ),
 
             const SizedBox(height: 16),
-            _buildWebLink(isDark),
+            _buildWebLink(isDark, l10n),
 
             const SizedBox(height: 40),
-            _buildBottomBanner(isDark),
+            _buildBottomBanner(isDark, l10n),
             const SizedBox(height: 40),
           ],
         ),
@@ -97,12 +88,12 @@ class PrivacyPolicyPage extends StatelessWidget {
     );
   }
 
-  Widget _buildWebLink(bool isDark) {
+  Widget _buildWebLink(bool isDark, AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Daha fazla bilgi için web sitemizi ziyaret ediniz.",
+          l10n.privacyWebInfoText,
           style: TextStyle(
             fontSize: 14,
             color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
@@ -123,9 +114,9 @@ class PrivacyPolicyPage extends StatelessWidget {
               debugPrint('Url açılamadı: $e');
             }
           },
-          child: const Text(
-            "Helmove Gizlilik Politikası",
-            style: TextStyle(
+          child: Text(
+            l10n.privacyWebLinkText,
+            style: const TextStyle(
               fontSize: 15,
               color: Colors.blue,
               decoration: TextDecoration.underline,
@@ -137,7 +128,7 @@ class PrivacyPolicyPage extends StatelessWidget {
     );
   }
 
-  Widget _buildLastUpdated(bool isDark) {
+  Widget _buildLastUpdated(bool isDark, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -150,7 +141,7 @@ class PrivacyPolicyPage extends StatelessWidget {
           const Icon(Icons.update_rounded, color: AppColors.primary, size: 20),
           const SizedBox(width: 8),
           Text(
-            "Son Güncelleme: 6 Mart 2026",
+            l10n.privacyLastUpdated,
             style: TextStyle(
               fontSize: 13,
               color: isDark
@@ -198,7 +189,7 @@ class PrivacyPolicyPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomBanner(bool isDark) {
+  Widget _buildBottomBanner(bool isDark, AppLocalizations l10n) {
     return Center(
       child: Opacity(
         opacity: 0.5,
@@ -211,7 +202,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "Helmove Güvenli Sürüş Platformu",
+              l10n.privacyBottomBannerText,
               style: TextStyle(
                 fontSize: 12,
                 color: isDark

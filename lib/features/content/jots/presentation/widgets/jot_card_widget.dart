@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:flutter/services.dart'; // Haptic Feedback (Titreşim) için eklendi
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -36,13 +37,13 @@ class JotCardWidget extends StatelessWidget {
 
     final isOwner = currentUserId != null && jot.userId == currentUserId;
 
-    final firstName = jot.firstName ?? jot.username ?? "Kullanıcı";
+    final firstName = jot.firstName ?? jot.username ?? AppLocalizations.of(context)!.user;
     final lastName = jot.lastName ?? "";
     final userName = jot.username ?? "user";
     final content = jot.text ?? "";
     final profileImage =
         jot.userProfilePictureUrl ?? 'assets/icons/ic_profile.png';
-    final timeAgo = _formatDate(jot.createdAt);
+    final timeAgo = _formatDate(context, jot.createdAt);
     final bikeModel = jot.bikeModel;
 
     // KART YAPISI: Alttaki ince çizgiyi kaldırıp Threads/X tarzı 8px "havada duran" kart boşluğu verdik
@@ -257,9 +258,9 @@ class JotCardWidget extends StatelessWidget {
                                             size: 20,
                                           ),
                                           const SizedBox(width: 10),
-                                          const Text(
-                                            "Sil",
-                                            style: TextStyle(
+                                          Text(
+                                            AppLocalizations.of(context)!.delete,
+                                            style: const TextStyle(
                                               color: Colors.red,
                                               fontWeight: FontWeight.w500,
                                             ),
@@ -279,7 +280,7 @@ class JotCardWidget extends StatelessWidget {
                                           ),
                                           const SizedBox(width: 10),
                                           Text(
-                                            "Bildir",
+                                            AppLocalizations.of(context)!.report,
                                             style: TextStyle(
                                               color: textPrimary,
                                               fontWeight: FontWeight.w500,
@@ -374,7 +375,7 @@ class JotCardWidget extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        "Görsel yüklenemedi",
+                                        AppLocalizations.of(context)!.imageLoadFailed,
                                         style: TextStyle(color: textSecondary),
                                       ),
                                     ],
@@ -440,13 +441,14 @@ class JotCardWidget extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return "Şimdi";
+  String _formatDate(BuildContext context, DateTime? date) {
+    if (date == null) return AppLocalizations.of(context)!.timeNow;
     final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return "Şimdi";
-    if (diff.inMinutes < 60) return "${diff.inMinutes}dk";
-    if (diff.inHours < 24) return "${diff.inHours}sa";
-    return "${diff.inDays}g";
+    final l10n = AppLocalizations.of(context)!;
+    if (diff.inMinutes < 1) return l10n.timeNow;
+    if (diff.inMinutes < 60) return l10n.timeMinutesShort(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.timeHoursShort(diff.inHours);
+    return l10n.timeDaysShort(diff.inDays);
   }
 }
 

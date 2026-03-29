@@ -6,7 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
-import 'package:helmove/core/widgets/app_frosted_button.dart'; // 👈 Import burada
+import 'package:helmove/core/widgets/app_frosted_button.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -105,6 +106,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
@@ -117,7 +119,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ),
 
-        title: Text("Profili Düzenle", style: AppTextStyles.h3),
+        title: Text(l10n.edit_profile, style: AppTextStyles.h3),
         centerTitle: true,
 
         actions: [
@@ -125,7 +127,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             // Değişiklik varsa fonksiyon çalışır, yoksa null (tıklanmaz)
             onPressed: _isChanged ? () => _saveProfile() : null,
             child: Text(
-              "Kaydet",
+              l10n.save,
               style: TextStyle(
                 color: _isChanged
                     ? theme.colorScheme.primary
@@ -148,37 +150,37 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionTitle("Kişisel Bilgiler", theme),
+                   _sectionTitle(l10n.personal_info, theme),
                   AppInputField(
                     controller: _firstNameController,
-                    label: "Ad",
+                    label: l10n.firstName,
                     leadingIcon: Icons.person_outline,
                   ),
                   const SizedBox(height: 12),
                   AppInputField(
                     controller: _lastNameController,
-                    label: "Soyad",
+                    label: l10n.lastName,
                     leadingIcon: Icons.person_outline,
                   ),
                   const SizedBox(height: 12),
                   AppInputField(
                     controller: _usernameController,
-                    label: "Kullanıcı Adı",
+                    label: l10n.username,
                     leadingIcon: Icons.alternate_email,
                   ),
                   const SizedBox(height: 12),
                   AppInputField(
                     controller: _bioController,
-                    label: "Hakkında",
+                    label: l10n.about,
                     leadingIcon: Icons.info_outline,
                     maxLines: 3,
                   ),
 
                   const SizedBox(height: 24),
-                  _sectionTitle("İletişim", theme),
+                  _sectionTitle(l10n.contactUs, theme),
                   AppInputField(
                     controller: _emailController,
-                    label: "E-Posta",
+                    label: l10n.email,
                     leadingIcon: Icons.email_outlined,
                   ),
                   const SizedBox(height: 12),
@@ -189,20 +191,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
 
                   const SizedBox(height: 24),
-                  _sectionTitle("Konum", theme),
+                  _sectionTitle(l10n.currentLocation, theme),
                   Row(
                     children: [
                       Expanded(
                         child: AppInputField(
                           controller: _cityController,
-                          label: "Şehir",
+                          label: l10n.city,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: AppInputField(
                           controller: _regionController,
-                          label: "Bölge",
+                          label: l10n.region,
                         ),
                       ),
                     ],
@@ -213,12 +215,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       final success = await context.read<ProfileProvider>().updateLocation(0, 0); // Mock for now or use Geolocation
                         if (success && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Konum güncellendi')),
+                            SnackBar(content: Text(l10n.updated)),
                           );
                         }
                     },
                     icon: const Icon(Icons.my_location_rounded, size: 18),
-                    label: const Text("Konumu Şimdi Güncelle"),
+                    label: Text(l10n.update_location_now),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 45),
                       shape: RoundedRectangleBorder(
@@ -442,6 +444,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _pickImage({required bool isProfilePhoto}) async {
+    final l10n = AppLocalizations.of(context)!;
     final picker = ImagePicker();
 
     // Modern Kaynak Seçimi (Bottom Sheet)
@@ -468,7 +471,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
             Text(
               isProfilePhoto
-                  ? "Profil Fotoğrafını Değiştir"
+                  ? l10n.change_profile_photo
                   : "Kapak Fotoğrafını Değiştir",
               style: AppTextStyles.h3.copyWith(fontSize: 18),
             ),
@@ -556,6 +559,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _saveProfile() async {
+    final l10n = AppLocalizations.of(context)!;
     // 1. Klavyeyi kapat
     FocusScope.of(context).unfocus();
 
@@ -581,7 +585,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (success && mounted) {
       setState(() => _isChanged = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profil başarıyla güncellendi')),
+        SnackBar(content: Text(l10n.profile_updated_success)),
       );
       if (mounted) Navigator.pop(context);
     } else if (mounted) {

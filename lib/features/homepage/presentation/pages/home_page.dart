@@ -28,9 +28,10 @@ import 'package:helmove/features/content/posts/presentation/bloc/posts_event.dar
 import 'package:helmove/features/homepage/presentation/widgets/home_feed_tabs.dart';
 import 'package:helmove/features/messages/domain/usecases/get_unread_count_usecase.dart'
     as msg_unread;
+import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 import 'package:helmove/features/notification/domain/usecases/get_unread_count_usecase.dart'
     as notif_unread;
-import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class HomePageWithDrawer extends StatefulWidget {
   const HomePageWithDrawer({super.key});
@@ -42,7 +43,7 @@ class HomePageWithDrawer extends StatefulWidget {
 class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   static const Duration _countFetchCooldown = Duration(milliseconds: 1200);
 
-  late final String _visorMessage;
+  String? _visorMessage;
   late final ValueNotifier<_HomeTopbarCounts> _topbarCountsNotifier;
   late final ValueNotifier<_HomeIdentityFallback> _identityFallbackNotifier;
   bool _isBadgeRefreshInFlight = false;
@@ -59,7 +60,6 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   @override
   void initState() {
     super.initState();
-    _visorMessage = _getRandomMotoMessage();
     _topbarCountsNotifier = ValueNotifier(const _HomeTopbarCounts());
     _identityFallbackNotifier = ValueNotifier(const _HomeIdentityFallback());
 
@@ -69,6 +69,9 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     // 🔥 Profil verilerini yükle (Önce cache'den gelir, sonra backend'den güncellenir)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        setState(() {
+          _visorMessage = _getRandomMotoMessage();
+        });
         context.read<ProfileProvider>().loadProfile();
       }
     });
@@ -412,6 +415,9 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+    
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
@@ -420,7 +426,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: _HomeTopAppBar(
-          visorMessage: _visorMessage,
+          visorMessage: _visorMessage ?? '',
           countsListenable: _topbarCountsNotifier,
           identityFallbackListenable: _identityFallbackNotifier,
           onOpenDrawer: () {
@@ -437,6 +443,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
             unawaited(_openNotifications());
           },
           greetingBuilder: _getGreeting,
+          l10n: l10n,
           isDark: isDark,
           colorScheme: colorScheme,
         ),
@@ -449,37 +456,41 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 11) return '🌅 Günaydın';
-    if (hour >= 11 && hour < 17) return '☀️ İyi günler';
-    if (hour >= 17 && hour < 21) return '🌇 İyi akşamlar';
-    if (hour >= 21 && hour <= 23) return '🌃 İyi geceler';
-    return '🌌 Dikkatli sür';
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return '';
+    if (hour >= 5 && hour < 11) return '🌅 ${l10n.goodMorning}';
+    if (hour >= 11 && hour < 17) return '☀️ ${l10n.goodDay}';
+    if (hour >= 17 && hour < 21) return '🌇 ${l10n.goodEvening}';
+    if (hour >= 21 && hour <= 23) return '🌃 ${l10n.goodNight}';
+    return '🌌 ${l10n.rideCarefully}';
   }
 
   String _getRandomMotoMessage() {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return '';
     final messages = <String>[
-      'Depon dolu, virajın bol olsun! 🏍️',
-      'Bakkala bile ekipmansız gitmiyoruz, değil mi? 🤨',
-      'Benzin kaç para oldu haberin var mı usta? ⛽',
-      'Vizörün temiz, yolun açık olsun. ✨',
-      'Tekerine taş, gözüne yaş değmesin. ✨',
-      'Motoru tozlu gördüm, bir ara yıka istersen... 🤔',
-      'Motor biraz tozlanmış… demek ki güzel anılar birikmiş 😏',
-      'Ekipman tamam mı? Cool görünmekten önce sağlam dönelim eve 😎',
-      'Tekerin düz bassın da rota neresi olursa olsun 😌',
-      'Vizör temiz, kafanın karışık olabilir, dert etme, biz varız ✨',
-      'Ekipmanına önem ver, bizim için kıymetlisin 😎',
-      'Motorun sesi moralinden yüksek olsun 🎵🏍️',
-      'Vites mi o? Ben ayak ucuyla piyano çalıyorum sanmıştım. 🎹',
-      'Tekerin yere bassın ama aklın havada kalmasın. ✌️',
-      'O egzoz sesiyle anca mahalleye iftar vaktini haber verirsin. 🔊',
-      'Virajda motoru yatıramıyorsan söyle, yan ayaklığı açalım. 📉',
-      "Kaskı kola takınca koruma sağlamıyor, 'Pro' kardeş. 🦾",
-      'Ekipman hayat kurtarır, kaskı takmayı unutma!',
-      'Asfalt ağlıyor be, yavaş biraz! 💨',
-      'Yine hangi rotanın hayalini kuruyorsun? 🤔',
-      'Motorcu selamını vermeyi unutma!',
-      'Hava yağmurlu diye motoru çıkarmadın mı? Şeker misin sen? 🍭',
+      l10n.motoMessage1,
+      l10n.motoMessage2,
+      l10n.motoMessage3,
+      l10n.motoMessage4,
+      l10n.motoMessage5,
+      l10n.motoMessage6,
+      l10n.motoMessage7,
+      l10n.motoMessage8,
+      l10n.motoMessage9,
+      l10n.motoMessage10,
+      l10n.motoMessage11,
+      l10n.motoMessage12,
+      l10n.motoMessage13,
+      l10n.motoMessage14,
+      l10n.motoMessage15,
+      l10n.motoMessage16,
+      l10n.motoMessage17,
+      l10n.motoMessage18,
+      l10n.motoMessage19,
+      l10n.motoMessage20,
+      l10n.motoMessage21,
+      l10n.motoMessage22,
     ];
     return (messages..shuffle()).first;
   }
@@ -493,6 +504,7 @@ class _HomeTopAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onMessagesTap;
   final VoidCallback onNotificationsTap;
   final String Function() greetingBuilder;
+  final AppLocalizations l10n;
   final bool isDark;
   final ColorScheme colorScheme;
 
@@ -504,6 +516,7 @@ class _HomeTopAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onMessagesTap,
     required this.onNotificationsTap,
     required this.greetingBuilder,
+    required this.l10n,
     required this.isDark,
     required this.colorScheme,
   });
@@ -538,6 +551,7 @@ class _HomeTopAppBar extends StatelessWidget implements PreferredSizeWidget {
                       profileProvider: profileProvider,
                       authProvider: authProvider,
                       fallback: fallback,
+                      l10n: l10n,
                     ),
                 builder: (context, identity, _) {
                   final imageProvider =
@@ -721,16 +735,19 @@ class _HomeIdentityFallback {
 class _HomeIdentityView {
   final String displayName;
   final String? profileImageUrl;
+  final String? userBio;
 
   const _HomeIdentityView({
     required this.displayName,
-    required this.profileImageUrl,
+    this.profileImageUrl,
+    this.userBio,
   });
 
   factory _HomeIdentityView.fromProviders({
     required ProfileProvider profileProvider,
     required AuthProvider authProvider,
     required _HomeIdentityFallback fallback,
+    required AppLocalizations l10n,
   }) {
     final cachedUser = authProvider.currentUser;
     final firstName = profileProvider.firstName.isNotEmpty
@@ -743,7 +760,7 @@ class _HomeIdentityView {
     final composedName = '$firstName $lastName'.trim();
     final displayName = composedName.isNotEmpty
         ? composedName
-        : (cachedUser?.fullName ?? cachedUser?.username ?? 'Surucu');
+        : (cachedUser?.fullName ?? cachedUser?.username ?? l10n.user);
 
     final profileImageUrl =
         profileProvider.profileImageUrl ??
@@ -753,6 +770,7 @@ class _HomeIdentityView {
     return _HomeIdentityView(
       displayName: displayName,
       profileImageUrl: profileImageUrl,
+      userBio: l10n.rideCarefully,
     );
   }
 

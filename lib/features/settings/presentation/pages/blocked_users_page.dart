@@ -12,12 +12,16 @@ import '../../../follow/presentation/bloc/action/follow_action_bloc.dart';
 import '../../../follow/presentation/bloc/action/follow_action_event.dart';
 import '../../../follow/presentation/bloc/action/follow_action_state.dart';
 import '../../../follow/domain/entities/follow_user.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class BlockedUsersPage extends StatelessWidget {
   const BlockedUsersPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+
     return MultiBlocProvider(
       providers: [
         BlocProvider<BlockedListBloc>(
@@ -29,7 +33,7 @@ class BlockedUsersPage extends StatelessWidget {
       ],
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Engellenen Hesaplar'),
+          title: Text(l10n.blockedAccounts),
           centerTitle: true,
         ),
         body: const _BlockedUsersView(),
@@ -44,12 +48,14 @@ class _BlockedUsersView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
     return BlocListener<FollowActionBloc, FollowActionState>(
       listener: (context, state) {
         if (state is UnblockUserSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Kullanıcının engeli kaldırıldı'),
+            SnackBar(
+              content: Text(l10n.userUnblocked),
               backgroundColor: Colors.green,
             ),
           );
@@ -75,13 +81,13 @@ class _BlockedUsersView extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Hata: ${state.message}'),
+                  Text(l10n.errorWithPrefix(state.message)),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       context.read<BlockedListBloc>().add(const LoadBlockedUsersEvent(refresh: true));
                     },
-                    child: const Text('Tekrar Dene'),
+                    child: Text(l10n.tryAgain),
                   ),
                 ],
               ),
@@ -92,7 +98,7 @@ class _BlockedUsersView extends StatelessWidget {
             final users = state.users;
 
             if (users.isEmpty) {
-              return const Center(child: Text('Engellenmiş hesap bulunmuyor.'));
+              return Center(child: Text(l10n.noBlockedUsers));
             }
 
             return RefreshIndicator(
@@ -102,7 +108,7 @@ class _BlockedUsersView extends StatelessWidget {
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: users.length,
-                separatorBuilder: (context, index) => Divider(height: 1, color: theme.dividerColor.withOpacity(0.1)),
+                separatorBuilder: (context, index) => Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.1)),
                 itemBuilder: (context, index) {
                   final user = users[index];
                   return _BlockedUserTile(user: user);
@@ -126,6 +132,8 @@ class _BlockedUserTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -176,7 +184,7 @@ class _BlockedUserTile extends StatelessWidget {
               final isLoading = state is FollowActionLoading && state.userId == user.id;
 
               return AppButton(
-                text: "Engeli Kaldır",
+                text: l10n.unblockUser,
                 onPressed: () {
                   context.read<FollowActionBloc>().add(UnblockUserEvent(user.id));
                 },

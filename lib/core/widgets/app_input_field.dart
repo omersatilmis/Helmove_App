@@ -151,6 +151,14 @@ class _AppInputFieldState extends State<AppInputField>
     final isPassword =
         widget.type == AppInputType.password ||
         widget.type == AppInputType.newPassword;
+    final isMultiline =
+        (widget.maxLines ?? 1) > 1 || (widget.minLines ?? 1) > 1;
+    final effectiveKeyboardType =
+        (isMultiline &&
+                widget.textInputAction == TextInputAction.newline &&
+                _keyboardType == TextInputType.text)
+            ? TextInputType.multiline
+            : _keyboardType;
 
     final label = widget.label ?? _defaultLabel;
 
@@ -248,7 +256,7 @@ class _AppInputFieldState extends State<AppInputField>
                       textInputAction: widget.textInputAction,
                       inputFormatters: widget.inputFormatters,
                       obscureText: _obscureText,
-                      keyboardType: _keyboardType,
+                      keyboardType: effectiveKeyboardType,
                       textCapitalization: _capitalization,
                       minLines: isPassword ? 1 : widget.minLines,
                       maxLines: isPassword ? 1 : widget.maxLines,

@@ -16,12 +16,18 @@ class PlanTabSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final scale = (size.width / 375).clamp(0.9, 1.1);
+    final horizontalMargin = (size.width * 0.08).clamp(16.0, 40.0);
+    final height = (size.height * 0.06).clamp(42.0, 54.0);
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 40),
-      height: 50,
+      margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+      height: height,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(25),
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(height / 2),
       ),
       // LayoutBuilder: Ekran genişliğini almamızı sağlar, böylece kayma mesafesini hesaplarız.
       child: plans.isEmpty
@@ -49,7 +55,7 @@ class PlanTabSelector extends StatelessWidget {
                       width: tabWidth,
                       child: Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(height / 2),
                           // Seçili planın gradient rengini al
                           gradient: LinearGradient(
                             colors: plans[safeIndex].gradientColors,
@@ -85,16 +91,21 @@ class PlanTabSelector extends StatelessWidget {
                                   // Seçiliyse Beyaz, değilse Gri
                                   color: isSelected
                                       ? Colors.white
-                                      : Colors.grey,
+                                      : theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
                                   fontWeight: isSelected
                                       ? FontWeight.bold
                                       : FontWeight.normal,
-                                  fontSize: 13,
+                                  fontSize: 12 * scale,
                                 ),
-                                child: Text(
-                                  plan.title,
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    plan.title,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ),
                             ),

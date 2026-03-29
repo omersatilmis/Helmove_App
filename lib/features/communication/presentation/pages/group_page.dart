@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import 'package:helmove/core/widgets/app_background.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 import 'group_page/dialogs/group_page_actions.dart';
 import 'group_page/sections/group_footer_section.dart';
@@ -72,9 +73,13 @@ class _GroupPageState extends State<GroupPage>
     final hasSessionId = (widget.data.sessionId ?? 0) > 0;
     if (!hasRideId && !hasSessionId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Hata: Geçersiz Grup ID')));
+        if (!context.mounted) return;
+        final l10n = AppLocalizations.of(context);
+        if (l10n != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('${l10n.errorPrefix}: ${l10n.invalidGroupId}')));
+        }
         context.pop();
       });
       return;
@@ -132,11 +137,14 @@ class _GroupPageState extends State<GroupPage>
     // _sessionDetails varsa önce onu kullan (oda yeni kurulduysa widget.data henüz güncel olmayabilir)
     final sessionId = _sessionDetails?.id ?? widget.data.sessionId;
     if (sessionId == null || sessionId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Davet için geçerli ses oturumu bulunamadı.'),
-        ),
-      );
+      final l10n = AppLocalizations.of(context);
+      if (l10n != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.noValidVoiceSessionFound),
+          ),
+        );
+      }
       return;
     }
 
@@ -177,13 +185,16 @@ class _GroupPageState extends State<GroupPage>
     final sessionId = _sessionDetails?.id ?? widget.data.sessionId;
     final isValid = sessionId != null && sessionId > 0;
     if (!isValid && showMessage) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Sesli oturuma ulaşılamıyor. Sadece sürüş detayları aktif.',
+      final l10n = AppLocalizations.of(context);
+      if (l10n != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              l10n.voiceSessionUnavailableOnlyRide,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
     return isValid ? sessionId : null;
   }
@@ -287,8 +298,9 @@ class _GroupPageState extends State<GroupPage>
   void _showLeaveDialog() {
     final rideId = _effectiveRideId;
     if (rideId <= 0) {
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sürüş bilgisi hazırlanıyor...')),
+        SnackBar(content: Text(l10n.preparingRideInfo)),
       );
       return;
     }
@@ -331,6 +343,10 @@ class _GroupPageState extends State<GroupPage>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final currentUserId = context.select<VoiceSessionBloc, int?>(
@@ -380,7 +396,7 @@ class _GroupPageState extends State<GroupPage>
                   if (!_didNavigateAway) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Hata: $errorMessage'),
+                        content: Text('${l10n.errorPrefix}: $errorMessage'),
                         backgroundColor: colorScheme.error,
                       ),
                     );
@@ -427,7 +443,7 @@ class _GroupPageState extends State<GroupPage>
               if (state.liveKitError != null && !_didNavigateAway) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('LiveKit Hatası: ${state.liveKitError}'),
+                    content: Text('${l10n.liveKitErrorPrefix}: ${state.liveKitError}'),
                     backgroundColor: colorScheme.error,
                   ),
                 );
@@ -459,7 +475,7 @@ class _GroupPageState extends State<GroupPage>
                     const TeardownVoiceSessionLocalEvent(),
                   );
                   _exitGroupPage(
-                    message: 'Grup sürüşü sonlandırıldı.',
+                    message: l10n.groupRideTerminated,
                     backgroundColor: Colors.green,
                   );
                 }
@@ -471,7 +487,7 @@ class _GroupPageState extends State<GroupPage>
                   );
                   setState(() => _isLoadingRide = false);
                   _exitGroupPage(
-                    message: 'Sürüş organizatör tarafından sonlandırıldı.',
+                    message: l10n.rideTerminatedByOrganizer,
                     backgroundColor: colorScheme.error,
                   );
                 }
@@ -483,7 +499,7 @@ class _GroupPageState extends State<GroupPage>
                   );
 
                   setState(() => _isLoadingRide = false);
-                  _exitGroupPage(message: 'Gruptan ayrıldınız.');
+                  _exitGroupPage(message: l10n.leftGroup);
                 }
               } else if (state is GroupRideFailure) {
                 setState(() {
@@ -493,7 +509,7 @@ class _GroupPageState extends State<GroupPage>
                 if (!_didNavigateAway) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Hata: ${state.message}'),
+                      content: Text('${l10n.errorPrefix}: ${state.message}'),
                       backgroundColor: colorScheme.error,
                     ),
                   );
@@ -567,7 +583,7 @@ class _GroupPageState extends State<GroupPage>
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  'Grup bilgileri hazırlanıyor...',
+                                  l10n.preparingGroupInfo,
                                   style: theme.textTheme.bodyMedium,
                                 ),
                               ],

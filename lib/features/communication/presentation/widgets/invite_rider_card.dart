@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../l10n/app_localizations.dart';
 
 enum InviteStatus { none, pending, accepted, rejected }
 
@@ -32,6 +33,7 @@ class InviteRiderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -102,13 +104,13 @@ class InviteRiderCard extends StatelessWidget {
                       icon: isFriend ? Icons.person : Icons.person_add,
                       color: isFriend ? Colors.greenAccent : Colors.blueAccent,
                       onTap: onFriendshipTap,
-                      tooltip: isFriend ? "Arkadaş" : "Arkadaş Ekle",
+                      tooltip: isFriend ? l10n.friend : l10n.addFriend,
                     ),
 
                     const SizedBox(width: 8),
 
                     // Davet Durumu / Davet Butonu
-                    _buildInviteAction(colorScheme),
+                    _buildInviteAction(colorScheme, l10n),
                   ],
                 ),
               ],
@@ -119,13 +121,13 @@ class InviteRiderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInviteAction(ColorScheme colorScheme) {
+  Widget _buildInviteAction(ColorScheme colorScheme, AppLocalizations l10n) {
     switch (inviteStatus) {
       case InviteStatus.pending:
         return _buildStatusIcon(
           icon: Icons.hourglass_top,
           color: Colors.amber,
-          tooltip: "Davet gönderildi",
+          tooltip: l10n.invitation_sent,
         );
       case InviteStatus.accepted:
         return _buildStatusIcon(
@@ -139,7 +141,7 @@ class InviteRiderCard extends StatelessWidget {
           icon: isSelected ? Icons.close : Icons.add,
           color: isSelected ? colorScheme.error : colorScheme.primary,
           onTap: onInviteTap,
-          tooltip: isSelected ? "Kaldır" : "Davet Gönder",
+          tooltip: isSelected ? l10n.remove : l10n.send_invitation,
         );
     }
   }

@@ -3,6 +3,7 @@ import '../../../intercom/domain/intercom_models.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../attendance_management/domain/entities/group_role.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class RiderCard extends StatelessWidget {
   final String firstName;
@@ -62,6 +63,7 @@ class RiderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -108,7 +110,7 @@ class RiderCard extends StatelessWidget {
                           Flexible(
                             child: Text(
                               isMe
-                                  ? "Siz ($firstName)"
+                                  ? "${l10n.you} ($firstName)"
                                   : "$firstName $lastName",
                               style: AppTextStyles.medium.copyWith(
                                 // ESKİ: Medium Style
@@ -123,7 +125,7 @@ class RiderCard extends StatelessWidget {
                           // Rol Rozeti Varsa Göster
                           if (role != GroupRole.rider) ...[
                             const SizedBox(width: 6),
-                            _buildRoleBadge(),
+                            _buildRoleBadge(l10n),
                           ],
                         ],
                       ),
@@ -133,7 +135,7 @@ class RiderCard extends StatelessWidget {
                       // İstatistikler (Eski MinimalInfo stili ile)
                       Row(
                         children: [
-                          _buildConnectionQualityIndicator(theme),
+                          _buildConnectionQualityIndicator(theme, l10n),
                           const SizedBox(width: 10),
                           _buildMinimalInfo(
                             Icons.battery_std,
@@ -175,8 +177,8 @@ class RiderCard extends StatelessWidget {
                                   : colorScheme.error.withValues(alpha: 0.8)),
                         onTap: isRemoteMuted ? null : onMicPressed,
                         tooltip: isRemoteMuted
-                            ? "Admin tarafından susturuldu"
-                            : "Mikrofon",
+                            ? l10n.mutedByAdmin
+                            : l10n.microphone,
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -187,7 +189,7 @@ class RiderCard extends StatelessWidget {
                         icon: Icons.person_add,
                         color: colorScheme.onSurfaceVariant,
                         onTap: onFriendshipPressed,
-                        tooltip: "Arkadaş Ekle",
+                        tooltip: l10n.addFriend,
                       )
                     else if (!isMe && isFriend)
                       const Padding(
@@ -202,7 +204,7 @@ class RiderCard extends StatelessWidget {
                     const SizedBox(width: 8),
 
                     // --- YÖNETİM MENÜSÜ (3 Nokta) ---
-                    _buildPopupMenu(context),
+                    _buildPopupMenu(context, l10n),
                   ],
                 ),
               ],
@@ -268,7 +270,7 @@ class RiderCard extends StatelessWidget {
   }
 
   // Rol Rozeti (İkonlar)
-  Widget _buildRoleBadge() {
+  Widget _buildRoleBadge(AppLocalizations l10n) {
     IconData icon;
     Color color;
 
@@ -286,12 +288,12 @@ class RiderCard extends StatelessWidget {
     }
 
     return Tooltip(
-      message: role == GroupRole.admin ? "Kurucu (Admin)" : "Lider (Kaptan)",
+      message: role == GroupRole.admin ? l10n.adminRole : l10n.captainRole,
       child: Icon(icon, size: 18, color: color),
     );
   }
 
-  Widget _buildConnectionQualityIndicator(ThemeData theme) {
+  Widget _buildConnectionQualityIndicator(ThemeData theme, AppLocalizations l10n) {
     final colorScheme = theme.colorScheme;
     int bars;
     Color color;
@@ -301,32 +303,32 @@ class RiderCard extends StatelessWidget {
       case IntercomConnectionQuality.ultra:
         bars = 4;
         color = Colors.greenAccent;
-        label = "Ultra";
+        label = l10n.ultra;
         break;
       case IntercomConnectionQuality.high:
         bars = 3;
         color = Colors.greenAccent.withValues(alpha: 0.7);
-        label = "Yuksek";
+        label = l10n.high;
         break;
       case IntercomConnectionQuality.balanced:
         bars = 2;
         color = Colors.orangeAccent;
-        label = "Dengeli";
+        label = l10n.balanced;
         break;
       case IntercomConnectionQuality.low:
         bars = 1;
         color = Colors.deepOrangeAccent;
-        label = "Dusuk";
+        label = l10n.low;
         break;
       case IntercomConnectionQuality.lost:
         bars = 1;
         color = colorScheme.error;
-        label = "Koptu";
+        label = l10n.lost;
         break;
       default:
         bars = 0;
         color = colorScheme.onSurfaceVariant.withValues(alpha: 0.4);
-        label = "Bilinmiyor";
+        label = l10n.unknown;
     }
 
     return Row(
@@ -417,7 +419,7 @@ class RiderCard extends StatelessWidget {
   }
 
   // Popup Menü (Sadece yetki varsa dolu gelir)
-  Widget _buildPopupMenu(BuildContext context) {
+  Widget _buildPopupMenu(BuildContext context, AppLocalizations l10n) {
     final colorScheme = Theme.of(context).colorScheme;
 
     if (!_canManage(viewerRole, role) && !isMe) {
@@ -434,7 +436,7 @@ class RiderCard extends StatelessWidget {
         color: colorScheme.onSurfaceVariant,
         size: 22,
       ),
-      tooltip: "Yönetim",
+      tooltip: l10n.management,
       padding: EdgeInsets.zero,
       color: colorScheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -454,7 +456,7 @@ class RiderCard extends StatelessWidget {
               value: 'mute',
               child: _buildMenuItem(
                 Icons.mic_off,
-                "Sustur",
+                l10n.mute,
                 colorScheme.onSurface,
               ),
             ),
@@ -467,7 +469,7 @@ class RiderCard extends StatelessWidget {
               value: 'kick',
               child: _buildMenuItem(
                 Icons.person_remove,
-                "Oturumdan At",
+                l10n.kickFromSession,
                 colorScheme.error,
               ),
             ),
@@ -482,7 +484,7 @@ class RiderCard extends StatelessWidget {
               value: 'promote',
               child: _buildMenuItem(
                 Icons.shield,
-                "Kaptan Yap",
+                l10n.makeCaptain,
                 Colors.blueAccent,
               ),
             ),
@@ -497,7 +499,7 @@ class RiderCard extends StatelessWidget {
               value: 'demote',
               child: _buildMenuItem(
                 Icons.keyboard_arrow_down,
-                "Rütbe Düşür",
+                l10n.demote,
                 Colors.orangeAccent,
               ),
             ),
@@ -511,7 +513,7 @@ class RiderCard extends StatelessWidget {
               value: 'transfer',
               child: _buildMenuItem(
                 Icons.workspace_premium,
-                "Liderlik Devret",
+                l10n.transferLeadership,
                 Colors.amber,
               ),
             ),

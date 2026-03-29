@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/core/widgets/app_frosted_button.dart';
 import 'package:helmove/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
 import 'package:helmove/features/friendship/presentation/bloc/list/friendship_list_bloc.dart';
@@ -30,9 +31,9 @@ class PickFriendPage extends StatelessWidget {
           ),
           title: Column(
             children: [
-              Text('Yeni Sohbet', style: AppTextStyles.h3),
+              Text(AppLocalizations.of(context)!.newChat, style: AppTextStyles.h3),
               Text(
-                'Kişi Seçin',
+                AppLocalizations.of(context)!.selectPerson,
                 style: AppTextStyles.bodySmall.copyWith(fontSize: 12),
               ),
             ],

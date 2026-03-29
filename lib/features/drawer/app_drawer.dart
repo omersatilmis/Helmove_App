@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:helmove/features/drawer/drawer_item.dart';
 import 'package:helmove/core/theme/text_styles.dart';
@@ -39,7 +40,7 @@ class AppDrawer extends StatelessWidget {
     final composedName = '$firstName $lastName'.trim();
     final displayName = composedName.isNotEmpty
         ? composedName
-        : (cachedUser?.username ?? 'Kullanıcı');
+        : (cachedUser?.username ?? AppLocalizations.of(context)!.user);
 
     final theme = Theme.of(context);
     // Güvenli alan (Çentik) kontrolü
@@ -143,7 +144,7 @@ class AppDrawer extends StatelessWidget {
                 //Profilim Alanı
                 DrawerItem(
                   iconPath: 'assets/icons/ic_profile.png',
-                  title: "Profilim",
+                  title: AppLocalizations.of(context)!.myProfile,
                   onTap: () {
                     context.pop();
                     context.push('/profile');
@@ -153,7 +154,7 @@ class AppDrawer extends StatelessWidget {
                 // Premium Alanı
                 DrawerItem(
                   iconPath: 'assets/icons/ic_premium.png',
-                  title: "Premium Planlar",
+                  title: AppLocalizations.of(context)!.premiumPlans,
                   iconColor: const Color(0xFF9C27B0),
                   textColor: const Color(0xFF9C27B0),
                   backgroundColor: const Color(
@@ -169,7 +170,7 @@ class AppDrawer extends StatelessWidget {
                 if (AppFeatureFlags.showCommunityScreen)
                   DrawerItem(
                     iconPath: 'assets/icons/ic_community.png',
-                    title: "Topluluklar",
+                    title: AppLocalizations.of(context)!.communities,
                     onTap: () {
                       context.pop();
                       context.push('/communities');
@@ -191,7 +192,7 @@ class AppDrawer extends StatelessWidget {
                 // Ayarlar Alanı
                 DrawerItem(
                   iconPath: 'assets/icons/ic_settings.png',
-                  title: "Ayarlar",
+                  title: AppLocalizations.of(context)!.settings,
                   onTap: () {
                     context.pop();
                     context.push('/settings');
@@ -201,7 +202,7 @@ class AppDrawer extends StatelessWidget {
                 // Yardım Alanı
                 DrawerItem(
                   iconPath: 'assets/icons/ic_help.png',
-                  title: "Yardım & Destek",
+                  title: AppLocalizations.of(context)!.helpAndSupport,
                   onTap: () {
                     context.pop();
                     context.push('/help');
@@ -218,7 +219,7 @@ class AppDrawer extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
             child: DrawerItem(
               iconPath: 'assets/icons/ic_logout.png',
-              title: "Çıkış Yap",
+              title: AppLocalizations.of(context)!.logout,
               isDestructive: true,
               onTap: () {
                 context.read<AuthProvider>().logout();

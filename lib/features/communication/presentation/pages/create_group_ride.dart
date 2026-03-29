@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_input_field.dart';
 // Merkezi Butonlar (İkon ve Text için)
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../../../core/widgets/app_background.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 // import '../../domain/entities/group_ride_data.dart';
 
 class CreateGroupRide extends StatefulWidget {
@@ -27,28 +28,34 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   // Durum değişkenleri
   String selectedPrivacy = 'Public';
   String selectedDifficulty = 'Beginner';
-  String selectedRidingStyle = 'Sakin';
+  String selectedRidingStyle = 'Chill'; // Changed to English/Key
 
   // Katılımcı Seçenekleri (Map)
-  final Map<String, int> participantOptions = {
-    '4 riders': 4,
-    '6 riders': 6,
-    '8 riders': 8,
-    '10 riders': 10,
-    '12 riders': 12,
-  };
+  Map<String, int> get participantOptions {
+    final curL10n = l10n;
+    if (curL10n == null) return {};
+    return {
+      curL10n.ridersCount(4): 4,
+      curL10n.ridersCount(6): 6,
+      curL10n.ridersCount(8): 8,
+      curL10n.ridersCount(10): 10,
+      curL10n.ridersCount(12): 12,
+    };
+  }
 
   late String selectedMaxParticipantsKey;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     // Varsayılan olarak 6 riders seçili gelsin
     selectedMaxParticipantsKey = participantOptions.keys.firstWhere(
-      (k) => k.startsWith('6'),
+      (k) => k.contains('6'),
       orElse: () => participantOptions.keys.first,
     );
   }
+
+  AppLocalizations? get l10n => AppLocalizations.of(context);
 
   @override
   void dispose() {
@@ -63,8 +70,10 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   void _onProceed() {
     FocusManager.instance.primaryFocus?.unfocus();
 
+    if (l10n == null) return;
+
     final groupName = _groupNameController.text.trim();
-    final finalGroupName = groupName.isNotEmpty ? groupName : "Weekend Riders";
+    final finalGroupName = groupName.isNotEmpty ? groupName : l10n!.defaultGroupName;
     final maxParticipants = participantOptions[selectedMaxParticipantsKey] ?? 6;
 
     final descriptionText = _descriptionController.text.trim();
@@ -73,6 +82,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     //   sessionId  → 0 (henüz oluşturulmadı, invite sonrası oluşacak)
     //   isFromCreateGroup → true  (redirect guard'ın isValid kontrolü için gerekli)
     //   groupData  → grup oluşturma bilgileri
+    final curL10n = l10n!;
     final data = {
       'isFromCreateGroup': true,
       'groupData': {
@@ -84,7 +94,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
         'difficulty': selectedDifficulty,
         'description': descriptionText.isNotEmpty
             ? descriptionText
-            : "belirlenmedi",
+            : curL10n.notSpecified,
       },
     };
 
@@ -93,6 +103,15 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const AppBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -142,7 +161,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                       ),
                     ),
                     Text(
-                      "Grup Oluştur",
+                      l10n.createRideGroup,
                       style: AppTextStyles.h3.copyWith(
                         color: colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
@@ -175,46 +194,46 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                             const SizedBox(height: 10),
 
                             // Grup Adı
-                            _buildFieldLabel("Grup Adı"),
+                            _buildFieldLabel(l10n.groupName),
                             const SizedBox(height: 8),
                             AppInputField(
                               controller: _groupNameController,
-                              hint: "Grup Adı (Örn: Hafta Sonu Turu)",
+                              hint: l10n.groupNameHint,
                               leadingIcon: Icons.group,
                             ),
 
                             const SizedBox(height: 16),
 
                             // Maksimum Sürücü
-                            _buildFieldLabel("Maksimum Sürücü"),
+                            _buildFieldLabel(l10n.maxParticipants),
                             const SizedBox(height: 8),
                             _buildGlassDropdown(colorScheme),
 
                             const SizedBox(height: 16),
 
                             // Gizlilik
-                            _buildFieldLabel("Grup Gizliliği"),
+                            _buildFieldLabel(l10n.groupPrivacy),
                             const SizedBox(height: 8),
                             _buildAccordionSelector(
                               context: context,
                               title: selectedPrivacy == 'Public'
-                                  ? 'Herkese Açık'
-                                  : 'Özel',
-                              options: const ['Herkese Açık', 'Özel'],
+                                  ? l10n.pPublic
+                                  : l10n.pPrivate,
+                              options: [l10n.pPublic, l10n.pPrivate],
                               onSelected: (val) => setState(
                                 () => selectedPrivacy =
-                                    val == 'Herkese Açık' ? 'Public' : 'Private',
+                                    val == l10n.pPublic ? 'Public' : 'Private',
                               ),
                             ),
 
                             const SizedBox(height: 16),
 
                             // Hedef
-                            _buildFieldLabel("Rota / Hedef (Opsiyonel)"),
+                            _buildFieldLabel(l10n.destinationOptional),
                             const SizedBox(height: 8),
                             AppInputField(
                               controller: _destinationController,
-                              hint: "Örn: Abant Gölü, Sapanca",
+                              hint: l10n.destinationHint,
                               leadingIcon: Icons.map,
                             ),
 
@@ -229,19 +248,32 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      _buildFieldLabel("Sürüş Tarzı"),
+                                      _buildFieldLabel(l10n.ridingStyle),
                                       const SizedBox(height: 8),
                                       _buildAccordionSelector(
                                         context: context,
-                                        title: selectedRidingStyle,
+                                        title: selectedRidingStyle == 'Chill'
+                                            ? l10n.chill
+                                            : selectedRidingStyle == 'Tour'
+                                                ? l10n.tour
+                                                : selectedRidingStyle == 'Fast'
+                                                    ? l10n.fast
+                                                    : l10n.city,
                                         options: [
-                                          'Sakin',
-                                          'Tour',
-                                          'Viraj',
-                                          'Sehir',
+                                          l10n.chill,
+                                          l10n.tour,
+                                          l10n.fast,
+                                          l10n.city
                                         ],
                                         onSelected: (val) => setState(
-                                          () => selectedRidingStyle = val,
+                                          () => selectedRidingStyle = val ==
+                                                  l10n.chill
+                                              ? 'Chill'
+                                              : val == l10n.tour
+                                                  ? 'Tour'
+                                                  : val == l10n.fast
+                                                      ? 'Fast'
+                                                      : 'City',
                                         ),
                                       ),
                                     ],
@@ -253,19 +285,34 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      _buildFieldLabel("Zorluk"),
+                                      _buildFieldLabel(l10n.difficulty),
                                       const SizedBox(height: 8),
                                       _buildAccordionSelector(
                                         context: context,
-                                        title: selectedDifficulty,
+                                        title: selectedDifficulty == 'Beginner'
+                                            ? l10n.beginner
+                                            : selectedDifficulty ==
+                                                    'Intermediate'
+                                                ? l10n.intermediate
+                                                : selectedDifficulty ==
+                                                        'Advanced'
+                                                    ? l10n.advanced
+                                                    : l10n.expert,
                                         options: [
-                                          'Beginner',
-                                          'Intermediate',
-                                          'Advanced',
-                                          'Expert',
+                                          l10n.beginner,
+                                          l10n.intermediate,
+                                          l10n.advanced,
+                                          l10n.expert
                                         ],
                                         onSelected: (val) => setState(
-                                          () => selectedDifficulty = val,
+                                          () => selectedDifficulty = val ==
+                                                  l10n.beginner
+                                              ? 'Beginner'
+                                              : val == l10n.intermediate
+                                                  ? 'Intermediate'
+                                                  : val == l10n.advanced
+                                                      ? 'Advanced'
+                                                      : 'Expert',
                                         ),
                                       ),
                                     ],
@@ -277,11 +324,11 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                             const SizedBox(height: 16),
 
                             // Açıklama
-                            _buildFieldLabel("Açıklama"),
+                            _buildFieldLabel(l10n.description),
                             const SizedBox(height: 8),
                             AppInputField(
                               controller: _descriptionController,
-                              hint: "Sürüş hakkında kısa bir açıklama yazın...",
+                              hint: l10n.descriptionHint,
                               leadingIcon: Icons.description,
                               maxLines: 4,
                             ),
@@ -300,7 +347,7 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                       left: 20,
                       right: 20,
                       child: AppFrostedTextButton(
-                        text: "Kullanıcı Davet Et",
+                        text: l10n.inviteUsers,
                         height: 56,
                         backgroundColor:
                             colorScheme.primary, // Turuncu arka plan

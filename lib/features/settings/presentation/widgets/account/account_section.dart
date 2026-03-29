@@ -2,21 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:helmove/features/settings/presentation/widgets/structure/settings_tile.dart';
 import 'package:helmove/features/settings/presentation/widgets/structure/settings_section_header.dart';
 import 'package:go_router/go_router.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class AccountSection extends StatelessWidget {
   const AccountSection({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(title: "Hesap"),
+        SettingsSectionHeader(title: l10n.account),
 
         SettingsTile(
           icon: Icons.person_outline_rounded,
-          title: "Profili Düzenle",
-          subtitle: "Ad, Soyad, Fotoğraf",
+          title: l10n.editProfile,
+          subtitle: l10n.nameSurnamePhoto,
           onTap: () {
             context.push('/edit-profile');
           },
@@ -25,8 +28,8 @@ class AccountSection extends StatelessWidget {
         // 🔥 Sürücülere Özel: Garajım
         SettingsTile(
           icon: Icons.two_wheeler_rounded, // Motor ikonu
-          title: "Garajım",
-          subtitle: "Motorlarını ekle ve yönet",
+          title: l10n.myGarage,
+          subtitle: l10n.addManageBikes,
           onTap: () {
             context.push('/my-garage');
           },
@@ -34,7 +37,7 @@ class AccountSection extends StatelessWidget {
 
         SettingsTile(
           icon: Icons.lock_outline_rounded,
-          title: "Güvenlik",
+          title: l10n.security,
           onTap: () {
             context.push('/security');
           },

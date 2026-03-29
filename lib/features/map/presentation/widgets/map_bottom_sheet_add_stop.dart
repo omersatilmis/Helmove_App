@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../providers/map_bloc.dart';
 import '../providers/map_event.dart';
 import 'poi_business_card.dart';
@@ -26,13 +27,6 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
   bool _isBusinessesExpanded = false;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-
-  static final List<({IconData icon, String label})> _poiTabs = [
-    (icon: Icons.local_gas_station_rounded, label: 'Benzin'),
-    (icon: Icons.coffee_rounded, label: 'Mola'),
-    (icon: Icons.build_rounded, label: 'Servis'),
-    (icon: Icons.shopping_bag_rounded, label: 'Ekipman'),
-  ];
 
   @override
   void initState() {
@@ -61,6 +55,8 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final snapIndex = BottomSheetStateProvider.of(context)?.snapIndex ?? 2;
+    final l10n = AppLocalizations.of(context)!;
+    final poiTabs = _buildPoiTabs(l10n);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -71,7 +67,7 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Durak Ekle',
+              l10n.map_add_stop,
               style: AppTextStyles.h2.copyWith(
                 color: colorScheme.onSurface,
                 fontSize: 20,
@@ -86,7 +82,7 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
-                  'Harita Üzerinden Seç',
+                  l10n.map_select_on_map,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.w500,
@@ -106,7 +102,7 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
             return GlassInputField(
               controller: _controller,
               focusNode: _focusNode,
-              hintText: 'Durak ara...',
+              hintText: l10n.map_search_stop_hint,
               prefixIcon: Icons.search_rounded,
               onChanged: (value) {
                 context.read<MapBloc>().add(
@@ -165,7 +161,7 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
                               child: Row(
                                 children: [
                                   Text(
-                                    'İşletmeler',
+                                    l10n.map_businesses,
                                     style: AppTextStyles.bodyMedium.copyWith(
                                       color: colorScheme.onSurface,
                                       fontWeight: FontWeight.w600,
@@ -189,11 +185,11 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
                               height: 32,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
-                                itemCount: _poiTabs.length,
+                                itemCount: poiTabs.length,
                                 separatorBuilder: (_, _) =>
                                     const SizedBox(width: 8),
                                 itemBuilder: (context, index) {
-                                  final tab = _poiTabs[index];
+                                  final tab = poiTabs[index];
                                   final isSelected = _selectedPoiIndex == index;
                                   return ChoiceChip(
                                     label: Row(
@@ -275,7 +271,7 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
                   children: [
                     const SizedBox(height: 24),
                     AppFrostedTextButton(
-                      text: 'Geri Dön',
+                      text: l10n.map_go_back,
                       onPressed: () => context.read<MapBloc>().add(
                             MapAddStopViewToggled(false),
                           ),
@@ -290,7 +286,7 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          'Geri Dön',
+                          l10n.map_go_back,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.bodyMedium.copyWith(
@@ -310,6 +306,7 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
   }
 
   Widget _buildBusinessList(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final items = _mockBusinessesForTab(_selectedPoiIndex);
 
     return ListView.separated(
@@ -324,10 +321,12 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
           distance: item.distance,
           imageUrl: item.imageUrl,
           duration: item.duration ?? '',
-          type: item.type ?? 'İşletme',
+          type: item.type ?? l10n.map_business_label,
           rating: item.rating?.toString() ?? '0.0',
           reviewCount: item.reviewCount?.toString() ?? '0',
-          isOpen: (item.isOpen ?? true) ? 'Açık' : 'Kapalı',
+          isOpen: (item.isOpen ?? true)
+              ? l10n.map_business_open
+              : l10n.map_business_closed,
           address: item.address ?? '',
         );
       },
@@ -383,11 +382,12 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
     }
 
     if (state.suggestions.isEmpty) {
+      final l10n = AppLocalizations.of(context)!;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Text(
-            'Sonuç bulunamadı.',
+            l10n.noResultsFound,
             style: AppTextStyles.bodyMedium.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -438,6 +438,17 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
       },
     );
   }
+
+  List<({IconData icon, String label})> _buildPoiTabs(
+    AppLocalizations l10n,
+  ) {
+    return [
+      (icon: Icons.local_gas_station_rounded, label: l10n.map_poi_gas),
+      (icon: Icons.coffee_rounded, label: l10n.map_poi_rest),
+      (icon: Icons.build_rounded, label: l10n.map_poi_service),
+      (icon: Icons.shopping_bag_rounded, label: l10n.map_poi_equipment),
+    ];
+  }
 }
 
 class _PoiBusinessMock {
@@ -463,3 +474,4 @@ class _PoiBusinessMock {
     this.isOpen,
   });
 }
+

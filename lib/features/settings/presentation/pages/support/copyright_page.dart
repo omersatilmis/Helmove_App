@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -12,8 +13,6 @@ class CopyrightPage extends StatefulWidget {
 
 class _CopyrightPageState extends State<CopyrightPage> {
   String _version = "";
-  final String _appReleaseStage =
-      "Beta"; // Geliştirme aşaması (Alfa, Beta vb.) için buradan değişiklik yapabilirsiniz.
 
   @override
   void initState() {
@@ -32,15 +31,19 @@ class _CopyrightPageState extends State<CopyrightPage> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentYear = DateTime.now().year;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const SizedBox.shrink();
+    }
 
     return Scaffold(
       backgroundColor: isDark
           ? AppColors.darkBackground
           : AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text(
-          "Telif Hakkı",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.copyright,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         centerTitle: true,
@@ -55,42 +58,38 @@ class _CopyrightPageState extends State<CopyrightPage> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            _buildLogo(isDark),
+            _buildLogo(isDark, l10n),
             const SizedBox(height: 32),
 
-            _buildCopyrightText(currentYear, isDark),
+            _buildCopyrightText(currentYear, isDark, l10n),
             const SizedBox(height: 40),
 
             _buildLegalSection(
-              title: "Yasal Uyarı",
-              content:
-                  "Helmove uygulaması içindeki tüm metinler, grafikler, logolar, buton ikonları, görseller ve yazılımlar Helmove'un mülkiyetindedir ve uluslararası telif hakkı yasalarıyla korunmaktadır.",
+              title: l10n.copyrightLegalNoticeTitle,
+              content: l10n.copyrightLegalNoticeContent,
               isDark: isDark,
             ),
 
             _buildLegalSection(
-              title: "Tersine Mühendislik Yasağı",
-              content:
-                  "Bu yazılımın ve içerdiği algoritmaların tersine mühendislik (reverse engineering) yoluyla çözülmesi, kaynak koduna dönüştürülmesi veya parçalarına ayrılması kesinlikle yasaktır. Bu tür girişimler fikri mülkiyet haklarının ihlali sayılacaktır.",
+              title: l10n.copyrightReverseEngineeringTitle,
+              content: l10n.copyrightReverseEngineeringContent,
               isDark: isDark,
             ),
 
             _buildLegalSection(
-              title: "Kullanım Hakları",
-              content:
-                  "Bu uygulama ve içeriği sadece kişisel kullanım içindir. Helmove'un önceden yazılı izni olmaksızın içeriğin kopyalanması, çoğaltılması, yeniden yayınlanması, yüklenmesi, iletilmesi veya dağıtılması yasaktır.",
+              title: l10n.copyrightUsageRightsTitle,
+              content: l10n.copyrightUsageRightsContent,
               isDark: isDark,
             ),
 
             _buildLegalSection(
-              title: "Ticari Markalar",
-              content:
-                  "Helmove logosu ve hizmet markaları, Helmove'un tescilli ticari markalarıdır. Diğer tüm markalar ilgili sahiplerine aittir.",
+              title: l10n.copyrightTrademarksTitle,
+              content: l10n.copyrightTrademarksContent,
               isDark: isDark,
             ),
 
             const SizedBox(height: 40),
-            _buildOpenSourceSection(isDark),
+            _buildOpenSourceSection(isDark, l10n),
             const SizedBox(height: 40),
           ],
         ),
@@ -98,7 +97,7 @@ class _CopyrightPageState extends State<CopyrightPage> {
     );
   }
 
-  Widget _buildLogo(bool isDark) {
+  Widget _buildLogo(bool isDark, AppLocalizations l10n) {
     return Column(
       children: [
         Container(
@@ -126,7 +125,7 @@ class _CopyrightPageState extends State<CopyrightPage> {
           ),
         ),
         Text(
-          "Advanced Communication and Social Rider Ecosystem",
+          l10n.copyrightTagline,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 12,
@@ -137,7 +136,7 @@ class _CopyrightPageState extends State<CopyrightPage> {
         const SizedBox(height: 4),
         if (_version.isNotEmpty)
           Text(
-            "v$_version ($_appReleaseStage)",
+            l10n.version(l10n.releaseStageBeta, _version),
             style: TextStyle(
               fontSize: 13,
               color: isDark
@@ -149,11 +148,15 @@ class _CopyrightPageState extends State<CopyrightPage> {
     );
   }
 
-  Widget _buildCopyrightText(int year, bool isDark) {
+  Widget _buildCopyrightText(
+    int year,
+    bool isDark,
+    AppLocalizations l10n,
+  ) {
     return Column(
       children: [
         Text(
-          "© $year Helmove",
+          l10n.copyrightHeader(year),
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -164,7 +167,7 @@ class _CopyrightPageState extends State<CopyrightPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          "Tüm Hakları Saklıdır.",
+          l10n.copyrightAllRightsReserved,
           style: TextStyle(
             fontSize: 14,
             color: isDark
@@ -218,11 +221,11 @@ class _CopyrightPageState extends State<CopyrightPage> {
     );
   }
 
-  Widget _buildOpenSourceSection(bool isDark) {
+  Widget _buildOpenSourceSection(bool isDark, AppLocalizations l10n) {
     return Column(
       children: [
         Text(
-          "Açık Kaynak Lisansları",
+          l10n.copyrightOpenSourceTitle,
           style: TextStyle(
             fontSize: 14,
             decoration: TextDecoration.underline,
@@ -235,7 +238,7 @@ class _CopyrightPageState extends State<CopyrightPage> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Text(
-            "Helmove, harika açık kaynaklı yazılımlar ve özgün mimari planlamalar kullanılarak geliştirilmiştir.",
+            l10n.copyrightOpenSourceDescription,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,

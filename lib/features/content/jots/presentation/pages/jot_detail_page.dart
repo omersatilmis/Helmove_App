@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/di/injection_container.dart';
@@ -59,7 +60,7 @@ class _JotDetailPageState extends State<JotDetailPage> {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
-            title: const Text('Jot'),
+            title: Text(AppLocalizations.of(context)!.jot),
             centerTitle: true,
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -77,12 +78,12 @@ class _JotDetailPageState extends State<JotDetailPage> {
                         isDetailView: true,
                       ),
                     ),
-                    const SliverToBoxAdapter(
+                    SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                         child: Text(
-                          'Yanıtlar',
-                          style: TextStyle(
+                          AppLocalizations.of(context)!.replies,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -99,10 +100,10 @@ class _JotDetailPageState extends State<JotDetailPage> {
                         }
                         
                         if (state.comments.isEmpty) {
-                          return const SliverFillRemaining(
+                          return SliverFillRemaining(
                             hasScrollBody: false,
                             child: Center(
-                              child: Text('Henüz yorum yok.'),
+                              child: Text(AppLocalizations.of(context)!.noCommentsYet),
                             ),
                           );
                         }
@@ -167,10 +168,10 @@ class _JotDetailPageState extends State<JotDetailPage> {
 
   String _formatTimeAgo(DateTime dateTime) {
     final difference = DateTime.now().difference(dateTime);
-    if (difference.inDays >= 1) return "${difference.inDays}g";
-    if (difference.inHours >= 1) return "${difference.inHours}sa";
-    if (difference.inMinutes >= 1) return "${difference.inMinutes}dk";
-    return "Şimdi";
+    if (difference.inDays >= 1) return AppLocalizations.of(context)!.timeDaysShort(difference.inDays);
+    if (difference.inHours >= 1) return AppLocalizations.of(context)!.timeHoursShort(difference.inHours);
+    if (difference.inMinutes >= 1) return AppLocalizations.of(context)!.timeMinutesShort(difference.inMinutes);
+    return AppLocalizations.of(context)!.timeNow;
   }
 }
 
@@ -216,7 +217,7 @@ class _CommentInput extends StatelessWidget {
                 type: AppInputType.standard,
                 variant: AppInputVariant.filled,
                 size: AppInputSize.small,
-                hint: 'Yanıtını paylaş...',
+                hint: AppLocalizations.of(context)!.shareYourReply,
                 minLines: 1,
                 maxLines: 4,
                 radius: 22,
@@ -264,7 +265,7 @@ class _CommentInput extends StatelessWidget {
                                 ),
                               )
                             : Text(
-                                'Yanıtla',
+                                AppLocalizations.of(context)!.reply,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,

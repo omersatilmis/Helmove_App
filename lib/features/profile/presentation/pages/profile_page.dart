@@ -14,6 +14,7 @@ import 'package:helmove/features/profile/presentation/widgets/profile_tabs.dart'
 
 // 🔥 PROVIDER IMPORTLARI
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 // 🔥 FRIENDSHIP BLOC IMPORTLARI
 import 'package:flutter_bloc/flutter_bloc.dart'
@@ -144,6 +145,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final topSafe = MediaQuery.of(context).padding.top;
 
     final profileProvider = context.watch<ProfileProvider>();
@@ -198,7 +200,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        "Bu profile ulaşılamıyor.",
+                        l10n.profile_not_found,
                         style: AppTextStyles.bodyMedium.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                       ),
                     ],
@@ -351,6 +353,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _showOptionsMenu(BuildContext context, bool isOwnProfile, int? userId, String username) async {
+    final l10n = AppLocalizations.of(context)!;
     final RenderBox? renderBox = _optionsButtonKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
@@ -374,7 +377,7 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Icon(Icons.share_outlined, color: theme.colorScheme.onSurface),
               const SizedBox(width: 12),
-              Text("Profili Paylaş", style: AppTextStyles.medium.copyWith(color: theme.colorScheme.onSurface)),
+              Text(l10n.share_profile, style: AppTextStyles.medium.copyWith(color: theme.colorScheme.onSurface)),
             ],
           ),
         ),
@@ -386,7 +389,7 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Icon(Icons.settings_outlined, color: theme.colorScheme.onSurface),
                 const SizedBox(width: 12),
-                Text("Ayarlar", style: AppTextStyles.medium.copyWith(color: theme.colorScheme.onSurface)),
+                Text(l10n.settings, style: AppTextStyles.medium.copyWith(color: theme.colorScheme.onSurface)),
               ],
             ),
           ),
@@ -399,7 +402,7 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 const Icon(Icons.block_outlined, color: Colors.red),
                 const SizedBox(width: 12),
-                Text("Kullanıcıyı Engelle", style: AppTextStyles.medium.copyWith(color: Colors.red)),
+                Text(l10n.block_user, style: AppTextStyles.medium.copyWith(color: Colors.red)),
               ],
             ),
           ),
@@ -409,7 +412,7 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Icon(Icons.report_problem_outlined, color: theme.colorScheme.onSurface),
                 const SizedBox(width: 12),
-                Text("Bildir", style: AppTextStyles.medium.copyWith(color: theme.colorScheme.onSurface)),
+                Text(l10n.report, style: AppTextStyles.medium.copyWith(color: theme.colorScheme.onSurface)),
               ],
             ),
           ),
@@ -421,9 +424,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!context.mounted) return;
       final profileProvider = context.read<ProfileProvider>();
       final String profileUrl = "https://motocomm.app/profile/${userId ?? profileProvider.currentUserId}";
-      final String shareText = isOwnProfile 
-          ? "MotoComm'da profilime göz at! $profileUrl" 
-          : "MotoComm'da $username kullanıcısının profiline göz at! $profileUrl";
+      final String shareText = l10n.share_profile_text(profileUrl);
       
       await share_plus.SharePlus.instance.share(
         share_plus.ShareParams(
@@ -482,6 +483,7 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (isOwnProfile) {
       return ProfileInfo(
         firstName: firstName,
@@ -543,12 +545,12 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
           listener: (context, followState) {
             if (followState is FollowUserSuccess) {
               profileProvider.updateFollowStats(userId: followState.userId, isFollowing: true);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kullanıcı takip ediliyor")));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.user_followed)));
             } else if (followState is UnfollowUserSuccess) {
               profileProvider.updateFollowStats(userId: followState.userId, isFollowing: false);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Takipten çıkıldı")));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.unfollowed)));
             } else if (followState is BlockUserSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kullanıcı engellendi")));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.user_blocked)));
               if (context.canPop()) context.pop();
             }
           },

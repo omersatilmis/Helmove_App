@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_footer_widget.dart';
@@ -87,7 +88,7 @@ class _RegisterPageState extends State<RegisterPage> {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text("Kayıt başarılı! Giriş yapabilirsiniz."),
+            content: Text(AppLocalizations.of(context)!.registrationSuccessful),
             backgroundColor: Theme.of(context).colorScheme.primary,
             behavior: SnackBarBehavior.floating,
           ),
@@ -97,7 +98,7 @@ class _RegisterPageState extends State<RegisterPage> {
         ProfessionalErrorBottomSheet.show(
           context,
           message: authProvider.errorMessage!,
-          title: "Kayıt Başarısız",
+          title: AppLocalizations.of(context)!.registrationFailed,
         );
       }
     }
@@ -106,6 +107,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
@@ -133,9 +135,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   // 1. HEADER (Dalgalı Tasarım)
                   SizedBox(
                     height: headerHeight,
-                    child: const AuthHeaderWidget(
-                      title: "Aramıza Katılın",
-                      subtitle: "Sürüş deneyiminizi başlatın.",
+                    child: AuthHeaderWidget(
+                      title: l10n.joinUs,
+                      subtitle: l10n.registerSubtitle,
                       verticalOffset: -20.0,
                     ),
                   ),
@@ -173,8 +175,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
                   // 3. FOOTER
                   AuthFooterWidget(
-                    questionText: "Zaten hesabınız var mı?",
-                    actionText: "Giriş Yap",
+                    questionText: l10n.alreadyHaveAccount,
+                    actionText: l10n.login,
                     onPressed: () => context.pop(),
                   ),
                 ],

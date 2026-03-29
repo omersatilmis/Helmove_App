@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/constants/report_enums.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -141,7 +142,7 @@ class _SheetHeader extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Yorumlar',
+                    AppLocalizations.of(context)!.commentsTitle,
                     style: AppTextStyles.h3.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -213,7 +214,7 @@ class _CommentsList extends StatelessWidget {
                 const Icon(Icons.error_outline, size: 40, color: Colors.grey),
                 const SizedBox(height: 8),
                 Text(
-                  state.errorMessage ?? 'Hata oluştu',
+                  state.errorMessage ?? AppLocalizations.of(context)!.errorOccurred,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -238,7 +239,7 @@ class _CommentsList extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Henüz yorum yok.',
+                  AppLocalizations.of(context)!.noCommentsYet,
                   style: AppTextStyles.h3.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -354,7 +355,7 @@ class _CommentItem extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      _formatTimeAgo(comment.createdAt),
+                      _formatTimeAgo(context, comment.createdAt),
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 11,
@@ -378,7 +379,7 @@ class _CommentItem extends StatelessWidget {
                 GestureDetector(
                   onTap: () => onReply(comment.username),
                   child: Text(
-                    'Yanıtla',
+                    AppLocalizations.of(context)!.reply,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -399,15 +400,16 @@ class _CommentItem extends StatelessWidget {
     );
   }
 
-  String _formatTimeAgo(DateTime dateTime) {
+  String _formatTimeAgo(BuildContext context, DateTime dateTime) {
+    final l10n = AppLocalizations.of(context)!;
     final difference = DateTime.now().difference(dateTime);
     if (difference.inDays > 7) {
       return "${dateTime.day}/${dateTime.month}/${dateTime.year}";
     }
-    if (difference.inDays >= 1) return "${difference.inDays}g";
-    if (difference.inHours >= 1) return "${difference.inHours}sa";
-    if (difference.inMinutes >= 1) return "${difference.inMinutes}dk";
-    return "Şimdi";
+    if (difference.inDays >= 1) return l10n.time_day_short(difference.inDays);
+    if (difference.inHours >= 1) return l10n.time_hour_short(difference.inHours);
+    if (difference.inMinutes >= 1) return l10n.time_minute_short(difference.inMinutes);
+    return l10n.now;
   }
 }
 
@@ -468,7 +470,7 @@ class _CommentMoreButton extends StatelessWidget {
             context,
             'delete',
             Icons.delete_outline,
-            'Sil',
+            AppLocalizations.of(context)!.delete,
             color: AppColors.error,
           ),
         if (!isOwner)
@@ -476,7 +478,7 @@ class _CommentMoreButton extends StatelessWidget {
             context,
             'report',
             Icons.report_gmailerrorred_rounded,
-            'Şikayet Et',
+            AppLocalizations.of(context)!.report,
           ),
       ],
     );
@@ -526,7 +528,7 @@ class _CommentMoreButton extends StatelessWidget {
 
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
-          'Yorumu Sil?',
+          AppLocalizations.of(context)!.delete_comment_title,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
             fontSize: 18,
@@ -538,7 +540,7 @@ class _CommentMoreButton extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'İptal',
+              AppLocalizations.of(context)!.cancel,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -551,9 +553,9 @@ class _CommentMoreButton extends StatelessWidget {
                 DeleteCommentEvent(commentId: comment.id, contentId: contentId),
               );
             },
-            child: const Text(
-              'Sil',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context)!.delete,
+              style: const TextStyle(
                 color: AppColors.error,
                 fontWeight: FontWeight.bold,
               ),
@@ -645,7 +647,7 @@ class _CommentInputAreaState extends State<_CommentInputArea> {
                 focusNode: widget.focusNode,
                 minLines: 1,
                 maxLines: 5,
-                hint: 'Yorum ekle...',
+                hint: AppLocalizations.of(context)!.add_comment_hint,
                 radius: 24,
                 size: AppInputSize.small,
               ),

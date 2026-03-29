@@ -8,6 +8,7 @@ import 'package:helmove/features/voice_session/domain/entities/voice_session_ent
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_event.dart';
 import 'package:helmove/features/attendance_management/domain/entities/group_role.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class GroupPageActions {
   const GroupPageActions._();
@@ -18,15 +19,16 @@ class GroupPageActions {
     required int targetUserId,
     required String userName,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kullaniciyi At'),
-        content: Text('$userName adli kullaniciyi atmak istiyor musunuz?'),
+        title: Text(l10n.kickUserTitle),
+        content: Text(l10n.kickUserConfirmation(userName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Iptal'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -35,7 +37,7 @@ class GroupPageActions {
                 KickUserEvent(sessionId, targetUserId),
               );
             },
-            child: const Text('At', style: TextStyle(color: Colors.red)),
+            child: Text(l10n.kick, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -48,15 +50,16 @@ class GroupPageActions {
     required int targetUserId,
     required String userName,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kullaniciyi Sustur'),
-        content: Text('$userName adli kullaniciyi susturmak istiyor musunuz?'),
+        title: Text(l10n.muteUserTitle),
+        content: Text(l10n.kickUserConfirmation(userName)), // Note: Using kick confirmation for generic user action if mute confirmation is same or add new key
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Iptal'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -65,7 +68,7 @@ class GroupPageActions {
                 MuteUserEvent(sessionId, targetUserId),
               );
             },
-            child: const Text('Sustur'),
+            child: Text(l10n.mute),
           ),
         ],
       ),
@@ -78,17 +81,16 @@ class GroupPageActions {
     required int targetUserId,
     required String userName,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Captain Yetkisini Devret'),
-        content: Text(
-          'Captain yetkisini $userName adli kullaniciya devretmek istiyor musunuz?',
-        ),
+        title: Text(l10n.transferLeadership),
+        content: Text(l10n.transferLeadershipConfirmation(userName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Iptal'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -97,7 +99,7 @@ class GroupPageActions {
                 TransferHostEvent(sessionId, targetUserId),
               );
             },
-            child: const Text('Devret'),
+            child: Text(l10n.transfer),
           ),
         ],
       ),
@@ -110,17 +112,16 @@ class GroupPageActions {
     required int targetUserId,
     required String userName,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Captain Yap'),
-        content: Text(
-          '$userName kullanıcısına Captain yetkisi vermek istiyor musunuz?',
-        ),
+        title: Text(l10n.promoteToCaptainTitle),
+        content: Text(l10n.promoteToCaptainConfirmation(userName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -129,7 +130,7 @@ class GroupPageActions {
                 PromoteParticipantEvent(sessionId, targetUserId),
               );
             },
-            child: const Text('Captain Yap'),
+            child: Text(l10n.makeCaptain),
           ),
         ],
       ),
@@ -142,17 +143,16 @@ class GroupPageActions {
     required int targetUserId,
     required String userName,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Rider Yap'),
-        content: Text(
-          '$userName kullanıcısının Captain yetkisini kaldırmak istiyor musunuz?',
-        ),
+        title: Text(l10n.demoteToRiderTitle),
+        content: Text(l10n.demoteToRiderConfirmation(userName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -161,10 +161,7 @@ class GroupPageActions {
                 DemoteParticipantEvent(sessionId, targetUserId),
               );
             },
-            child: const Text(
-              'Rider Yap',
-              style: TextStyle(color: Colors.orange),
-            ),
+            child: Text(l10n.demote),
           ),
         ],
       ),
@@ -213,20 +210,21 @@ class GroupPageActions {
     int rideId,
     int? sessionId,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: colorScheme.surfaceContainerHigh,
-        title: Text('Grubu Sonlandır', style: AppTextStyles.h3),
+        title: Text(l10n.terminateGroupTitle, style: AppTextStyles.h3),
         content: Text(
-          'Grupta kalan son kişisiniz. Ayrıldığınızda grup ve ses oturumu tamamen sonlandırılacak.',
+          l10n.lastPersonLeaveWarning,
           style: AppTextStyles.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('İptal', style: TextStyle(color: colorScheme.primary)),
+            child: Text(l10n.cancel, style: TextStyle(color: colorScheme.primary)),
           ),
           TextButton(
             onPressed: () {
@@ -234,7 +232,7 @@ class GroupPageActions {
               _performTerminate(context, rideId, sessionId);
             },
             child: Text(
-              'Sonlandır ve Çık',
+              l10n.terminateAndExit,
               style: TextStyle(
                 color: colorScheme.error,
                 fontWeight: FontWeight.bold,
@@ -251,20 +249,21 @@ class GroupPageActions {
     int rideId,
     int? sessionId,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: colorScheme.surfaceContainerHigh,
-        title: Text('Odadan Ayrıl', style: AppTextStyles.h3),
+        title: Text(l10n.leaveRoomTitle, style: AppTextStyles.h3),
         content: Text(
-          'Bu sürüş grubundan ayrılmak istediğinize emin misiniz?',
+          l10n.leaveGroupConfirmation,
           style: AppTextStyles.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('İptal', style: TextStyle(color: colorScheme.primary)),
+            child: Text(l10n.cancel, style: TextStyle(color: colorScheme.primary)),
           ),
           TextButton(
             onPressed: () {
@@ -272,7 +271,7 @@ class GroupPageActions {
               _performLeave(context, rideId, sessionId);
             },
             child: Text(
-              'Ayrıl',
+              l10n.leave,
               style: TextStyle(
                 color: colorScheme.error,
                 fontWeight: FontWeight.bold,
@@ -289,18 +288,19 @@ class GroupPageActions {
     int rideId,
     int? sessionId,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: colorScheme.surfaceContainerHigh,
-        title: Text('Gruptan Ayrılıyor musunuz?', style: AppTextStyles.h3),
-        content: Text('Ne yapmak istersiniz?', style: AppTextStyles.bodyMedium),
+        title: Text(l10n.leavingGroupQuestion, style: AppTextStyles.h3),
+        content: Text(l10n.whatToDo, style: AppTextStyles.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              'İptal',
+              l10n.cancel,
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
           ),
@@ -309,8 +309,8 @@ class GroupPageActions {
               Navigator.pop(ctx);
               _performLeave(context, rideId, sessionId);
             },
-            child: const Text(
-              'Ayrıl & Devret',
+            child: Text(
+              l10n.leaveAndTransfer,
               style: TextStyle(
                 color: Colors.orange,
                 fontWeight: FontWeight.bold,
@@ -323,7 +323,7 @@ class GroupPageActions {
               _performTerminate(context, rideId, sessionId);
             },
             child: Text(
-              'Grubu Sonlandır',
+              l10n.terminateGroupTitle,
               style: TextStyle(
                 color: colorScheme.error,
                 fontWeight: FontWeight.bold,

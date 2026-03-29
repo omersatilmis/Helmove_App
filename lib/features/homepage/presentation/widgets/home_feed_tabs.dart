@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:helmove/features/content/jots/presentation/pages/jot_feed_view.dart';
 import 'package:helmove/features/content/posts/presentation/pages/feed_page.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class HomeFeedTabs extends StatefulWidget {
   const HomeFeedTabs({super.key});
@@ -57,9 +58,9 @@ class _HomeFeedTabsState extends State<HomeFeedTabs>
             indicatorColor: colorScheme.primary,
             indicatorWeight: 2, // Çizgiyi de biraz incelttik
             dividerColor: Colors.transparent,
-            tabs: const [
-              Tab(text: 'Posts'),
-              Tab(text: 'Jots'),
+            tabs: [
+              Tab(text: AppLocalizations.of(context)!.postsTab),
+              Tab(text: AppLocalizations.of(context)!.jotsTab),
             ],
           ),
         ),

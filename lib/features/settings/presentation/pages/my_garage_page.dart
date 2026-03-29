@@ -5,6 +5,7 @@ import 'package:helmove/features/profile/domain/entities/motorcycle_entity.dart'
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 import 'package:helmove/features/profile/presentation/widgets/tabs/about/bike_card_widget.dart';
 import 'package:provider/provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class MyGaragePage extends StatefulWidget {
   const MyGaragePage({super.key});
@@ -40,6 +41,8 @@ class _MyGaragePageState extends State<MyGaragePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
 
     return Scaffold(
       appBar: AppBar(
@@ -50,7 +53,7 @@ class _MyGaragePageState extends State<MyGaragePage> {
             onTap: () => Navigator.pop(context),
           ),
         ),
-        title: Text("Garajım", style: AppTextStyles.h3),
+        title: Text(l10n.myGarage, style: AppTextStyles.h3),
         centerTitle: true,
       ),
       body: Consumer<ProfileProvider>(
@@ -70,7 +73,7 @@ class _MyGaragePageState extends State<MyGaragePage> {
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Center(
                       child: Text(
-                        "Henüz motor eklenmemiş.",
+                        l10n.noBikesYet,
                         style: AppTextStyles.medium.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -107,7 +110,7 @@ class _MyGaragePageState extends State<MyGaragePage> {
                     child: ElevatedButton.icon(
                       onPressed: _addNewBike,
                       icon: const Icon(Icons.add_rounded),
-                      label: const Text("Motor Ekle"),
+                      label: Text(l10n.addBike),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primaryContainer,
                         foregroundColor: theme.colorScheme.onPrimaryContainer,

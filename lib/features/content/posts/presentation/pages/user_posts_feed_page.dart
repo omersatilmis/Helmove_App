@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/posts_bloc.dart';
 import '../bloc/posts_event.dart';
@@ -62,7 +63,7 @@ class _UserPostsFeedPageState extends State<UserPostsFeedPage> {
       value: widget.postsBloc,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Gönderiler'),
+          title: Text(AppLocalizations.of(context)!.posts),
           centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -99,7 +100,7 @@ class _UserPostsFeedPageState extends State<UserPostsFeedPage> {
                   onSave: () {},
                   onReport: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Şikayetiniz alındı.')),
+                      SnackBar(content: Text(AppLocalizations.of(context)!.reportReceived)),
                     );
                   },
                 );

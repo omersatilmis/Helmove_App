@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
+import 'package:helmove/core/widgets/app_frosted_button.dart';
 import 'package:helmove/core/theme/app_colors.dart';
 import 'package:helmove/core/theme/text_styles.dart';
-import 'package:go_router/go_router.dart';
-
-// 🔥 BUTON IMPORT
-import 'package:helmove/core/widgets/app_frosted_button.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class HelpPage extends StatefulWidget {
   const HelpPage({super.key});
@@ -49,7 +48,7 @@ class _HelpPageState extends State<HelpPage> {
 
                   // ORTA: Başlık
                   Text(
-                    "Yardım & Destek",
+                    AppLocalizations.of(context)!.helpAndSupport,
                     style: AppTextStyles.h3.copyWith(
                       color: theme.colorScheme.onSurface,
                       fontSize: 20,
@@ -78,11 +77,11 @@ class _HelpPageState extends State<HelpPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionTitle("Kategoriler", isDark),
+                          _buildSectionTitle(AppLocalizations.of(context)!.categories, isDark),
                           const SizedBox(height: 16),
                           _buildCategoryGrid(isDark),
                           const SizedBox(height: 32),
-                          _buildSectionTitle("Sıkça Sorulan Sorular", isDark),
+                          _buildSectionTitle(AppLocalizations.of(context)!.faq, isDark),
                           const SizedBox(height: 16),
                           _buildFAQList(isDark),
                           const SizedBox(height: 40),
@@ -102,6 +101,7 @@ class _HelpPageState extends State<HelpPage> {
   }
 
   Widget _buildSearchHeader(bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -114,9 +114,9 @@ class _HelpPageState extends State<HelpPage> {
       ),
       child: Column(
         children: [
-          const Text(
-            "Nasıl yardımcı olabiliriz?",
-            style: TextStyle(
+          Text(
+            l10n.howCanWeHelp,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
@@ -126,7 +126,7 @@ class _HelpPageState extends State<HelpPage> {
           AppInputField(
             controller: _searchController,
             type: AppInputType.discover,
-            hint: "Sorununuzu arayın...",
+            hint: l10n.searchYourProblem,
             radius: 16,
           ),
         ],
@@ -146,11 +146,12 @@ class _HelpPageState extends State<HelpPage> {
   }
 
   Widget _buildCategoryGrid(bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     final categories = [
-      {'icon': Icons.settings_voice_rounded, 'title': 'İnterkom'},
-      {'icon': Icons.group_work_rounded, 'title': 'Grup Sürüşü'},
-      {'icon': Icons.map_rounded, 'title': 'Harita'},
-      {'icon': Icons.person_rounded, 'title': 'Hesap'},
+      {'icon': Icons.settings_voice_rounded, 'title': l10n.intercom},
+      {'icon': Icons.group_work_rounded, 'title': l10n.groupRide},
+      {'icon': Icons.map_rounded, 'title': l10n.map},
+      {'icon': Icons.person_rounded, 'title': l10n.account},
     ];
 
     return GridView.builder(
@@ -193,21 +194,19 @@ class _HelpPageState extends State<HelpPage> {
   }
 
   Widget _buildFAQList(bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     final faqs = [
       {
-        'q': 'Grup sürüşüne nasıl katılırım?',
-        'a':
-            'İletişim sekmesinden arkadaşınızın paylaştığı oda kodunu girerek veya daveti kabul ederek katılabilirsiniz.',
+        'q': l10n.faqQuestion1,
+        'a': l10n.faqAnswer1,
       },
       {
-        'q': 'Hayalet Mod nedir?',
-        'a':
-            'Hayalet Mod açıkken konumunuz haritada diğer kullanıcılara görünmez, ancak siz yine de uygulamayı kullanabilirsiniz.',
+        'q': l10n.faqQuestion2,
+        'a': l10n.faqAnswer2,
       },
       {
-        'q': 'Ses gecikmesini nasıl önlerim?',
-        'a':
-            'İnternet bağlantınızı kontrol edin. LiveKit altyapısı sayesinde gecikme minimize edilmiştir, ancak düşük sinyal etkileyebilir.',
+        'q': l10n.faqQuestion3,
+        'a': l10n.faqAnswer3,
       },
     ];
 
@@ -255,6 +254,7 @@ class _HelpPageState extends State<HelpPage> {
   }
 
   Widget _buildSupportBanner(bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     return InkWell(
       onTap: () => context.push('/feedback'),
       borderRadius: BorderRadius.circular(16),
@@ -273,18 +273,18 @@ class _HelpPageState extends State<HelpPage> {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    "Çözüm bulamadınız mı?",
-                    style: TextStyle(
+                    l10n.solutionNotFound,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
                   Text(
-                    "Destek ekibimizle iletişime geçin.",
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    l10n.contactSupport,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                 ],
               ),

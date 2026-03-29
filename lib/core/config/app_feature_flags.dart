@@ -6,6 +6,8 @@ class AppFeatureFlags {
   static const bool showMapBusinesses = false;
   static const bool showMapLayers = false;
   static const bool showSendRouteToGroup = false;
+  static const bool showSaveRouteButton = false;
+  static const bool showSaveDestinationButton = false;
 
   //Communication Features
   static const bool showNearbyGroups = false;
@@ -32,4 +34,7 @@ class AppFeatureFlags {
   static const bool showTaggingling = false;
 
   static const bool showCommunityScreen = false;
+
+  // Messaging
+  static const bool showMoreButton= false;
 }

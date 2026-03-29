@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../widgets/structure/settings_tile.dart';
 import '../widgets/structure/settings_section_header.dart';
 
@@ -8,16 +9,19 @@ class SecurityPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Güvenlik'), centerTitle: true),
+      appBar: AppBar(title: Text(l10n.settings_security), centerTitle: true),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SettingsSectionHeader(title: "Hesap Güvenliği"),
+            SettingsSectionHeader(title: l10n.accountSecurity),
             SettingsTile(
               icon: Icons.password_rounded,
-              title: "Şifre Değiştir",
-              subtitle: "Mevcut şifreni güncelle",
+              title: l10n.changePassword,
+              subtitle: l10n.changePasswordSubtitle,
               onTap: () {
                 context.push('/change-password');
               },

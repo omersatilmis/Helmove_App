@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../../../core/theme/text_styles.dart';
 import '../../../../../../core/widgets/app_button.dart';
 
@@ -155,7 +156,7 @@ class FriendStatusCard extends StatelessWidget {
               icon: const Icon(Icons.chat_bubble_outline_rounded),
               color: colorScheme.primary,
               iconSize: 22,
-              tooltip: "Mesaj",
+              tooltip: AppLocalizations.of(context)!.messageTooltip,
               constraints: const BoxConstraints(),
               padding: const EdgeInsets.all(8),
             ),
@@ -164,7 +165,7 @@ class FriendStatusCard extends StatelessWidget {
               icon: const Icon(Icons.delete_outline_rounded),
               color: colorScheme.error.withValues(alpha: 0.7),
               iconSize: 22,
-              tooltip: "Sil",
+              tooltip: AppLocalizations.of(context)!.deleteTooltip,
               constraints: const BoxConstraints(),
               padding: const EdgeInsets.all(8),
             ),
@@ -173,7 +174,7 @@ class FriendStatusCard extends StatelessWidget {
 
       case FriendshipCardType.discover:
         return AppButton(
-          text: "Ekle",
+          text: AppLocalizations.of(context)!.add,
           onPressed: onAddFriendTap,
           variant: AppButtonVariant.primary,
           style: AppButtonStyle.filled,
@@ -189,7 +190,7 @@ class FriendStatusCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            "Bekliyor",
+            AppLocalizations.of(context)!.waiting,
             style: AppTextStyles.medium.copyWith(
               fontSize: 12,
               color: colorScheme.onSurfaceVariant,
@@ -202,7 +203,7 @@ class FriendStatusCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             AppButton(
-              text: "Reddet",
+              text: AppLocalizations.of(context)!.reject,
               onPressed: onRejectTap,
               variant: AppButtonVariant.danger,
               style: AppButtonStyle.text,
@@ -211,7 +212,7 @@ class FriendStatusCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             AppButton(
-              text: "Kabul",
+              text: AppLocalizations.of(context)!.accept,
               onPressed: onAcceptTap,
               variant: AppButtonVariant.primary,
               style: AppButtonStyle.filled,

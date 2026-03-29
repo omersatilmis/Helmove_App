@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/core/widgets/app_frosted_button.dart';
@@ -27,6 +28,7 @@ class GroupHeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
@@ -45,19 +47,19 @@ class GroupHeaderSection extends StatelessWidget {
             _buildMetaItem(
               context,
               Icons.map,
-              "Rota: ${rideDetails?.endLocation ?? data.destination ?? 'Bilinmiyor'}",
+              l10n.routePrefix(rideDetails?.endLocation ?? data.destination ?? l10n.notAvailable),
             ),
             _buildDivider(context),
             _buildMetaItem(
               context,
               Icons.bolt,
-              rideDetails?.ridingStyle ?? data.ridingStyle ?? 'Bilinmiyor',
+              _getLocalizedOption(rideDetails?.ridingStyle ?? data.ridingStyle ?? 'Bilinmiyor', l10n),
             ),
             _buildDivider(context),
             _buildMetaItem(
               context,
               Icons.bar_chart,
-              rideDetails?.difficulty ?? 'Bilinmiyor',
+              _getLocalizedOption(rideDetails?.difficulty ?? 'Bilinmiyor', l10n),
             ),
             _buildDivider(context),
             _buildMetaItem(
@@ -66,8 +68,8 @@ class GroupHeaderSection extends StatelessWidget {
                   ? Icons.lock
                   : Icons.public,
               (rideDetails?.isPrivate ?? (data.privacy == "Private"))
-                  ? "Private"
-                  : "Public",
+                  ? l10n.private
+                  : l10n.public,
             ),
           ],
         ),
@@ -125,6 +127,7 @@ class GroupHeaderSection extends StatelessWidget {
   }
 
   Widget _buildIntercomBanner(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     const intercomColor = Color(0xFF22C55E);
 
     final isP2P =
@@ -142,29 +145,29 @@ class GroupHeaderSection extends StatelessWidget {
     if (isP2P) {
       connectionColor = const Color(0xFF3B82F6);
       connectionText = rtcStatus == RtcConnectionStatus.p2pConnected
-          ? 'P2P Bağlantı'
-          : 'P2P Bağlanıyor...';
+          ? l10n.p2pConnected
+          : l10n.p2pConnecting;
       connectionIcon = Icons.call;
     } else if (isSfu) {
       connectionColor = const Color(0xFF8B5CF6);
       connectionText = rtcStatus == RtcConnectionStatus.sfuConnected
-          ? 'SFU Bağlantı'
-          : 'SFU Bağlanıyor...';
+          ? l10n.sfuConnected
+          : l10n.sfuConnecting;
       connectionIcon = Icons.hub;
     } else if (isReconnecting) {
       connectionColor = Colors.orange;
-      connectionText = 'Yeniden Bağlanıyor...';
+      connectionText = l10n.reconnectingStatus;
       connectionIcon = Icons.sync;
     } else {
       connectionColor = Colors.grey;
-      connectionText = 'Bekleniyor...';
+      connectionText = l10n.waitingStatus;
       connectionIcon = Icons.hourglass_empty;
     }
 
     final intercomCard = _buildIntercomStatusCard(
       color: intercomColor,
       icon: Icons.wifi_tethering,
-      title: 'Intercom Active',
+      title: l10n.intercomActive,
     );
     final connectionCard = _buildIntercomStatusCard(
       color: connectionColor,
@@ -256,5 +259,30 @@ class GroupHeaderSection extends StatelessWidget {
         shape: BoxShape.circle,
       ),
     );
+  }
+
+  String _getLocalizedOption(String option, AppLocalizations l10n) {
+    switch (option) {
+      case 'Sakin':
+        return l10n.chill;
+      case 'Tour':
+        return l10n.tour;
+      case 'Viraj':
+        return l10n.fast;
+      case 'Sehir':
+        return l10n.city;
+      case 'Beginner':
+        return l10n.beginner;
+      case 'Intermediate':
+        return l10n.intermediate;
+      case 'Advanced':
+        return l10n.advanced;
+      case 'Expert':
+        return l10n.expert;
+      case 'Bilinmiyor':
+        return l10n.notAvailable;
+      default:
+        return option;
+    }
   }
 }

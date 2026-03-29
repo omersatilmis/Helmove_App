@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class AuthDividerWidget extends StatelessWidget {
   const AuthDividerWidget({super.key});
@@ -13,7 +14,7 @@ class AuthDividerWidget extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            "veya",
+            AppLocalizations.of(context)!.or,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.outline,
             ),

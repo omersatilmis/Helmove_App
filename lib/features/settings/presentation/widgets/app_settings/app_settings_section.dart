@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 // WebRTC servisi artık doğrudan çağrılmıyor — bitrate yönetimi
 // AdaptiveBitrateController üzerinden IntercomEngine tarafından yapılır.
 import 'package:helmove/core/services/audio_orchestrator_service.dart';
@@ -12,7 +13,7 @@ import 'package:helmove/features/settings/presentation/widgets/structure/setting
 
 // 🔥 YENİ OLUŞTURDUĞUMUZ HELPER DOSYASINI IMPORT ET
 import 'package:helmove/features/settings/presentation/widgets/structure/helper_widgets.dart';
-import 'package:helmove/core/theme/theme_provider.dart';
+
 
 class AppSettingsSection extends StatefulWidget {
   const AppSettingsSection({super.key});
@@ -27,13 +28,12 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   bool _voiceNavigation = true;
   bool _wifiOnly = true;
 
-  String _distanceUnit = "Kilometre (km)";
-  String _tempUnit = "Celsius (°C)";
-  String _audioQuality = "Dengeli (32 kbps)";
-  String _themeMode = "Sistem";
-  String _language = "Türkçe";
+  String _distanceUnit = "";
+  String _tempUnit = "";
+  String _audioQuality = ""; // Will be initialized
 
-  String _mapType = "Normal";
+
+  String _mapType = "";
   bool _trafficEnabled = false;
 
   // Yeni Ayarlar
@@ -42,38 +42,57 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   bool _preferWiredMic = false; // UI'da gizli, ama logic hook var
 
   // Ses Kalitesi Seçenekleri (Key -> Label)
-  final Map<String, String> _qualityOptions = {
-    'low': "Düşük (16 kbps) - Veri Tasarrufu",
-    'medium': "Dengeli (32 kbps) - Varsayılan",
-    'high': "Yüksek (48 kbps) - WiFi Önerilir",
-    'ultra': "Ultra (64 kbps) - En Yüksek Kalite",
+  Map<String, String> _getQualityOptions(AppLocalizations l10n) => {
+    'low': l10n.lowQuality,
+    'medium': l10n.mediumQuality,
+    'high': l10n.highQuality,
+    'ultra': l10n.ultraQuality,
   };
 
   @override
   void initState() {
     super.initState();
+    // Delay loading until l10n is available or use a default
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final l10n = AppLocalizations.of(context);
+    if (l10n != null && mounted) {
+      if (_distanceUnit.isEmpty) _distanceUnit = l10n.kilometer;
+      if (_tempUnit.isEmpty) _tempUnit = l10n.celsius;
+      if (_mapType.isEmpty) _mapType = l10n.normal;
+      if (_audioQuality.isEmpty) {
+        final qualityOptions = _getQualityOptions(l10n);
+        _audioQuality = qualityOptions['medium'] ?? '';
+      }
+    }
     _loadSavedSettings();
   }
 
   // Kayıtlı ayarları yükle ve servise uygula
   Future<void> _loadSavedSettings() async {
     try {
+      final l10n = AppLocalizations.of(context);
+      if (l10n == null) return;
       final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      final qualityOptions = _getQualityOptions(l10n);
 
       // Kayıtlı ayarları oku
-      final savedTheme = prefs.getString('theme_mode');
-      final savedLanguage = prefs.getString('language');
       final savedQualityKey = prefs.getString('audio_quality_key');
       final savedMusicMode = prefs.getString('audio_mixing_mode');
       final savedWiredMic = prefs.getBool('prefer_wired_mic');
 
       if (mounted) {
         setState(() {
-          if (savedTheme != null) _themeMode = savedTheme;
-          if (savedLanguage != null) _language = savedLanguage;
+
           if (savedQualityKey != null) {
             _audioQuality =
-                _qualityOptions[savedQualityKey] ?? _qualityOptions['medium']!;
+                qualityOptions[savedQualityKey] ?? qualityOptions['medium']!;
+          } else if (_audioQuality.isEmpty) {
+            _audioQuality = qualityOptions['medium']!;
           }
           if (savedMusicMode != null) {
             _musicMode = AudioMixingMode.values.firstWhere(
@@ -99,8 +118,9 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   // Bu sayede P2P ve SFU aynı pipeline'ı kullanıyor.
   // ──────────────────────────────────────────────────────────────────
 
-  String _getKeyFromLabel(String label) {
-    return _qualityOptions.entries
+  String _getKeyFromLabel(String label, AppLocalizations l10n) {
+    final qualityOptions = _getQualityOptions(l10n);
+    return qualityOptions.entries
         .firstWhere(
           (e) => e.value == label,
           orElse: () => const MapEntry('medium', ''),
@@ -118,66 +138,30 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+    final qualityOptions = _getQualityOptions(l10n);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(title: "Uygulama Ayarları"),
+        SettingsSectionHeader(title: l10n.appSettings),
 
-        // 2. GENEL AYARLAR (Tema & Dil)
-        SettingsExpansionTile(
-          icon: Icons.settings_rounded,
-          title: "Genel Ayarlar",
-          children: [
-            SettingsActionTile(
-              title: "Tema",
-              value: _themeMode,
-              icon: Icons.brightness_6_rounded,
-              onTap: () => showSettingsBottomSheet(
-                context,
-                "Tema Seçimi",
-                ["Sistem", "Aydınlık", "Karanlık"],
-                (val) async {
-                  setState(() => _themeMode = val);
-                  // Global temayı güncelle (Persistence artık ThemeProvider içinde)
-                  if (context.mounted) {
-                    context.read<ThemeProvider>().setTheme(val);
-                  }
-                },
-              ),
-            ),
-            SettingsActionTile(
-              title: "Dil",
-              value: _language,
-              icon: Icons.language_rounded,
-              onTap: () => showSettingsBottomSheet(
-                context,
-                "Dil Seçimi",
-                ["Türkçe", "English"],
-                (val) async {
-                  setState(() => _language = val);
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('language', val);
-                },
-              ),
-            ),
-          ],
-        ),
 
         // 3. ÖLÇÜ BİRİMLERİ
         if (AppFeatureFlags.showMeasurementUnits)
           SettingsExpansionTile(
             icon: Icons.straighten_rounded,
-            title: "Ölçü Birimleri",
+            title: l10n.measurementUnits,
             children: [
               SettingsActionTile(
-                title: "Mesafe",
+                title: l10n.distance,
                 value: _distanceUnit,
                 icon: Icons.directions_car_rounded,
                 onTap: () => showSettingsBottomSheet(
                   context,
-                  "Mesafe Birimi",
-                  ["Kilometre (km)", "Mil (mi)"],
+                  l10n.distanceUnit,
+                  [l10n.kilometer, l10n.mile],
                   (val) {
                     setState(() => _distanceUnit = val);
                     context.read<SettingsBloc>().add(const UpdateUnitsEvent());
@@ -185,13 +169,13 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                 ),
               ),
               SettingsActionTile(
-                title: "Sıcaklık",
+                title: l10n.temperature,
                 value: _tempUnit,
                 icon: Icons.thermostat_rounded,
                 onTap: () => showSettingsBottomSheet(
                   context,
-                  "Sıcaklık Birimi",
-                  ["Celsius (°C)", "Fahrenheit (°F)"],
+                  l10n.tempUnit,
+                  [l10n.celsius, l10n.fahrenheit],
                   (val) {
                     setState(() => _tempUnit = val);
                     context.read<SettingsBloc>().add(const UpdateUnitsEvent());
@@ -205,16 +189,16 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
         if (AppFeatureFlags.showMapSettings)
           SettingsExpansionTile(
             icon: Icons.map_outlined,
-            title: "Harita Ayarları",
+            title: l10n.mapSettings,
             children: [
               SettingsActionTile(
-                title: "Harita Tipi",
+                title: l10n.mapType,
                 value: _mapType,
                 icon: Icons.layers_outlined,
                 onTap: () => showSettingsBottomSheet(
                   context,
-                  "Harita Tipi",
-                  ["Normal", "Uydu", "Arazi", "Hibrit"],
+                  l10n.mapType,
+                  [l10n.normal, l10n.satellite, l10n.terrain, l10n.hybrid],
                   (val) {
                     setState(() => _mapType = val);
                     context.read<SettingsBloc>().add(const UpdateMapEvent());
@@ -222,8 +206,8 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                 ),
               ),
               SettingsSwitchTile(
-                title: "Trafik Bilgisi",
-                subtitle: "Yoğunluk durumunu göster",
+                title: l10n.trafficInfo,
+                subtitle: l10n.showTrafficDensity,
                 value: _trafficEnabled,
                 onChanged: (val) {
                   setState(() => _trafficEnabled = val);
@@ -236,7 +220,7 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
         // 5. SES & MEDYA (YENİLENEN KISIM)
         SettingsExpansionTile(
           icon: Icons.volume_up_rounded,
-          title: "Ses & Medya",
+          title: l10n.audioMedia,
           children: [
             // SES KALİTESİ KISMI
             Padding(
@@ -245,7 +229,7 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Ses Kalitesi",
+                    l10n.audioQuality,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -256,11 +240,11 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                   InkWell(
                     onTap: () => showSettingsBottomSheet(
                       context,
-                      "Ses Kalitesi",
-                      _qualityOptions.values.toList(),
+                      l10n.audioQuality,
+                      qualityOptions.values.toList(),
                       (val) async {
                         setState(() => _audioQuality = val);
-                        final qualityKey = _getKeyFromLabel(val);
+                        final qualityKey = _getKeyFromLabel(val, l10n);
                         final prefs = await SharedPreferences.getInstance();
                         await prefs.setString('audio_quality_key', qualityKey);
                         // Bitrate güncellemesi artık UpdateAudioEvent →
@@ -320,7 +304,7 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Arka Planda Müzik",
+                    l10n.backgroundMusic,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -336,22 +320,22 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
                     child: Column(
                       children: [
                         _buildMusicOption(
-                          title: "Otomatik",
-                          subtitle: "Konuşurken kısılır",
+                          title: l10n.automatic,
+                          subtitle: l10n.dimWhileTalking,
                           value: AudioMixingMode.auto,
                           groupValue: _musicMode,
                           onChanged: _updateMusicMode,
                         ),
                         _buildMusicOption(
-                          title: "Açık",
-                          subtitle: "Müzik devamlı kısıktır",
+                          title: l10n.on,
+                          subtitle: l10n.musicAlwaysDimmed,
                           value: AudioMixingMode.always,
                           groupValue: _musicMode,
                           onChanged: _updateMusicMode,
                         ),
                         _buildMusicOption(
-                          title: "Kapalı",
-                          subtitle: "Müzik sesinde değişim olmaz",
+                          title: l10n.off,
+                          subtitle: l10n.noChangeInMusic,
                           value: AudioMixingMode.off,
                           groupValue: _musicMode,
                           onChanged: _updateMusicMode,
@@ -366,8 +350,8 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
             const Divider(height: 16, indent: 16, endIndent: 16),
 
             SettingsSwitchTile(
-              title: "Gürültü Engelleme",
-              subtitle: "Rüzgar sesini azaltır",
+              title: l10n.noiseCancellation,
+              subtitle: l10n.reduceWindNoise,
               value: _noiseCancellation,
               onChanged: (val) {
                 setState(() => _noiseCancellation = val);
@@ -375,8 +359,8 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
               },
             ),
             SettingsSwitchTile(
-              title: "Sesli Navigasyon",
-              subtitle: "Rota talimatlarını sesli al",
+              title: l10n.voiceNavigation,
+              subtitle: l10n.voiceRouteInstructions,
               value: _voiceNavigation,
               onChanged: (val) {
                 setState(() => _voiceNavigation = val);
@@ -389,11 +373,11 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
         // 6. BAĞLANTI
         SettingsExpansionTile(
           icon: Icons.sensors_rounded,
-          title: "Bağlantı",
+          title: l10n.connectionSettings,
           children: [
             SettingsSwitchTile(
-              title: "Sadece Wi-Fi ile İndir",
-              subtitle: "Harita güncellemeleri için",
+              title: l10n.wifiOnlyDownloads,
+              subtitle: l10n.mapUpdatesFor,
               value: _wifiOnly,
               onChanged: (val) => setState(() => _wifiOnly = val),
             ),
@@ -401,7 +385,7 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
               dense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               title: Text(
-                "Bluetooth Cihazları",
+                l10n.bluetoothDevices,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurface,
                 ),

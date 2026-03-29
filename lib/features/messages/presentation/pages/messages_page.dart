@@ -5,11 +5,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/widgets/unread_count_badge.dart';
 import '../../../../core/widgets/app_input_field.dart';
+import '../../../../core/config/app_feature_flags.dart';
 import '../bloc/conversations/conversations_bloc.dart';
 import '../bloc/conversations/conversations_event.dart';
 import '../bloc/conversations/conversations_state.dart';
 import 'package:helmove/features/friendship/presentation/pages/pick_friend_page.dart';
 import 'chat_page.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class ConversationsPage extends StatelessWidget {
   const ConversationsPage({super.key});
@@ -64,14 +66,15 @@ class _ConversationsViewState extends State<ConversationsView> {
     });
   }
 
-  String _formatDate(DateTime? date) {
+  String _formatDate(DateTime? date, BuildContext context) {
     if (date == null) return '';
+    final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
     final difference = now.difference(date);
     if (difference.inDays == 0) {
       return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays == 1) {
-      return 'Dün';
+      return l10n.yesterday;
     } else {
       return '${date.day}/${date.month}';
     }
@@ -82,6 +85,7 @@ class _ConversationsViewState extends State<ConversationsView> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
 
     final Color itemTileColor =
         isDark ? const Color(0xFF1C1917) : Colors.white;
@@ -98,13 +102,13 @@ class _ConversationsViewState extends State<ConversationsView> {
                   controller: _searchController,
                   type: AppInputType.discover,
                   size: AppInputSize.small,
-                  hint: 'Sohbet ara...',
+                  hint: l10n.searchChatHint,
                   textInputAction: TextInputAction.search,
                   showFocusBorder: false,
                   radius: 12,
                 )
               : Text(
-                  'Sohbetler',
+                  l10n.chatsTitle,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -118,10 +122,11 @@ class _ConversationsViewState extends State<ConversationsView> {
               ),
               onPressed: _toggleSearch,
             ),
-            IconButton(
-              icon: const Icon(Icons.more_vert_rounded),
-              onPressed: () {},
-            ),
+            if (AppFeatureFlags.showMoreButton)
+              IconButton(
+                icon: const Icon(Icons.more_vert_rounded),
+                onPressed: () {},
+              ),
           ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1.0),
@@ -196,14 +201,14 @@ class _ConversationsViewState extends State<ConversationsView> {
                               ),
                               const SizedBox(height: 24),
                               Text(
-                                'Henuz mesaj yok',
+                                AppLocalizations.of(context)!.noMessagesYet,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Arkadaslarinla sohbet etmeye basla!',
+                                AppLocalizations.of(context)!.startChattingPrompt,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                 ),
@@ -231,7 +236,7 @@ class _ConversationsViewState extends State<ConversationsView> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Sonuc bulunamadi',
+                                AppLocalizations.of(context)!.noResultsFound,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -389,7 +394,7 @@ class _ConversationsViewState extends State<ConversationsView> {
                                             ),
                                             if (lastMessageTime != null)
                                               Text(
-                                                _formatDate(lastMessageTime),
+                                                _formatDate(lastMessageTime, context),
                                                 style: theme
                                                     .textTheme
                                                     .labelSmall

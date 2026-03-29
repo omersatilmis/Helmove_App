@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/l10n/app_localizations.dart'; // Localizations ekle
 
 // 🔥 BUTON IMPORT (Core'dan çekiyoruz)
 import 'package:helmove/core/widgets/app_frosted_button.dart';
@@ -34,20 +35,24 @@ class _SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const SizedBox.shrink();
+    }
 
     return BlocListener<SettingsBloc, SettingsState>(
       listener: (context, state) {
         if (state.status == SettingsStatus.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.successMessage ?? 'İşlem başarılı'),
+              content: Text(state.successMessage ?? l10n.settingsOperationSuccess),
               backgroundColor: Colors.green,
             ),
           );
         } else if (state.status == SettingsStatus.failure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.errorMessage ?? 'Hata oluştu'),
+              content: Text(state.errorMessage ?? l10n.settingsOperationError),
               backgroundColor: Colors.red,
             ),
           );
@@ -78,7 +83,7 @@ class _SettingsView extends StatelessWidget {
 
                     // ORTA: Başlık
                     Text(
-                      "Ayarlar",
+                      l10n.settings,
                       style: AppTextStyles.h3.copyWith(
                         color: theme.colorScheme.onSurface,
                         fontSize: 20, // Biraz daha fit dursun

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
@@ -84,7 +85,9 @@ class FollowListPage extends StatelessWidget {
         child: Scaffold(
           appBar: AppBar(
             title: Text(
-              type == FollowListType.followers ? 'Takipçiler' : 'Takip Edilenler',
+              type == FollowListType.followers
+                  ? AppLocalizations.of(context)!.followers
+                  : AppLocalizations.of(context)!.following,
             ),
             centerTitle: true,
           ),
@@ -149,7 +152,9 @@ class _FollowUserTile extends StatelessWidget {
           final isLoading = state is FollowActionLoading && state.userId == user.id;
 
           return AppButton(
-            text: user.isFollowing ? "Takiptesin" : "Takip Et",
+            text: user.isFollowing
+                ? AppLocalizations.of(context)!.followingStatus
+                : AppLocalizations.of(context)!.follow,
             onPressed: () {
               final bloc = context.read<FollowActionBloc>();
               if (user.isFollowing) {
@@ -265,11 +270,11 @@ class _FollowListViewState extends State<_FollowListView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Hata: $error"),
+            Text(AppLocalizations.of(context)!.errorLabel(error)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _handleRefresh,
-              child: const Text("Tekrar Dene"),
+              child: Text(AppLocalizations.of(context)!.retry),
             ),
           ],
         ),
@@ -281,9 +286,9 @@ class _FollowListViewState extends State<_FollowListView> {
         onRefresh: _handleRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 100),
-            Center(child: Text("Hiç kimse bulunamadı.")),
+          children: [
+            const SizedBox(height: 100),
+            Center(child: Text(AppLocalizations.of(context)!.noResultsFound)),
           ],
         ),
       );

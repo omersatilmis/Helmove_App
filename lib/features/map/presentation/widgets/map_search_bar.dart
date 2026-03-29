@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../providers/map_bloc.dart';
 import '../providers/map_event.dart';
@@ -64,6 +65,8 @@ class _MapSearchBarState extends State<MapSearchBar> {
       builder: (context, state) {
         final isSearching = state.isSearching;
         final showSuggestions = state.lastQuery.trim().length >= 2;
+        final l10n = AppLocalizations.of(context)!;
+
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -79,7 +82,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
                 _buildField(
                   controller: _startController,
                   focusNode: _startFocus,
-                  hint: 'Nereden?',
+                  hint: l10n.map_search_from,
                   icon: Icons.circle_outlined,
                   isStart: true,
                   isSearching: isSearching,
@@ -88,7 +91,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
                 _buildField(
                   controller: _endController,
                   focusNode: _endFocus,
-                  hint: 'Nereye?',
+                  hint: l10n.map_search_to,
                   icon: Icons.flag_outlined,
                   isStart: false,
                   isSearching: isSearching,
@@ -170,6 +173,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
 
   Widget _buildSuggestionsPanel(BuildContext context, MapState state) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
@@ -202,7 +206,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                'Sonuç bulunamadı',
+                l10n.noResultsFound,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -261,34 +265,35 @@ class _MapSearchBarState extends State<MapSearchBar> {
   }
 
   Widget _buildFilters(BuildContext context, MapSearchFilters filters) {
+    final l10n = AppLocalizations.of(context)!;
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: [
         FilterChip(
-          label: const Text('Yakında'),
+          label: Text(l10n.map_filter_nearby),
           selected: filters.useProximity,
           onSelected: (value) =>
               _updateFilters(filters.copyWith(useProximity: value)),
         ),
         FilterChip(
-          label: const Text('Bu alan'),
+          label: Text(l10n.map_filter_this_area),
           selected: filters.useMapBounds,
           onSelected: (value) =>
               _updateFilters(filters.copyWith(useMapBounds: value)),
         ),
         FilterChip(
-          label: const Text('Adres'),
+          label: Text(l10n.map_filter_address),
           selected: filters.types.contains('address'),
           onSelected: (value) => _toggleType(filters, 'address', value),
         ),
         FilterChip(
-          label: const Text('POI'),
+          label: Text(l10n.map_filter_poi),
           selected: filters.types.contains('poi'),
           onSelected: (value) => _toggleType(filters, 'poi', value),
         ),
         FilterChip(
-          label: const Text('Şehir'),
+          label: Text(l10n.map_filter_city),
           selected: filters.types.contains('place'),
           onSelected: (value) => _toggleType(filters, 'place', value),
         ),

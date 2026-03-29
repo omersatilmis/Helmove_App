@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/core/services/deep_link_store.dart';
 import '../../config/mapbox_config.dart';
@@ -1074,10 +1075,12 @@ class _MapPageState extends State<MapPage> {
 
   Future<void> _determinePosition() async {
     _isLoadingLocation.value = true;
+    final l10n = AppLocalizations.of(context)!;
     try {
       bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _showSnackBar("Konum servisleri kapalı.");
+        if (!mounted) return;
+        _showSnackBar(l10n.map_location_services_disabled);
         return;
       }
 
@@ -1086,18 +1089,21 @@ class _MapPageState extends State<MapPage> {
       if (permission == geo.LocationPermission.denied) {
         permission = await geo.Geolocator.requestPermission();
         if (permission == geo.LocationPermission.denied) {
-          _showSnackBar("Konum izni reddedildi.");
+          if (!mounted) return;
+          _showSnackBar(l10n.map_location_permission_denied);
           return;
         }
       }
 
       final position = await geo.Geolocator.getCurrentPosition();
+      if (!mounted) return;
       final center = Point(
         coordinates: Position(position.longitude, position.latitude),
       );
       await _mapboxMap?.setCamera(CameraOptions(center: center, zoom: 15.0));
     } catch (e) {
-      _showSnackBar("Konum alınırken hata oluştu.");
+      if (!mounted) return;
+      _showSnackBar(l10n.map_location_error);
     } finally {
       _isLoadingLocation.value = false;
     }
@@ -1121,7 +1127,7 @@ class _MapPageState extends State<MapPage> {
   }
 
   void _onLayersPressed() {
-    _showSnackBar('Katmanlar yakında.');
+    _showSnackBar(AppLocalizations.of(context)!.map_layers_coming_soon);
   }
 
   @override

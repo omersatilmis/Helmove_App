@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../domain/entities/location_entity.dart';
@@ -30,8 +32,10 @@ class MapBottomSheetDestination extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final isStartSelected = startPoint != null;
     final isEndSelected = endPoint != null;
+    final placeholderLabel = l10n.map_select_stop_hint;
     final subtitle =
         location.subtitle ??
         (location.context != null && location.context!.isNotEmpty
@@ -47,7 +51,9 @@ class MapBottomSheetDestination extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                location.label,
+                location.label == placeholderLabel
+                    ? l10n.map_select_stop_hint
+                    : location.label,
                 style: AppTextStyles.h2.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
@@ -60,22 +66,24 @@ class MapBottomSheetDestination extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             if (!isSelectionMode ||
-                location.label != 'Haritadan durak seçiniz') ...[
-              _ActionIcon(
-                icon: Icons.bookmark_border,
-                tooltip: 'Kaydet',
-                onTap: () {},
-              ),
-              const SizedBox(width: 6),
+                location.label != placeholderLabel) ...[
+              if (AppFeatureFlags.showSaveDestinationButton) ...[
+                _ActionIcon(
+                  icon: Icons.bookmark_border,
+                  tooltip: l10n.save,
+                  onTap: () {},
+                ),
+                const SizedBox(width: 6),
+              ],
               _ActionIcon(
                 icon: Icons.share_outlined,
-                tooltip: 'Paylaş',
+                tooltip: l10n.share,
                 onTap: _shareLocation,
               ),
               const SizedBox(width: 6),
               _ActionIcon(
                 icon: Icons.close_rounded,
-                tooltip: 'Kapat',
+                tooltip: l10n.cancel,
                 onTap: () {
                   final bloc = context.read<MapBloc>();
                   bloc.add(MapSelectLocation(null));
@@ -120,7 +128,7 @@ class MapBottomSheetDestination extends StatelessWidget {
                     context.read<MapBloc>().add(MapSelectLocation(null));
                   },
                   icon: Icons.flag_rounded,
-                  label: 'Bitiş',
+                  label: l10n.map_point_destination,
                   isSelected: isEndSelected,
                   filledColor: Colors.deepOrange.shade500, // Farklı Ton Turuncu
                   outlinedColor: Colors.orange.shade600,   // Outlined Turuncu
@@ -140,7 +148,7 @@ class MapBottomSheetDestination extends StatelessWidget {
                     context.read<MapBloc>().add(MapSelectLocation(null));
                   },
                   icon: Icons.my_location_rounded,
-                  label: 'Başlangıç',
+                  label: l10n.map_point_origin,
                   isSelected: isStartSelected,
                   filledColor: Colors.orange.shade600,     // Farklı Ton Turuncu
                   outlinedColor: Colors.orange.shade600,   // Outlined Turuncu
@@ -149,7 +157,7 @@ class MapBottomSheetDestination extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: AppFrostedTextButton(
-                  text: 'Yol Tarifi',
+                  text: l10n.map_get_directions,
                   onPressed: canRoute
                       ? () => context.read<MapBloc>().add(MapRouteRequested())
                       : null,
@@ -175,9 +183,9 @@ class MapBottomSheetDestination extends StatelessWidget {
                       : theme.colorScheme.onSurfaceVariant.withValues(
                           alpha: 0.15,
                         ),
-                  child: const FittedBox(
+                  child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text('Yol Tarifi'),
+                    child: Text(l10n.map_get_directions),
                   ),
                 ),
               ),
@@ -188,12 +196,13 @@ class MapBottomSheetDestination extends StatelessWidget {
   }
 
   Widget _buildSelectionButton(BuildContext context, ThemeData theme) {
+    final l10n = AppLocalizations.of(context)!;
     final isAlreadyAdded = stops.any((stop) => _isSamePoint(stop, location));
     final isStartPoint =
         startPoint != null && _isSamePoint(startPoint!, location);
     final isEndPoint = endPoint != null && _isSamePoint(endPoint!, location);
     final isMarked = isAlreadyAdded || isStartPoint || isEndPoint;
-    final isPlaceholder = location.label == 'Haritadan durak seçiniz';
+    final isPlaceholder = location.label == l10n.map_select_stop_hint;
     final isDark = theme.brightness == Brightness.dark;
 
     return Row(
@@ -201,7 +210,7 @@ class MapBottomSheetDestination extends StatelessWidget {
         Expanded(
           flex: 1,
           child: AppFrostedTextButton(
-            text: 'Geri',
+            text: l10n.back,
             onPressed: () =>
                 context.read<MapBloc>().add(MapToggleStopSelectionMode(false)),
             backgroundColor: isDark
@@ -216,7 +225,7 @@ class MapBottomSheetDestination extends StatelessWidget {
         Expanded(
           flex: 2,
           child: AppFrostedTextButton(
-            text: isMarked ? 'Durak Seçildi' : 'Durak Seç',
+            text: isMarked ? l10n.map_stop_selected : l10n.map_select_stop,
             onPressed: (isMarked || isPlaceholder)
                 ? null
                 : () => context.read<MapBloc>().add(

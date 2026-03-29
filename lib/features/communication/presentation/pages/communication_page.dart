@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import '../../../../core/theme/text_styles.dart';
 import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
@@ -140,6 +141,15 @@ class _CommunicationPageState extends State<CommunicationPage> {
   Widget build(BuildContext context) {
     _triggerInitialLoadIfVisible();
 
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const AppBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -157,7 +167,6 @@ class _CommunicationPageState extends State<CommunicationPage> {
     final pendingInviteCount = context.select<VoiceSessionBloc, int>(
       (bloc) => bloc.state.pendingInvitesCount,
     );
-
 
     return AppBackground(
       child: Scaffold(
@@ -217,7 +226,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                           Expanded(
                             child: _buildTopButton(
                               context,
-                              title: "Saved\nSessions",
+                              title: l10n.savedSessions,
                               icon: Icons.bookmark_border,
                               glassTint: colorScheme.onSurface,
                               iconColor: colorScheme.primary,
@@ -235,7 +244,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                         Expanded(
                           child: _buildTopButton(
                             context,
-                            title: "Create Ride\nGroup",
+                            title: l10n.createRideGroup,
                             icon: Icons.add,
                             glassTint: colorScheme.primary,
                             iconColor: isDark
@@ -250,23 +259,22 @@ class _CommunicationPageState extends State<CommunicationPage> {
                             onTap: () async {
                               final voiceSessionBloc = context
                                   .read<VoiceSessionBloc>();
-                              if (voiceSessionBloc.state.session !=
-                                  null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text(
-                                      'LÃ¼tfen yeni bir grup oluÅŸturmadan Ã¶nce mevcut sÃ¼rÃ¼ÅŸten ayrÄ±lÄ±n.',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
+                                if (voiceSessionBloc.state.session != null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        l10n.leaveGroupWarning,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
+                                      backgroundColor: colorScheme.error,
+                                      behavior: SnackBarBehavior.floating,
                                     ),
-                                    backgroundColor: colorScheme.error,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                return;
-                              }
+                                  );
+                                  return;
+                                }
                               await context.push(
                                 '/communication/create-group-ride',
                               );
@@ -296,7 +304,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  "Your Active Group",
+                                  l10n.yourActiveGroup,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTextStyles.h3.copyWith(
                                     color: colorScheme.onSurface,
@@ -311,7 +319,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Tooltip(
-                              message: 'Refresh',
+                              message: l10n.refresh,
                               child: AppFrostedTextButton(
                                 text: '',
                                 onPressed: _isRefreshDisabled
@@ -341,7 +349,9 @@ class _CommunicationPageState extends State<CommunicationPage> {
                                 width: sosWidth,
                                 height: sosHeight,
                                 decoration: BoxDecoration(
-                                  color: colorScheme.error.withValues(alpha: 0.15),
+                                  color: colorScheme.error.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: colorScheme.error,
@@ -404,7 +414,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                '$pendingInviteCount pending invite${pendingInviteCount > 1 ? 's' : ''}',
+                                l10n.pendingInvitesCount(pendingInviteCount),
                                 style: AppTextStyles.bodySmall.copyWith(
                                   color: colorScheme.onSurface,
                                   fontWeight: FontWeight.w600,
@@ -413,7 +423,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                             ),
                             TextButton(
                               onPressed: () => context.push('/notifications'),
-                              child: const Text('Open'),
+                              child: Text(l10n.open),
                             ),
                           ],
                         ),
@@ -437,7 +447,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            "Nearby Groups",
+                            l10n.nearbyGroups,
                             style: AppTextStyles.h3.copyWith(
                               color: colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
@@ -488,7 +498,7 @@ class _CommunicationPageState extends State<CommunicationPage> {
     );
   }
 
-  // --- Ãœst Buton YardÄ±mcÄ± Fonksiyon ---
+  // --- Üst Buton Yardımcı Fonksiyon ---
   Widget _buildTopButton(
     BuildContext context, {
     required String title,

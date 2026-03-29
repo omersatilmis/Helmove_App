@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/call_bloc.dart';
@@ -88,6 +89,7 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final initial = (widget.callerDisplayName?.isNotEmpty == true)
         ? widget.callerDisplayName![0].toUpperCase()
         : '?';
@@ -142,9 +144,9 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                         },
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Gelen Arama',
-                        style: TextStyle(
+                      Text(
+                        l10n.incomingCall,
+                        style: const TextStyle(
                           color: Color(0xFF22C55E),
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -202,7 +204,7 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.callerDisplayName ?? 'Bilinmeyen',
+                              widget.callerDisplayName ?? l10n.unknown,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -212,9 +214,9 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
-                            const Text(
-                              'Sesli arama',
-                              style: TextStyle(
+                            Text(
+                              l10n.voiceCall,
+                              style: const TextStyle(
                                 color: Colors.white54,
                                 fontSize: 13,
                               ),
@@ -255,19 +257,19 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                                 color: Colors.red.withValues(alpha:0.3),
                               ),
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.call_end_rounded,
                                     color: Colors.red,
                                     size: 20,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Reddet',
-                                    style: TextStyle(
+                                    l10n.decline,
+                                    style: const TextStyle(
                                       color: Colors.red,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
@@ -315,19 +317,19 @@ class _IncomingCallDialogState extends State<_IncomingCallDialog>
                                 ),
                               ],
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.call_rounded,
                                     color: Colors.white,
                                     size: 20,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Kabul Et',
-                                    style: TextStyle(
+                                    l10n.accept,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,

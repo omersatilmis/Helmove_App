@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../domain/entities/location_entity.dart';
 import '../providers/map_bloc.dart';
 import 'map_bottom_sheet_destination.dart';
@@ -19,6 +20,11 @@ class MapBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const SizedBox.shrink();
+    }
+
     return BlocBuilder<MapBloc, MapState>(
       builder: (context, state) {
         final hasRoute = state.isRouteActive && state.routeOptions.isNotEmpty;
@@ -33,7 +39,7 @@ class MapBottomSheet extends StatelessWidget {
                 location: location ??
                     LocationEntity(
                       point: Point(coordinates: Position(0, 0)),
-                      label: 'Haritadan durak seçiniz',
+                      label: l10n.map_select_stop_hint,
                     ),
                 isLoading: state.isGeocoding,
                 canRoute: false,

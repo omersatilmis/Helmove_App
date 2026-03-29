@@ -7,6 +7,7 @@ import 'package:helmove/features/auth/presentation/widgets/auth_header_widget.da
 import 'package:helmove/features/auth/presentation/widgets/auth_footer_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_error_widget.dart';
 import 'package:provider/provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 
 class LoginPage extends StatefulWidget {
@@ -60,6 +61,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -85,9 +87,9 @@ class _LoginPageState extends State<LoginPage> {
                   // 1. KAVİSLİ HEADER ALANI
                   SizedBox(
                     height: headerHeight,
-                    child: const AuthHeaderWidget(
-                      title: "Hoşgeldiniz!",
-                      subtitle: "Sürüşe başlamak için giriş yapın.",
+                    child: AuthHeaderWidget(
+                      title: l10n.welcomeBack,
+                      subtitle: l10n.loginSubtitle,
                       verticalOffset: -1.0,
                     ),
                   ),
@@ -132,13 +134,13 @@ class _LoginPageState extends State<LoginPage> {
                                     AppInputField(
                                       controller: _emailController,
                                       type: AppInputType.email,
-                                      label: "E-Posta",
+                                      label: l10n.email,
                                       leadingIcon: Icons.email_outlined,
                                       // 🔥 Klavye 'İleri' tuşu çıkar
                                       textInputAction: TextInputAction.next,
                                       validator: (val) =>
                                           (val == null || !val.contains('@'))
-                                          ? 'Geçerli bir e-posta girin'
+                                          ? l10n.invalidEmail
                                           : null,
                                     ),
 
@@ -148,13 +150,13 @@ class _LoginPageState extends State<LoginPage> {
                                     AppInputField(
                                       controller: _passwordController,
                                       type: AppInputType.password,
-                                      label: "Şifre",
+                                      label: l10n.password,
                                       leadingIcon: Icons.lock_outline,
                                       // 🔥 Klavye 'Tamam' tuşu çıkar
                                       textInputAction: TextInputAction.done,
                                       validator: (val) =>
                                           (val == null || val.length < 6)
-                                          ? 'En az 6 karakter gerekli'
+                                          ? l10n.passwordTooShort
                                           : null,
                                     ),
 
@@ -190,7 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                                               ),
                                               const SizedBox(width: 8),
                                               Text(
-                                                "Beni Hatırla",
+                                                l10n.rememberMe,
                                                 style: theme.textTheme.bodyMedium,
                                               ),
                                             ],
@@ -204,7 +206,7 @@ class _LoginPageState extends State<LoginPage> {
                                                   .shrinkWrap,
                                             ),
                                             child: Text(
-                                              "Şifremi Unuttum?",
+                                              l10n.forgotPassword,
                                               style: TextStyle(
                                                 color: theme.colorScheme.primary,
                                                 fontWeight: FontWeight.w700,
@@ -222,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
                                     Consumer<AuthProvider>(
                                       builder: (context, authProvider, _) {
                                         return AppButton(
-                                          text: "Giriş Yap",
+                                          text: l10n.login,
                                           isLoading: authProvider.isLoading,
                                           size: AppButtonSize.large,
                                           borderRadius: BorderRadius.circular(16),
@@ -242,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
 
                                     // Google Giriş
                                     AppButton(
-                                      text: "Google ile devam et",
+                                      text: l10n.continueWithGoogle,
                                       onPressed: () {},
                                       variant: AppButtonVariant.secondary,
                                       style: AppButtonStyle.outlined,
@@ -264,8 +266,8 @@ class _LoginPageState extends State<LoginPage> {
 
                   // 3. FOOTER ALANI (Alt kısma sabitlenen link)
                   AuthFooterWidget(
-                    questionText: "Hesabınız yok mu?",
-                    actionText: "Kayıt Ol",
+                    questionText: l10n.dontHaveAccount,
+                    actionText: l10n.register,
                     onPressed: () => context.push('/register'),
                   ),
                 ],

@@ -6,8 +6,9 @@ import '../../domain/entities/voice_session_participant_entity.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/usecases/create_voice_session_usecase.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../domain/usecases/join_voice_session_usecase.dart';
+import '../../domain/usecases/create_voice_session_usecase.dart';
 import '../../domain/usecases/leave_voice_session_usecase.dart';
 import '../../domain/usecases/invite_to_voice_session_usecase.dart';
 import '../../domain/usecases/get_voice_session_details_usecase.dart';
@@ -62,6 +63,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
   final PromoteParticipantUseCase promoteParticipantUseCase;
   final DemoteParticipantUseCase demoteParticipantUseCase;
   final KickParticipantUseCase kickParticipantUseCase;
+  final AppLocalizations l10n;
 
   String? _activeCallKitId;
 
@@ -134,6 +136,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     required this.promoteParticipantUseCase,
     required this.demoteParticipantUseCase,
     required this.kickParticipantUseCase,
+    required this.l10n,
   }) : super(const VoiceSessionState()) {
     _realtimeSubscription = realtimeBus.events.listen((event) {
       if (isClosed) return;
@@ -187,7 +190,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
             add(
               VoiceSessionForceRemovedEvent(
                 event.sessionId,
-                reason: 'Oturumdan ayrıldınız',
+                reason: l10n.left_session,
               ),
             );
           }
@@ -581,8 +584,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,
-            message:
-                'Zaten aktif bir sürüştesiniz. Yeni grup oluşturmak için önce mevcut sürüşten ayrılın.',
+            message: l10n.already_in_active_ride_error,
           ),
         );
         return;
@@ -604,7 +606,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           emit(
             state.copyWith(
               status: VoiceSessionStatus.error,
-              message: 'Oturum için gerekli izinler verilmedi.',
+              message: l10n.permissions_not_granted_error,
             ),
           );
         }
@@ -636,7 +638,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,
-            message: createError ?? 'Grup oluşturulamadı.',
+            message: createError ?? l10n.group_creation_failed,
           ),
         );
         return;
@@ -661,8 +663,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         _activeCallKitId = uuid;
         await callKitIncomingService.startOutboundCall(
           uuid: uuid,
-          handle: "Grup Sürüşü",
-          nameCaller: event.request.roomName ?? "Grup Sürüşü",
+          handle: l10n.group_ride,
+          nameCaller: event.request.roomName ?? l10n.group_ride,
         );
         await Future.delayed(const Duration(milliseconds: 500));
         await callKitIncomingService.markConnected(uuid);
@@ -706,7 +708,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,
-            message: 'Grup oluşturulurken bir hata oluştu: ${e.toString()}',
+            message: l10n.group_creation_error(e.toString()),
           ),
         );
       }
@@ -744,7 +746,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           emit(
             state.copyWith(
               status: VoiceSessionStatus.error,
-              message: 'Oturum için gerekli izinler verilmedi.',
+              message: l10n.permissions_not_granted_error,
             ),
           );
         }
@@ -777,7 +779,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,
-            message: joinError ?? 'Odaya katılınamadı.',
+            message: joinError ?? l10n.could_not_join_room,
           ),
         );
         return;
@@ -801,8 +803,8 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         _activeCallKitId = uuid;
         await callKitIncomingService.startOutboundCall(
           uuid: uuid,
-          handle: "Grup Sürüşü",
-          nameCaller: "Grup Sürüşü",
+          handle: l10n.group_ride,
+          nameCaller: l10n.group_ride,
         );
         await Future.delayed(const Duration(milliseconds: 500));
         await callKitIncomingService.markConnected(uuid);
@@ -834,7 +836,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       emit(
         state.copyWith(
           status: VoiceSessionStatus.joined,
-          message: "Odaya başarıyla katılındı",
+          message: l10n.successfully_joined_room,
           sessionId: event.sessionId,
           session: joinedSession, // may be null, but at least we won't crash
         ),
@@ -850,7 +852,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,
-            message: 'Odaya katılırken bir hata oluştu: ${e.toString()}',
+            message: l10n.group_creation_error(e.toString()),
           ),
         );
       }
@@ -890,7 +892,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         state.copyWith(
           status: VoiceSessionStatus.left,
           sessionId: event.sessionId,
-          message: "Oturumdan ayrılınıyor...",
+          message: l10n.leaving_session,
           activeSpeakers: [],
           isLiveKitConnected: false,
           isMicOn: false,
@@ -927,7 +929,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
             event.sessionId.toString(),
           );
           // Başarılı — sessizce mesajı güncelle
-          emit(state.copyWith(message: "Oturumdan başarıyla ayrıldınız"));
+          emit(state.copyWith(message: l10n.successfully_left_session));
         },
       );
     } finally {
@@ -979,7 +981,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
             state.copyWith(
               status: VoiceSessionStatus.left,
               sessionId: event.sessionId,
-              message: "Oturum sonlandırıldı (Hata: ${failure.message})",
+              message: l10n.session_terminated_error(failure.message),
               activeSpeakers: [],
               isLiveKitConnected: false,
               isMicOn: false,
@@ -1003,7 +1005,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
             state.copyWith(
               status: VoiceSessionStatus.ended,
               sessionId: event.sessionId,
-              message: "Oturum başarıyla sonlandırıldı",
+              message: l10n.session_terminated_successfully,
               activeSpeakers: [],
               isLiveKitConnected: false,
               isMicOn: false,
@@ -1043,7 +1045,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (_) => emit(
         state.copyWith(
           status: VoiceSessionStatus.inviteSent,
-          message: "Davetler baÅŸarÄ±yla gÃ¶nderildi",
+          message: l10n.invitesSentSuccess,
         ),
       ),
     );
@@ -1180,13 +1182,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           emit(
             state.copyWith(
               status: VoiceSessionStatus.error,
-              message: 'Grup artık mevcut değil',
+              message: l10n.sessionNotFound,
               session: null,
               mySessions: healedMySessions,
             ),
           );
           refreshCoordinator.reportNotFound(
-            message: 'Grup artık mevcut değil',
+            message: l10n.sessionNotFound,
             source: RealtimeStateCoordinator.sourceVoiceSession,
             dedupKey: 'voice_session_404:${event.sessionId}',
           );
@@ -1243,7 +1245,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         (failure) {
           if (_isNotFoundFailure(failure.message)) {
             refreshCoordinator.reportNotFound(
-              message: 'Grup artık mevcut değil',
+              message: l10n.sessionNotFound,
               source: RealtimeStateCoordinator.sourceVoiceSession,
               dedupKey: 'voice_sessions_404',
             );
@@ -1309,8 +1311,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,
-            message:
-                'Zaten aktif bir sürüştesiniz. Daveti kabul etmek için önce mevcut sürüşten ayrılın.',
+            message: l10n.already_in_ride_accept_error,
           ),
         );
         return;
@@ -1389,7 +1390,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
           emit(
             state.copyWith(
               status: VoiceSessionStatus.error,
-              message: 'Bu davet artık geçerli değil (Grup silinmiş)',
+              message: l10n.sessionNotFound,
               mySessions: healedMySessions,
               sessionOverride: () => null, 
             ),
@@ -1490,14 +1491,11 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "KullanÄ±cÄ± atÄ±lamadÄ±: ${failure.message}",
+          message: failure.message,
         ),
       ),
       (_) {
         add(GetVoiceSessionDetailsEvent(event.sessionId));
-        emit(
-          state.copyWith(message: "KullanÄ±cÄ± atÄ±ldÄ±"),
-        ); // Transient message
       },
     );
   }
@@ -1511,10 +1509,10 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "KullanÄ±cÄ± susturulamadÄ±: ${failure.message}",
+          message: failure.message,
         ),
       ),
-      (_) => emit(state.copyWith(message: "KullanÄ±cÄ± susturuldu")),
+      (_) => null,
     );
   }
 
@@ -1527,12 +1525,11 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "Captain devredilemedi: ${failure.message}",
+          message: failure.message,
         ),
       ),
       (_) {
         add(GetVoiceSessionDetailsEvent(event.sessionId));
-        emit(state.copyWith(message: "Captain yetkisi devredildi"));
       },
     );
   }
@@ -1549,14 +1546,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "RÃ¼tbe yÃ¼kseltilemedi: ${failure.message}",
+          message: failure.message,
         ),
       ),
       (_) {
         if (state.session != null) {
           add(GetVoiceSessionDetailsEvent(state.session!.id));
         }
-        emit(state.copyWith(message: "KullanÄ±cÄ± rÃ¼tbesi yÃ¼kseltildi"));
       },
     );
   }
@@ -1573,14 +1569,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "RÃ¼tbe dÃ¼ÅŸÃ¼rÃ¼lemedi: ${failure.message}",
+          message: failure.message,
         ),
       ),
       (_) {
         if (state.session != null) {
           add(GetVoiceSessionDetailsEvent(state.session!.id));
         }
-        emit(state.copyWith(message: "KullanÄ±cÄ± rÃ¼tbesi dÃ¼ÅŸÃ¼rÃ¼ldÃ¼"));
       },
     );
   }
@@ -1597,14 +1592,13 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       (failure) => emit(
         state.copyWith(
           status: VoiceSessionStatus.error,
-          message: "KullanÄ±cÄ± gruptan atÄ±lamadÄ±: ${failure.message}",
+          message: failure.message,
         ),
       ),
       (_) {
         if (state.session != null) {
           add(GetVoiceSessionDetailsEvent(state.session!.id));
         }
-        emit(state.copyWith(message: "KullanÄ±cÄ± gruptan atÄ±ldÄ±"));
       },
     );
   }
@@ -1777,7 +1771,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
       state.copyWith(
         status: VoiceSessionStatus.left,
         sessionId: activeSession.id,
-        message: 'Grup sürüşü sonlandırıldı. Oturum kapatıldı.',
+        message: l10n.group_ride_terminated,
         activeSpeakers: const [],
         isLiveKitConnected: false,
         isMicOn: false,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class NearbyGroupCard extends StatelessWidget {
   final String groupName;
@@ -23,6 +24,7 @@ class NearbyGroupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -66,7 +68,7 @@ class NearbyGroupCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        "$currentParticipants/$maxParticipants Riders",
+                        "$currentParticipants/$maxParticipants ${l10n.riders}",
                         style: AppTextStyles.bodySmall.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -105,7 +107,7 @@ class NearbyGroupCard extends StatelessWidget {
               ),
             ),
             child: Text(
-              "Join",
+              l10n.join,
               style: AppTextStyles.button.copyWith(
                 fontSize: 14,
                 color: colorScheme.onSurface,

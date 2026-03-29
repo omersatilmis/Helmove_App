@@ -8,6 +8,7 @@ import 'package:helmove/features/help/presentation/bloc/help_bloc.dart';
 import 'package:helmove/features/help/presentation/bloc/help_event.dart';
 import 'package:helmove/features/help/presentation/bloc/help_state.dart';
 import 'package:helmove/features/help/domain/entities/feedback_entity.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});
@@ -25,17 +26,18 @@ class _FeedbackPageState extends State<FeedbackPage> {
     FocusScope.of(context).unfocus();
     final title = _titleController.text.trim();
     final message = _controller.text.trim();
+    final l10n = AppLocalizations.of(context)!;
     
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lütfen bir başlık yazın.")),
+        SnackBar(content: Text(l10n.validationTitle)),
       );
       return;
     }
     
     if (message.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lütfen bir mesaj yazın.")),
+        SnackBar(content: Text(l10n.validationMessage)),
       );
       return;
     }
@@ -60,15 +62,16 @@ class _FeedbackPageState extends State<FeedbackPage> {
       create: (context) => sl<HelpBloc>(),
       child: BlocListener<HelpBloc, HelpState>(
         listener: (context, state) {
+          final l10n = AppLocalizations.of(context)!;
           if (state.status == HelpStatus.success) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Geri bildiriminiz başarıyla iletildi!")),
+              SnackBar(content: Text(l10n.feedbackSuccess)),
             );
             Navigator.pop(context);
           } else if (state.status == HelpStatus.failure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Hata: ${state.errorMessage ?? "Bilinmeyen bir hata oluştu"}'),
+                content: Text(l10n.feedbackError(state.errorMessage ?? l10n.unknownError)),
                 backgroundColor: Colors.red,
               ),
             );
@@ -79,9 +82,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
               ? AppColors.darkBackground
               : AppColors.lightBackground,
           appBar: AppBar(
-            title: const Text(
-              "Geri Bildirim Gönder",
-              style: TextStyle(fontWeight: FontWeight.bold),
+            title: Text(
+              AppLocalizations.of(context)!.sendFeedback,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             elevation: 0,
             centerTitle: true,
@@ -96,25 +99,25 @@ class _FeedbackPageState extends State<FeedbackPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInfoCard(isDark),
+                _buildInfoCard(context, isDark),
                 const SizedBox(height: 32),
 
-                _buildSectionTitle("Kategori Seçin", isDark),
+                _buildSectionTitle(AppLocalizations.of(context)!.selectCategory, isDark),
                 const SizedBox(height: 16),
-                _buildCategorySelector(isDark),
+                _buildCategorySelector(context, isDark),
 
                 const SizedBox(height: 32),
-                _buildSectionTitle("Konu Başlığı", isDark),
+                _buildSectionTitle(AppLocalizations.of(context)!.writeTitle, isDark),
                 const SizedBox(height: 16),
-                _buildTitleField(isDark),
+                _buildTitleField(context, isDark),
 
                 const SizedBox(height: 32),
-                _buildSectionTitle("Mesajınız", isDark),
+                _buildSectionTitle(AppLocalizations.of(context)!.writeMessage, isDark),
                 const SizedBox(height: 16),
-                _buildMessageField(isDark),
+                _buildMessageField(context, isDark),
 
                 const SizedBox(height: 40),
-                _buildSubmitButton(),
+                _buildSubmitButton(context),
                 const SizedBox(height: 40),
               ],
             ),
@@ -124,7 +127,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
     );
   }
   
-  Widget _buildInfoCard(bool isDark) {
+  Widget _buildInfoCard(BuildContext context, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -138,7 +141,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              "Görüşleriniz bizim için çok değerli. Uygulamayı birlikte geliştirelim!",
+              AppLocalizations.of(context)!.feedbackInfo,
               style: TextStyle(
                 fontSize: 14,
                 color: isDark
@@ -163,7 +166,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
     );
   }
 
-  Widget _buildCategorySelector(bool isDark) {
+  Widget _buildCategorySelector(BuildContext context, bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -195,7 +199,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  category.label,
+                  category.localizedLabel(l10n),
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: isSelected
@@ -213,23 +217,23 @@ class _FeedbackPageState extends State<FeedbackPage> {
     );
   }
 
-  Widget _buildTitleField(bool isDark) {
+  Widget _buildTitleField(BuildContext context, bool isDark) {
     return AppInputField(
       controller: _titleController,
-      hint: "Kısa bir başlık...",
+      hint: AppLocalizations.of(context)!.writeTitleHint,
     );
   }
 
-  Widget _buildMessageField(bool isDark) {
+  Widget _buildMessageField(BuildContext context, bool isDark) {
     return AppInputField(
       controller: _controller,
       maxLines: 6,
       minLines: 3,
-      hint: "Buraya yazın...",
+      hint: AppLocalizations.of(context)!.writeMessageHint,
     );
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(BuildContext context) {
     return BlocBuilder<HelpBloc, HelpState>(
       builder: (context, state) {
         final isLoading = state.status == HelpStatus.loading;
@@ -255,9 +259,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       strokeWidth: 2,
                     ),
                   )
-                : const Text(
-                    "Gönder",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                : Text(
+                    AppLocalizations.of(context)!.send,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
           ),
         );

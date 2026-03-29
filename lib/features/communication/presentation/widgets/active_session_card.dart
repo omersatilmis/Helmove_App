@@ -13,6 +13,7 @@ import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
 import '../../../group_ride/presentation/bloc/group_ride_event.dart';
 import 'active_group.dart';
 import 'rider_card.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class ActiveSessionCard extends StatelessWidget {
   const ActiveSessionCard({super.key});
@@ -157,9 +158,10 @@ class ActiveSessionCard extends StatelessWidget {
 
 class _ActiveGroupLoadingCard extends StatelessWidget {
   const _ActiveGroupLoadingCard();
-
+ 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
     return ClipRRect(
@@ -187,7 +189,7 @@ class _ActiveGroupLoadingCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Aktif grup yükleniyor...',
+                  l10n.activeGroupLoading,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -228,6 +230,7 @@ class _ActiveGroupEmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -253,7 +256,7 @@ class _ActiveGroupEmptyCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Aktif odanız yok',
+                l10n.noActiveGroup,
                 style: AppTextStyles.bodyLarge.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -262,7 +265,7 @@ class _ActiveGroupEmptyCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Text(
-                  'Yeni bir oda oluşturun veya davet bekleyin',
+                  l10n.noActiveRoomSubtitle,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                   ),

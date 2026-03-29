@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
@@ -296,18 +297,18 @@ class _PostCardModernState extends State<PostCardModern>
                             _buildPopupItem(
                               'share',
                               Icons.share_outlined,
-                              'Paylaş',
+                              AppLocalizations.of(context)!.share,
                             ),
                           _buildPopupItem(
                             'report',
                             Icons.report_gmailerrorred_rounded,
-                            'Bildir',
+                            AppLocalizations.of(context)!.report,
                           ),
                           if (isOwner)
                             _buildPopupItem(
                               'delete',
                               Icons.delete_outline,
-                              'Sil',
+                              AppLocalizations.of(context)!.delete,
                               color: Colors.redAccent,
                             ),
                         ],
@@ -343,7 +344,7 @@ class _PostCardModernState extends State<PostCardModern>
                           if (AppFeatureFlags.showPostSend) ...[
                             _SideActionButton(
                               icon: Icons.send_rounded,
-                              label: "Gönder",
+                              label: AppLocalizations.of(context)!.send,
                               onTap: widget.onShare,
                             ),
                             const SizedBox(height: 20),
@@ -352,7 +353,7 @@ class _PostCardModernState extends State<PostCardModern>
                           if (AppFeatureFlags.showPostKaydetButton)
                             _SideActionButton(
                               icon: Icons.bookmark_border_rounded,
-                              label: "Kaydet",
+                              label: AppLocalizations.of(context)!.save,
                               onTap: widget.onSave,
                             ),
                         ],
@@ -410,7 +411,7 @@ class _PostCardModernState extends State<PostCardModern>
                                       style: textStyle,
                                     ),
                                     TextSpan(
-                                      text: " devam...",
+                                      text: AppLocalizations.of(context)!.continueTextShort,
                                       style: textStyle.copyWith(
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white.withValues(
@@ -446,16 +447,16 @@ class _PostCardModernState extends State<PostCardModern>
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1C1C1C),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Silinsin mi?',
+        title: Text(
+          AppLocalizations.of(context)!.deleteConfirmTitle,
           style: TextStyle(
             color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: const Text(
-          'Bu gönderi kalıcı olarak silinecek.',
+        content: Text(
+          AppLocalizations.of(context)!.deleteConfirmContent,
           style: TextStyle(color: Colors.white70, fontSize: 14),
         ),
         actionsPadding: const EdgeInsets.symmetric(
@@ -465,7 +466,7 @@ class _PostCardModernState extends State<PostCardModern>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('İptal', style: TextStyle(color: Colors.white54)),
+            child: Text(AppLocalizations.of(context)!.cancel, style: const TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -480,8 +481,8 @@ class _PostCardModernState extends State<PostCardModern>
               Navigator.pop(context);
               widget.onDelete?.call();
             },
-            child: const Text(
-              'Sil',
+            child: Text(
+              AppLocalizations.of(context)!.delete,
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),

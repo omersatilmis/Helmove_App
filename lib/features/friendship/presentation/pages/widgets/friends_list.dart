@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../bloc/action/friendship_action_bloc.dart';
 import '../../bloc/action/friendship_action_event.dart';
 import '../../bloc/action/friendship_action_state.dart';
@@ -64,7 +65,7 @@ class _FriendsListState extends State<FriendsList> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-          Center(child: Text("Hata: ${state.message}")),
+          Center(child: Text(AppLocalizations.of(context)!.errorLabel(state.message))),
         ],
       );
     } else if (state is MyFriendsLoaded) {
@@ -74,7 +75,7 @@ class _FriendsListState extends State<FriendsList> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-            const Center(child: Text("Henüz arkadaşın yok.")),
+            Center(child: Text(AppLocalizations.of(context)!.noFriendsYet)),
           ],
         );
       }
@@ -88,7 +89,9 @@ class _FriendsListState extends State<FriendsList> {
             firstName: friend.firstName ?? '',
             lastName: friend.lastName ?? '',
             username: friend.username,
-            statusInfo: friend.isOnline ? "Çevrimiçi" : "Çevrimdışı",
+            statusInfo: friend.isOnline 
+                ? AppLocalizations.of(context)!.online 
+                : AppLocalizations.of(context)!.offline,
             type: FriendshipCardType.friends,
             showActions: widget.onFriendSelected == null,
             onCardTap: widget.onFriendSelected != null
@@ -97,7 +100,7 @@ class _FriendsListState extends State<FriendsList> {
             onMessageTap: () {
               // Navigate to chat
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("${friend.username} ile sohbet...")),
+                SnackBar(content: Text(AppLocalizations.of(context)!.chattingWith(friend.username))),
               );
             },
             onOptionsTap: () {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/constants/report_enums.dart';
 import '../../domain/entities/report_entity.dart';
 import '../bloc/help_bloc.dart';
@@ -53,10 +54,11 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
 
     return BlocListener<HelpBloc, HelpState>(
       listener: (context, state) {
+        final l10n = AppLocalizations.of(context)!;
         if (state.status == HelpStatus.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.successMessage ?? 'Başarıyla iletildi'),
+              content: Text(state.successMessage ?? l10n.reportSuccess),
               backgroundColor: Colors.green,
             ),
           );
@@ -64,7 +66,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
         } else if (state.status == HelpStatus.failure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.errorMessage ?? 'Bir hata oluştu'),
+              content: Text(state.errorMessage ?? l10n.reportError),
               backgroundColor: Colors.red,
             ),
           );
@@ -99,7 +101,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
                 Icon(widget.targetType.icon, color: Colors.white70, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  '${widget.targetType.label} Bildir',
+                  AppLocalizations.of(context)!.reportDetailed(widget.targetType.label),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -109,16 +111,16 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Lütfen bu içeriğin neden topluluk kurallarımızı ihlal ettiğini düşündüğünüzü belirtin.',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
+            Text(
+              AppLocalizations.of(context)!.reportDescription,
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
             const SizedBox(height: 24),
 
             // Category Selection
-            const Text(
-              'Sebep Seçiniz',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.selectReason,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -162,9 +164,9 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
             const SizedBox(height: 20),
 
             // Description
-            const Text(
-              'Ek Açıklama (İsteğe Bağlı)',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.additionalInfo,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -174,7 +176,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
             AppInputField(
               controller: _descriptionController,
               maxLines: 3,
-              hint: 'Durumu kısaca açıklayın...',
+              hint: AppLocalizations.of(context)!.explainSituation,
               radius: 16,
             ),
             const SizedBox(height: 32),
@@ -204,9 +206,9 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text(
-                          'Bildiriyi Gönder',
-                          style: TextStyle(
+                      : Text(
+                          AppLocalizations.of(context)!.sendReport,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),

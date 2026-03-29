@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:go_router/go_router.dart';
@@ -70,7 +71,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              "Görsel Ekle",
+              AppLocalizations.of(context)!.addImage,
               style: AppTextStyles.h3.copyWith(color: Colors.white),
             ),
             const SizedBox(height: 20),
@@ -99,7 +100,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          "Fotoğraf Çek",
+                          AppLocalizations.of(context)!.takePhoto,
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: Colors.white,
                           ),
@@ -131,7 +132,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          "Galeriden Seç",
+                          AppLocalizations.of(context)!.selectFromGallery,
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: Colors.white,
                           ),
@@ -183,12 +184,12 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                   if (!context.mounted) return;
                   context.pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Jot paylaşıldı!')),
+                    SnackBar(content: Text(AppLocalizations.of(context)!.jotShared)),
                   );
                 } else if (state.createStatus == JotsStatus.failure) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(state.createError.isNotEmpty ? state.createError : 'Hata oluştu')),
+                    SnackBar(content: Text(state.createError.isNotEmpty ? state.createError : AppLocalizations.of(context)!.unknownError)),
                   );
                 }
               },
@@ -236,10 +237,10 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              "Jotla",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
+                          : Text(
+                              AppLocalizations.of(context)!.jotIt,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
                             ),
@@ -277,7 +278,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user?.fullName ?? "Sürücü",
+                            user?.fullName ?? AppLocalizations.of(context)!.user,
                             style: AppTextStyles.bodyMedium.copyWith(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -306,7 +307,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                     focusNode: _focusNode,
                     minLines: 4,
                     maxLines: 8,
-                    hint: "Bugün ne paylaşmak istersin?",
+                    hint: AppLocalizations.of(context)!.whatToShareToday,
                     size: AppInputSize.large,
                     radius: 12,
                     textInputAction: TextInputAction.newline,

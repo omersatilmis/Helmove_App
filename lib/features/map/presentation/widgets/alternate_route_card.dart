@@ -1,26 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:helmove/core/theme/text_styles.dart';
-import '../../domain/entities/route_entity.dart';
+import 'package:helmove/l10n/app_localizations.dart';
+
 import '../../../../core/utils/format_utils.dart';
+import '../../domain/entities/route_entity.dart';
 
 class AlternateRouteCards extends StatelessWidget {
   final List<RouteEntity> routes;
   final int selectedIndex;
   final ValueChanged<int>? onSelected;
-  final String title;
+  final String? title;
 
   const AlternateRouteCards({
     super.key,
     required this.routes,
     required this.selectedIndex,
     this.onSelected,
-    this.title = 'Alternatif Rotalar',
+    this.title,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     if (routes.isEmpty) {
       return const SizedBox.shrink();
@@ -32,11 +35,10 @@ class AlternateRouteCards extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- BAŞLIK VE ROTA SAYISI ---
         Row(
           children: [
             Text(
-              title,
+              title ?? l10n.map_alternative_routes_title,
               style: AppTextStyles.h3.copyWith(
                 color: colorScheme.onSurface,
                 fontSize: 16,
@@ -45,28 +47,30 @@ class AlternateRouteCards extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              '${routes.length} rota',
+              l10n.map_route_count(routes.length),
               style: AppTextStyles.bodyMedium.copyWith(
-                color: colorScheme.primary, // Vurgulu renk
+                color: colorScheme.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-
-        // --- YATAY ROTA KARTLARI LİSTESİ ---
         SizedBox(
-          height: 115, // Kartların ferah görünmesi için biraz açtık
+          height: 115,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: routes.length,
-            // İlk ve son kartın kenarlara yapışmaması için padding eklenebilir, şimdilik separator var
             separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final route = routes[index];
               final isSelected = index == selectedIndex;
-              final badgeText = _badgeLabel(index, shortestIndex, fastestIndex);
+              final badgeText = _badgeLabel(
+                index,
+                shortestIndex,
+                fastestIndex,
+                l10n,
+              );
               final badgeIcon = _badgeIcon(index, shortestIndex, fastestIndex);
               final badgeColor = _badgeColor(
                 index,
@@ -82,16 +86,13 @@ class AlternateRouteCards extends StatelessWidget {
                   onTap: onSelected == null ? null : () => onSelected!(index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width:
-                        160, // Ekrana daha rahat sığması için optimize edildi
+                    width: 160,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      // Seçiliyken çok hafif bir ana renk dolgusu
                       color: isSelected
                           ? colorScheme.primary.withValues(alpha: 0.08)
                           : colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
-                      // Seçiliyken kalın ve renkli çerçeve, değilse ince ve silik çerçeve
                       border: Border.all(
                         color: isSelected
                             ? colorScheme.primary
@@ -103,7 +104,6 @@ class AlternateRouteCards extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // --- ÜST SATIR: Rozet (Şimşek/Hızlı vs) ve Seçili İkonu ---
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -137,28 +137,21 @@ class AlternateRouteCards extends StatelessWidget {
                               ),
                           ],
                         ),
-
-                        // --- ORTA SATIR: Süre (Büyük ve Net) ---
                         Text(
                           FormatUtils.formatDuration(route.durationSeconds),
                           style: AppTextStyles.h2.copyWith(
                             color: isSelected
                                 ? colorScheme.onSurface
-                                : colorScheme
-                                      .onSurfaceVariant, // Seçili değilse biraz silik
+                                : colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w800,
                             fontSize: 22,
                             letterSpacing: -0.5,
                           ),
                         ),
-
-                        // --- ALT SATIR: Mesafe ve ETA Birleşik ---
                         Text(
-                          '${FormatUtils.formatDistance(route.distanceMeters)}  •  ETA ${FormatUtils.formatEta(route.durationSeconds)}',
+                          '${FormatUtils.formatDistance(route.distanceMeters)} - ${l10n.map_eta_label} ${FormatUtils.formatEta(route.durationSeconds)}',
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant.withValues(
-                              alpha: 0.8,
-                            ),
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
                             fontWeight: FontWeight.w500,
                             fontSize: 12,
                           ),
@@ -203,25 +196,29 @@ class AlternateRouteCards extends StatelessWidget {
     return bestIndex;
   }
 
-  String _badgeLabel(int index, int shortestIndex, int fastestIndex) {
+  String _badgeLabel(
+    int index,
+    int shortestIndex,
+    int fastestIndex,
+    AppLocalizations l10n,
+  ) {
     if (index == shortestIndex && index == fastestIndex) {
-      return 'Kısa ve Hızlı';
+      return l10n.map_route_badge_short_fast;
     }
-    if (index == shortestIndex) return 'En Kısa';
-    if (index == fastestIndex) return 'En Hızlı';
-    return 'Alternatif';
+    if (index == shortestIndex) return l10n.map_route_badge_shortest;
+    if (index == fastestIndex) return l10n.map_route_badge_fastest;
+    return l10n.map_route_badge_alternative;
   }
 
-  // YENİ: Göze hitap etmesi için etiket ikonları
   IconData _badgeIcon(int index, int shortestIndex, int fastestIndex) {
     if (index == shortestIndex && index == fastestIndex) {
-      return Icons.offline_bolt_rounded; // Hem kısa hem hızlıysa şimşek
+      return Icons.offline_bolt_rounded;
     }
     if (index == shortestIndex) {
-      return Icons.straighten_rounded; // Kısaysa cetvel
+      return Icons.straighten_rounded;
     }
-    if (index == fastestIndex) return Icons.bolt_rounded; // Hızlıysa şimşek
-    return Icons.alt_route_rounded; // Alternatif
+    if (index == fastestIndex) return Icons.bolt_rounded;
+    return Icons.alt_route_rounded;
   }
 
   Color _badgeColor(
@@ -231,12 +228,12 @@ class AlternateRouteCards extends StatelessWidget {
     ColorScheme colorScheme,
   ) {
     if (index == shortestIndex && index == fastestIndex) {
-      return colorScheme.primary; // Genelde yeşil veya mavi/turuncu
+      return colorScheme.primary;
     }
     if (index == shortestIndex) {
-      return colorScheme.tertiary; // Farklı bir vurgu rengi
+      return colorScheme.tertiary;
     }
     if (index == fastestIndex) return colorScheme.primary;
-    return colorScheme.onSurfaceVariant; // Alternatifse sönük gri
+    return colorScheme.onSurfaceVariant;
   }
 }

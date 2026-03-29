@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:helmove/features/settings/presentation/widgets/structure/settings_tile.dart';
 import 'package:helmove/features/settings/presentation/widgets/structure/settings_section_header.dart';
 import 'package:helmove/core/theme/app_colors.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class SupportSection extends StatefulWidget {
   const SupportSection({super.key});
@@ -13,8 +14,8 @@ class SupportSection extends StatefulWidget {
 }
 
 class _SupportSectionState extends State<SupportSection> {
-  String _version = "";
-  final String _appReleaseStage = "Beta"; // Geliştirme aşaması
+  String _version = '';
+  final String _appReleaseStage = 'Public Beta';
 
   @override
   void initState() {
@@ -24,9 +25,11 @@ class _SupportSectionState extends State<SupportSection> {
 
   Future<void> _loadPackageInfo() async {
     final info = await PackageInfo.fromPlatform();
-    setState(() {
-      _version = info.version;
-    });
+    if (mounted) {
+      setState(() {
+        _version = info.version;
+      });
+    }
   }
 
   @override
@@ -34,36 +37,36 @@ class _SupportSectionState extends State<SupportSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(title: "Destek"),
+        SettingsSectionHeader(title: AppLocalizations.of(context)!.support),
 
         SettingsTile(
           icon: Icons.feedback_outlined,
-          title: "Geri Bildirim Gönder",
+          title: AppLocalizations.of(context)!.sendFeedback,
           onTap: () => context.push('/feedback'),
         ),
         SettingsTile(
           icon: Icons.copyright_rounded,
-          title: "Telif Hakkı",
+          title: AppLocalizations.of(context)!.copyright,
           onTap: () => context.push('/copyright'),
         ),
         SettingsTile(
           icon: Icons.privacy_tip_outlined,
-          title: "Gizlilik Politikası",
+          title: AppLocalizations.of(context)!.privacyPolicy,
           onTap: () => context.push('/privacy-policy'),
         ),
         SettingsTile(
           icon: Icons.info_outline_rounded,
-          title: "Hakkında",
+          title: AppLocalizations.of(context)!.about,
           subtitle: _version.isNotEmpty
-              ? "v$_version ($_appReleaseStage)"
-              : "Yükleniyor...",
+              ? AppLocalizations.of(context)!.version(_version, _appReleaseStage)
+              : AppLocalizations.of(context)!.loading,
           onTap: () => context.push('/about'),
         ),
 
         // Çıkış Butonu
         SettingsTile(
           icon: Icons.logout_rounded,
-          title: "Çıkış Yap",
+          title: AppLocalizations.of(context)!.logout,
           isDestructive: true,
           trailing: const SizedBox(),
           onTap: () => _showLogoutDialog(context),
@@ -73,24 +76,25 @@ class _SupportSectionState extends State<SupportSection> {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Çıkış Yap"),
-        content: const Text("Uygulamadan çıkış yapmak istediğine emin misin?"),
+        title: Text(l10n.logout),
+        content: Text(l10n.logoutConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("İptal", style: TextStyle(color: Colors.grey)),
+            child: Text(l10n.cancel, style: const TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               context.go('/login');
             },
-            child: const Text(
-              "Çıkış Yap",
-              style: TextStyle(
+            child: Text(
+              l10n.logout,
+              style: const TextStyle(
                 color: AppColors.error,
                 fontWeight: FontWeight.bold,
               ),

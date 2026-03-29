@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_background.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 // --- DOMAIN & ENTITIES ---
 import '../../../friendship/domain/entities/friend_user_entity.dart';
@@ -124,6 +125,10 @@ class _InviteViewState extends State<_InviteView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final session = context.select<VoiceSessionBloc, VoiceSessionEntity?>(
@@ -136,12 +141,12 @@ class _InviteViewState extends State<_InviteView> {
           listener: (context, state) {
             if (state.status == VoiceSessionStatus.created) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Sesli oturum oluşturuldu!")),
+                SnackBar(content: Text(l10n.voiceSessionCreated)),
               );
             } else if (state.status == VoiceSessionStatus.inviteSent) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Davetler başarıyla gönderildi!"),
+                SnackBar(
+                  content: Text(l10n.invitesSentSuccess),
                   backgroundColor: Colors.green,
                 ),
               );
@@ -149,7 +154,7 @@ class _InviteViewState extends State<_InviteView> {
             } else if (state.status == VoiceSessionStatus.error) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.message ?? "Bir hata oluştu"),
+                  content: Text(state.message ?? l10n.unknownError),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -161,14 +166,14 @@ class _InviteViewState extends State<_InviteView> {
             if (state is GroupRideFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text("Hata: ${state.message}"),
+                  content: Text(l10n.errorWithPrefix(state.message)),
                   backgroundColor: Colors.red,
                 ),
               );
             } else if (state is GroupRideCreatedSync) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Grup ve Sesli Oturum başarıyla oluşturuldu!"),
+                SnackBar(
+                  content: Text(l10n.groupAndVoiceCreated),
                   backgroundColor: Colors.green,
                 ),
               );
@@ -183,7 +188,7 @@ class _InviteViewState extends State<_InviteView> {
                   maxParticipants: state.ride.maxParticipants,
                   currentParticipants: 1,
                   destination: state.ride.endLocation,
-                  ridingStyle: state.ride.difficulty ?? "Sakin Sürüş",
+                  ridingStyle: state.ride.difficulty ?? l10n.chill,
                   privacy: "Public",
                 ),
               );
@@ -202,7 +207,7 @@ class _InviteViewState extends State<_InviteView> {
                   maxParticipants: state.ride.maxParticipants,
                   currentParticipants: 1,
                   destination: state.ride.endLocation,
-                  ridingStyle: state.ride.difficulty ?? "Sakin Sürüş",
+                  ridingStyle: state.ride.difficulty ?? l10n.chill,
                   privacy: "Public",
                 ),
               );
@@ -232,7 +237,7 @@ class _InviteViewState extends State<_InviteView> {
                       ),
                       Expanded(
                         child: Text(
-                          "Sürücü Davet Et",
+                          l10n.inviteRiders,
                           textAlign: TextAlign.center,
                           style: AppTextStyles.h3.copyWith(
                             color: colorScheme.onSurface,
@@ -287,7 +292,7 @@ class _InviteViewState extends State<_InviteView> {
                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
                         child: AppInputField(
                           controller: _searchController,
-                          hint: "Kullanıcı Ara...",
+                          hint: l10n.searchUsers,
                           leadingIcon: Icons.search,
                           textInputAction: TextInputAction.search,
                           onFieldSubmitted: (_) => _performSearch(),
@@ -330,8 +335,8 @@ class _InviteViewState extends State<_InviteView> {
                               vsState.status == VoiceSessionStatus.loading;
                           return AppFrostedTextButton(
                             text: widget.args.isFromCreateGroup
-                                ? "Grubu Kur"
-                                : "Kişileri Davet Et",
+                                ? l10n.createGroup
+                                : l10n.inviteUsers,
                             isLoading: isLoading,
                             height: 52,
                             // 🔥 Turuncu (Primary) Renk
@@ -351,7 +356,7 @@ class _InviteViewState extends State<_InviteView> {
                                             widget
                                                 .args
                                                 .groupData!["groupName"] ??
-                                            "Yeni Grup",
+                                            l10n.newGroup,
                                         description:
                                             (widget
                                                     .args
@@ -362,7 +367,7 @@ class _InviteViewState extends State<_InviteView> {
                                             ? widget
                                                   .args
                                                   .groupData!["description"]
-                                            : "belirlenmedi",
+                                            : l10n.notSpecified,
                                         maxParticipants:
                                             widget
                                                 .args
@@ -375,14 +380,14 @@ class _InviteViewState extends State<_InviteView> {
                                         endDateTime: DateTime.now().add(
                                           const Duration(hours: 4),
                                         ),
-                                        startLocation: "Mevcut Konum",
+                                        startLocation: l10n.currentLocation,
                                         startLatitude: 0,
                                         startLongitude: 0,
                                         endLocation:
                                             widget
                                                 .args
                                                 .groupData!["destination"] ??
-                                            "Hedef Belirtilmedi",
+                                            l10n.destinationNotSpecified,
                                         endLatitude: 0,
                                         endLongitude: 0,
                                         difficulty:
@@ -394,7 +399,7 @@ class _InviteViewState extends State<_InviteView> {
                                             widget
                                                 .args
                                                 .groupData!["ridingStyle"] ??
-                                            "Sakin",
+                                            l10n.chill,
                                         invitedUserIds: _selectedRiders
                                             .map((e) => e.userId)
                                             .toList(),
@@ -515,6 +520,7 @@ class _InviteViewState extends State<_InviteView> {
   }
 
   Widget _buildSearchResults(VoiceSessionEntity? session) {
+    final l10n = AppLocalizations.of(context)!;
     return BlocBuilder<DiscoverBloc, DiscoverState>(
       builder: (context, state) {
         if (state is DiscoverLoading) {
@@ -524,7 +530,7 @@ class _InviteViewState extends State<_InviteView> {
         } else if (state is DiscoverLoaded) {
           final results = state.results;
           if (results.isEmpty) {
-            return const Center(child: Text("Sonuç bulunamadı."));
+            return Center(child: Text(l10n.noResultsFound));
           }
           return _buildRiderList(
             results,
@@ -532,12 +538,13 @@ class _InviteViewState extends State<_InviteView> {
             session: session,
           );
         }
-        return const Center(child: Text("Aramak için 'Ara' butonuna basın"));
+        return Center(child: Text(l10n.pressSearchToStart));
       },
     );
   }
 
   Widget _buildFriendsList(VoiceSessionEntity? session) {
+    final l10n = AppLocalizations.of(context)!;
     return BlocBuilder<FriendshipListBloc, FriendshipListState>(
       builder: (context, state) {
         if (state is FriendshipListLoading) {
@@ -547,7 +554,7 @@ class _InviteViewState extends State<_InviteView> {
         } else if (state is MyFriendsLoaded) {
           final friends = state.friends;
           if (friends.isEmpty) {
-            return const Center(child: Text("Henüz arkadaşınız yok."));
+            return Center(child: Text(l10n.noFriendsYet));
           }
           return _buildRiderList(
             friends,

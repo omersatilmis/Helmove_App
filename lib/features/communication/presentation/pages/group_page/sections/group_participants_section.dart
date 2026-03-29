@@ -7,6 +7,7 @@ import 'package:helmove/features/group_ride/presentation/models/group_ride_args.
 import 'package:helmove/features/intercom/domain/intercom_models.dart';
 import 'package:helmove/features/voice_session/domain/entities/voice_session_entity.dart';
 import 'package:helmove/features/attendance_management/domain/entities/group_role.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class GroupParticipantsSection extends StatelessWidget {
   final GroupRideArgs data;
@@ -50,6 +51,7 @@ class GroupParticipantsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
@@ -59,7 +61,7 @@ class GroupParticipantsSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "CONNECTED RIDERS",
+              l10n.connectedRiders,
               style: AppTextStyles.bodySmall.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
@@ -101,12 +103,12 @@ class GroupParticipantsSection extends StatelessWidget {
             child: Center(child: CircularProgressIndicator()),
           )
         else
-          _buildParticipantList(context),
+          _buildParticipantList(context, l10n),
       ],
     );
   }
 
-  Widget _buildParticipantList(BuildContext context) {
+  Widget _buildParticipantList(BuildContext context, AppLocalizations l10n) {
     final participants =
         sessionDetails?.participants
             .where(
@@ -118,7 +120,7 @@ class GroupParticipantsSection extends StatelessWidget {
             .toList() ??
         [];
 
-    if (participants.isEmpty) return _buildEmptyState(context);
+    if (participants.isEmpty) return _buildEmptyState(context, l10n);
 
     final hostId = sessionDetails?.adminId;
 
@@ -174,7 +176,7 @@ class GroupParticipantsSection extends StatelessWidget {
                   !isMe)
               ? () => onKickUser(
                   participant.userId,
-                  participant.firstName ?? 'Kullanıcı',
+                  participant.firstName ?? l10n.defaultUserName,
                 )
               : null,
           onMuteUser:
@@ -183,13 +185,13 @@ class GroupParticipantsSection extends StatelessWidget {
                   !isMe)
               ? () => onMuteUser(
                   participant.userId,
-                  participant.firstName ?? 'Kullanıcı',
+                  participant.firstName ?? l10n.defaultUserName,
                 )
               : null,
           onTransferHost: (viewerRole == GroupRole.admin && !isMe)
               ? () => onTransferHost(
                   participant.userId,
-                  participant.firstName ?? 'Kullanıcı',
+                  participant.firstName ?? l10n.defaultUserName,
                 )
               : null,
           onPromote:
@@ -198,7 +200,7 @@ class GroupParticipantsSection extends StatelessWidget {
                   !isMe)
               ? () => onPromote(
                   participant.userId,
-                  participant.firstName ?? 'Kullanıcı',
+                  participant.firstName ?? l10n.defaultUserName,
                 )
               : null,
           onDemote:
@@ -207,7 +209,7 @@ class GroupParticipantsSection extends StatelessWidget {
                   !isMe)
               ? () => onDemote(
                   participant.userId,
-                  participant.firstName ?? 'Kullanıcı',
+                  participant.firstName ?? l10n.defaultUserName,
                 )
               : null,
         );
@@ -215,7 +217,7 @@ class GroupParticipantsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -228,7 +230,7 @@ class GroupParticipantsSection extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "Henüz kimse katılmadı.",
+              l10n.noParticipantsYet,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

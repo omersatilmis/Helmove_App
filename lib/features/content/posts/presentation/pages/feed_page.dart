@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
 import '../bloc/posts_bloc.dart';
@@ -78,7 +79,7 @@ class _FeedViewState extends State<FeedView> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    state.errorMessage ?? 'Bir hata oluştu',
+                    state.errorMessage ?? AppLocalizations.of(context)!.unknownError,
                     style: AppTextStyles.medium,
                   ),
                   const SizedBox(height: 16),
@@ -92,7 +93,7 @@ class _FeedViewState extends State<FeedView> {
                         ),
                       );
                     },
-                    child: const Text('Tekrar Dene'),
+                    child: Text(AppLocalizations.of(context)!.retry),
                   ),
                 ],
               ),
@@ -102,7 +103,7 @@ class _FeedViewState extends State<FeedView> {
           if (state.posts.isEmpty) {
             return Center(
               child: Text(
-                'Henüz gönderi yok.',
+                AppLocalizations.of(context)!.noPostsYet,
                 style: AppTextStyles.medium.copyWith(
                   color: AppColors.darkTextSecondary,
                 ),
@@ -155,7 +156,7 @@ class _FeedViewState extends State<FeedView> {
                   onSave: () {},
                   onReport: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Şikayetiniz alındı.')),
+                      SnackBar(content: Text(AppLocalizations.of(context)!.reportReceived)),
                     );
                   },
                 );

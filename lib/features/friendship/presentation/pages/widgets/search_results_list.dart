@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../../../core/di/injection_container.dart';
 import '../../bloc/action/friendship_action_bloc.dart';
 import '../../bloc/action/friendship_action_event.dart';
@@ -19,11 +20,15 @@ class SearchResultsList extends StatelessWidget {
         if (state is FriendshipListLoading) {
           return const Center(child: CircularProgressIndicator());
         } else if (state is FriendshipListFailure) {
-          return Center(child: Text("Hata: ${state.message}"));
+          return Center(
+            child: Text(
+              AppLocalizations.of(context)!.errorLabel(state.message),
+            ),
+          );
         } else if (state is FriendSearchResultsLoaded) {
           final results = state.results;
           if (results.isEmpty) {
-            return const Center(child: Text("Kullanıcı bulunamadı."));
+            return Center(child: Text(AppLocalizations.of(context)!.noResultsFound));
           }
           return ListView.builder(
             itemCount: results.length,
@@ -59,7 +64,8 @@ class SearchResultsList extends StatelessWidget {
                                   context.read<FriendshipActionBloc>().add(
                                     SendFriendRequestEvent(
                                       targetUserId: user.id,
-                                      message: "Merhaba, arkadaş olalım!",
+                                      message:
+                                          AppLocalizations.of(context)!.friendRequestDefaultMessage,
                                     ),
                                   );
                                 },
@@ -70,7 +76,7 @@ class SearchResultsList extends StatelessWidget {
             },
           );
         }
-        return const Center(child: Text("Aramak için yazmaya başlayın..."));
+        return Center(child: Text(AppLocalizations.of(context)!.pressSearchToStart));
       },
     );
   }

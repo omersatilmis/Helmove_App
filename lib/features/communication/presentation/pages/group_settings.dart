@@ -6,6 +6,7 @@ import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../../../core/widgets/app_background.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import 'package:helmove/features/group_ride/presentation/bloc/group_ride_bloc.dart';
@@ -51,13 +52,8 @@ class _GroupSettingsState extends State<GroupSettings>
   bool canDelete = false;
 
   // Katılımcı Seçenekleri (Map)
-  final Map<String, int> participantOptions = {
-    '4 riders': 4,
-    '6 riders': 6,
-    '8 riders': 8,
-    '10 riders': 10,
-    '12 riders': 12,
-  };
+  final List<int> participantCounts = [4, 6, 8, 10, 12];
+  late int selectedMaxParticipants;
 
   @override
   void initState() {
@@ -74,12 +70,7 @@ class _GroupSettingsState extends State<GroupSettings>
     selectedPrivacy = widget.data.privacy ?? "Public";
     selectedDifficulty = widget.data.difficulty ?? "Beginner";
     selectedRidingStyle = widget.data.ridingStyle ?? "Sakin";
-
-    final matchingKey = participantOptions.keys.firstWhere(
-      (k) => participantOptions[k] == widget.data.maxParticipants,
-      orElse: () => '6 riders',
-    );
-    selectedMaxParticipantsKey = matchingKey;
+    selectedMaxParticipants = widget.data.maxParticipants ?? 6;
 
     // 2. Yetki Kontrolü (ReadOnly Mode)
     _checkPermission();
@@ -145,12 +136,7 @@ class _GroupSettingsState extends State<GroupSettings>
     setState(() {
       selectedDifficulty = ride.difficulty ?? "Beginner";
       selectedRidingStyle = ride.ridingStyle ?? "Sakin";
-
-      final matchingKey = participantOptions.keys.firstWhere(
-        (k) => participantOptions[k] == ride.maxParticipants,
-        orElse: () => '6 riders',
-      );
-      selectedMaxParticipantsKey = matchingKey;
+      selectedMaxParticipants = ride.maxParticipants;
     });
   }
 
@@ -173,7 +159,7 @@ class _GroupSettingsState extends State<GroupSettings>
       endLocation: _destinationController.text.trim(),
       endLatitude: widget.data.endLatitude ?? 0,
       endLongitude: widget.data.endLongitude ?? 0,
-      maxParticipants: participantOptions[selectedMaxParticipantsKey] ?? 6,
+      maxParticipants: selectedMaxParticipants,
       difficulty: selectedDifficulty,
       ridingStyle: selectedRidingStyle,
       privacy: selectedPrivacy,
@@ -208,6 +194,10 @@ class _GroupSettingsState extends State<GroupSettings>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -221,18 +211,18 @@ class _GroupSettingsState extends State<GroupSettings>
       listener: (context, state) {
         if (state is GroupRideDeleted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Grup turu ve ses oturumu sonlandırıldı"),
+            SnackBar(
+              content: Text(l10n.groupRideAndVoiceSessionEnded),
             ),
           );
           context.go('/communication');
         } else if (state is GroupRideFailure) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text("Hata: ${state.message}")));
+          ).showSnackBar(SnackBar(content: Text("${l10n.errorPrefix}: ${state.message}")));
         } else if (state is GroupRideSuccess) {
           _updateControllers(state.ride);
-          if (state.message.contains("güncellendi")) {
+          if (state.message.contains(l10n.updated)) {
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(SnackBar(content: Text(state.message)));
@@ -265,7 +255,7 @@ class _GroupSettingsState extends State<GroupSettings>
                     ),
                     centerTitle: true,
                     title: Text(
-                      "Grup Ayarları",
+                      l10n.groupSettings,
                       style: AppTextStyles.h3.copyWith(
                         color: colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
@@ -287,31 +277,31 @@ class _GroupSettingsState extends State<GroupSettings>
                         const SizedBox(height: 20),
 
                         // Grup Adı
-                        Text("Grup Adı", style: labelStyle),
+                        Text(l10n.groupName, style: labelStyle),
                         const SizedBox(height: 6),
                         AppInputField(
                           controller: _groupNameController,
-                          hint: "Grup Adı",
+                          hint: l10n.groupNameHint,
                           leadingIcon: Icons.group,
                           enabled: canEdit,
                         ),
                         const SizedBox(height: 16),
 
                         // Maksimum Sürücü
-                        Text("Maksimum Sürücü", style: labelStyle),
+                        Text(l10n.maxRiders, style: labelStyle),
                         const SizedBox(height: 6),
-                        _buildGlassDropdown(colorScheme),
+                        _buildGlassDropdown(colorScheme, l10n),
                         const SizedBox(height: 16),
 
                         // Grup Gizliliği
-                        Text("Grup Gizliliği", style: labelStyle),
+                        Text(l10n.groupPrivacy, style: labelStyle),
                         const SizedBox(height: 6),
                         Row(
                           children: [
                             Expanded(
                               child: _buildPrivacyCard(
-                                title: "Herkese Açık",
-                                subtitle: "Herkes katılabilir",
+                                title: l10n.public,
+                                subtitle: l10n.everyoneCanJoin,
                                 icon: Icons.public,
                                 isSelected: selectedPrivacy == 'Public',
                                 onTap: canEdit
@@ -324,8 +314,8 @@ class _GroupSettingsState extends State<GroupSettings>
                             const SizedBox(width: 8),
                             Expanded(
                               child: _buildPrivacyCard(
-                                title: "Özel",
-                                subtitle: "Sadece davetliler",
+                                title: l10n.private,
+                                subtitle: l10n.onlyInvitees,
                                 icon: Icons.lock_outline,
                                 isSelected: selectedPrivacy == 'Private',
                                 onTap: canEdit
@@ -340,18 +330,18 @@ class _GroupSettingsState extends State<GroupSettings>
                         const SizedBox(height: 16),
 
                         // Rota / Hedef
-                        Text("Rota / Hedef", style: labelStyle),
+                        Text(l10n.destination, style: labelStyle),
                         const SizedBox(height: 6),
                         AppInputField(
                           controller: _destinationController,
-                          hint: "Örn: Abant Gölü",
+                          hint: l10n.destinationHint,
                           leadingIcon: Icons.map,
                           enabled: canEdit,
                         ),
                         const SizedBox(height: 16),
 
                         // Sürüş Tarzı ve Zorluk
-                        Text("Sürüş Tarzı ve Zorluk", style: labelStyle),
+                        Text(l10n.ridingStyle, style: labelStyle),
                         const SizedBox(height: 6),
                         Row(
                           children: [
@@ -365,6 +355,7 @@ class _GroupSettingsState extends State<GroupSettings>
                                         () => selectedRidingStyle = val,
                                       )
                                     : (val) {},
+                                l10n: l10n,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -383,6 +374,7 @@ class _GroupSettingsState extends State<GroupSettings>
                                         () => selectedDifficulty = val,
                                       )
                                     : (val) {},
+                                l10n: l10n,
                               ),
                             ),
                           ],
@@ -390,11 +382,11 @@ class _GroupSettingsState extends State<GroupSettings>
                         const SizedBox(height: 16),
 
                         // Açıklama
-                        Text("Açıklama", style: labelStyle),
+                        Text(l10n.description, style: labelStyle),
                         const SizedBox(height: 6),
                         AppInputField(
                           controller: _descriptionController,
-                          hint: "Sürüş hakkında açıklama...",
+                          hint: l10n.descriptionHint,
                           leadingIcon: Icons.description,
                           maxLines: 3,
                           enabled: canEdit,
@@ -416,7 +408,7 @@ class _GroupSettingsState extends State<GroupSettings>
                                 Expanded(
                                   child: canDelete
                                       ? AppFrostedTextButton(
-                                          text: "Sonlandır",
+                                          text: l10n.terminate,
                                           height: 52,
                                           backgroundColor: colorScheme.error
                                               .withValues(alpha: 0.1),
@@ -429,7 +421,7 @@ class _GroupSettingsState extends State<GroupSettings>
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: AppFrostedTextButton(
-                                    text: "Güncelle",
+                                    text: l10n.update,
                                     height: 52,
                                     backgroundColor: colorScheme.primary
                                         .withValues(alpha: 0.1),
@@ -466,7 +458,7 @@ class _GroupSettingsState extends State<GroupSettings>
     );
   }
 
-  Widget _buildGlassDropdown(ColorScheme colorScheme) {
+  Widget _buildGlassDropdown(ColorScheme colorScheme, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -475,19 +467,20 @@ class _GroupSettingsState extends State<GroupSettings>
         border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedMaxParticipantsKey,
+        child: DropdownButton<int>(
+          value: selectedMaxParticipants,
           dropdownColor: colorScheme.surfaceContainerLow,
           icon: Icon(Icons.keyboard_arrow_down, color: colorScheme.onSurface),
           isExpanded: true,
           style: AppTextStyles.bodyLarge.copyWith(color: colorScheme.onSurface),
-          items: participantOptions.keys.map((String key) {
-            return DropdownMenuItem<String>(value: key, child: Text(key));
+          items: participantCounts.map((int val) {
+            return DropdownMenuItem<int>(
+                value: val, child: Text(l10n.ridersCount(val)));
           }).toList(),
           onChanged: canEdit
               ? (newValue) {
                   if (newValue != null) {
-                    setState(() => selectedMaxParticipantsKey = newValue);
+                    setState(() => selectedMaxParticipants = newValue);
                   }
                 }
               : null,
@@ -569,6 +562,7 @@ class _GroupSettingsState extends State<GroupSettings>
     required IconData icon,
     required List<String> options,
     required Function(String) onSelected,
+    required AppLocalizations l10n,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -582,7 +576,7 @@ class _GroupSettingsState extends State<GroupSettings>
         return PopupMenuItem<String>(
           value: opt,
           child: Text(
-            opt,
+            _getLocalizedOption(opt, l10n),
             style: AppTextStyles.bodySmall.copyWith(
               color: opt == title ? colorScheme.primary : colorScheme.onSurface,
               fontWeight: opt == title ? FontWeight.w500 : FontWeight.w300,
@@ -604,7 +598,7 @@ class _GroupSettingsState extends State<GroupSettings>
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                title,
+                _getLocalizedOption(title, l10n),
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
@@ -622,5 +616,28 @@ class _GroupSettingsState extends State<GroupSettings>
         ),
       ),
     );
+  }
+
+  String _getLocalizedOption(String option, AppLocalizations l10n) {
+    switch (option) {
+      case 'Sakin':
+        return l10n.chill;
+      case 'Tour':
+        return l10n.tour;
+      case 'Viraj':
+        return l10n.fast;
+      case 'Sehir':
+        return l10n.city;
+      case 'Beginner':
+        return l10n.beginner;
+      case 'Intermediate':
+        return l10n.intermediate;
+      case 'Advanced':
+        return l10n.advanced;
+      case 'Expert':
+        return l10n.expert;
+      default:
+        return option;
+    }
   }
 }

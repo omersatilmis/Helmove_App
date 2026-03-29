@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../bloc/list/friendship_list_bloc.dart';
 import '../../bloc/list/friendship_list_event.dart';
 import '../../bloc/list/friendship_list_state.dart';
@@ -43,7 +44,7 @@ class _SentRequestsState extends State<SentRequests> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-          Center(child: Text("Hata: ${state.message}")),
+          Center(child: Text(AppLocalizations.of(context)!.errorLabel(state.message))),
         ],
       );
     } else if (state is SentRequestsLoaded) {
@@ -53,7 +54,7 @@ class _SentRequestsState extends State<SentRequests> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-            const Center(child: Text("Gönderilen istek yok.")),
+            Center(child: Text(AppLocalizations.of(context)!.noSentRequestsYet)),
           ],
         );
       }
@@ -62,15 +63,17 @@ class _SentRequestsState extends State<SentRequests> {
         itemCount: requests.length,
         itemBuilder: (context, index) {
           final request = requests[index];
-          final displayUsername = request.receiverUsername ?? "Bilinmiyor";
-          final displayName = request.receiverName ?? "İsimsiz Kullanıcı";
+          final displayUsername =
+            request.receiverUsername ?? AppLocalizations.of(context)!.unknownUser;
+          final displayName =
+            request.receiverName ?? AppLocalizations.of(context)!.unnamedUser;
           final displayPicture = request.receiverProfilePicture ?? '';
           return FriendStatusCard(
             imageUrl: displayPicture,
             firstName: displayName,
             lastName: '',
             username: displayUsername,
-            statusInfo: "İstek gönderildi",
+            statusInfo: AppLocalizations.of(context)!.requestSent,
             type: FriendshipCardType.sent,
           );
         },

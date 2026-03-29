@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../content/posts/domain/entities/post_entity.dart';
 
 class DiscoverContentGrid extends StatefulWidget {
@@ -56,7 +57,7 @@ class _DiscoverContentGridState extends State<DiscoverContentGrid> {
     if (widget.content.isEmpty) {
       return Center(
         child: Text(
-          "Henüz keşfedilecek bir içerik yok.",
+          AppLocalizations.of(context)!.noDiscoveryContent,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),

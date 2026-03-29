@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/features/profile/presentation/pages/edit_profile.dart';
 import 'package:helmove/features/friendship/domain/entities/friendship_status.dart';
 import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_state.dart';
@@ -362,10 +363,10 @@ class _StatsSection extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           if (AppFeatureFlags.showRatingsSection)
-            _StatItem(ratingPoints, "Derece", onTap: onRatingTap),
-          _StatItem(friendCount, "Arkadaşlar", onTap: onFriendsTap),
-          _StatItem(followerCount, "Takipçi", onTap: onFollowersTap),
-          _StatItem(followingCount, "Takip", onTap: onFollowingTap),
+            _StatItem(ratingPoints, AppLocalizations.of(context)!.rating, onTap: onRatingTap),
+          _StatItem(friendCount, AppLocalizations.of(context)!.friends, onTap: onFriendsTap),
+          _StatItem(followerCount, AppLocalizations.of(context)!.followers, onTap: onFollowersTap),
+          _StatItem(followingCount, AppLocalizations.of(context)!.following, onTap: onFollowingTap),
         ],
       ),
     );
@@ -472,9 +473,9 @@ class _ActionButtonsSection extends StatelessWidget {
             ).push(MaterialPageRoute(builder: (_) => const EditProfilePage()));
           },
           icon: const Icon(Icons.edit_outlined, size: 20),
-          label: const Text(
-            "Düzenle",
-            style: TextStyle(fontWeight: FontWeight.bold),
+          label: Text(
+            AppLocalizations.of(context)!.edit,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           style: ElevatedButton.styleFrom(
             elevation: 0,
@@ -492,9 +493,9 @@ class _ActionButtonsSection extends StatelessWidget {
         child: OutlinedButton.icon(
           onPressed: () => _showAddContentSheet(context),
           icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-          label: const Text(
-            "İçerik Ekle",
-            style: TextStyle(fontWeight: FontWeight.bold),
+          label: Text(
+            AppLocalizations.of(context)!.addContent,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
@@ -537,15 +538,15 @@ class _ActionButtonsSection extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
-                  "Yeni İçerik Oluştur",
+                  AppLocalizations.of(context)!.createNewContent,
                   style: AppTextStyles.h3.copyWith(fontSize: 18),
                 ),
               ),
               const SizedBox(height: 24),
               _AddContentItem(
                 icon: Icons.image_outlined,
-                title: "Gönderi",
-                subtitle: "Fotoğraf veya video paylaş",
+                title: AppLocalizations.of(context)!.postType,
+                subtitle: AppLocalizations.of(context)!.sharePhotoOrVideo,
                 onTap: () {
                   context.pop();
                   context.push('/add_post');
@@ -554,8 +555,8 @@ class _ActionButtonsSection extends StatelessWidget {
               const SizedBox(height: 8),
               _AddContentItem(
                 icon: Icons.edit_note_rounded,
-                title: "Jot",
-                subtitle: "Kısa bir yazı veya düşünce paylaş",
+                title: AppLocalizations.of(context)!.jotType,
+                subtitle: AppLocalizations.of(context)!.shareShortTextOrThought,
                 onTap: () {
                   context.pop();
                   context.push('/create_jots');
@@ -606,9 +607,9 @@ class _ActionButtonsSection extends StatelessWidget {
           size: 18,
           color: AppColors.primary,
         ),
-        label: const Text(
-          "Arkadaşsınız",
-          style: TextStyle(
+        label: Text(
+          AppLocalizations.of(context)!.youAreFriends,
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 12,
             color: AppColors.primary,
@@ -631,9 +632,9 @@ class _ActionButtonsSection extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: onAcceptRequest,
               icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-              label: const Text(
-                "Onayla",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              label: Text(
+                AppLocalizations.of(context)!.confirm,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -650,9 +651,9 @@ class _ActionButtonsSection extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onRejectRequest,
               icon: const Icon(Icons.cancel_outlined, size: 18),
-              label: const Text(
-                "Reddet",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              label: Text(
+                AppLocalizations.of(context)!.reject,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
@@ -676,9 +677,9 @@ class _ActionButtonsSection extends StatelessWidget {
             size: 18,
             color: Colors.grey,
           ),
-          label: const Text(
-            "Gönderildi",
-            style: TextStyle(
+          label: Text(
+            AppLocalizations.of(context)!.requestSent,
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 12,
               color: Colors.grey,
@@ -702,9 +703,9 @@ class _ActionButtonsSection extends StatelessWidget {
           size: 18,
           color: Colors.white,
         ),
-        label: const Text(
-          "Arkadaş Ekle",
-          style: TextStyle(
+        label: Text(
+          AppLocalizations.of(context)!.addFriend,
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 12,
             color: Colors.white,
@@ -745,13 +746,13 @@ class _ActionButtonsSection extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  isFollowing ? "Takibi Bırak" : "Takip Et",
+                  isFollowing ? AppLocalizations.of(context)!.unfollow : AppLocalizations.of(context)!.follow,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
                 ),
               ],
             )
           : Text(
-              isFollowing ? "Takibi Bırak" : "Takip Et",
+              isFollowing ? AppLocalizations.of(context)!.unfollow : AppLocalizations.of(context)!.follow,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
     );

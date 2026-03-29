@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../../../../core/theme/app_colors.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class AboutAppPage extends StatefulWidget {
   const AboutAppPage({super.key});
@@ -11,7 +12,6 @@ class AboutAppPage extends StatefulWidget {
 
 class _AboutAppPageState extends State<AboutAppPage> {
   String _version = "";
-  final String _appReleaseStage = "Beta"; // Geliştirme aşaması
 
   @override
   void initState() {
@@ -29,15 +29,19 @@ class _AboutAppPageState extends State<AboutAppPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return const SizedBox.shrink();
+    }
 
     return Scaffold(
       backgroundColor: isDark
           ? AppColors.darkBackground
           : AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text(
-          "Hakkında",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.about_app,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         centerTitle: true,
@@ -52,18 +56,18 @@ class _AboutAppPageState extends State<AboutAppPage> {
         child: Column(
           children: [
             const SizedBox(height: 40),
-            _buildLogo(isDark),
+            _buildLogo(isDark, l10n),
             const SizedBox(height: 40),
-            _buildAppDescription(isDark),
+            _buildAppDescription(isDark, l10n),
             const SizedBox(height: 60),
-            _buildAdditionalInfo(isDark),
+            _buildAdditionalInfo(isDark, l10n),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildLogo(bool isDark) {
+  Widget _buildLogo(bool isDark, AppLocalizations l10n) {
     return Column(
       children: [
         Container(
@@ -99,7 +103,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              "Sürüm $_version ($_appReleaseStage)",
+              l10n.version(l10n.releaseStageBeta, _version),
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -117,7 +121,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
     );
   }
 
-  Widget _buildAppDescription(bool isDark) {
+  Widget _buildAppDescription(bool isDark, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -135,7 +139,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
               const Icon(Icons.info_outline_rounded, color: AppColors.primary),
               const SizedBox(width: 12),
               Text(
-                "Helmove Neler Sunar?",
+                l10n.aboutAppHighlightsTitle,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -148,7 +152,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            "Helmove; motosiklet kültürünü ileri teknolojiyle harmanlayan, seçkin bir sürüş ve iletişim ekosistemidir. Geleneksel interkom sistemlerinin teknik sınırlarını ortadan kaldırma vizyonuyla doğan platformumuz; kesintisiz P2P ses mimarisini, sofistike grup yönetimini ve anlık konum disiplinini tek bir çatı altında kusursuz bir deneyime dönüştürür. Yolculuğun her anını daha güvenli, senkronize ve prestijli kılmak için tasarlandı.",
+            l10n.aboutAppDescription,
             style: TextStyle(
               fontSize: 15,
               height: 1.6,
@@ -162,13 +166,13 @@ class _AboutAppPageState extends State<AboutAppPage> {
     );
   }
 
-  Widget _buildAdditionalInfo(bool isDark) {
+  Widget _buildAdditionalInfo(bool isDark, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
           Text(
-            "Geliştirici Ekip",
+            l10n.developerTeamTitle,
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -179,7 +183,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Motosiklet tutkunları tarafından, motosiklet tutkunları için sevgiyle geliştirildi.",
+            l10n.developerTeamMessage,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,

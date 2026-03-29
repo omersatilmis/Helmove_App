@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/text_styles.dart';
 // 🔥 Merkezi butonu import ediyoruz
 import '../../../../core/widgets/app_frosted_button.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class ActiveGroupCard extends StatelessWidget {
   final String groupName;
@@ -30,6 +31,7 @@ class ActiveGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -70,7 +72,7 @@ class ActiveGroupCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "$currentParticipants / $maxParticipants Participants",
+                            "$currentParticipants / $maxParticipants ${l10n.participants}",
                             style: AppTextStyles.bodySmall.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -109,7 +111,7 @@ class ActiveGroupCard extends StatelessWidget {
                     ),
 
                     AppFrostedTextButton(
-                      text: "Open",
+                      text: l10n.open,
                       height: 36,
                       width: 80,
                       fontSize: 16,

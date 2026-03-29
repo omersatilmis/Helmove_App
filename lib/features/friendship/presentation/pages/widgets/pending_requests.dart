@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../bloc/action/friendship_action_bloc.dart';
 import '../../bloc/action/friendship_action_event.dart';
 import '../../bloc/action/friendship_action_state.dart';
@@ -62,7 +63,7 @@ class _PendingRequestsState extends State<PendingRequests> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-          Center(child: Text("Hata: ${state.message}")),
+          Center(child: Text(AppLocalizations.of(context)!.errorLabel(state.message))),
         ],
       );
     } else if (state is PendingRequestsLoaded) {
@@ -72,7 +73,7 @@ class _PendingRequestsState extends State<PendingRequests> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-            const Center(child: Text("Bekleyen istek yok.")),
+            Center(child: Text(AppLocalizations.of(context)!.noPendingRequests)),
           ],
         );
       }
@@ -87,12 +88,15 @@ class _PendingRequestsState extends State<PendingRequests> {
             lastName: '',
             username: request.requesterUsername,
             statusInfo: request.requestedAt != null
-                ? "${request.requestedAt!.day}/${request.requestedAt!.month} tarihinde"
-                : "Beklemede",
+              ? AppLocalizations.of(context)!.requestedOnDate(
+                request.requestedAt!.day,
+                request.requestedAt!.month,
+                )
+                : AppLocalizations.of(context)!.waiting,
             type: FriendshipCardType.received,
             onMessageTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Henüz arkadaş değilsiniz.")),
+                SnackBar(content: Text(AppLocalizations.of(context)!.notFriendsYet)),
               );
             },
             onAcceptTap: () {

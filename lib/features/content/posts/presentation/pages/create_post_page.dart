@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../../core/di/injection_container.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/text_styles.dart';
@@ -37,15 +38,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
           if (state.status == CreatePostStatus.success) {
             Navigator.pop(context, true); // Return true to refresh feed
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Gönderi paylaşıldı!'),
+              SnackBar(
+                content: Text(AppLocalizations.of(context)!.postShared),
                 backgroundColor: Colors.green,
               ),
             );
           } else if (state.status == CreatePostStatus.failure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.errorMessage ?? 'Bir hata oluştu'),
+                content: Text(state.errorMessage ?? AppLocalizations.of(context)!.unknownError),
                 backgroundColor: AppColors.error,
               ),
             );
@@ -54,7 +55,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
         child: Scaffold(
           backgroundColor: AppColors.darkBackground,
           appBar: AppBar(
-            title: Text('Gönderi Oluştur', style: AppTextStyles.h3),
+            title: Text(AppLocalizations.of(context)!.createPost, style: AppTextStyles.h3),
             leading: IconButton(
               icon: const Icon(Icons.close, color: AppColors.darkTextPrimary),
               onPressed: () => Navigator.pop(context),
@@ -83,12 +84,12 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     padding: const EdgeInsets.all(4),
                     child: AppInputField(
                       controller: _textController,
-                      hint: 'Neler düşünüyorsun?',
+                      hint: AppLocalizations.of(context)!.whatIsOnYourMind,
                       maxLines: 5,
                       textInputAction: TextInputAction.newline,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Lütfen bir şeyler yazın';
+                          return AppLocalizations.of(context)!.pleaseWriteSomething;
                         }
                         return null;
                       },
@@ -98,7 +99,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
                   // Image URL Input Section
                   Text(
-                    'Medya Ekle',
+                    AppLocalizations.of(context)!.addMedia,
                     style: AppTextStyles.h3.copyWith(fontSize: 18),
                   ),
                   const SizedBox(height: 12),
@@ -116,7 +117,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     ),
                     child: AppInputField(
                       controller: _urlController,
-                      hint: 'Resim URL (https://...)',
+                      hint: AppLocalizations.of(context)!.imageUrlHint,
                       type: AppInputType.url,
                       prefixWidget: const Icon(
                         Icons.add_photo_alternate_outlined,
@@ -136,7 +137,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Önizleme',
+                              AppLocalizations.of(context)!.preview,
                               style: AppTextStyles.medium.copyWith(
                                 color: AppColors.darkTextSecondary,
                               ),
@@ -178,7 +179,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                             ),
                                             const SizedBox(height: 12),
                                             Text(
-                                              'Resim yüklenemedi',
+                                              AppLocalizations.of(context)!.imageLoadFailed,
                                               style: AppTextStyles.medium
                                                   .copyWith(
                                                     color: AppColors
@@ -215,7 +216,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                               ],
                             ),
                             child: AppButton(
-                              text: 'Paylaş',
+                              text: AppLocalizations.of(context)!.share,
                               isLoading:
                                   state.status == CreatePostStatus.submitting,
                               onPressed: () {

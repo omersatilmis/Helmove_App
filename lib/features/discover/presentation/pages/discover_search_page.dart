@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -78,7 +79,7 @@ class _DiscoverSearchPageState extends State<DiscoverSearchPage> {
                       controller: _searchController,
                       focusNode: _focusNode,
                       type: AppInputType.discover,
-                      hint: "Kullanıcı ara...",
+                      hint: AppLocalizations.of(context)!.searchUserHint,
                       leadingIcon: Icons.search_rounded,
                       suffixWidget: _showClearButton 
                         ? IconButton(
@@ -128,7 +129,7 @@ class _DiscoverSearchPageState extends State<DiscoverSearchPage> {
                     Icon(Icons.search_off_rounded, size: 64, color: cs.onSurface.withValues(alpha: 0.2)),
                     const SizedBox(height: 16),
                     Text(
-                      "Kullanıcı bulunamadı",
+                      AppLocalizations.of(context)!.userNotFound,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: cs.onSurface.withValues(alpha: 0.5),
                         fontWeight: FontWeight.bold,
@@ -169,7 +170,7 @@ class _DiscoverSearchPageState extends State<DiscoverSearchPage> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  "Arkadaşlarını Ara",
+                  AppLocalizations.of(context)!.searchFriends,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: cs.onSurface.withValues(alpha: 0.7),
@@ -177,7 +178,7 @@ class _DiscoverSearchPageState extends State<DiscoverSearchPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "Kullanıcı adına veya isme göre ara",
+                  AppLocalizations.of(context)!.searchByUsernameOrName,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: cs.onSurface.withValues(alpha: 0.4),
                   ),

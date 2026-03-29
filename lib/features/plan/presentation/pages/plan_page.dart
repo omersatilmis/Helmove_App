@@ -12,6 +12,7 @@ import 'package:helmove/core/utils/app_logger.dart';
 import 'package:helmove/core/services/subscription_service.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'dart:io';
 import '../bloc/subscription_bloc.dart';
 import '../bloc/subscription_event.dart';
@@ -65,19 +66,19 @@ class _PlanViewState extends State<_PlanView> {
     );
   }
 
-  List<PlanModel> _mapEntitiesToModels(dynamic plans) {
+  List<PlanModel> _mapEntitiesToModels(dynamic plans, AppLocalizations l10n) {
     // Backend verisi gelene kadar markamıza uygun yeni statik veriler
     if (plans == null || plans.isEmpty) {
       return [
         PlanModel(
-          title: "Ücretsiz",
+          title: l10n.free,
           price: "₺0",
           period: "/sonsuza dek",
           productId: "free",
           features: [
-            "Harita Erişimi",
-            "Grup Sürüşlerine Katılım",
-            "Reklamlı Deneyim",
+            l10n.map_access,
+            l10n.group_ride_participation,
+            l10n.ad_supported_experience,
           ],
           gradientColors: [
             const Color(0xFF606c88),
@@ -90,8 +91,8 @@ class _PlanViewState extends State<_PlanView> {
           period: "/ay",
           productId: "plus_offering", // Offering ID ile eşleşmesi için
           features: [
-            "Reklamsız Safkan Deneyim",
-            "Sınırsız Rota Kaydı",
+            l10n.ad_free_experience,
+            l10n.unlimited_route_recording,
             "Gelişmiş Sosyal Akış",
             "Plus Rider Rozeti",
           ],
@@ -106,9 +107,9 @@ class _PlanViewState extends State<_PlanView> {
           period: "/ay",
           productId: "pro_offering", // Offering ID ile eşleşmesi için
           features: [
-            "Sınırsız & Özgür İletişim",
-            "Rider Radar (Yakın Takip)",
-            "Yol Kaptanı Araçları",
+            l10n.unlimited_communication,
+            l10n.rider_radar,
+            l10n.road_captain_tools,
             "Premium Harita Katmanları",
             "Detaylı Sürüş Analitiği",
           ],
@@ -140,6 +141,11 @@ class _PlanViewState extends State<_PlanView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final size = MediaQuery.sizeOf(context);
+    final scale = (size.width / 375).clamp(0.9, 1.1);
+    final sectionSpacing = (size.height * 0.03).clamp(16.0, 30.0);
+    final horizontalPadding = (size.width * 0.05).clamp(16.0, 24.0);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -170,7 +176,7 @@ class _PlanViewState extends State<_PlanView> {
               children: [
                 // AppBar alanı
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -178,18 +184,23 @@ class _PlanViewState extends State<_PlanView> {
                         icon: Icons.arrow_back_ios_new_rounded,
                         onTap: () => context.pop(),
                       ),
-                      Text(
-                        "Planını Seç",
-                        style: AppTextStyles.h3.copyWith(
-                          fontSize: 22,
-                          color: theme.colorScheme.onSurface,
+                      Expanded(
+                        child: Text(
+                          l10n.select_plan,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.h3.copyWith(
+                            fontSize: 22 * scale,
+                            color: theme.colorScheme.onSurface,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 48),
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
+                SizedBox(height: sectionSpacing),
                 Expanded(
                   child: BlocConsumer<SubscriptionBloc, SubscriptionState>(
                     listener: (context, state) {
@@ -216,7 +227,7 @@ class _PlanViewState extends State<_PlanView> {
                         return const Center(child: CircularProgressIndicator());
                       }
 
-                      final plans = _mapEntitiesToModels(state.plans);
+                      final plans = _mapEntitiesToModels(state.plans, l10n);
 
                       return Column(
                         children: [
@@ -225,7 +236,7 @@ class _PlanViewState extends State<_PlanView> {
                             currentIndex: _currentIndex,
                             onTabSelected: _onTabSelected,
                           ),
-                          const SizedBox(height: 30),
+                          SizedBox(height: sectionSpacing),
                           Expanded(
                             child: PageView.builder(
                               controller: _pageController,
@@ -306,7 +317,7 @@ class _PlanViewState extends State<_PlanView> {
                                   );
                                 },
                                 child: Text(
-                                  "Satın Alımları Geri Yükle",
+                                  l10n.restore_purchases,
                                   style: AppTextStyles.bodySmall.copyWith(
                                     color: theme.colorScheme.onSurface
                                         .withValues(alpha: 0.6),

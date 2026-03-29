@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/features/content/jots/presentation/bloc/jots_bloc.dart';
 import 'package:helmove/features/content/jots/presentation/bloc/jots_event.dart';
@@ -165,7 +166,7 @@ class _FeedEmpty extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Henüz hiç jot paylaşımı yok. İlk sen yaz!',
+              AppLocalizations.of(context)!.jotFeedEmpty,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -200,14 +201,14 @@ class _FeedError extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              message.isNotEmpty ? message : 'Akış yüklenemedi',
+              message.isNotEmpty ? message : AppLocalizations.of(context)!.feedLoadFailed,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
             FilledButton.tonal(
               onPressed: onRetry,
-              child: const Text('Tekrar Dene'),
+              child: Text(AppLocalizations.of(context)!.retry),
             ),
           ],
         ),

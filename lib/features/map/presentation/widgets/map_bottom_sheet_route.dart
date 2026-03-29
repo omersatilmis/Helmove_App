@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
+import 'package:helmove/l10n/app_localizations.dart';
 
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
@@ -118,10 +119,11 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
       return const SizedBox.shrink();
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final route = widget.routes[widget.selectedIndex];
-    final trafficLabel = _trafficLabel(route);
+    final trafficLabel = _trafficLabel(route, l10n);
     final steps = route.steps;
     final canExpandSteps = steps.isNotEmpty;
 
@@ -148,26 +150,28 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
               const SizedBox(width: 8),
               _RouteActionIcon(
                 icon: Icons.settings_outlined,
-                tooltip: 'Ayarlar',
+                tooltip: l10n.settings,
                 onTap: () {}, // Ayarlar
+              ),
+            ],
+            if (AppFeatureFlags.showSaveRouteButton) ...[
+              const SizedBox(width: 8),
+              _RouteActionIcon(
+                icon: Icons.bookmark_border,
+                tooltip: l10n.save,
+                onTap: () {}, // Kaydet
               ),
             ],
             const SizedBox(width: 8),
             _RouteActionIcon(
-              icon: Icons.bookmark_border,
-              tooltip: 'Kaydet',
-              onTap: () {}, // Kaydet
-            ),
-            const SizedBox(width: 8),
-            _RouteActionIcon(
               icon: Icons.share_outlined,
-              tooltip: 'Paylaş',
+              tooltip: l10n.share,
               onTap: _shareRoute, // Paylaş
             ),
             const SizedBox(width: 8),
             _RouteActionIcon(
               icon: Icons.close_rounded,
-              tooltip: 'İptal',
+              tooltip: l10n.cancel,
               onTap: () => context.read<MapBloc>().add(
                 MapClearRoutingRequested(),
               ), // İptal
@@ -212,7 +216,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                 crossAxisAlignment: CrossAxisAlignment.end, // Sağa dayalı
                 children: [
                   Text(
-                    'Tahmini varış',
+                    l10n.map_eta_label,
                     style: AppTextStyles.bodySmall.copyWith(
                       color: colorScheme.onSurfaceVariant,
                       fontSize: 11,
@@ -277,10 +281,10 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                   key: const ValueKey('route_details_section'),
                   children: [
                     if (AppFeatureFlags.showMapBusinesses) ...[
-                      _buildBusinessSection(colorScheme),
+                      _buildBusinessSection(colorScheme, l10n),
                       const SizedBox(height: 8),
                     ],
-                    _buildStepsSection(colorScheme, steps, canExpandSteps),
+                    _buildStepsSection(colorScheme, steps, canExpandSteps, l10n),
                     const SizedBox(height: 8),
                     _buildActionButtons(colorScheme),
                   ],
@@ -293,13 +297,14 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
 
   Widget _buildActionButtons(ColorScheme colorScheme) {
     final isDark = colorScheme.brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
 
     return Row(
       children: [
         Expanded(
           flex: 1,
           child: AppFrostedTextButton(
-            text: 'Durak Ekle',
+            text: l10n.map_add_stop,
             onPressed: () => context.read<MapBloc>().add(
                   MapAddStopViewToggled(true),
                 ),
@@ -314,7 +319,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                'Durak Ekle',
+                l10n.map_add_stop,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodySmall.copyWith(
@@ -336,7 +341,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                   UserTier.free,
               onLocked: () => context.push('/plan'),
               child: AppFrostedTextButton(
-                text: 'Gruba Gönder',
+                text: l10n.map_send_to_group,
                 onPressed: () {},
                 backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
                 textColor: colorScheme.primary,
@@ -347,7 +352,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    'Gruba Gönder',
+                    l10n.map_send_to_group,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodySmall.copyWith(
@@ -366,7 +371,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
         Expanded(
           flex: 1,
           child: AppFrostedTextButton(
-            text: 'Başlat',
+            text: l10n.map_start_navigation,
             onPressed: () {},
             backgroundColor: colorScheme.primary,
             textColor: colorScheme.onPrimary,
@@ -377,7 +382,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                'Başlat',
+                l10n.map_start_navigation,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodySmall.copyWith(
@@ -394,13 +399,14 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
   }
 
   Widget _buildStepsList(BuildContext context, List<RouteStepEntity> steps) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
     if (steps.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Text(
-          'Adım bilgisi bulunamadı.',
+          l10n.map_no_steps_found,
           style: AppTextStyles.bodySmall.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
@@ -420,8 +426,8 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
         final title = step.instruction?.trim().isNotEmpty == true
             ? step.instruction!
             : (step.name?.trim().isNotEmpty == true
-                  ? step.name!
-                  : 'Adım ${index + 1}');
+                ? step.name!
+                : l10n.map_step_number(index + 1));
 
         return InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -482,7 +488,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Dikkat',
+                              l10n.map_warning,
                               style: AppTextStyles.bodySmall.copyWith(
                                 color: colorScheme.error,
                                 fontWeight: FontWeight.w700,
@@ -503,6 +509,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
   }
 
   Widget _buildBusinessList(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final items = _mockBusinessesForTab(_selectedPoiIndex);
 
     return ListView.separated(
@@ -517,11 +524,11 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
           distance: item.distance,
           imageUrl: item.imageUrl,
           duration: item.duration,
-          type: item.type,
+          type: _normalizeBusinessType(item.type, l10n),
           rating: item.rating,
           reviewCount: item.reviewCount,
-          isOpen: item.isOpen,
-          address: item.address,
+          isOpen: _normalizeOpenLabel(item.isOpen, l10n),
+          address: _normalizeAddress(item.address, l10n),
         );
       },
     );
@@ -640,38 +647,37 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
   // --- YARDIMCI METOTLAR ---
 
   Color _getTrafficColor(RouteEntity route, ColorScheme colorScheme) {
-    final level = _worstCongestion(route.congestion);
-    if (level == 'Çok Yoğun Trafik') return colorScheme.error;
-    if (level == 'Yoğun Trafik') return Colors.orange.shade700;
-    if (level == 'Orta Yoğunlukta Trafik') return Colors.orange.shade400;
+    final level = _worstCongestionScore(route.congestion);
+    if (level == 4) return colorScheme.error;
+    if (level == 3) return Colors.orange.shade700;
+    if (level == 2) return Colors.orange.shade400;
     return Colors.green.shade600;
   }
 
-  String _trafficLabel(RouteEntity route) {
-    final level = _worstCongestion(route.congestion);
-    if (level != null) return level;
-    return 'Trafik sorunu görünmüyor';
+  String _trafficLabel(RouteEntity route, AppLocalizations l10n) {
+    final level = _worstCongestionScore(route.congestion);
+    switch (level) {
+      case 4:
+        return l10n.map_traffic_severe;
+      case 3:
+        return l10n.map_traffic_heavy;
+      case 2:
+        return l10n.map_traffic_moderate;
+      case 1:
+        return l10n.map_traffic_low;
+      default:
+        return l10n.map_traffic_clear;
+    }
   }
 
-  String? _worstCongestion(List<String>? congestion) {
-    if (congestion == null || congestion.isEmpty) return null;
+  int _worstCongestionScore(List<String>? congestion) {
+    if (congestion == null || congestion.isEmpty) return 0;
     var worstScore = 0;
     for (final item in congestion) {
       final score = _congestionScore(item);
       if (score > worstScore) worstScore = score;
     }
-    switch (worstScore) {
-      case 4:
-        return 'Çok Yoğun Trafik';
-      case 3:
-        return 'Yoğun Trafik';
-      case 2:
-        return 'Orta Yoğunlukta Trafik';
-      case 1:
-        return 'Trafik Akıcı';
-      default:
-        return null;
-    }
+    return worstScore;
   }
 
   int _congestionScore(String value) {
@@ -689,7 +695,35 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
     }
   }
 
+  String _normalizeOpenLabel(String value, AppLocalizations l10n) {
+    final lower = value.toLowerCase();
+    if (lower.contains('open') || lower.contains('açık')) {
+      return l10n.map_business_open;
+    }
+    if (lower.contains('closed') || lower.contains('kapalı')) {
+      return l10n.map_business_closed;
+    }
+    return value;
+  }
+
+  String _normalizeBusinessType(String value, AppLocalizations l10n) {
+    final lower = value.toLowerCase();
+    if (lower.contains('işletme') || lower.contains('isletme')) {
+      return l10n.map_business_label;
+    }
+    return value;
+  }
+
+  String _normalizeAddress(String value, AppLocalizations l10n) {
+    final lower = value.trim().toLowerCase();
+    if (lower == 'bilinmiyor' || lower == 'unknown') {
+      return l10n.notAvailable;
+    }
+    return value;
+  }
+
   Widget _buildAddressSection(ColorScheme colorScheme) {
+    final l10n = AppLocalizations.of(context)!;
     // --- UNIFIED POINTS LIST ---
     final List<LocationEntity> allPoints = [];
     if (widget.startPoint != null) allPoints.add(widget.startPoint!);
@@ -713,7 +747,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Rota Durakları',
+                l10n.map_route_stops_title,
                 style: AppTextStyles.h3.copyWith(
                   color: colorScheme.onSurfaceVariant,
                   fontSize: 16,
@@ -724,7 +758,9 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                 buildWhen: (p, c) => p.routeNeedsUpdate != c.routeNeedsUpdate || p.isRouting != c.isRouting,
                 builder: (context, state) {
                   final bool isEnabled = state.routeNeedsUpdate && !state.isRouting;
-                  final String buttonText = state.isRouting ? 'Rota Yenileniyor...' : 'Rota Yenile';
+                  final String buttonText = state.isRouting
+                      ? l10n.map_route_refreshing
+                      : l10n.map_route_refresh;
                   
                   return InkWell(
                     onTap: isEnabled ? () {
@@ -860,7 +896,8 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
     );
   }
 
-  Widget _buildBusinessSection(ColorScheme colorScheme) {
+  Widget _buildBusinessSection(ColorScheme colorScheme, AppLocalizations l10n) {
+    final poiTabs = _buildPoiTabs(l10n);
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -880,7 +917,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
               child: Row(
                 children: [
                   Text(
-                    'İşletmeler',
+                    l10n.map_businesses,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: colorScheme.onSurface,
                       fontWeight: FontWeight.w600,
@@ -900,10 +937,10 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
               height: 32,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: _poiTabs.length,
+                itemCount: poiTabs.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
-                  final item = _poiTabs[index];
+                  final item = poiTabs[index];
                   final isSelected = index == _selectedPoiIndex;
                   return ChoiceChip(
                     label: Row(
@@ -971,6 +1008,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
     ColorScheme colorScheme,
     List<RouteStepEntity> steps,
     bool canExpandSteps,
+    AppLocalizations l10n,
   ) {
     return Container(
       decoration: BoxDecoration(
@@ -991,7 +1029,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
               child: Row(
                 children: [
                   Text(
-                    'Güzergah',
+                    l10n.map_route_steps_title,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: colorScheme.onSurface,
                       fontWeight: FontWeight.w600,
@@ -1090,10 +1128,23 @@ class _PoiTabItem {
   const _PoiTabItem({required this.label, required this.icon});
 }
 
-// Geri Getirilen POI Sekmeleri (monochrome iconlar)
-const List<_PoiTabItem> _poiTabs = [
-  _PoiTabItem(label: 'Yakıt', icon: Icons.local_gas_station_rounded),
-  _PoiTabItem(label: 'Dinlenme', icon: Icons.local_cafe_rounded),
-  _PoiTabItem(label: 'Servis', icon: Icons.build_rounded),
-  _PoiTabItem(label: 'Ekipman', icon: Icons.sports_motorsports_rounded),
-];
+List<_PoiTabItem> _buildPoiTabs(AppLocalizations l10n) {
+  return [
+    _PoiTabItem(
+      label: l10n.map_poi_gas,
+      icon: Icons.local_gas_station_rounded,
+    ),
+    _PoiTabItem(
+      label: l10n.map_poi_rest,
+      icon: Icons.local_cafe_rounded,
+    ),
+    _PoiTabItem(
+      label: l10n.map_poi_service,
+      icon: Icons.build_rounded,
+    ),
+    _PoiTabItem(
+      label: l10n.map_poi_equipment,
+      icon: Icons.sports_motorsports_rounded,
+    ),
+  ];
+}

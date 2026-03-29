@@ -10,6 +10,7 @@ import 'package:helmove/features/friendship/presentation/bloc/list/friendship_li
 import 'package:helmove/features/friendship/presentation/bloc/list/friendship_list_state.dart';
 import 'package:helmove/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'widgets/friends_list.dart';
 import 'widgets/pending_requests.dart';
 import 'widgets/sent_requests.dart';
@@ -91,7 +92,7 @@ class _FriendsPageState extends State<FriendsPage>
                 onTap: () => Navigator.pop(context),
               ),
             ),
-            title: Text('Arkadaşlık', style: AppTextStyles.h3),
+            title: Text(AppLocalizations.of(context)!.friendship, style: AppTextStyles.h3),
             centerTitle: true,
           ),
           body: Column(
@@ -101,7 +102,7 @@ class _FriendsPageState extends State<FriendsPage>
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: GlassInputField(
                   controller: _searchController,
-                  hintText: 'Arkadaş ara...',
+                  hintText: AppLocalizations.of(context)!.searchFriends,
                   prefixIcon: Icons.search,
                 ),
               ),
@@ -119,10 +120,10 @@ class _FriendsPageState extends State<FriendsPage>
                   unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
                   indicatorColor: theme.colorScheme.primary,
                   indicatorSize: TabBarIndicatorSize.tab,
-                  tabs: const [
-                    Tab(text: 'Arkadaşlarım'),
-                    Tab(text: 'Bekleyenler'),
-                    Tab(text: 'Gönderilenler'),
+                  tabs: [
+                    Tab(text: AppLocalizations.of(context)!.myFriends),
+                    Tab(text: AppLocalizations.of(context)!.pendingRequests),
+                    Tab(text: AppLocalizations.of(context)!.sentRequests),
                   ],
                 ),
                 // TAB İÇERİKLERİ

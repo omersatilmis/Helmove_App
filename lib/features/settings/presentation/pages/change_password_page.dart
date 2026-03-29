@@ -5,6 +5,7 @@ import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -32,10 +33,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     final authProvider = context.read<AuthProvider>();
     final email = authProvider.currentUser?.email ?? "";
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
 
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kullanıcı bilgisi bulunamadı.')),
+        SnackBar(content: Text(l10n.userInfoNotFound)),
       );
       return;
     }
@@ -53,7 +56,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Şifre güncellenemedi.'),
+            content: Text(
+              authProvider.errorMessage ?? l10n.passwordUpdateFailed,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -62,13 +67,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   void _showSuccessDialog() {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Başarılı'),
-        content: const Text(
-            'Şifreniz başarıyla güncellendi. Güvenliğiniz için tüm oturumlarınız kapatıldı. Lütfen tekrar giriş yapın.'),
+        title: Text(l10n.success),
+        content: Text(l10n.passwordUpdatedMessage),
         actions: [
           TextButton(
             onPressed: () {
@@ -78,7 +84,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               }
               context.go('/login');
             },
-            child: const Text('Tamam'),
+            child: Text(l10n.ok),
           ),
         ],
       ),
@@ -88,10 +94,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Şifre Değiştir'),
+        title: Text(l10n.changePassword),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -101,21 +109,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Güçlü bir şifre seçerek hesabınızı daha güvenli hale getirin.',
+              Text(
+                l10n.passwordStrengthHint,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: const TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 32),
               
               AppInputField(
                 controller: _currentPasswordController,
                 type: AppInputType.password,
-                label: "Mevcut Şifre",
-                hint: "Mevcut şifrenizi girin",
+                label: l10n.currentPasswordLabel,
+                hint: l10n.currentPasswordHint,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Lütfen mevcut şifrenizi girin';
+                    return l10n.currentPasswordRequired;
                   }
                   return null;
                 },
@@ -125,11 +133,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               AppInputField(
                 controller: _newPasswordController,
                 type: AppInputType.newPassword,
-                label: "Yeni Şifre",
-                hint: "Yeni şifrenizi girin",
+                label: l10n.newPasswordLabel,
+                hint: l10n.newPasswordHint,
                 validator: (value) {
                   if (value == null || value.length < 6) {
-                    return 'Şifre en az 6 karakter olmalıdır';
+                    return l10n.passwordTooShort;
                   }
                   return null;
                 },
@@ -139,11 +147,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               AppInputField(
                 controller: _confirmPasswordController,
                 type: AppInputType.newPassword,
-                label: "Yeni Şifre Onay",
-                hint: "Yeni şifrenizi tekrar girin",
+                label: l10n.confirmNewPasswordLabel,
+                hint: l10n.confirmNewPasswordHint,
                 validator: (value) {
                   if (value != _newPasswordController.text) {
-                    return 'Şifreler eşleşmiyor';
+                    return l10n.passwordsDoNotMatch;
                   }
                   return null;
                 },
@@ -171,7 +179,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         ),
                       )
                     : Text(
-                        'Şifremi Güncelle',
+                        l10n.updatePasswordButton,
                         style: AppTextStyles.medium.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

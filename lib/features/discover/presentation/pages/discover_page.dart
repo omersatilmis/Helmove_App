@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/di/injection_container.dart' as di;
 import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
@@ -69,7 +70,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
                             child: AppInputField(
                               controller: _searchController,
                               type: AppInputType.discover,
-                              hint: "Kullanıcı ara...",
+                              hint: AppLocalizations.of(context)!.searchUserHint,
                               leadingIcon: Icons.search,
                             ),
                           ),

@@ -3,6 +3,7 @@ import 'package:helmove/core/widgets/app_button.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_divider_widget.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class RegisterFormWidget extends StatefulWidget {
   final GlobalKey<FormState> formKey;
@@ -66,6 +67,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
   }
 
   Widget _buildStep1() {
+    final l10n = AppLocalizations.of(context)!;
     return Form(
       key: _step1Key,
       child: Column(
@@ -75,11 +77,11 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
             controller: widget.usernameController,
             type: AppInputType.standard,
             autofillHints: const [AutofillHints.username],
-            label: "Kullanıcı Adı",
+            label: l10n.username,
             leadingIcon: Icons.alternate_email,
             textInputAction: TextInputAction.next,
             validator: (val) => (val == null || val.length < 3)
-                ? 'En az 3 karakter giriniz'
+                ? l10n.usernameTooShort
                 : null,
           ),
           const SizedBox(height: 12),
@@ -90,11 +92,11 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 child: AppInputField(
                   controller: widget.firstNameController,
                   type: AppInputType.firstName,
-                  label: "Ad",
+                  label: l10n.firstName,
                   leadingIcon: Icons.person_outline,
                   textInputAction: TextInputAction.next,
                   validator: (val) =>
-                      (val == null || val.trim().isEmpty) ? 'Gerekli' : null,
+                      (val == null || val.trim().isEmpty) ? l10n.required : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -102,12 +104,12 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 child: AppInputField(
                   controller: widget.lastNameController,
                   type: AppInputType.lastName,
-                  label: "Soyad",
+                  label: l10n.lastName,
                   leadingIcon: Icons.person_outline,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _nextStep(),
                   validator: (val) =>
-                      (val == null || val.trim().isEmpty) ? 'Gerekli' : null,
+                      (val == null || val.trim().isEmpty) ? l10n.required : null,
                 ),
               ),
             ],
@@ -118,6 +120,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
   }
 
   Widget _buildStep2() {
+    final l10n = AppLocalizations.of(context)!;
     return Form(
       key: _step2Key,
       child: Column(
@@ -126,12 +129,12 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
           AppInputField(
             controller: widget.emailController,
             type: AppInputType.email,
-            label: "E-Posta Adresi",
+            label: l10n.emailAddress,
             leadingIcon: Icons.email_outlined,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _nextStep(),
             validator: (val) => (val == null || !val.contains('@'))
-                ? 'Geçerli bir mail giriniz'
+                ? l10n.invalidMail
                 : null,
           ),
         ],
@@ -140,6 +143,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
   }
 
   Widget _buildStep3() {
+    final l10n = AppLocalizations.of(context)!;
     return Form(
       key: _step3Key,
       child: Column(
@@ -148,24 +152,24 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
           AppInputField(
             controller: widget.passwordController,
             type: AppInputType.newPassword,
-            label: "Şifre",
+            label: l10n.password,
             leadingIcon: Icons.lock_outline,
             textInputAction: TextInputAction.next,
             validator: (val) =>
-                (val == null || val.length < 6) ? 'En az 6 karakter' : null,
+                (val == null || val.length < 6) ? l10n.passwordTooShort : null,
           ),
           const SizedBox(height: 12),
           AppInputField(
             controller: widget.confirmPasswordController,
             type: AppInputType.password,
-            label: "Şifre Tekrar",
+            label: l10n.passwordAgain,
             leadingIcon: Icons.lock_reset,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _submit(),
             validator: (val) {
-              if (val == null || val.isEmpty) return 'Tekrar giriniz';
+              if (val == null || val.isEmpty) return l10n.reEnterPassword;
               if (val != widget.passwordController.text) {
-                return 'Şifreler uyuşmuyor';
+                return l10n.passwordsDoNotMatch;
               }
               return null;
             },
@@ -187,7 +191,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
           children: [
             // STEP HEADERS (Optional, could add simple 1/3 indicator here)
             Text(
-              "Adım ${_currentStep + 1} / 3",
+              "${AppLocalizations.of(context)!.step} ${_currentStep + 1} / 3",
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: Theme.of(context).colorScheme.primary,
@@ -229,7 +233,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                   Expanded(
                     flex: 1,
                     child: AppButton(
-                      text: "Geri Dön",
+                      text: AppLocalizations.of(context)!.back,
                       onPressed: _prevStep,
                       variant: AppButtonVariant.secondary,
                       style: AppButtonStyle.outlined, // Outlined siyah olacak şekilde tasarlanmış AppButton kuralına uyar
@@ -242,7 +246,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 Expanded(
                   flex: 2,
                   child: AppButton(
-                    text: _currentStep == 2 ? "Hesap Oluştur" : "Devam Et",
+                    text: _currentStep == 2 ? AppLocalizations.of(context)!.createAccount : AppLocalizations.of(context)!.continueText,
                     isLoading: widget.authProvider.isLoading,
                     onPressed: _currentStep == 2 ? _submit : _nextStep,
                     size: AppButtonSize.large,
@@ -258,7 +262,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
               const AuthDividerWidget(),
               const SizedBox(height: 16),
               AppButton(
-                text: "Google ile devam et",
+                text: AppLocalizations.of(context)!.continueWithGoogle,
                 onPressed: () {},
                 variant: AppButtonVariant.secondary,
                 style: AppButtonStyle.outlined,

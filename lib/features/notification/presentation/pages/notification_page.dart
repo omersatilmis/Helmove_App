@@ -17,7 +17,7 @@ import 'package:helmove/features/group_ride/presentation/models/group_ride_args.
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_event.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_state.dart';
-// import 'package:helmove/features/communication/domain/entities/group_ride_data.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
@@ -51,8 +51,9 @@ class _NotificationsViewState extends State<_NotificationsView> {
   @override
   void initState() {
     super.initState();
-    // Timeago Türkçe ayarı (Main'de yaptıysan buraya gerek yok)
+    // Timeago localized messages
     timeago.setLocaleMessages('tr', timeago.TrMessages());
+    timeago.setLocaleMessages('en', timeago.EnMessages());
     _scrollController.addListener(_onScroll);
   }
 
@@ -86,9 +87,8 @@ class _NotificationsViewState extends State<_NotificationsView> {
     final backgroundColor = isDark
         ? const Color(0xFF000000)
         : const Color(0xFFFFFFFF);
-    final surfaceColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF5F5F5);
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
 
     return BlocListener<VoiceSessionBloc, VoiceSessionState>(
       listenWhen: (previous, current) =>
@@ -108,7 +108,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
         backgroundColor: backgroundColor,
         appBar: AppBar(
           title: Text(
-            'Bildirimler',
+            l10n.notifications,
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 20,
@@ -122,14 +122,14 @@ class _NotificationsViewState extends State<_NotificationsView> {
             IconButton(
               icon: const Icon(Icons.playlist_add_check_circle_rounded),
               color: AppColors.primary,
-              tooltip: "Hepsini Okundu İşaretle",
+              tooltip: l10n.markAllAsRead,
               onPressed: () {
                 context.read<NotificationsBloc>().add(
                   MarkAllNotificationsReadEvent(),
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('Tüm bildirimler okundu.'),
+                    content: Text(l10n.allNotificationsRead),
                     backgroundColor: AppColors.darkSurface,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
@@ -146,7 +146,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
             if (state.status == NotificationsStatus.failure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.errorMessage ?? 'Hata oluştu'),
+                  content: Text(state.errorMessage ?? l10n.errorOccurred),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -161,16 +161,16 @@ class _NotificationsViewState extends State<_NotificationsView> {
 
             // Boş Liste
             if (state.notifications.isEmpty) {
-              return _buildEmptyState(context);
+              return _buildEmptyState(l10n, context);
             }
 
             // Gruplandırma Mantığı
-            final groupedItems = _groupNotifications(state.notifications);
+            final groupedItems = _groupNotifications(state.notifications, l10n);
 
             // Liste
             return RefreshIndicator(
               color: AppColors.primary,
-              backgroundColor: surfaceColor,
+              backgroundColor: Theme.of(context).cardColor,
               onRefresh: () async {
                 context.read<NotificationsBloc>().add(
                   RefreshNotificationsEvent(),
@@ -229,7 +229,10 @@ class _NotificationsViewState extends State<_NotificationsView> {
   }
 
   // Bildirimleri gruplayıp düz bir liste (Header + Item karışık) haline getirir
-  List<dynamic> _groupNotifications(List<NotificationEntity> notifications) {
+  List<dynamic> _groupNotifications(
+    List<NotificationEntity> notifications,
+    AppLocalizations l10n,
+  ) {
     final groupedList = <dynamic>[];
     if (notifications.isEmpty) return groupedList;
 
@@ -238,11 +241,11 @@ class _NotificationsViewState extends State<_NotificationsView> {
 
     // Grupları tutacak geçici map
     final groups = <String, List<NotificationEntity>>{
-      'Bugün': [],
-      'Dün': [],
-      'Bu Hafta': [],
-      'Bu Ay': [],
-      'Daha Eski': [],
+      l10n.today: [],
+      l10n.yesterday: [],
+      l10n.thisWeek: [],
+      l10n.thisMonth: [],
+      l10n.older: [],
     };
 
     for (var notification in notifications) {
@@ -252,17 +255,17 @@ class _NotificationsViewState extends State<_NotificationsView> {
       if (date.year == now.year &&
           date.month == now.month &&
           date.day == now.day) {
-        groups['Bugün']!.add(notification);
+        groups[l10n.today]!.add(notification);
       } else if (date.year == yesterday.year &&
           date.month == yesterday.month &&
           date.day == yesterday.day) {
-        groups['Dün']!.add(notification);
+        groups[l10n.yesterday]!.add(notification);
       } else if (diff.inDays < 7) {
-        groups['Bu Hafta']!.add(notification);
+        groups[l10n.thisWeek]!.add(notification);
       } else if (diff.inDays < 30) {
-        groups['Bu Ay']!.add(notification);
+        groups[l10n.thisMonth]!.add(notification);
       } else {
-        groups['Daha Eski']!.add(notification);
+        groups[l10n.older]!.add(notification);
       }
     }
 
@@ -277,7 +280,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
     return groupedList;
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(AppLocalizations l10n, BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -287,7 +290,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
-              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              ).colorScheme.surfaceContainerHighest.withAlpha(75),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -298,7 +301,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
           ),
           const SizedBox(height: 24),
           Text(
-            'Henüz bildirim yok',
+            l10n.noNotificationsYet,
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface,
               fontSize: 18,
@@ -307,7 +310,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Etkileşimler burada görünecek',
+            l10n.interactionsWillShowUp,
             style: TextStyle(
               color: Theme.of(context).disabledColor,
               fontSize: 14,
@@ -337,6 +340,8 @@ class _NotificationItemModern extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUnread = !notification.isRead;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
 
     // Arka plan rengi (Okunmamışsa hafif renkli)
     final bgColor = isUnread
@@ -386,7 +391,7 @@ class _NotificationItemModern extends StatelessWidget {
                         children: [
                           TextSpan(
                             text:
-                                '${notification.senderUsername ?? "Misafir"} ',
+                                '${notification.senderUsername ?? l10n.guest} ',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           TextSpan(
@@ -397,7 +402,7 @@ class _NotificationItemModern extends StatelessWidget {
                           ),
                           TextSpan(
                             text:
-                                '  ${timeago.format(notification.createdAt, locale: 'tr')}',
+                                '  ${timeago.format(notification.createdAt, locale: Localizations.localeOf(context).languageCode)}',
                             style: TextStyle(
                               color: isDark
                                   ? Colors.grey[500]
@@ -426,9 +431,9 @@ class _NotificationItemModern extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text(
-                              'Katıl',
-                              style: TextStyle(
+                            child: Text(
+                              l10n.join,
+                              style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -451,7 +456,7 @@ class _NotificationItemModern extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              'Reddet',
+                              l10n.decline,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isDark ? Colors.white70 : Colors.black54,
@@ -524,20 +529,21 @@ class _NotificationItemModern extends StatelessWidget {
 
       // --- Singleton Session Guard: Aktif oturum varsa onay diyalogu göster ---
       final currentActiveSession = voiceBloc.state.session;
+      final l10n = AppLocalizations.of(context);
+      if (l10n == null) return;
+
       if (currentActiveSession != null) {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Aktif S\u00fcr\u00fc\u015ften Ayr\u0131l'),
+            title: Text(l10n.leaveRoomTitle),
             content: Text(
-              '"${currentActiveSession.title}" adl\u0131 s\u00fcr\u00fc\u015fte zaten aktifsiniz. '
-              'Bu daveti kabul etti\u011finizde mevcut s\u00fcr\u00fc\u015ften ayr\u0131lacaks\u0131n\u0131z. '
-              'Devam etmek istiyor musunuz?',
+              l10n.alreadyInRideWarning(currentActiveSession.title),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('\u0130ptal'),
+                child: Text(l10n.cancel),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
@@ -545,7 +551,7 @@ class _NotificationItemModern extends StatelessWidget {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Evet, Ayr\u0131l ve Kat\u0131l'),
+                child: Text(l10n.leaveAndJoin),
               ),
             ],
           ),
@@ -553,28 +559,34 @@ class _NotificationItemModern extends StatelessWidget {
 
         if (confirmed != true) return;
 
-        // Kullan\u0131c\u0131 onaylad\u0131 - \u00f6nce mevcut oturumdan ayr\u0131l
+        // Kullanıcı onayladı - önce mevcut oturumdan ayrıl
         voiceBloc.add(LeaveVoiceSessionEvent(currentActiveSession.id));
-        // K\u0131sa bir bekleme ile state g\u00fcncellenmesini bekle
+        // Kısa bir bekleme ile state güncellenmesini bekle
         await Future.delayed(const Duration(milliseconds: 800));
       }
 
       // 2. Bildirimi sil (Optimistik)
       notifBloc.add(DeleteNotificationEvent(notification.id));
 
-      // 3. Gruba Kat\u0131lma \u0130ste\u011fi ve Navigasyon
+      // 3. Gruba Katılma İsteği ve Navigasyon
       await _goToGroupPageSafe(
         router,
         messenger,
         voiceBloc,
         effectiveSessionId,
+        l10n,
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Oturum bilgisine ula\u015f\u0131lamad\u0131."),
-        ),
-      );
+      if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
+        if (l10n != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.sessionInfoUnavailable),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -592,33 +604,35 @@ class _NotificationItemModern extends StatelessWidget {
     _deleteNotification(context);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Davet reddedildi.')));
+      final l10n = AppLocalizations.of(context);
+      if (l10n != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.inviteRejected)));
+      }
     }
   }
 
   Future<void> _handleVoiceSessionNavigation(BuildContext context) async {
     final sessionId =
         notification.sessionId ?? _getLegacySessionId(notification);
-    final messenger = ScaffoldMessenger.of(context);
     final voiceBloc = context.read<VoiceSessionBloc>();
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
 
     final currentActiveSession = voiceBloc.state.session;
     if (currentActiveSession != null) {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Aktif Sürüşten Ayrıl'),
+          title: Text(l10n.leaveRoomTitle),
           content: Text(
-            '"${currentActiveSession.title}" adlı sürüşte zaten aktifsiniz. '
-            'Bu gruba geçtiğinizde mevcut sürüşten ayrılacaksınız. '
-            'Devam etmek istiyor musunuz?',
+            l10n.alreadyInRideWarning(currentActiveSession.title),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('İptal'),
+              child: Text(l10n.cancel),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
@@ -626,7 +640,7 @@ class _NotificationItemModern extends StatelessWidget {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Evet, Ayrıl ve Geç'),
+              child: Text(l10n.leaveAndJoin),
             ),
           ],
         ),
@@ -644,13 +658,50 @@ class _NotificationItemModern extends StatelessWidget {
         ? fallbackRideId
         : null;
     if (validSessionId == null && validRideId == null) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text("Oturum veya Sürüş ID bulunamadı.")),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.idNotFound)),
+        );
+      }
       return;
     }
-    // ...burada eski _goToGroupPageSafe içeriği devam eder...
-    // ...existing code...
+
+    if (validSessionId != null && !voiceBloc.isClosed) {
+      final accepted = await _acceptInviteAndWaitResult(
+        voiceBloc: voiceBloc,
+        sessionId: validSessionId,
+      );
+
+      if (!accepted) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                l10n.acceptInviteError,
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        // Continue navigation anyway in case the ride itself exists
+      }
+    }
+
+    final groupArgs = GroupRideArgs(
+      rideId: validRideId ?? validSessionId ?? 0,
+      sessionId: validSessionId,
+      groupName: notification.groupName ??
+          l10n.inviteFromUser(notification.senderUsername ?? l10n.friend),
+      maxParticipants: 10,
+      privacy: "Private",
+      destination: l10n.unknown,
+      ridingStyle: l10n.unknown,
+      forceBackToCommunication: true,
+    );
+
+    if (context.mounted) {
+      GoRouter.of(context).go('/communication/group-page', extra: groupArgs);
+    }
   }
 
   // Eski tip JSON parse (Geriye uyumluluk için, eğer entity getter null dönerse)
@@ -663,6 +714,7 @@ class _NotificationItemModern extends StatelessWidget {
     ScaffoldMessengerState messenger,
     VoiceSessionBloc voiceBloc,
     int? sessionId,
+    AppLocalizations l10n,
   ) async {
     final fallbackRideId = notification.rideId;
     final validSessionId = (sessionId != null && sessionId > 0)
@@ -674,7 +726,7 @@ class _NotificationItemModern extends StatelessWidget {
 
     if (validSessionId == null && validRideId == null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text("Oturum veya Sürüş ID bulunamadı.")),
+        SnackBar(content: Text(l10n.idNotFound)),
       );
       return;
     }
@@ -687,9 +739,9 @@ class _NotificationItemModern extends StatelessWidget {
 
       if (!accepted) {
         messenger.showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              "Sesli oturum daveti kabul edilemedi. Lütfen tekrar deneyin.",
+              l10n.acceptInviteError,
             ),
             backgroundColor: Colors.red,
           ),
@@ -703,11 +755,11 @@ class _NotificationItemModern extends StatelessWidget {
       sessionId: validSessionId,
       groupName:
           notification.groupName ??
-          "${notification.senderUsername ?? 'Arkadaş'} Daveti",
+          l10n.inviteFromUser(notification.senderUsername ?? l10n.friend),
       maxParticipants: 10,
       privacy: "Private",
-      destination: "Bilinmiyor",
-      ridingStyle: "Bilinmiyor",
+      destination: l10n.unknown,
+      ridingStyle: l10n.unknown,
       forceBackToCommunication: true,
     );
 

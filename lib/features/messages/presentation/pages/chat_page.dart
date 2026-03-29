@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -172,9 +173,10 @@ class _ChatViewState extends State<ChatView> {
       appBar: _buildAppBar(theme, appBarBg),
       body: BlocListener<FollowActionBloc, FollowActionState>(
         listener: (context, state) {
+          final l10n = AppLocalizations.of(context)!;
           if (state is BlockUserSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Kullanıcı engellendi")),
+              SnackBar(content: Text(l10n.user_blocked)),
             );
             if (Navigator.canPop(context)) Navigator.pop(context);
           } else if (state is FollowActionError) {
@@ -197,7 +199,9 @@ class _ChatViewState extends State<ChatView> {
                 }
 
                 if (state is ChatError) {
-                  return Center(child: Text('Hata: ${state.message}'));
+                  return Center(
+                    child: Text('${AppLocalizations.of(context)!.errorOccurred}: ${state.message}'),
+                  );
                 }
 
                 if (state is ChatLoaded) {
@@ -388,48 +392,52 @@ class _ChatViewState extends State<ChatView> {
             borderRadius: BorderRadius.circular(12),
           ),
           onSelected: (value) {
+            final l10n = AppLocalizations.of(context)!;
             // Şimdilik sadece debugPrint ile aksiyonları gösteriyoruz
             if (value == 'clear') {
-              debugPrint('Sohbeti Temizle');
+              debugPrint(l10n.clear_chat);
             } else if (value == 'block') {
               context.read<FollowActionBloc>().add(follow_events.BlockUserEvent(widget.otherUserId));
             } else if (value == 'report') {
               ReportBottomSheet.show(context, targetId: widget.otherUserId.toString(), targetType: ReportTargetType.user);
             }
           },
-          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-            PopupMenuItem<String>(
-              value: 'clear',
-              child: Row(
-                children: [
-                  Icon(Icons.delete_outline_rounded, color: colorScheme.onSurfaceVariant, size: 20),
-                  const SizedBox(width: 8),
-                  const Text('Sohbeti Temizle'),
-                ],
+          itemBuilder: (BuildContext context) {
+            final l10n = AppLocalizations.of(context)!;
+            return <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline_rounded, color: colorScheme.onSurfaceVariant, size: 20),
+                    const SizedBox(width: 8),
+                    Text(l10n.clear_chat),
+                  ],
+                ),
               ),
-            ),
-            const PopupMenuDivider(),
-            PopupMenuItem<String>(
-              value: 'block',
-              child: Row(
-                children: [
-                  const Icon(Icons.block_rounded, color: Colors.orange, size: 20),
-                  const SizedBox(width: 8),
-                  const Text('Engelle', style: TextStyle(color: Colors.orange)),
-                ],
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'block',
+                child: Row(
+                  children: [
+                    const Icon(Icons.block_rounded, color: Colors.orange, size: 20),
+                    const SizedBox(width: 8),
+                    Text(l10n.block_user, style: const TextStyle(color: Colors.orange)),
+                  ],
+                ),
               ),
-            ),
-            PopupMenuItem<String>(
-              value: 'report',
-              child: Row(
-                children: [
-                  Icon(Icons.report_problem_outlined, color: colorScheme.error, size: 20),
-                  const SizedBox(width: 8),
-                  Text('Şikayet Et', style: TextStyle(color: colorScheme.error)),
-                ],
+              PopupMenuItem<String>(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(Icons.report_problem_outlined, color: colorScheme.error, size: 20),
+                    const SizedBox(width: 8),
+                    Text(l10n.report, style: TextStyle(color: colorScheme.error)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ];
+          },
         ),
       ],
       bottom: PreferredSize(
