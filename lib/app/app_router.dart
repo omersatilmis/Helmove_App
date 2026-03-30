@@ -301,6 +301,16 @@ GoRouter createRouter(AuthProvider authProvider) {
         path: '/friends',
         builder: (context, state) => const FriendsPage(),
       ),
+      GoRoute(
+        path: '/friends/:userId',
+        builder: (context, state) {
+          final userId = int.tryParse(state.pathParameters['userId'] ?? '');
+          if (userId == null) {
+            return const FriendsPage();
+          }
+          return FriendsPage(targetUserId: userId);
+        },
+      ),
 
       // Top level add post (Fullscreen)
       GoRoute(

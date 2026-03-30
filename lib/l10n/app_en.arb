@@ -355,6 +355,7 @@
     "copyright": "Copyright",
     "privacyPolicy": "Privacy Policy",
     "about": "About",
+    "aboutMe": "About Me",
     "logout": "Logout",
     "logoutConfirm": "Are you sure you want to log out?",
     "loading": "Loading...",
@@ -427,6 +428,7 @@
     "followers": "Followers",
     "following": "Following",
     "followingStatus": "Following",
+    "followingListStatus": "Following",
     "follow": "Follow",
     "errorLabel": "Error: {message}",
     "@errorLabel": {
@@ -490,6 +492,7 @@
     "unknownUser": "Unknown User",
     "unnamedUser": "Unnamed User",
     "requestSent": "Request Sent",
+    "sentStatus": "Sent",
     "categories": "Categories",
     "howCanWeHelp": "How can we help?",
     "searchYourProblem": "Search your problem...",

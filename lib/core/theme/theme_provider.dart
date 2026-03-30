@@ -1,8 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
   static const String _themeKey = 'theme_mode';
+  static const String _systemValue = 'system';
+  static const String _lightValue = 'light';
+  static const String _darkValue = 'dark';
+
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
@@ -11,14 +15,13 @@ class ThemeProvider extends ChangeNotifier {
     _loadTheme();
   }
 
-  // Kayıtlı temayı yükle
   Future<void> _loadTheme() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedTheme = prefs.getString(_themeKey);
 
       if (savedTheme != null) {
-        _themeMode = _getModeFromName(savedTheme);
+        _themeMode = _parseThemeMode(savedTheme);
         notifyListeners();
       }
     } catch (e) {
@@ -27,31 +30,55 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   String get currentThemeName {
-    if (_themeMode == ThemeMode.light) return "Aydınlık";
-    if (_themeMode == ThemeMode.dark) return "Karanlık";
-    return "Sistem";
+    if (_themeMode == ThemeMode.light) return _lightValue;
+    if (_themeMode == ThemeMode.dark) return _darkValue;
+    return _systemValue;
   }
 
-  // Temayı değiştiren ve kaydeden fonksiyon
+  // Backward-compatible entry point.
   Future<void> setTheme(String themeName) async {
-    _themeMode = _getModeFromName(themeName);
+    await setThemeMode(_parseThemeMode(themeName));
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
     notifyListeners();
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_themeKey, themeName);
+      await prefs.setString(_themeKey, _toStorageValue(mode));
     } catch (e) {
       debugPrint('Error saving theme: $e');
     }
   }
 
-  ThemeMode _getModeFromName(String name) {
-    switch (name) {
-      case "Aydınlık":
+  String _toStorageValue(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return _lightValue;
+      case ThemeMode.dark:
+        return _darkValue;
+      case ThemeMode.system:
+        return _systemValue;
+    }
+  }
+
+  ThemeMode _parseThemeMode(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    switch (normalized) {
+      case _lightValue:
+      case 'aydinlik':
+      case 'ayd\u0131nl\u0131k':
+      case 'acik':
+      case 'a\u00e7\u0131k':
         return ThemeMode.light;
-      case "Karanlık":
+      case _darkValue:
+      case 'karanlik':
+      case 'karanl\u0131k':
+      case 'koyu':
         return ThemeMode.dark;
-      case "Sistem":
+      case _systemValue:
+      case 'sistem':
       default:
         return ThemeMode.system;
     }

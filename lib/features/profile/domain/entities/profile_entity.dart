@@ -24,6 +24,7 @@ class ProfileEntity {
   final int friendsCount;
   final UserTier tier;
   final bool isFollowing;
+  final bool isFollower;
   final String? coverImageUrl;
   final String? instagramUrl;
   final String? youtubeUrl;
@@ -52,6 +53,7 @@ class ProfileEntity {
     this.followingCount = 0,
     this.friendsCount = 0,
     this.isFollowing = false,
+    this.isFollower = false,
     this.coverImageUrl,
     this.instagramUrl,
     this.youtubeUrl,
@@ -90,6 +92,7 @@ class ProfileEntity {
     int? followingCount,
     int? friendsCount,
     bool? isFollowing,
+    bool? isFollower,
     String? coverImageUrl,
     String? instagramUrl,
     String? youtubeUrl,
@@ -119,6 +122,7 @@ class ProfileEntity {
       followingCount: followingCount ?? this.followingCount,
       friendsCount: friendsCount ?? this.friendsCount,
       isFollowing: isFollowing ?? this.isFollowing,
+      isFollower: isFollower ?? this.isFollower,
       coverImageUrl: coverImageUrl ?? this.coverImageUrl,
       instagramUrl: instagramUrl ?? this.instagramUrl,
       youtubeUrl: youtubeUrl ?? this.youtubeUrl,
@@ -128,6 +132,6 @@ class ProfileEntity {
 
   @override
   String toString() {
-    return 'ProfileEntity(id: $id, username: $username, fullName: $fullName, isFollowing: $isFollowing, followers: $followersCount)';
+    return 'ProfileEntity(id: $id, username: $username, fullName: $fullName, isFollowing: $isFollowing, isFollower: $isFollower, followers: $followersCount)';
   }
 }

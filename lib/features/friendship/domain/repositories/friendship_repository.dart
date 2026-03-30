@@ -18,12 +18,16 @@ abstract class FriendshipRepository {
   Future<Either<Failure, FriendshipEntity>> rejectFriendRequest(
     int friendshipId,
   );
+  Future<Either<Failure, FriendshipEntity>> cancelSentRequest(
+    int friendshipId,
+  );
   Future<Either<Failure, FriendshipEntity>> removeFriend(int friendId);
   Future<Either<Failure, FriendshipEntity>> blockUser(int targetUserId);
   Future<Either<Failure, FriendshipEntity>> unblockUser(int targetUserId);
 
   // Lists & Data
   Future<Either<Failure, List<FriendUserEntity>>> getMyFriends();
+  Future<Either<Failure, List<FriendUserEntity>>> getFriends(int userId);
   Future<Either<Failure, List<FriendRequestEntity>>> getPendingRequests();
   Future<Either<Failure, List<FriendRequestEntity>>> getSentRequests();
   Future<Either<Failure, FriendStatsEntity>> getFriendshipStats({int? userId});

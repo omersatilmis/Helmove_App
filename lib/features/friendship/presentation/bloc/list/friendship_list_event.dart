@@ -9,6 +9,15 @@ abstract class FriendshipListEvent extends Equatable {
 
 class LoadMyFriendsEvent extends FriendshipListEvent {}
 
+class LoadUserFriendsEvent extends FriendshipListEvent {
+  final int userId;
+
+  const LoadUserFriendsEvent({required this.userId});
+
+  @override
+  List<Object> get props => [userId];
+}
+
 class LoadPendingRequestsEvent extends FriendshipListEvent {}
 
 class LoadSentRequestsEvent extends FriendshipListEvent {}

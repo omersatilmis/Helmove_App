@@ -355,6 +355,7 @@
     "copyright": "Telif Hakkı",
     "privacyPolicy": "Gizlilik Politikası",
     "about": "Hakkında",
+    "aboutMe": "Hakkımda",
     "logout": "Çıkış",
     "logoutConfirm": "Çıkış yapmak istediğinize emin misiniz?",
     "loading": "Yükleniyor...",
@@ -427,6 +428,7 @@
     "followers": "Takipçi",
     "following": "Takip",
     "followingStatus": "Takip ediliyor",
+    "followingListStatus": "Takip",
     "follow": "Takip Et",
     "errorLabel": "Hata: {message}",
     "@errorLabel": {
@@ -490,6 +492,7 @@
     "unknownUser": "Bilinmeyen Kullanıcı",
     "unnamedUser": "İsimsiz Kullanıcı",
     "requestSent": "İstek Gönderildi",
+    "sentStatus": "Gönderildi",
     "categories": "Kategoriler",
     "howCanWeHelp": "Nasıl yardımcı olabiliriz?",
     "searchYourProblem": "Sorununuzu arayın...",

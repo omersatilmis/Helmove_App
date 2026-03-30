@@ -22,13 +22,13 @@ class FollowRemoteDataSourceImpl implements FollowRemoteDataSource {
   @override
   Future<bool> followUser(int userId) async {
     final response = await dio.post(FollowEndpoints.follow(userId));
-    return response.statusCode == 200;
+    return _isSuccess(response.statusCode);
   }
 
   @override
   Future<bool> unfollowUser(int userId) async {
     final response = await dio.delete(FollowEndpoints.unfollow(userId));
-    return response.statusCode == 200;
+    return _isSuccess(response.statusCode);
   }
 
   @override
@@ -37,9 +37,7 @@ class FollowRemoteDataSourceImpl implements FollowRemoteDataSource {
       FollowEndpoints.followers(userId),
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
-    return (response.data['data'] as List)
-        .map((json) => FollowUserModel.fromJson(json))
-        .toList();
+    return _parseUsers(response.data);
   }
 
   @override
@@ -48,9 +46,7 @@ class FollowRemoteDataSourceImpl implements FollowRemoteDataSource {
       FollowEndpoints.following(userId),
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
-    return (response.data['data'] as List)
-        .map((json) => FollowUserModel.fromJson(json))
-        .toList();
+    return _parseUsers(response.data);
   }
 
   @override
@@ -59,9 +55,7 @@ class FollowRemoteDataSourceImpl implements FollowRemoteDataSource {
       FollowEndpoints.myFollowers,
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
-    return (response.data['data'] as List)
-        .map((json) => FollowUserModel.fromJson(json))
-        .toList();
+    return _parseUsers(response.data);
   }
 
   @override
@@ -70,28 +64,73 @@ class FollowRemoteDataSourceImpl implements FollowRemoteDataSource {
       FollowEndpoints.myFollowing,
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
-    return (response.data['data'] as List)
-        .map((json) => FollowUserModel.fromJson(json))
-        .toList();
+    return _parseUsers(response.data);
   }
 
   @override
   Future<bool> blockUser(int userId) async {
     final response = await dio.post(FollowEndpoints.block(userId));
-    return response.statusCode == 200;
+    return _isSuccess(response.statusCode);
   }
 
   @override
   Future<bool> unblockUser(int userId) async {
     final response = await dio.post(FollowEndpoints.unblock(userId));
-    return response.statusCode == 200;
+    return _isSuccess(response.statusCode);
   }
 
   @override
   Future<List<FollowUserModel>> getBlockedUsers() async {
     final response = await dio.get(FollowEndpoints.blocked);
-    return (response.data['data'] as List)
-        .map((json) => FollowUserModel.fromJson(json))
-        .toList();
+    return _parseUsers(response.data);
+  }
+
+  bool _isSuccess(int? statusCode) {
+    return statusCode != null && statusCode >= 200 && statusCode < 300;
+  }
+
+  List<FollowUserModel> _parseUsers(dynamic responseData) {
+    final list = _extractList(responseData);
+    return list
+        .map((item) => FollowUserModel.fromJson(_toJsonMap(item)))
+        .toList(growable: false);
+  }
+
+  List<dynamic> _extractList(dynamic responseData) {
+    if (responseData is List) {
+      return responseData;
+    }
+
+    final map = _toJsonMap(responseData);
+    final dynamic firstLevel =
+        map['data'] ?? map['items'] ?? map['results'] ?? map['users'];
+
+    if (firstLevel is List) {
+      return firstLevel;
+    }
+
+    if (firstLevel != null) {
+      final nestedMap = _toJsonMap(firstLevel);
+      final dynamic nestedList =
+          nestedMap['data'] ??
+          nestedMap['items'] ??
+          nestedMap['results'] ??
+          nestedMap['users'];
+      if (nestedList is List) {
+        return nestedList;
+      }
+    }
+
+    throw const FormatException('Invalid follow list response format');
+  }
+
+  Map<String, dynamic> _toJsonMap(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    throw const FormatException('Invalid follow response payload');
   }
 }

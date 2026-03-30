@@ -980,6 +980,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get about => 'Hakkında';
 
   @override
+  String get aboutMe => 'Hakkımda';
+
+  @override
   String get logoutConfirm => 'Çıkış yapmak istediğinize emin misiniz?';
 
   @override
@@ -1179,6 +1182,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get followingStatus => 'Takip ediliyor';
 
   @override
+  String get followingListStatus => 'Takip';
+
+  @override
   String get follow => 'Takip Et';
 
   @override
@@ -1303,6 +1309,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get requestSent => 'İstek Gönderildi';
+
+  @override
+  String get sentStatus => 'Gönderildi';
 
   @override
   String get categories => 'Kategoriler';

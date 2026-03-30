@@ -17,7 +17,9 @@ import 'widgets/sent_requests.dart';
 import 'widgets/search_results_list.dart';
 
 class FriendsPage extends StatefulWidget {
-  const FriendsPage({super.key});
+  final int? targetUserId;
+
+  const FriendsPage({super.key, this.targetUserId});
 
   @override
   State<FriendsPage> createState() => _FriendsPageState();
@@ -40,8 +42,10 @@ class _FriendsPageState extends State<FriendsPage>
     _actionBloc = sl<FriendshipActionBloc>();
     _searchController.addListener(_onSearchChanged);
     
-    // 🔥 Profil istatistiklerini (arkadaş sayısı) güncelle
-    _searchBloc.add(const LoadFriendshipStatsEvent());
+    // Profile stats are only needed in own-friends mode.
+    if (widget.targetUserId == null) {
+      _searchBloc.add(const LoadFriendshipStatsEvent());
+    }
   }
 
   @override
@@ -70,6 +74,36 @@ class _FriendsPageState extends State<FriendsPage>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isOwnFriendsPage = widget.targetUserId == null;
+
+    if (!isOwnFriendsPage) {
+      return MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: _actionBloc),
+          BlocProvider(create: (_) => sl<FriendshipListBloc>()),
+        ],
+        child: Scaffold(
+          appBar: AppBar(
+            leading: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: AppFrostedButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: () => Navigator.pop(context),
+              ),
+            ),
+            title: Text(
+              AppLocalizations.of(context)!.friends,
+              style: AppTextStyles.h3,
+            ),
+            centerTitle: true,
+          ),
+          body: FriendsList(
+            targetUserId: widget.targetUserId,
+            showActions: false,
+          ),
+        ),
+      );
+    }
 
     return MultiBlocProvider(
       providers: [

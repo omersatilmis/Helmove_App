@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/usecases/usecase.dart';
 import '../../../domain/usecases/get_friendship_stats_usecase.dart';
 import '../../../domain/usecases/get_mutual_friends_usecase.dart';
+import '../../../domain/usecases/get_friends_usecase.dart';
 import '../../../domain/usecases/get_my_friends_usecase.dart';
 import '../../../domain/usecases/get_pending_requests_usecase.dart';
 import '../../../domain/usecases/get_sent_requests_usecase.dart';
@@ -13,6 +14,7 @@ import 'friendship_list_state.dart';
 class FriendshipListBloc
     extends Bloc<FriendshipListEvent, FriendshipListState> {
   final GetMyFriendsUseCase getMyFriends;
+  final GetFriendsUseCase getFriends;
   final GetPendingRequestsUseCase getPendingRequests;
   final GetSentRequestsUseCase getSentRequests;
   final GetFriendshipStatsUseCase getStats;
@@ -21,6 +23,7 @@ class FriendshipListBloc
 
   FriendshipListBloc({
     required this.getMyFriends,
+    required this.getFriends,
     required this.getPendingRequests,
     required this.getSentRequests,
     required this.getStats,
@@ -28,6 +31,7 @@ class FriendshipListBloc
     required this.searchFriends,
   }) : super(FriendshipListInitial()) {
     on<LoadMyFriendsEvent>(_onLoadMyFriends);
+    on<LoadUserFriendsEvent>(_onLoadUserFriends);
     on<LoadPendingRequestsEvent>(_onLoadPendingRequests);
     on<LoadSentRequestsEvent>(_onLoadSentRequests);
     on<LoadFriendshipStatsEvent>(_onLoadStats);
@@ -56,6 +60,18 @@ class FriendshipListBloc
     result.fold(
       (failure) => emit(FriendshipListFailure(failure.message)),
       (requests) => emit(PendingRequestsLoaded(requests)),
+    );
+  }
+
+  Future<void> _onLoadUserFriends(
+    LoadUserFriendsEvent event,
+    Emitter<FriendshipListState> emit,
+  ) async {
+    emit(FriendshipListLoading());
+    final result = await getFriends(GetFriendsParams(userId: event.userId));
+    result.fold(
+      (failure) => emit(FriendshipListFailure(failure.message)),
+      (friends) => emit(MyFriendsLoaded(friends)),
     );
   }
 

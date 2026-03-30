@@ -50,8 +50,16 @@ class FollowListPage extends StatelessWidget {
             listener: (context, state) {
               if (state is FollowUserSuccess) {
                 _updateListStatus(context, state.userId, true);
+                context.read<ProfileProvider>().updateFollowStats(
+                  userId: state.userId,
+                  isFollowing: true,
+                );
               } else if (state is UnfollowUserSuccess) {
                 _updateListStatus(context, state.userId, false);
+                context.read<ProfileProvider>().updateFollowStats(
+                  userId: state.userId,
+                  isFollowing: false,
+                );
               } else if (state is FollowActionError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(state.message), backgroundColor: Colors.red),
@@ -59,28 +67,6 @@ class FollowListPage extends StatelessWidget {
               }
             },
           ),
-          if (type == FollowListType.followers)
-            BlocListener<FollowersListBloc, FollowListState>(
-              listener: (context, state) {
-                if (state is FollowListLoaded) {
-                  context.read<ProfileProvider>().updateFollowStats(
-                    userId: userId,
-                    followersCount: state.users.length,
-                  );
-                }
-              },
-            ),
-          if (type == FollowListType.following)
-            BlocListener<FollowingListBloc, FollowListState>(
-              listener: (context, state) {
-                if (state is FollowListLoaded) {
-                  context.read<ProfileProvider>().updateFollowStats(
-                    userId: userId,
-                    followingCount: state.users.length,
-                  );
-                }
-              },
-            ),
         ],
         child: Scaffold(
           appBar: AppBar(
@@ -91,7 +77,10 @@ class FollowListPage extends StatelessWidget {
             ),
             centerTitle: true,
           ),
-          body: _FollowListView(userId: userId, type: type),
+          body: _FollowListView(
+            userId: userId,
+            type: type,
+          ),
         ),
       ),
     );
@@ -113,12 +102,18 @@ class FollowListPage extends StatelessWidget {
 class _FollowUserTile extends StatelessWidget {
   final FollowUser user;
   final FollowListType type;
+  final int? currentUserId;
 
-  const _FollowUserTile({required this.user, required this.type});
+  const _FollowUserTile({
+    required this.user,
+    required this.type,
+    required this.currentUserId,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isSelf = currentUserId != null && currentUserId == user.id;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
@@ -131,7 +126,7 @@ class _FollowUserTile extends StatelessWidget {
           backgroundColor: theme.colorScheme.surfaceContainerLow,
           backgroundImage: user.profilePictureUrl != null && user.profilePictureUrl!.isNotEmpty
               ? CachedNetworkImageProvider(user.profilePictureUrl!) as ImageProvider
-              : const AssetImage('assets/images/default_avatar.png'),
+              : const AssetImage('assets/icons/ic_profile.png'),
         ),
       ),
       title: Text(
@@ -141,36 +136,64 @@ class _FollowUserTile extends StatelessWidget {
           color: theme.colorScheme.onSurface,
         ),
       ),
-      subtitle: Text(
-        "@${user.username}",
-        style: AppTextStyles.bodySmall.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-        ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "@${user.username}",
+            style: AppTextStyles.bodySmall.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          if (user.isFollower) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                "Seni takip ediyor",
+                style: AppTextStyles.bodySmall.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
-      trailing: BlocBuilder<FollowActionBloc, FollowActionState>(
-        builder: (context, state) {
-          final isLoading = state is FollowActionLoading && state.userId == user.id;
+      trailing: isSelf
+          ? null
+          : BlocBuilder<FollowActionBloc, FollowActionState>(
+              builder: (context, state) {
+                final isLoading =
+                    state is FollowActionLoading && state.userId == user.id;
 
-          return AppButton(
-            text: user.isFollowing
-                ? AppLocalizations.of(context)!.followingStatus
-                : AppLocalizations.of(context)!.follow,
-            onPressed: () {
-              final bloc = context.read<FollowActionBloc>();
-              if (user.isFollowing) {
-                bloc.add(UnfollowUserEvent(user.id));
-              } else {
-                bloc.add(FollowUserEvent(user.id));
-              }
-            },
-            variant: AppButtonVariant.primary,
-            style: user.isFollowing ? AppButtonStyle.outlined : AppButtonStyle.filled,
-            size: AppButtonSize.small,
-            width: 100,
-            isLoading: isLoading,
-          );
-        },
-      ),
+                return AppButton(
+                  text: user.isFollowing
+                      ? AppLocalizations.of(context)!.followingListStatus
+                      : AppLocalizations.of(context)!.follow,
+                  onPressed: () {
+                    final bloc = context.read<FollowActionBloc>();
+                    if (user.isFollowing) {
+                      bloc.add(UnfollowUserEvent(user.id));
+                    } else {
+                      bloc.add(FollowUserEvent(user.id));
+                    }
+                  },
+                  variant: AppButtonVariant.primary,
+                  style: user.isFollowing
+                      ? AppButtonStyle.outlined
+                      : AppButtonStyle.filled,
+                  size: AppButtonSize.small,
+                  width: 100,
+                  isLoading: isLoading,
+                );
+              },
+            ),
       onTap: () {
         context.push('/profile/${user.id}');
       },
@@ -182,7 +205,10 @@ class _FollowListView extends StatefulWidget {
   final int userId;
   final FollowListType type;
 
-  const _FollowListView({required this.userId, required this.type});
+  const _FollowListView({
+    required this.userId,
+    required this.type,
+  });
 
   @override
   State<_FollowListView> createState() => _FollowListViewState();
@@ -204,7 +230,7 @@ class _FollowListViewState extends State<_FollowListView> {
       context.read<FollowingListBloc>().add(LoadFollowingEvent(userId: widget.userId, refresh: true));
     }
 
-    // Ayrıca profil istatistiklerini de yenile (sayılar güncellensin)
+    // Refresh profile stats so counters remain consistent.
     final profileProvider = context.read<ProfileProvider>();
     if (profileProvider.isOwnProfileTarget(widget.userId.toString())) {
       await profileProvider.loadProfile(forceRefresh: true);
@@ -244,6 +270,7 @@ class _FollowListViewState extends State<_FollowListView> {
   }
 
   Widget _buildListView(BuildContext context, FollowListState state) {
+    final currentUserId = context.read<ProfileProvider>().currentUserId;
     List<FollowUser> users = [];
     bool hasReachedMax = false;
     String? error;
@@ -310,7 +337,11 @@ class _FollowListViewState extends State<_FollowListView> {
             );
           }
           final user = users[index];
-          return _FollowUserTile(user: user, type: widget.type);
+          return _FollowUserTile(
+            user: user,
+            type: widget.type,
+            currentUserId: currentUserId,
+          );
         },
       ),
     );

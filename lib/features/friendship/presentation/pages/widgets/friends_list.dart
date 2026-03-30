@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../bloc/action/friendship_action_bloc.dart';
 import '../../bloc/action/friendship_action_event.dart';
@@ -11,8 +12,15 @@ import 'friend_status_card.dart';
 
 class FriendsList extends StatefulWidget {
   final Function(dynamic friend)? onFriendSelected;
+  final int? targetUserId;
+  final bool showActions;
 
-  const FriendsList({super.key, this.onFriendSelected});
+  const FriendsList({
+    super.key,
+    this.onFriendSelected,
+    this.targetUserId,
+    this.showActions = true,
+  });
 
   @override
   State<FriendsList> createState() => _FriendsListState();
@@ -22,8 +30,17 @@ class _FriendsListState extends State<FriendsList> {
   @override
   void initState() {
     super.initState();
-    // Use the Bloc provided by FriendsPage
-    context.read<FriendshipListBloc>().add(LoadMyFriendsEvent());
+    _loadFriends();
+  }
+
+  void _loadFriends() {
+    if (widget.targetUserId != null) {
+      context.read<FriendshipListBloc>().add(
+        LoadUserFriendsEvent(userId: widget.targetUserId!),
+      );
+    } else {
+      context.read<FriendshipListBloc>().add(LoadMyFriendsEvent());
+    }
   }
 
   @override
@@ -34,7 +51,7 @@ class _FriendsListState extends State<FriendsList> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(state.message)));
-          context.read<FriendshipListBloc>().add(LoadMyFriendsEvent());
+          _loadFriends();
         } else if (state is FriendshipActionFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.error), backgroundColor: Colors.red),
@@ -50,7 +67,7 @@ class _FriendsListState extends State<FriendsList> {
           // We wrap the content in a RefreshIndicator
           return RefreshIndicator(
             onRefresh: () async {
-              context.read<FriendshipListBloc>().add(LoadMyFriendsEvent());
+              _loadFriends();
             },
             child: _buildContent(context, state),
           );
@@ -93,10 +110,11 @@ class _FriendsListState extends State<FriendsList> {
                 ? AppLocalizations.of(context)!.online 
                 : AppLocalizations.of(context)!.offline,
             type: FriendshipCardType.friends,
-            showActions: widget.onFriendSelected == null,
+            showActions:
+                widget.showActions && widget.onFriendSelected == null,
             onCardTap: widget.onFriendSelected != null
                 ? () => widget.onFriendSelected!(friend)
-                : null,
+                : () => context.push('/profile/${friend.userId}'),
             onMessageTap: () {
               // Navigate to chat
               ScaffoldMessenger.of(context).showSnackBar(

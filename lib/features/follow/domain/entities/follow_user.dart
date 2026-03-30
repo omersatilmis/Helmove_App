@@ -6,8 +6,8 @@ class FollowUser extends Equatable {
   final String? firstName;
   final String? lastName;
   final String? profilePictureUrl;
-  final bool? isFollowingBack;
   final bool isFollowing;
+  final bool isFollower;
 
   const FollowUser({
     required this.id,
@@ -15,8 +15,8 @@ class FollowUser extends Equatable {
     this.firstName,
     this.lastName,
     this.profilePictureUrl,
-    this.isFollowingBack,
     this.isFollowing = false,
+    this.isFollower = false,
   });
 
   String get fullName => '${firstName ?? ''} ${lastName ?? ''}'.trim();
@@ -27,8 +27,8 @@ class FollowUser extends Equatable {
     String? firstName,
     String? lastName,
     String? profilePictureUrl,
-    bool? isFollowingBack,
     bool? isFollowing,
+    bool? isFollower,
   }) {
     return FollowUser(
       id: id ?? this.id,
@@ -36,8 +36,8 @@ class FollowUser extends Equatable {
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
-      isFollowingBack: isFollowingBack ?? this.isFollowingBack,
       isFollowing: isFollowing ?? this.isFollowing,
+      isFollower: isFollower ?? this.isFollower,
     );
   }
 
@@ -48,7 +48,7 @@ class FollowUser extends Equatable {
         firstName,
         lastName,
         profilePictureUrl,
-        isFollowingBack,
         isFollowing,
+        isFollower,
       ];
 }

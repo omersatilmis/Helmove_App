@@ -3,6 +3,7 @@ import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/features/profile/presentation/widgets/tabs/about/about_section.dart';
 import 'package:helmove/features/profile/presentation/widgets/tabs/about/bike_card_widget.dart';
 import 'package:helmove/features/profile/domain/entities/motorcycle_entity.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 
@@ -49,6 +50,7 @@ class _ProfileAboutTabState extends State<ProfileAboutTab>
   Widget build(BuildContext context) {
     super.build(context); // 🔥 ŞART!
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return CustomScrollView(
       key: const PageStorageKey('about_tab'),
@@ -72,7 +74,7 @@ class _ProfileAboutTabState extends State<ProfileAboutTab>
               // 2. BÖLÜM: Garaj Başlığı
               Center(
                 child: Text(
-                  "My Garage",
+                  l10n.myGarage,
                   style: AppTextStyles.h3.copyWith(
                     color: theme.colorScheme.onSurface,
                   ),

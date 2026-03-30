@@ -22,7 +22,7 @@ class FriendshipApi {
         ApiEndpoints.sendFriendRequest,
         data: {'targetUserId': targetUserId, 'message': message},
       );
-      return FriendshipModel.fromJson(response.data);
+      return FriendshipModel.fromJson(_extractPayloadMap(response.data));
     } catch (e) {
       throw _handleError(e, 'Arkadaşlık isteği gönderilemedi');
     }
@@ -34,7 +34,7 @@ class FriendshipApi {
       final response = await _dio.post(
         ApiEndpoints.acceptFriendRequest(friendshipId),
       );
-      return FriendshipModel.fromJson(response.data);
+      return FriendshipModel.fromJson(_extractPayloadMap(response.data));
     } catch (e) {
       throw _handleError(e, 'Arkadaşlık isteği kabul edilemedi');
     }
@@ -46,9 +46,21 @@ class FriendshipApi {
       final response = await _dio.post(
         ApiEndpoints.rejectFriendRequest(friendshipId),
       );
-      return FriendshipModel.fromJson(response.data);
+      return FriendshipModel.fromJson(_extractPayloadMap(response.data));
     } catch (e) {
       throw _handleError(e, 'Arkadaşlık isteği reddedilemedi');
+    }
+  }
+
+  /// DELETE /api/Friendship/cancel/{friendshipId}
+  Future<FriendshipModel> cancelSentRequest(int friendshipId) async {
+    try {
+      final response = await _dio.delete(
+        ApiEndpoints.cancelSentRequest(friendshipId),
+      );
+      return FriendshipModel.fromJson(_extractPayloadMap(response.data));
+    } catch (e) {
+      throw _handleError(e, 'Gonderilen istek iptal edilemedi');
     }
   }
 
@@ -56,7 +68,7 @@ class FriendshipApi {
   Future<FriendshipModel> removeFriend(int friendId) async {
     try {
       final response = await _dio.delete(ApiEndpoints.removeFriend(friendId));
-      return FriendshipModel.fromJson(response.data);
+      return FriendshipModel.fromJson(_extractPayloadMap(response.data));
     } catch (e) {
       throw _handleError(e, 'Arkadaş silinemedi');
     }
@@ -66,7 +78,7 @@ class FriendshipApi {
   Future<FriendshipModel> blockUser(int targetUserId) async {
     try {
       final response = await _dio.post(ApiEndpoints.blockUser(targetUserId));
-      return FriendshipModel.fromJson(response.data);
+      return FriendshipModel.fromJson(_extractPayloadMap(response.data));
     } catch (e) {
       throw _handleError(e, 'Kişi engellenemedi');
     }
@@ -76,7 +88,7 @@ class FriendshipApi {
   Future<FriendshipModel> unblockUser(int targetUserId) async {
     try {
       final response = await _dio.post(ApiEndpoints.unblockUser(targetUserId));
-      return FriendshipModel.fromJson(response.data);
+      return FriendshipModel.fromJson(_extractPayloadMap(response.data));
     } catch (e) {
       throw _handleError(e, 'Engel kaldırılamadı');
     }
@@ -92,6 +104,19 @@ class FriendshipApi {
       );
     } catch (e) {
       throw _handleError(e, 'Arkadaş listesi alınamadı');
+    }
+  }
+
+  /// GET /api/Friendship/friends/{userId}
+  Future<List<FriendUserModel>> getFriends(int userId) async {
+    try {
+      final response = await _dio.get(ApiEndpoints.friends(userId));
+      return _parseList(
+        response.data,
+        (json) => FriendUserModel.fromJson(json),
+      );
+    } catch (e) {
+      throw _handleError(e, 'Arkadas listesi alinamadi');
     }
   }
 
@@ -249,9 +274,12 @@ class FriendshipApi {
 
   Exception _handleError(dynamic e, String defaultMessage) {
     if (e is DioException) {
-      final errorMessage =
-          _parseErrorMessage(e.response?.data) ??
-          '$defaultMessage: ${e.response?.statusCode}';
+      final parsedMessage = _parseErrorMessage(e.response?.data);
+      final statusCode = e.response?.statusCode;
+      final fallbackMessage = statusCode != null
+          ? '$defaultMessage (HTTP $statusCode)'
+          : defaultMessage;
+      final errorMessage = _normalizeMessage(parsedMessage) ?? fallbackMessage;
       return Exception(errorMessage);
     }
     return Exception("$defaultMessage: $e");
@@ -260,10 +288,29 @@ class FriendshipApi {
   String? _parseErrorMessage(dynamic data) {
     if (data == null) return null;
     if (data is Map<String, dynamic>) {
-      return data['message'] ??
+      final directMessage =
+          data['message'] ??
           data['detail'] ??
           data['error'] ??
-          data['description'];
+          data['description'] ??
+          data['title'];
+
+      if (_normalizeMessage(directMessage) != null) {
+        return directMessage.toString();
+      }
+
+      final errors = data['errors'];
+      if (errors is Map<String, dynamic>) {
+        for (final value in errors.values) {
+          if (value is List && value.isNotEmpty) {
+            return value.first.toString();
+          }
+          if (value != null) {
+            return value.toString();
+          }
+        }
+      }
+      return null;
     }
     if (data is String) return data;
     if (data is List && data.isNotEmpty) {
@@ -275,5 +322,37 @@ class FriendshipApi {
           : firstItem.toString();
     }
     return data.toString();
+  }
+
+  String? _normalizeMessage(dynamic rawMessage) {
+    if (rawMessage == null) return null;
+    final message = rawMessage.toString().trim();
+    if (message.isEmpty || message == 'Exception:' || message == 'Exception') {
+      return null;
+    }
+    return message;
+  }
+
+  Map<String, dynamic> _extractPayloadMap(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      if (data['data'] is Map<String, dynamic>) {
+        return data['data'] as Map<String, dynamic>;
+      }
+      if (data['result'] is Map<String, dynamic>) {
+        return data['result'] as Map<String, dynamic>;
+      }
+      return data;
+    }
+    if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+      if (map['data'] is Map) {
+        return Map<String, dynamic>.from(map['data']);
+      }
+      if (map['result'] is Map) {
+        return Map<String, dynamic>.from(map['result']);
+      }
+      return map;
+    }
+    return <String, dynamic>{};
   }
 }

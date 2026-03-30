@@ -9,11 +9,13 @@ abstract class FriendshipRemoteDataSource {
   Future<FriendshipModel> sendFriendRequest(int targetUserId, String message);
   Future<FriendshipModel> acceptFriendRequest(int friendshipId);
   Future<FriendshipModel> rejectFriendRequest(int friendshipId);
+  Future<FriendshipModel> cancelSentRequest(int friendshipId);
   Future<FriendshipModel> removeFriend(int friendId);
   Future<FriendshipModel> blockUser(int targetUserId);
   Future<FriendshipModel> unblockUser(int targetUserId);
 
   Future<List<FriendUserModel>> getMyFriends();
+  Future<List<FriendUserModel>> getFriends(int userId);
   Future<List<FriendRequestModel>> getPendingRequests();
   Future<List<FriendRequestModel>> getSentRequests();
   Future<FriendStatsModel> getFriendshipStats({int? userId});
@@ -45,6 +47,11 @@ class FriendshipRemoteDataSourceImpl implements FriendshipRemoteDataSource {
   }
 
   @override
+  Future<FriendshipModel> cancelSentRequest(int friendshipId) {
+    return api.cancelSentRequest(friendshipId);
+  }
+
+  @override
   Future<FriendshipModel> removeFriend(int friendId) {
     return api.removeFriend(friendId);
   }
@@ -62,6 +69,11 @@ class FriendshipRemoteDataSourceImpl implements FriendshipRemoteDataSource {
   @override
   Future<List<FriendUserModel>> getMyFriends() {
     return api.getMyFriends();
+  }
+
+  @override
+  Future<List<FriendUserModel>> getFriends(int userId) {
+    return api.getFriends(userId);
   }
 
   @override

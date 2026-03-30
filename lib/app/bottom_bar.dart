@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -261,88 +262,126 @@ class BottomBarWrapper extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
+    final rootContext = context;
     if (l10n == null) {
       return;
     }
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withValues(alpha: 0.9),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurface.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final media = MediaQuery.of(context);
+            final maxSheetWidth = math.min(constraints.maxWidth - 16, 560.0);
+            final scale = (maxSheetWidth / 390).clamp(0.85, 1.2);
+            final horizontalPadding = (24.0 * scale).clamp(16.0, 32.0);
+            final verticalPadding = (26.0 * scale).clamp(18.0, 36.0);
+            final optionGap = (16.0 * scale).clamp(10.0, 20.0);
+            final sectionGap = (24.0 * scale).clamp(16.0, 30.0);
+            final titleBottomGap = (30.0 * scale).clamp(18.0, 36.0);
+            final handleWidth = (40.0 * scale).clamp(30.0, 48.0);
+            final handleHeight = (4.0 * scale).clamp(3.0, 5.0);
+            final maxHeight = media.size.height * 0.9;
+
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: maxSheetWidth,
+                  maxHeight: maxHeight,
+                ),
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    verticalPadding,
+                    horizontalPadding,
+                    media.viewPadding.bottom + (16 * scale),
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular((32.0 * scale).clamp(24.0, 40.0)),
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: handleWidth,
+                          height: handleHeight,
+                          decoration: BoxDecoration(
+                            color: colorScheme.onSurface.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        SizedBox(height: sectionGap),
+                        Text(
+                          l10n.shareSheetTitle,
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.h3.copyWith(
+                            fontSize: (20.0 * scale).clamp(16.0, 24.0),
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        SizedBox(height: titleBottomGap),
+                        _buildAddOption(
+                          context,
+                          icon: Icons.camera_alt_outlined,
+                          title: l10n.shareSheetCameraTitle,
+                          subtitle: l10n.shareSheetCameraSubtitle,
+                          scale: scale,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            if (rootContext.mounted) {
+                              rootContext.push('/add_post');
+                            }
+                          },
+                        ),
+                        SizedBox(height: optionGap),
+                        _buildAddOption(
+                          context,
+                          icon: Icons.photo_library_outlined,
+                          title: l10n.shareSheetGalleryTitle,
+                          subtitle: l10n.shareSheetGallerySubtitle,
+                          scale: scale,
+                          onTap: () async {
+                            Navigator.of(context).pop();
+                            await _pickFromGalleryAndOpenPrepareMedia(rootContext);
+                          },
+                        ),
+                        SizedBox(height: optionGap),
+                        _buildAddOption(
+                          context,
+                          icon: Icons.edit_note_outlined,
+                          title: l10n.shareSheetJotsTitle,
+                          subtitle: l10n.shareSheetJotsSubtitle,
+                          scale: scale,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            if (rootContext.mounted) {
+                              rootContext.push('/create_jots');
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                l10n.shareSheetTitle,
-                style: AppTextStyles.h3.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 32),
-              _buildAddOption(
-                context,
-                icon: Icons.camera_alt_outlined,
-                title: l10n.shareSheetCameraTitle,
-                subtitle: l10n.shareSheetCameraSubtitle,
-                onTap: () {
-                  context.pop();
-                  context.push('/add_post');
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildAddOption(
-                context,
-                icon: Icons.photo_library_outlined,
-                title: l10n.shareSheetGalleryTitle,
-                subtitle: l10n.shareSheetGallerySubtitle,
-                onTap: () async {
-                  context.pop();
-                  final picker = ImagePicker();
-                  final XFile? image = await picker.pickImage(
-                    source: ImageSource.gallery,
-                  );
-                  if (image != null && context.mounted) {
-                    context.push('/prepare_media', extra: File(image.path));
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildAddOption(
-                context,
-                icon: Icons.edit_note_outlined,
-                title: l10n.shareSheetJotsTitle,
-                subtitle: l10n.shareSheetJotsSubtitle,
-                onTap: () {
-                  context.pop();
-                  context.push('/create_jots');
-                },
-              ),
-              // Bottom safely padding for mobile devices
-              SizedBox(height: MediaQuery.viewPaddingOf(context).bottom + 16),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -353,20 +392,28 @@ class BottomBarWrapper extends StatelessWidget {
     required IconData icon,
     required String title,
     required String subtitle,
+    double scale = 1.0,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final optionRadius = (20.0 * scale).clamp(14.0, 24.0);
+    final optionPadding = (16.0 * scale).clamp(12.0, 20.0);
+    final iconPadding = (12.0 * scale).clamp(8.0, 14.0);
+    final iconSize = (28.0 * scale).clamp(20.0, 32.0);
+    final spacing = (16.0 * scale).clamp(10.0, 18.0);
+    final titleSize = (16.0 * scale).clamp(13.0, 18.0);
+    final subtitleSize = (13.0 * scale).clamp(11.0, 15.0);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(optionRadius),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(optionPadding),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(optionRadius),
             border: Border.all(
               color: colorScheme.onSurface.withValues(alpha: 0.1),
               width: 1,
@@ -376,14 +423,14 @@ class BottomBarWrapper extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(iconPadding),
                 decoration: BoxDecoration(
                   color: colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular((16.0 * scale).clamp(10.0, 20.0)),
                 ),
-                child: Icon(icon, color: colorScheme.primary, size: 28),
+                child: Icon(icon, color: colorScheme.primary, size: iconSize),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: spacing),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,14 +438,16 @@ class BottomBarWrapper extends StatelessWidget {
                     Text(
                       title,
                       style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: titleSize,
                         fontWeight: FontWeight.bold,
                         color: colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: (2.0 * scale).clamp(1.0, 4.0)),
                     Text(
                       subtitle,
                       style: AppTextStyles.bodySmall.copyWith(
+                        fontSize: subtitleSize,
                         color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
@@ -407,6 +456,7 @@ class BottomBarWrapper extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
+                size: (24.0 * scale).clamp(18.0, 28.0),
                 color: colorScheme.onSurface.withValues(alpha: 0.3),
               ),
             ],
@@ -414,5 +464,45 @@ class BottomBarWrapper extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _pickFromGalleryAndOpenPrepareMedia(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 90,
+        maxWidth: 2048,
+      );
+
+      if (image == null) {
+        return;
+      }
+
+      final file = File(image.path);
+      if (!file.existsSync()) {
+        if (context.mounted && l10n != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.image_upload_error)),
+          );
+        }
+        return;
+      }
+
+      if (context.mounted) {
+        context.push('/prepare_media', extra: file);
+      }
+    } catch (_) {
+      if (context.mounted && l10n != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.image_upload_error),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 }

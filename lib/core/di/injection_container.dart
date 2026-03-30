@@ -194,6 +194,7 @@ import '../../features/plan/presentation/bloc/subscription_bloc.dart';
 
 // Friendship UseCases + Blocs
 import '../../features/friendship/domain/usecases/get_my_friends_usecase.dart';
+import '../../features/friendship/domain/usecases/get_friends_usecase.dart';
 import '../../features/friendship/domain/usecases/get_pending_requests_usecase.dart';
 import '../../features/friendship/domain/usecases/get_sent_requests_usecase.dart';
 import '../../features/friendship/domain/usecases/get_friendship_stats_usecase.dart';
@@ -203,6 +204,7 @@ import '../../features/friendship/domain/usecases/get_friendship_status_usecase.
 import '../../features/friendship/domain/usecases/send_friend_request_usecase.dart';
 import '../../features/friendship/domain/usecases/accept_friend_request_usecase.dart';
 import '../../features/friendship/domain/usecases/reject_friend_request_usecase.dart';
+import '../../features/friendship/domain/usecases/cancel_sent_request_usecase.dart';
 import '../../features/friendship/domain/usecases/remove_friend_usecase.dart';
 import '../../features/friendship/domain/usecases/block_user_usecase.dart';
 import '../../features/friendship/domain/usecases/unblock_user_usecase.dart';
@@ -1232,6 +1234,9 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<GetMyFriendsUseCase>()) {
     sl.registerLazySingleton(() => GetMyFriendsUseCase(sl()));
   }
+  if (!sl.isRegistered<GetFriendsUseCase>()) {
+    sl.registerLazySingleton(() => GetFriendsUseCase(sl()));
+  }
   if (!sl.isRegistered<GetPendingRequestsUseCase>()) {
     sl.registerLazySingleton(() => GetPendingRequestsUseCase(sl()));
   }
@@ -1251,6 +1256,7 @@ void _registerFeatureSingletons() {
     sl.registerFactory(
       () => FriendshipListBloc(
         getMyFriends: sl(),
+        getFriends: sl(),
         getPendingRequests: sl(),
         getSentRequests: sl(),
         getStats: sl(),
@@ -1269,6 +1275,9 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<RejectFriendRequestUseCase>()) {
     sl.registerLazySingleton(() => RejectFriendRequestUseCase(sl()));
   }
+  if (!sl.isRegistered<CancelSentRequestUseCase>()) {
+    sl.registerLazySingleton(() => CancelSentRequestUseCase(sl()));
+  }
   if (!sl.isRegistered<RemoveFriendUseCase>()) {
     sl.registerLazySingleton(() => RemoveFriendUseCase(sl()));
   }
@@ -1284,6 +1293,7 @@ void _registerFeatureSingletons() {
         sendFriendRequest: sl(),
         acceptFriendRequest: sl(),
         rejectFriendRequest: sl(),
+        cancelSentRequest: sl(),
         removeFriend: sl(),
         blockUser: sl(),
         unblockUser: sl(),
@@ -1295,7 +1305,13 @@ void _registerFeatureSingletons() {
     sl.registerLazySingleton(() => GetFriendshipStatusUseCase(sl()));
   }
   if (!sl.isRegistered<FriendshipStatusBloc>()) {
-    sl.registerFactory(() => FriendshipStatusBloc(getFriendshipStatus: sl()));
+    sl.registerFactory(
+      () => FriendshipStatusBloc(
+        getFriendshipStatus: sl(),
+        getPendingRequests: sl(),
+        getSentRequests: sl(),
+      ),
+    );
   }
 
   // ────────────────────────────────────────────────────────

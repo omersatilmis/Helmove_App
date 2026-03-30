@@ -31,6 +31,7 @@ class ProfileMapper {
       followingCount: dto.followingCount,
       friendsCount: dto.friendsCount,
       isFollowing: dto.isFollowing,
+      isFollower: dto.isFollower,
       tier: UserTier.fromString(dto.premiumTier),
       coverImageUrl: dto.coverImageUrl,
       instagramUrl: dto.instagramUrl,

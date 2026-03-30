@@ -33,6 +33,7 @@ class ProfileInfo extends StatelessWidget {
 
   // 🔥 YENİ: Takip durumu ve callback'ler
   final bool isFollowing;
+  final bool isFollower;
   final bool isFollowActionLoading;
   final UserTier tier;
   final VoidCallback? onFollowTap;
@@ -75,6 +76,7 @@ class ProfileInfo extends StatelessWidget {
     this.onRejectRequest,
     this.onRemoveFriend,
     this.isFollowing = false,
+    this.isFollower = false,
     this.isFollowActionLoading = false,
     this.tier = UserTier.free,
     this.onFollowTap,
@@ -122,6 +124,7 @@ class ProfileInfo extends StatelessWidget {
             onRejectRequest: onRejectRequest,
             onRemoveFriend: onRemoveFriend,
             isFollowing: isFollowing,
+            isFollower: isFollower,
             isFollowActionLoading: isFollowActionLoading,
             onFollowTap: onFollowTap,
             onUnfollowTap: onUnfollowTap,
@@ -428,6 +431,7 @@ class _ActionButtonsSection extends StatelessWidget {
 
   // 🔥 YENİ
   final bool isFollowing;
+  final bool isFollower;
   final bool isFollowActionLoading;
   final VoidCallback? onFollowTap;
   final VoidCallback? onUnfollowTap;
@@ -444,6 +448,7 @@ class _ActionButtonsSection extends StatelessWidget {
     this.onRejectRequest,
     this.onRemoveFriend,
     this.isFollowing = false,
+    this.isFollower = false,
     this.isFollowActionLoading = false,
     this.onFollowTap,
     this.onUnfollowTap,
@@ -451,13 +456,32 @@ class _ActionButtonsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final buttons = Row(
+      children: isOwnProfile
+          ? _buildOwnProfileButtons(context)
+          : _buildOtherProfileButtons(context),
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 14, 24, 1),
-      child: Row(
-        children: isOwnProfile
-            ? _buildOwnProfileButtons(context)
-            : _buildOtherProfileButtons(context),
-      ),
+      child: isOwnProfile ||
+              !isFollower ||
+              !AppFeatureFlags.showProfileFollowInfo
+          ? buttons
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Seni takip ediyor",
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                buttons,
+              ],
+            ),
     );
   }
 
@@ -678,7 +702,7 @@ class _ActionButtonsSection extends StatelessWidget {
             color: Colors.grey,
           ),
           label: Text(
-            AppLocalizations.of(context)!.requestSent,
+            AppLocalizations.of(context)!.sentStatus,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 12,
@@ -724,38 +748,71 @@ class _ActionButtonsSection extends StatelessWidget {
     }
 
     // TAKİP ET BUTONU (Outlined Turuncu)
-    final followBtn = OutlinedButton(
-      onPressed: isFollowActionLoading ? null : (isFollowing ? onUnfollowTap : onFollowTap),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        side: BorderSide(color: isFollowActionLoading ? Colors.grey : AppColors.primary, width: 1.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        foregroundColor: isFollowActionLoading ? Colors.grey : AppColors.primary,
-        overlayColor: AppColors.primary.withValues(alpha:0.1),
-      ),
-      child: isFollowActionLoading
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(
-                  height: 14,
-                  width: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  isFollowing ? AppLocalizations.of(context)!.unfollow : AppLocalizations.of(context)!.follow,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            )
-          : Text(
-              isFollowing ? AppLocalizations.of(context)!.unfollow : AppLocalizations.of(context)!.follow,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+    final followBtn = isFollowing
+        ? OutlinedButton(
+            onPressed: isFollowActionLoading ? null : onUnfollowTap,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(color: isFollowActionLoading ? Colors.grey : AppColors.primary, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              foregroundColor: isFollowActionLoading ? Colors.grey : AppColors.primary,
+              overlayColor: AppColors.primary.withValues(alpha: 0.1),
             ),
-    );
+            child: isFollowActionLoading
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        height: 14,
+                        width: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        AppLocalizations.of(context)!.followingStatus,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  )
+                : Text(
+                    AppLocalizations.of(context)!.followingStatus,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+          )
+        : ElevatedButton(
+            onPressed: isFollowActionLoading ? null : onFollowTap,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              backgroundColor: isFollowActionLoading ? Colors.grey.shade400 : AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: isFollowActionLoading
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        height: 14,
+                        width: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        AppLocalizations.of(context)!.follow,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                      ),
+                    ],
+                  )
+                : Text(
+                    AppLocalizations.of(context)!.follow,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+          );
 
     return [
       Expanded(flex: 3, child: mainActionBtn),

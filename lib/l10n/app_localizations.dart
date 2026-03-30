@@ -1928,6 +1928,12 @@ abstract class AppLocalizations {
   /// **'About'**
   String get about;
 
+  /// No description provided for @aboutMe.
+  ///
+  /// In en, this message translates to:
+  /// **'About Me'**
+  String get aboutMe;
+
   /// No description provided for @logoutConfirm.
   ///
   /// In en, this message translates to:
@@ -2318,6 +2324,12 @@ abstract class AppLocalizations {
   /// **'Following'**
   String get followingStatus;
 
+  /// No description provided for @followingListStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Following'**
+  String get followingListStatus;
+
   /// No description provided for @follow.
   ///
   /// In en, this message translates to:
@@ -2539,6 +2551,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Request Sent'**
   String get requestSent;
+
+  /// No description provided for @sentStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get sentStatus;
 
   /// No description provided for @categories.
   ///

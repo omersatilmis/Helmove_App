@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/usecases/accept_friend_request_usecase.dart';
 import '../../../domain/usecases/block_user_usecase.dart';
+import '../../../domain/usecases/cancel_sent_request_usecase.dart';
 import '../../../domain/usecases/reject_friend_request_usecase.dart';
 import '../../../domain/usecases/remove_friend_usecase.dart';
 import '../../../domain/usecases/send_friend_request_usecase.dart';
@@ -13,6 +14,7 @@ class FriendshipActionBloc
   final SendFriendRequestUseCase sendFriendRequest;
   final AcceptFriendRequestUseCase acceptFriendRequest;
   final RejectFriendRequestUseCase rejectFriendRequest;
+  final CancelSentRequestUseCase cancelSentRequest;
   final RemoveFriendUseCase removeFriend;
   final BlockUserUseCase blockUser;
   final UnblockUserUseCase unblockUser;
@@ -21,6 +23,7 @@ class FriendshipActionBloc
     required this.sendFriendRequest,
     required this.acceptFriendRequest,
     required this.rejectFriendRequest,
+    required this.cancelSentRequest,
     required this.removeFriend,
     required this.blockUser,
     required this.unblockUser,
@@ -28,6 +31,7 @@ class FriendshipActionBloc
     on<SendFriendRequestEvent>(_onSendRequest);
     on<AcceptFriendRequestEvent>(_onAcceptRequest);
     on<RejectFriendRequestEvent>(_onRejectRequest);
+    on<CancelSentRequestEvent>(_onCancelSentRequest);
     on<RemoveFriendEvent>(_onRemoveFriend);
     on<BlockUserEvent>(_onBlockUser);
     on<UnblockUserEvent>(_onUnblockUser);
@@ -90,6 +94,24 @@ class FriendshipActionBloc
     result.fold(
       (failure) => emit(FriendshipActionFailure(failure.message)),
       (success) => emit(FriendshipActionSuccess("Friend removed", targetUserId: event.friendId)),
+    );
+  }
+
+  Future<void> _onCancelSentRequest(
+    CancelSentRequestEvent event,
+    Emitter<FriendshipActionState> emit,
+  ) async {
+    emit(FriendshipActionLoading());
+    final result = await cancelSentRequest(
+      CancelSentRequestParams(friendshipId: event.friendshipId),
+    );
+    result.fold(
+      (failure) => emit(FriendshipActionFailure(failure.message)),
+      (success) => emit(
+        FriendshipActionSuccess(
+          "Friend request canceled",
+        ),
+      ),
     );
   }
 

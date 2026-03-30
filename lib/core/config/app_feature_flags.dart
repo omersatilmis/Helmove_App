@@ -19,6 +19,7 @@ class AppFeatureFlags {
   static const bool showRatingsSection = false;
   static const bool showReelsTab = false;
   static const bool showTaggedTab = false;
+  static const bool showProfileFollowInfo = false;
 
   // Content Creation and Sharing
   static const bool showPostSend = false;

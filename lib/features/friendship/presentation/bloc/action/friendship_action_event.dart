@@ -38,6 +38,15 @@ class RejectFriendRequestEvent extends FriendshipActionEvent {
   List<Object> get props => [friendshipId];
 }
 
+class CancelSentRequestEvent extends FriendshipActionEvent {
+  final int friendshipId;
+
+  const CancelSentRequestEvent({required this.friendshipId});
+
+  @override
+  List<Object> get props => [friendshipId];
+}
+
 class RemoveFriendEvent extends FriendshipActionEvent {
   final int friendId;
 

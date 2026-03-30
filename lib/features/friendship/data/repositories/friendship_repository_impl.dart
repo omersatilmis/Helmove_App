@@ -18,6 +18,11 @@ class FriendshipRepositoryImpl implements FriendshipRepository {
 
   FriendshipRepositoryImpl(this.remoteDataSource);
 
+  String _errorMessage(dynamic error, String fallback) {
+    final message = error.toString().replaceFirst('Exception:', '').trim();
+    return message.isEmpty ? fallback : message;
+  }
+
   void _invalidateCache(String key) {
     _cache.remove(key);
     _cacheTime.remove(key);
@@ -95,6 +100,23 @@ class FriendshipRepositoryImpl implements FriendshipRepository {
   }
 
   @override
+  Future<Either<Failure, FriendshipEntity>> cancelSentRequest(
+    int friendshipId,
+  ) async {
+    try {
+      final result = await remoteDataSource.cancelSentRequest(friendshipId);
+      _invalidateCache('sent_requests');
+      _invalidateCache('pending_requests');
+      _invalidateCache('stats');
+      return Right(result);
+    } catch (e) {
+      return Left(
+        ServerFailure(_errorMessage(e, 'Gonderilen istek iptal edilemedi')),
+      );
+    }
+  }
+
+  @override
   Future<Either<Failure, FriendshipEntity>> removeFriend(int friendId) async {
     try {
       final result = await remoteDataSource.removeFriend(friendId);
@@ -132,6 +154,11 @@ class FriendshipRepositoryImpl implements FriendshipRepository {
   @override
   Future<Either<Failure, List<FriendUserEntity>>> getMyFriends() {
     return _getData('my_friends', () => remoteDataSource.getMyFriends());
+  }
+
+  @override
+  Future<Either<Failure, List<FriendUserEntity>>> getFriends(int userId) {
+    return _getData('friends_$userId', () => remoteDataSource.getFriends(userId));
   }
 
   @override

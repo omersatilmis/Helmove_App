@@ -984,6 +984,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get about => 'About';
 
   @override
+  String get aboutMe => 'About Me';
+
+  @override
   String get logoutConfirm => 'Are you sure you want to log out?';
 
   @override
@@ -1182,6 +1185,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get followingStatus => 'Following';
 
   @override
+  String get followingListStatus => 'Following';
+
+  @override
   String get follow => 'Follow';
 
   @override
@@ -1305,6 +1311,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get requestSent => 'Request Sent';
+
+  @override
+  String get sentStatus => 'Sent';
 
   @override
   String get categories => 'Categories';

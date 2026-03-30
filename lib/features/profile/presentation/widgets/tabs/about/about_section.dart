@@ -5,6 +5,7 @@ import 'package:helmove/core/theme/text_styles.dart';
 import 'package:provider/provider.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 class AboutSection extends StatefulWidget {
   const AboutSection({super.key});
@@ -32,6 +33,7 @@ class _AboutSectionState extends State<AboutSection> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<ProfileProvider>();
     final bio = provider.bio ?? "";
 
@@ -42,7 +44,7 @@ class _AboutSectionState extends State<AboutSection> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "About Me",
+              l10n.aboutMe,
               style: AppTextStyles.h3.copyWith(
                 fontSize: 18,
                 color: theme.colorScheme.onSurface,

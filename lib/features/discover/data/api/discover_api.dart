@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../friendship/data/dto/friend_user_dto.dart';
 import '../../../profile/data/api/profile_endpoints.dart';
@@ -11,7 +11,7 @@ class DiscoverApi {
 
   DiscoverApi(this._dio);
 
-  /// Kullanıcı arama
+  /// KullanÄ±cÄ± arama
   Future<List<FriendUserModel>> searchUsers(
     String query, {
     String? city,
@@ -28,9 +28,9 @@ class DiscoverApi {
       }
 
       debugPrint(
-        '🔍 [DiscoverApi] searchUsers - URL: ${ProfileEndpoints.search}',
+        'ğŸ” [DiscoverApi] searchUsers - URL: ${ProfileEndpoints.search}',
       );
-      debugPrint('🔍 [DiscoverApi] searchUsers - Params: $queryParams');
+      debugPrint('ğŸ” [DiscoverApi] searchUsers - Params: $queryParams');
 
       final response = await _dio.get(
         ProfileEndpoints.search,
@@ -42,18 +42,18 @@ class DiscoverApi {
         (json) => FriendUserModel.fromJson(json),
       );
     } catch (e) {
-      throw _handleError(e, 'Kullanıcı araması başarısız');
+      throw _handleError(e, 'KullanÄ±cÄ± aramasÄ± baÅŸarÄ±sÄ±z');
     }
   }
 
-  /// Keşfet içeriği — herkese açık postlar (arkadaş/takip filtresi yok)
+  /// KeÅŸfet iÃ§eriÄŸi â€” herkese aÃ§Ä±k postlar (arkadaÅŸ/takip filtresi yok)
   Future<PagedResult<PostModel>> getExploreContent({
     int page = 1,
     int limit = 20,
   }) async {
     try {
       final response = await _dio.get(
-        '/api/content/explore',
+        '/api/posts/feed',
         queryParameters: {'page': page, 'limit': limit},
       );
 
@@ -70,7 +70,7 @@ class DiscoverApi {
 
       return PagedResult(items: items, metadata: meta);
     } catch (e) {
-      throw _handleError(e, 'Keşfet içeriği yüklenemedi');
+      throw _handleError(e, 'KeÅŸfet iÃ§eriÄŸi yÃ¼klenemedi');
     }
   }
 
@@ -91,3 +91,4 @@ class DiscoverApi {
     return Exception("$defaultMessage: $e");
   }
 }
+

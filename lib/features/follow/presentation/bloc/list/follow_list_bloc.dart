@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../domain/entities/follow_user.dart';
 import '../../../domain/usecases/get_followers_usecase.dart';
 import '../../../domain/usecases/get_following_usecase.dart';
 import '../../../domain/usecases/get_blocked_users_usecase.dart';
@@ -10,6 +11,7 @@ class FollowersListBloc extends Bloc<FollowListEvent, FollowListState> {
   final GetFollowersUseCase getFollowersUseCase;
   int _currentPage = 1;
   final int _pageSize = 20;
+  bool _isLoading = false;
 
   FollowersListBloc({
     required this.getFollowersUseCase,
@@ -37,36 +39,58 @@ class FollowersListBloc extends Bloc<FollowListEvent, FollowListState> {
     LoadFollowersEvent event,
     Emitter<FollowListState> emit,
   ) async {
-    if (event.refresh) {
-      _currentPage = 1;
-      emit(FollowListInitial());
+    if (_isLoading) {
+      return;
     }
 
-    if (state is FollowListLoaded && (state as FollowListLoaded).hasReachedMax) return;
+    if (event.refresh) {
+      _currentPage = 1;
+    }
 
-    if (_currentPage == 1) {
+    final currentState = state;
+    final List<FollowUser> previousUsers =
+        currentState is FollowListLoaded && !event.refresh
+            ? currentState.users
+            : const [];
+
+    if (!event.refresh &&
+        currentState is FollowListLoaded &&
+        currentState.hasReachedMax) {
+      return;
+    }
+
+    if (_currentPage == 1 && previousUsers.isEmpty) {
       emit(FollowListLoading());
     }
 
+    _isLoading = true;
     final result = await getFollowersUseCase(
-      GetFollowersParams(userId: event.userId, page: _currentPage, pageSize: _pageSize),
-    );
+      GetFollowersParams(
+        userId: event.userId,
+        page: _currentPage,
+        pageSize: _pageSize,
+      ),
+    ).whenComplete(() => _isLoading = false);
 
     result.fold(
       (failure) => emit(FollowListError(failure.message)),
       (users) {
+        final List<FollowUser> mergedUsers =
+            _currentPage == 1 ? users : _mergeUsers(previousUsers, users);
+        final bool hasReachedMax = users.length < _pageSize;
+
         if (users.length < _pageSize) {
           emit(
             FollowListLoaded(
-              users: _currentPage == 1 ? users : (state as FollowListLoaded).users + users,
+              users: mergedUsers,
               hasReachedMax: true,
             ),
           );
         } else {
           emit(
             FollowListLoaded(
-              users: _currentPage == 1 ? users : (state as FollowListLoaded).users + users,
-              hasReachedMax: false,
+              users: mergedUsers,
+              hasReachedMax: hasReachedMax,
             ),
           );
           _currentPage++;
@@ -80,6 +104,7 @@ class FollowingListBloc extends Bloc<FollowListEvent, FollowListState> {
   final GetFollowingUseCase getFollowingUseCase;
   int _currentPage = 1;
   final int _pageSize = 20;
+  bool _isLoading = false;
 
   FollowingListBloc({
     required this.getFollowingUseCase,
@@ -107,36 +132,58 @@ class FollowingListBloc extends Bloc<FollowListEvent, FollowListState> {
     LoadFollowingEvent event,
     Emitter<FollowListState> emit,
   ) async {
-    if (event.refresh) {
-      _currentPage = 1;
-      emit(FollowListInitial());
+    if (_isLoading) {
+      return;
     }
 
-    if (state is FollowListLoaded && (state as FollowListLoaded).hasReachedMax) return;
+    if (event.refresh) {
+      _currentPage = 1;
+    }
 
-    if (_currentPage == 1) {
+    final currentState = state;
+    final List<FollowUser> previousUsers =
+        currentState is FollowListLoaded && !event.refresh
+            ? currentState.users
+            : const [];
+
+    if (!event.refresh &&
+        currentState is FollowListLoaded &&
+        currentState.hasReachedMax) {
+      return;
+    }
+
+    if (_currentPage == 1 && previousUsers.isEmpty) {
       emit(FollowListLoading());
     }
 
+    _isLoading = true;
     final result = await getFollowingUseCase(
-      GetFollowingParams(userId: event.userId, page: _currentPage, pageSize: _pageSize),
-    );
+      GetFollowingParams(
+        userId: event.userId,
+        page: _currentPage,
+        pageSize: _pageSize,
+      ),
+    ).whenComplete(() => _isLoading = false);
 
     result.fold(
       (failure) => emit(FollowListError(failure.message)),
       (users) {
+        final List<FollowUser> mergedUsers =
+            _currentPage == 1 ? users : _mergeUsers(previousUsers, users);
+        final bool hasReachedMax = users.length < _pageSize;
+
         if (users.length < _pageSize) {
           emit(
             FollowListLoaded(
-              users: _currentPage == 1 ? users : (state as FollowListLoaded).users + users,
+              users: mergedUsers,
               hasReachedMax: true,
             ),
           );
         } else {
           emit(
             FollowListLoaded(
-              users: _currentPage == 1 ? users : (state as FollowListLoaded).users + users,
-              hasReachedMax: false,
+              users: mergedUsers,
+              hasReachedMax: hasReachedMax,
             ),
           );
           _currentPage++;
@@ -145,8 +192,10 @@ class FollowingListBloc extends Bloc<FollowListEvent, FollowListState> {
     );
   }
 }
+
 class BlockedListBloc extends Bloc<FollowListEvent, FollowListState> {
   final GetBlockedUsersUseCase getBlockedUsersUseCase;
+  bool _isLoading = false;
 
   BlockedListBloc({
     required this.getBlockedUsersUseCase,
@@ -158,14 +207,16 @@ class BlockedListBloc extends Bloc<FollowListEvent, FollowListState> {
     LoadBlockedUsersEvent event,
     Emitter<FollowListState> emit,
   ) async {
-    if (event.refresh) {
-      emit(FollowListInitial());
+    if (_isLoading) {
+      return;
     }
 
+    _isLoading = true;
     emit(FollowListLoading());
 
-    // Blocked users list typically doesn't have pagination in the current backend impl
-    final result = await getBlockedUsersUseCase(NoParams());
+    final result = await getBlockedUsersUseCase(
+      NoParams(),
+    ).whenComplete(() => _isLoading = false);
 
     result.fold(
       (failure) => emit(FollowListError(failure.message)),
@@ -173,10 +224,21 @@ class BlockedListBloc extends Bloc<FollowListEvent, FollowListState> {
         emit(
           FollowListLoaded(
             users: users,
-            hasReachedMax: true, // Assuming no pagination for blocked list initially
+            hasReachedMax: true,
           ),
         );
       },
     );
   }
+}
+
+List<FollowUser> _mergeUsers(List<FollowUser> previous, List<FollowUser> incoming) {
+  final merged = <int, FollowUser>{};
+  for (final user in previous) {
+    merged[user.id] = user;
+  }
+  for (final user in incoming) {
+    merged[user.id] = user;
+  }
+  return merged.values.toList(growable: false);
 }

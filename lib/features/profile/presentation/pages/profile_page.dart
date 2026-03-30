@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
@@ -6,17 +6,17 @@ import 'package:helmove/core/enums/user_tier.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 
-// --- KENDİ PROJE IMPORTLARIN ---
+// --- KENDÄ° PROJE IMPORTLARIN ---
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/core/widgets/app_frosted_button.dart';
 import 'package:helmove/features/profile/presentation/widgets/profile_info.dart';
 import 'package:helmove/features/profile/presentation/widgets/profile_tabs.dart';
 
-// 🔥 PROVIDER IMPORTLARI
+// ğŸ”¥ PROVIDER IMPORTLARI
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
-// 🔥 FRIENDSHIP BLOC IMPORTLARI
+// ğŸ”¥ FRIENDSHIP BLOC IMPORTLARI
 import 'package:flutter_bloc/flutter_bloc.dart'
     hide ReadContext, WatchContext, SelectContext;
 import 'package:helmove/core/di/injection_container.dart';
@@ -73,11 +73,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (isMe && myId != null) {
-        context.read<ProfileProvider>().loadProfile();
+        context.read<ProfileProvider>().loadProfile(forceRefresh: true);
       } else {
         final userIdInt = int.tryParse(widget.userId!);
         if (userIdInt != null) {
-          context.read<ProfileProvider>().loadUserProfile(userIdInt);
+          context.read<ProfileProvider>().loadUserProfile(
+            userIdInt,
+            forceRefresh: true,
+          );
         }
       }
       _calculateHeight();
@@ -160,6 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final followersCount = displayedUser?.followersCount ?? 0;
     final followingCount = displayedUser?.followingCount ?? 0;
     final isFollowing = displayedUser?.isFollowing ?? false;
+    final isFollower = displayedUser?.isFollower ?? false;
 
     final double minAppBarHeight = kToolbarHeight + topSafe + 20;
     final int tabCount = 3 +
@@ -287,6 +291,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           followingCount: followingCount,
                                           friendsCount: displayedUser?.friendsCount ?? 0,
                                           isFollowing: isFollowing,
+                                          isFollower: isFollower,
                                           tier: displayedUser?.tier ?? UserTier.free,
                                           myId: profileProvider.currentUserId,
                                           profileProvider: profileProvider,
@@ -429,7 +434,7 @@ class _ProfilePageState extends State<ProfilePage> {
       await share_plus.SharePlus.instance.share(
         share_plus.ShareParams(
           text: shareText,
-          subject: 'MotoComm Profil Paylaşımı',
+          subject: 'MotoComm Profil PaylaÅŸÄ±mÄ±',
         ),
       );
     } else if (value == 'settings') {
@@ -457,6 +462,7 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
   final int followingCount;
   final int friendsCount;
   final bool isFollowing;
+  final bool isFollower;
   final UserTier tier;
   final int? myId;
   final ProfileProvider profileProvider;
@@ -475,6 +481,7 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
     this.followingCount = 0,
     this.friendsCount = 0,
     this.isFollowing = false,
+    this.isFollower = false,
     this.tier = UserTier.free,
     this.myId,
     required this.profileProvider,
@@ -497,6 +504,7 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
         followerCount: followersCount.toString(),
         followingCount: followingCount.toString(),
         isFollowing: isFollowing,
+        isFollower: isFollower,
         key: profileInfoKey,
         onFriendsTap: () => context.push('/friends'),
         onFollowersTap: () {
@@ -527,11 +535,7 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
             if (actionState is FriendshipActionSuccess) {
               if (otherUserId != null) {
                 context.read<FriendshipStatusBloc>().add(CheckFriendshipStatusEvent(targetUserId: otherUserId!));
-                if (actionState.message.contains("accepted") || actionState.message.contains("kabul")) {
-                  profileProvider.updateFollowStats(userId: otherUserId!, isFollowing: true);
-                } else if (actionState.message.contains("removed") || actionState.message.contains("çıkar")) {
-                  profileProvider.updateFollowStats(userId: otherUserId!, isFollowing: false);
-                }
+                
               }
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(actionState.message)));
             } else if (actionState is FriendshipActionFailure) {
@@ -582,6 +586,12 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
                 followerCount: followersCount.toString(),
                 followingCount: followingCount.toString(),
                 isFollowing: isFollowing,
+                isFollower: isFollower,
+                onFriendsTap: () {
+                  if (otherUserId != null) {
+                    context.push('/friends/${otherUserId!}');
+                  }
+                },
                 friendshipStatus: status,
                 friendRequestType: requestType,
                 isLoadingStatus: statusState is FriendshipStatusLoading,
@@ -606,13 +616,11 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
                 },
                 onFollowTap: () {
                   if (otherUserId != null) {
-                    profileProvider.updateFollowStats(userId: otherUserId!, isFollowing: true);
                     context.read<FollowActionBloc>().add(follow_events.FollowUserEvent(otherUserId!));
                   }
                 },
                 onUnfollowTap: () {
                   if (otherUserId != null) {
-                    profileProvider.updateFollowStats(userId: otherUserId!, isFollowing: false);
                     context.read<FollowActionBloc>().add(follow_events.UnfollowUserEvent(otherUserId!));
                   }
                 },
@@ -624,8 +632,10 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
                   }
                 },
                 onCancelRequest: () {
-                  if (otherUserId != null) {
-                    context.read<FriendshipActionBloc>().add(RemoveFriendEvent(friendId: otherUserId!));
+                  if (friendshipId != null) {
+                    context.read<FriendshipActionBloc>().add(
+                      CancelSentRequestEvent(friendshipId: friendshipId),
+                    );
                   }
                 },
                 onAcceptRequest: () {
@@ -652,3 +662,4 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
     );
   }
 }
+

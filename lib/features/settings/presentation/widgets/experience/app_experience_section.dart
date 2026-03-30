@@ -24,6 +24,11 @@ class _AppExperienceSectionState extends State<AppExperienceSection> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final l10n = AppLocalizations.of(context)!;
+    final currentThemeLabel = switch (themeProvider.themeMode) {
+      ThemeMode.light => l10n.light,
+      ThemeMode.dark => l10n.dark,
+      ThemeMode.system => l10n.system,
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,12 +39,16 @@ class _AppExperienceSectionState extends State<AppExperienceSection> {
         SettingsSelectionTile(
           icon: Icons.dark_mode_outlined,
           title: l10n.appearance,
-          // Değeri artık Provider'dan alıyor
-          currentValue: themeProvider.currentThemeName,
+          currentValue: currentThemeLabel,
           options: [l10n.system, l10n.light, l10n.dark],
           onSelect: (val) {
-            // Değişikliği Provider'a iletiyor
-            themeProvider.setTheme(val);
+            if (val == l10n.light) {
+              themeProvider.setThemeMode(ThemeMode.light);
+            } else if (val == l10n.dark) {
+              themeProvider.setThemeMode(ThemeMode.dark);
+            } else {
+              themeProvider.setThemeMode(ThemeMode.system);
+            }
           },
         ),
 

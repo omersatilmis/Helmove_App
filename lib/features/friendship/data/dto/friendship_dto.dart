@@ -14,7 +14,7 @@ class FriendshipModel extends FriendshipEntity {
       friendshipId: json['friendshipId'] ?? 0,
       status: friendshipStatusFromString(json['status']),
       actionDate: json['actionDate'] != null
-          ? DateTime.parse(json['actionDate'])
+          ? DateTime.tryParse(json['actionDate'].toString())
           : null,
       message: json['message'],
     );
