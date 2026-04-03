@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../../app/app_router.dart';
+import '../../../../core/navigation/navigator_keys.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/services/callkit_incoming_service.dart';
 import '../../../../core/services/signalr_service.dart';

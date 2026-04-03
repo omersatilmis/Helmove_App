@@ -188,7 +188,7 @@ class _InviteViewState extends State<_InviteView> {
                   maxParticipants: state.ride.maxParticipants,
                   currentParticipants: 1,
                   destination: state.ride.endLocation,
-                  ridingStyle: state.ride.difficulty ?? l10n.chill,
+                  ridingStyle: state.ride.ridingStyle,
                   privacy: "Public",
                 ),
               );

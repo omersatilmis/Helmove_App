@@ -69,13 +69,20 @@ class AuthProvider extends ChangeNotifier {
         token: authEntity.token,
       );
 
-      // RevenueCat Login & Sync
-      await di.sl<SubscriptionService>().logIn(authEntity.id.toString());
-      await di.sl<SubscriptionService>().syncWithBackend();
-
-      // OneSignal Login
-      await _notificationService.ensureInitialized();
-      await _notificationService.login(authEntity.id.toString());
+      // --- NON-BLOCKING POST-LOGIN SYNC ---
+      // RevenueCat & Notification sync calls are now non-blocking
+      // to ensure the user can enter the app immediately even if these fail.
+      unawaited(() async {
+        try {
+          await di.sl<SubscriptionService>().logIn(authEntity.id.toString());
+          await di.sl<SubscriptionService>().syncWithBackend();
+          
+          await _notificationService.ensureInitialized();
+          await _notificationService.login(authEntity.id.toString());
+        } catch (e) {
+          AppLogger.error("Post-login background sync failed: $e");
+        }
+      }());
 
       _setLoading(false);
       return true;
@@ -116,11 +123,18 @@ class AuthProvider extends ChangeNotifier {
         token: authEntity.token,
       );
 
-      await di.sl<SubscriptionService>().logIn(authEntity.id.toString());
-      await di.sl<SubscriptionService>().syncWithBackend();
+      // --- NON-BLOCKING POST-LOGIN SYNC ---
+      unawaited(() async {
+        try {
+          await di.sl<SubscriptionService>().logIn(authEntity.id.toString());
+          await di.sl<SubscriptionService>().syncWithBackend();
 
-      await _notificationService.ensureInitialized();
-      await _notificationService.login(authEntity.id.toString());
+          await _notificationService.ensureInitialized();
+          await _notificationService.login(authEntity.id.toString());
+        } catch (e) {
+          AppLogger.error("Post-social-login background sync failed: $e");
+        }
+      }());
 
       _setLoading(false);
       return true;
@@ -235,7 +249,7 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = null; // Kullanıcı bilgisini temizle
       _appSession.clearSession();
 
-      // OneSignal Logout
+      // Firebase Logout
       await _notificationService.logout();
 
       // Singleton önbelleklerini temizle - yeni kullanıcı için taze veri

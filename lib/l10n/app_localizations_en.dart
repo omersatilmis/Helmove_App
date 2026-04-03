@@ -2238,4 +2238,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyBottomBannerText => 'Helmove Safe Riding Platform';
+
+  @override
+  String get supportVisitWebsite =>
+      'You can visit our website for more information.';
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:helmove/core/theme/app_colors.dart';
 import 'package:helmove/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -63,6 +64,8 @@ class _CopyrightPageState extends State<CopyrightPage> {
 
             _buildCopyrightText(currentYear, isDark, l10n),
             const SizedBox(height: 40),
+
+            _buildWebsiteLink(isDark, l10n),
 
             _buildLegalSection(
               title: l10n.copyrightLegalNoticeTitle,
@@ -248,6 +251,42 @@ class _CopyrightPageState extends State<CopyrightPage> {
             ),
           ),
         ),
+      ],
+    );
+  }
+  Widget _buildWebsiteLink(bool isDark, AppLocalizations l10n) {
+    return Column(
+      children: [
+        Text(
+          l10n.supportVisitWebsite,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: () {
+            context.push(
+              '/webview',
+              extra: {
+                'url': 'https://helmove.com/terms-of-use',
+                'title': l10n.copyright,
+              },
+            );
+          },
+          child: Text(
+            l10n.copyright,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.blue,
+              decoration: TextDecoration.underline,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
       ],
     );
   }

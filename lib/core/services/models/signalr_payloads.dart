@@ -240,6 +240,45 @@ class VoiceSessionMembershipRealtimePayload {
   }
 }
 
+class VoiceSessionEndedRealtimePayload {
+  final int sessionId;
+  final String? eventId;
+  final int? version;
+  final DateTime? occurredAtUtc;
+  final String? eventType;
+  final String? reason;
+
+  const VoiceSessionEndedRealtimePayload({
+    required this.sessionId,
+    this.eventId,
+    this.version,
+    this.occurredAtUtc,
+    this.eventType,
+    this.reason,
+  });
+
+  factory VoiceSessionEndedRealtimePayload.fromMap(Map<String, dynamic> map) {
+    return VoiceSessionEndedRealtimePayload(
+      // Canonical contract: sessionId
+      sessionId:
+          _readCanonicalInt(
+            map,
+            canonicalKeys: const ['sessionId', 'SessionId'],
+            legacyKeys: const ['voiceSessionId', 'VoiceSessionId', 'id', 'Id'],
+          ) ??
+          0,
+      eventId: _readString(map, const ['eventId', 'EventId']),
+      version: _readInt(map, const ['version', 'Version']),
+      occurredAtUtc: _readDateTime(map, const [
+        'occurredAtUtc',
+        'OccurredAtUtc',
+      ]),
+      eventType: _readString(map, const ['eventType', 'EventType', 'type']),
+      reason: _readString(map, const ['reason', 'Reason']),
+    );
+  }
+}
+
 class SosAlertPayload {
   final int groupRideId;
   final int senderId;

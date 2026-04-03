@@ -208,6 +208,18 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
         return;
       }
 
+      if (event is VoiceSessionEndedRealtimeEvent) {
+        if (state.session?.id == event.sessionId || state.sessionId == event.sessionId) {
+          add(
+            VoiceSessionForceRemovedEvent(
+              event.sessionId,
+              reason: event.reason ?? 'Session ended unexpectedly',
+            ),
+          );
+        }
+        return;
+      }
+
       if (event is UserDisconnectedVoiceSessionRealtimeEvent) {
         add(
           VoiceSessionMembershipDeltaEvent(

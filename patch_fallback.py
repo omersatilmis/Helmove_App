@@ -1,6 +1,6 @@
 import re
 
-file_path = r'c:\Users\omerf\FlutterProjeleri\moto_comm_app_1\lib\core\services\signalr_service.dart'
+file_path = r'c:\Users\omerf\FlutterProjeleri\helmove\lib\core\services\signalr_service.dart'
 with open(file_path, 'r', encoding='utf-8') as f:
     content = f.read()
 

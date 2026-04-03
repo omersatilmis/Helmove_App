@@ -4297,6 +4297,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Helmove Safe Riding Platform'**
   String get privacyBottomBannerText;
+
+  /// No description provided for @supportVisitWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'You can visit our website for more information.'**
+  String get supportVisitWebsite;
 }
 
 class _AppLocalizationsDelegate

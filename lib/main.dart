@@ -7,8 +7,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app_links/app_links.dart';
 
+import 'package:helmove/core/services/notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:helmove/firebase_options.dart';
 import 'package:helmove/core/di/injection_container.dart';
-
 import 'package:helmove/app/app_router.dart';
 import 'package:helmove/core/theme/app_theme.dart';
 import 'package:helmove/core/theme/theme_provider.dart';
@@ -37,6 +39,17 @@ void main() async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      // ── Firebase Initialization ──
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+        // Setup FCM background handler
+        await NotificationService.setupBackgroundHandler();
+      } catch (e) {
+        debugPrint('🔴 [Firebase] Initialization failed: $e');
+      }
 
       // ⚠️ GLOBAL ERROR HANDLING (Synchronous & Platform)
       FlutterError.onError = (FlutterErrorDetails details) {

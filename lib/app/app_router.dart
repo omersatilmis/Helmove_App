@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/app/bottom_bar.dart';
 import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/navigation/navigator_keys.dart';
 import 'package:helmove/features/auth/presentation/pages/login_page.dart';
 import 'package:helmove/features/auth/presentation/pages/register_page.dart';
 import 'package:helmove/features/auth/presentation/pages/forgot_password_page.dart';
@@ -13,7 +14,6 @@ import 'package:helmove/features/auth/presentation/providers/auth_provider.dart'
 import 'package:helmove/features/communication/presentation/models/invite_args.dart';
 import '../../features/communication/presentation/pages/invite_page.dart';
 import 'package:helmove/core/widgets/app_bloc_listener.dart';
-// Removed CallListenerWrapper import
 
 // 🔥 YENİ SAYFALARIN IMPORTLARI
 import 'package:helmove/features/homepage/presentation/pages/home_page.dart';
@@ -44,12 +44,14 @@ import 'package:helmove/features/settings/presentation/pages/support/feedback_pa
 import 'package:helmove/features/settings/presentation/pages/support/copyright_page.dart';
 import 'package:helmove/features/settings/presentation/pages/support/privacy_policy_page.dart';
 import 'package:helmove/features/settings/presentation/pages/support/about_app_page.dart';
+import 'package:helmove/core/presentation/pages/web_view_page.dart';
 import 'package:helmove/features/settings/presentation/pages/blocked_users_page.dart';
 import 'package:helmove/features/settings/presentation/pages/security_page.dart';
 import 'package:helmove/features/settings/presentation/pages/change_password_page.dart';
 
 // Homepage den girilen sayfaların Importları
 import 'package:helmove/features/messages/presentation/pages/messages_page.dart';
+import 'package:helmove/features/messages/presentation/pages/chat_page.dart';
 import 'package:helmove/features/notification/presentation/pages/notification_page.dart';
 
 // Profile Jots Tabından açılan sayfa
@@ -72,8 +74,6 @@ class PlaceholderScreen extends StatelessWidget {
   );
 }
 // -------------------------------------
-
-final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 // --- REFACTOR: Router'ı bir fonksiyon haline getirdik ---
 // Böylece AuthProvider'ı dinleyip yönlendirme yapabiliriz.
@@ -249,6 +249,15 @@ GoRouter createRouter(AuthProvider authProvider) {
         builder: (context, state) => const HelpPage(),
       ),
       GoRoute(
+        path: '/webview',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final url = extra?['url'] as String? ?? '';
+          final title = extra?['title'] as String?;
+          return WebViewPage(url: url, title: title);
+        },
+      ),
+      GoRoute(
         path: '/feedback',
         builder: (context, state) => const FeedbackPage(),
       ),
@@ -285,6 +294,25 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: '/chat/:userId',
+        builder: (context, state) {
+          final userIdString = state.pathParameters['userId'];
+          final userId = int.tryParse(userIdString ?? '0') ?? 0;
+          final firstName = state.uri.queryParameters['firstName'] ?? '';
+          final lastName = state.uri.queryParameters['lastName'] ?? '';
+          final username = state.uri.queryParameters['username'] ?? '';
+          final profileImageUrl = state.uri.queryParameters['profileImageUrl'];
+
+          return ChatPage(
+            otherUserId: userId,
+            firstName: firstName,
+            lastName: lastName,
+            username: username,
+            profileImageUrl: profileImageUrl,
+          );
+        },
       ),
 
       // Profile Jots Tabından açılan sayfa
@@ -339,8 +367,8 @@ GoRouter createRouter(AuthProvider authProvider) {
           // communication stacks before they are actually used.
           return MultiBlocProvider(
             providers: [
-              BlocProvider(create: (context) => sl<GroupRideBloc>()),
-              BlocProvider(create: (context) => sl<VoiceSessionBloc>()),
+              BlocProvider.value(value: sl<GroupRideBloc>()),
+              BlocProvider.value(value: sl<VoiceSessionBloc>()),
             ],
             child: BottomBarWrapper(navigationShell: navigationShell),
           );

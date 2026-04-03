@@ -32,539 +32,6 @@
     "alreadyHaveAccount": "Already have an account?",
     "joinUs": "Join Us",
     "registerSubtitle": "Start your riding experience.",
-    "registrationSuccessful": "Registration successful! You can now login.",    
-    "registrationFailed": "Registration Failed",
-    "username": "Username",
-    "usernameTooShort": "Enter at least 3 characters",
-    "firstName": "First Name",
-    "lastName": "Last Name",
-    "required": "Required",
-    "emailAddress": "Email Address",
-    "invalidMail": "Enter a valid email",
-    "passwordAgain": "Password Again",
-    "reEnterPassword": "Re-enter password",
-    "passwordsDoNotMatch": "Passwords do not match",
-    "step": "Step",
-    "back": "Back",
-    "createAccount": "Create Account",
-    "or": "or",
-    "incomingCall": "Incoming Call",
-    "unknown": "Unknown",
-    "voiceCall": "Voice call",
-    "decline": "Decline",
-    "accept": "Accept",
-    "groupRide": "Group Ride",
-    "intercom": "Intercom",
-    "createGroup": "Create Group",
-    "joinGroup": "Join Group",
-    "difficulty": "Difficulty",
-    "ridingStyle": "Riding Style",
-    "privacy": "Privacy",
-    "easy": "Easy",
-    "moderate": "Moderate",
-    "hard": "Hard",
-    "chill": "Chill",
-    "sport": "Sport",
-    "offroad": "Off-Road",
-    "public": "Public",
-    "private": "Private",
-    "maxParticipants": "Max Participants",
-    "rideDetails": "Ride Details",
-    "startRide": "Start Ride",
-    "endRide": "End Ride",
-    "participants": "Participants",
-    "inviteFriends": "Invite Friends",
-    "noParticipants": "No participants yet",
-    "searching": "Searching...",
-    "help": "Help",
-    "faq": "FAQ",
-    "contactUs": "Contact Us",
-    "feedback": "Feedback",
-    "sendFeedback": "Send Feedback",
-    "bugReport": "Bug Report",
-    "featureRequest": "Feature Request",
-    "other": "Other",
-    "message": "Message",
-    "success": "Success",
-    "error": "Error",
-    "tryAgain": "Try Again",
-    "home": "Home",
-    "profile": "Profile",
-    "map": "Map",
-    "tours": "Tours",
-    "notifications_empty": "No notifications",
-    "markAllAsRead": "Mark all as read",
-    "settings_general": "General",
-    "settings_privacy": "Privacy",
-    "settings_security": "Security",
-    "settings_help": "Help",
-    "version": "Version",
-    "about_app": "About App",
-    "checkUpdates": "Check for updates",
-    "intermediate": "Intermediate",
-    "advanced": "Advanced",
-    "expert": "Expert",
-    "groupRideTerminated": "Group ride ended.",
-    "rideTerminatedByOrganizer": "Ride terminated by organizer.",
-    "leftGroup": "You left the group.",
-    "preparingGroupInfo": "Preparing group information...",
-    "preparingRideInfo": "Preparing ride information...",
-    "invalidGroupId": "Invalid Group ID",
-    "noValidVoiceSessionFound": "No valid voice session found for invitation.", 
-    "voiceSessionUnavailableOnlyRide": "Voice session unavailable. Only ride details are active.",
-    "errorPrefix": "Error",
-    "liveKitErrorPrefix": "LiveKit Error",
-    "activeGroupLoading": "Loading active group...",
-    "noActiveGroup": "No active group",
-    "microphone": "Microphone",
-    "mutedByAdmin": "Muted by Admin",
-    "addFriend": "Add Friend",
-    "adminRole": "Founder (Admin)",
-    "captainRole": "Leader (Captain)",
-    "ultra": "Ultra",
-    "high": "High",
-    "balanced": "Balanced",
-    "low": "Low",
-    "lost": "Lost",
-    "management": "Management",
-    "groupSettings": "Group Settings",
-    "groupRideAndVoiceSessionEnded": "Group ride and voice session ended",      
-    "updated": "updated",
-    "terminate": "Terminate",
-    "update": "Update",
-    "everyoneCanJoin": "Everyone can join",
-    "onlyInvitees": "Only invitees",
-    "ridersCount": "{count} riders",
-    "routePrefix": "Route: {route}",
-    "notAvailable": "Unknown",
-    "intercomActive": "Intercom Active",
-    "p2pConnected": "P2P Connected",
-    "p2pConnecting": "P2P Connecting...",
-    "sfuConnected": "SFU Connected",
-    "sfuConnecting": "SFU Connecting...",
-    "reconnectingStatus": "Reconnecting...",
-    "waitingStatus": "Waiting...",
-    "connectedRiders": "CONNECTED RIDERS",
-    "noParticipantsYet": "No one has joined yet.",
-    "defaultUserName": "User",
-    "leaveRide": "Leave Ride",
-    "rideSafeWarning": "Keep your eyes on the road. Ride safe!",
-    "refresh": "Refresh",
-    "open": "Open",
-    "pendingInvitesCount": "{count, plural, one{1 pending invite} other{{count} pending invites}}",
-    "voiceSessionCreated": "Voice session created!",
-    "invitesSentSuccess": "Invites sent successfully!",
-    "unknownError": "An unknown error occurred",
-    "groupAndVoiceCreated": "Group and Voice Session created successfully!",    
-    "searchUsers": "Search Users...",
-    "noResultsFound": "No results found",
-    "pressSearchToStart": "Type to start searching",
-    "noFriendsYet": "You haven't added any friends yet",
-    "newGroup": "New Group",
-    "currentLocation": "Current Location",
-    "destinationNotSpecified": "Destination Not Specified",
-    "errorWithPrefix": "Error: {message}",
-    "kickUserTitle": "Kick User",
-    "kickUserConfirmation": "Are you sure you want to kick {userName}?",        
-    "@kickUserConfirmation": {
-        "placeholders": {
-            "userName": { "type": "String" }
-        }
-    },
-    "cancel": "Cancel",
-    "edit_profile": "Edit Profile",
-    "region": "Region",
-    "sessionInfoUnavailable": "Session info is unavailable.",
-    "inviteRejected": "Invite rejected.",
-    "idNotFound": "ID not found.",
-    "acceptInviteError": "Failed to accept invite.",
-    "inviteFromUser": "Invite from {userName}",
-    "@inviteFromUser": {
-        "placeholders": {
-            "userName": { "type": "String" }
-        }
-    },
-    "alreadyInRideWarning": "You are already in {sessionTitle}. Leave and join this one?",
-    "@alreadyInRideWarning": {
-        "placeholders": {
-            "sessionTitle": { "type": "String" }
-        }
-    },
-    "kick": "Kick",
-    "muteUserTitle": "Mute User",
-    "muteUserConfirmation": "Are you sure you want to mute {userName}?",        
-    "@muteUserConfirmation": {
-        "placeholders": {
-            "userName": { "type": "String" }
-        }
-    },
-    "transferLeadershipConfirmation": "Are you sure you want to transfer leadership to {userName}?",
-    "@transferLeadershipConfirmation": {
-        "placeholders": {
-            "userName": { "type": "String" }
-        }
-    },
-    "transfer": "Transfer",
-    "promoteToCaptainTitle": "Promote to Captain",
-    "promoteToCaptainConfirmation": "Are you sure you want to give Captain authority to {userName}?",
-    "@promoteToCaptainConfirmation": {
-        "placeholders": {
-            "userName": { "type": "String" }
-        }
-    },
-    "demoteToRiderTitle": "Demote to Rider",
-    "demoteToRiderConfirmation": "Are you sure you want to remove Captain authority from {userName}?",
-    "@demoteToRiderConfirmation": {
-        "placeholders": {
-            "userName": { "type": "String" }
-        }
-    },
-    "terminateGroupTitle": "Terminate Group",
-    "lastPersonLeaveWarning": "You are the last person in the group. Leaving will terminate the group and voice session.",
-    "terminateAndExit": "Terminate and Exit",
-    "leaveRoomTitle": "Leave Room",
-    "leaveGroupConfirmation": "Are you sure you want to leave this ride group?",
-    "leave": "Leave",
-    "leavingGroupQuestion": "Are you leaving the group?",
-    "whatToDo": "What would you like to do?",
-    "leaveAndTransfer": "Leave & Transfer",
-    "riders": "Riders",
-    "join": "Join",
-    "jot": "Jot",
-    "searchUserHint": "Search users...",
-    "userNotFound": "User not found",
-    "searchFriends": "Search your friends",
-    "searchByUsernameOrName": "Search by username or name",
-    "myProfile": "My Profile",
-    "premiumPlans": "Premium Plans",
-    "communities": "Communities",
-    "helpAndSupport": "Help & Support",
-    "logout": "Log Out",
-    "user": "User",
-    "share": "Share",
-    "report": "Report",
-    "delete": "Delete",
-    "send": "Send",
-    "save": "Save",
-    "continueTextShort": " more...",
-    "deleteConfirmTitle": "Delete Post?",
-    "deleteConfirmContent": "This post will be permanently deleted.",
-    "addImage": "Add Image",
-    "takePhoto": "Take Photo",
-    "selectFromGallery": "Select from Gallery",
-    "jotShared": "Jot shared!",
-    "jotIt": "Jot it",
-    "whatToShareToday": "What would you like to share today?",
-    "replies": "Replies",
-    "noCommentsYet": "No comments yet.",
-    "reply": "Reply",
-    "shareYourReply": "Share your reply...",
-    "timeNow": "Now",
-    "timeMinutesShort": "{count}m",
-    "@timeMinutesShort": {
-        "placeholders": {
-            "count": { "type": "int" }
-        }
-    },
-    "timeHoursShort": "{count}h",
-    "@timeHoursShort": {
-        "placeholders": {
-            "count": { "type": "int" }
-        }
-    },
-    "subjectTitle": "Subject Title",
-    "shortTitle": "Short title...",
-    "yourMessage": "Your Message",
-    "typeHere": "Type here...",
-    "feedbackInfo": "Your opinions are very valuable to us. Let's develop the application together!",
-    "reportDetailed": "Report {target}",
-    "@reportDetailed": {
-        "placeholders": {
-            "target": { "type": "String" }
-        }
-    },
-    "reportDescription": "Please specify why you think this content violates our community guidelines.",
-    "selectReason": "Select Reason",
-    "additionalDescription": "Additional Description (Optional)",
-    "briefDescription": "Briefly explain the situation...",
-    "submitReport": "Submit Report",
-    "reportSuccess": "Successfully submitted",
-    "reportError": "An error occurred",
-    "goodMorning": "Good morning",
-    "goodDay": "Good day",
-    "goodEvening": "Good evening",
-    "goodNight": "Good night",
-    "rideCarefully": "Ride carefully",
-    "postsTab": "Posts",
-    "jotsTab": "Jots",
-    "motoMessage1": "Tank full, may your corners be plenty! 🏍️",
-    "motoMessage2": "We don't even go to the grocery store without equipment, right? 🤨",
-    "motoMessage3": "Do you know how much gas is now, boss? ⛽",
-    "motoMessage4": "Visor clean, may your path be clear. ✨",
-    "motoMessage5": "May no stone touch your wheel, no tear touch your eye. ✨",
-    "motoMessage6": "I saw the bike dusty, wash it sometime if you want... 🤔", 
-    "motoMessage7": "Motor is a bit dusty... means good memories have accumulated 😏",
-    "motoMessage8": "Equipment ok? Let's get home safe before looking cool 😎", 
-    "motoMessage9": "May your wheel press flat, no matter where the route is 😌",
-    "motoMessage10": "Visor clean, your head might be confused, don't worry, we are here ✨",
-    "motoMessage11": "Value your equipment, you are precious to us 😎",
-    "motoMessage12": "May the sound of the engine be higher than your mood 🎵🏍️ ",
-    "motoMessage13": "Is that a gear? I thought you were playing piano with your toe. 🎹",
-    "motoMessage14": "May your wheel touch the ground but your mind not stay in the air. ✌️",
-    "motoMessage15": "With that exhaust sound, you can only announce iftar time to the neighborhood. 🔊",
-    "motoMessage16": "If you can't lean the bike in the corner, tell us, we'll open the side stand. 📉",
-    "motoMessage17": "Hanging the helmet on the arm doesn't provide protection, 'Pro' brother. 🦾",
-    "motoMessage18": "Equipment saves lives, don't forget to wear your helmet!",
-    "motoMessage19": "Asphalt is crying, slow down a bit! 💨",
-    "motoMessage20": "Which route are you dreaming of again? 🤔",
-    "motoMessage21": "Don't forget to give the biker wave!",
-    "motoMessage22": "Didn't you take the bike out because it was raining? Are you sugar? 🍭",
-    "preparingSessionInfo": "Preparing session info...",
-    "noValidSession": "No valid session",
-    "invalidSession": "Invalid session",
-    "account": "Account",
-    "editProfile": "Edit Profile",
-    "nameSurnamePhoto": "Name, Surname, Photo",
-    "myGarage": "My Garage",
-    "addManageBikes": "Add and manage your bikes",
-    "security": "Security",
-    "appSettings": "App Settings",
-    "audioQuality": "Audio Quality",
-    "noiseCancellation": "Noise Cancellation",
-    "voiceNavigation": "Voice Navigation",
-    "wifiOnly": "WiFi Only",
-    "distanceUnit": "Distance Unit",
-    "tempUnit": "Temperature Unit",
-    "mapType": "Map Type",
-    "trafficEnabled": "Traffic Enabled",
-    "musicMode": "Music Mode",
-    "lowQuality": "Low (16 kbps) - Data Saver",
-    "mediumQuality": "Balanced (32 kbps) - Default",
-    "highQuality": "High (48 kbps) - WiFi Recommended",
-    "ultraQuality": "Ultra (64 kbps) - Highest Quality",
-    "privacyLocation": "Privacy and Location",
-    "ghostMode": "Ghost Mode",
-    "everyone": "Everyone",
-    "onlyFriends": "Only Friends",
-    "privateNobody": "Private (Nobody can see)",
-    "messageRequests": "Message Requests",
-    "onlyFollowed": "Only People I Follow",
-    "tagging": "Tagging",
-    "blockedAccounts": "Blocked Accounts",
-    "support": "Support",
-    "copyright": "Copyright",
-    "privacyPolicy": "Privacy Policy",
-    "about": "About",
-    "aboutMe": "About Me",
-    "logout": "Logout",
-    "logoutConfirm": "Are you sure you want to log out?",
-    "loading": "Loading...",
-    "version": "v{version} ({stage})",
-    "measurementUnits": "Measurement Units",
-    "distance": "Distance",
-    "kilometer": "Kilometer (km)",
-    "mile": "Mile (mi)",
-    "temperature": "Temperature",
-    "celsius": "Celsius (°C)",
-    "fahrenheit": "Fahrenheit (°F)",
-    "mapSettings": "Map Settings",
-    "normal": "Normal",
-    "satellite": "Satellite",
-    "terrain": "Terrain",
-    "hybrid": "Hybrid",
-    "trafficInfo": "Traffic Information",
-    "showTrafficDensity": "Show density status",
-    "validationTitle": "Title is required", 
-    "validationMessage": "Message is required",
-    "savedSessions": "Saved Sessions",
-    "createRideGroup": "Create Ride Group",
-    "leaveGroupWarning": "Please leave your current ride before creating a new group.",
-    "yourActiveGroup": "Your Active Group",
-    "nearbyGroups": "Nearby Groups",
-    "defaultGroupName": "Weekend Ride",
-    "notSpecified": "Not specified",
-    "groupNameHint": "Group Name (e.g. Weekend Tour)",
-    "pPublic": "Public",
-    "pPrivate": "Private",
-    "destinationOptional": "Destination (Optional)",
-    "destinationHint": "e.g. Sapanca Lake",
-    "tour": "Tour",
-    "fast": "Fast",
-    "city": "City",
-    "beginner": "Beginner",
-    "description": "Description",
-    "descriptionHint": "Write a short description about the ride...",
-    "inviteUsers": "Invite Users",
-    "inviteRiders": "Invite Riders",
-    "mute": "Mute",
-    "transferLeadership": "Transfer Leadership",
-    "makeCaptain": "Make Captain",
-    "demote": "Demote",
-    "noActiveRoomSubtitle": "Create a new room or wait for an invite",
-    "you": "You",
-    "kickFromSession": "Kick from Session",
-    "timeDaysShort": "{count}d",
-    "@timeDaysShort": {
-      "placeholders": {
-        "count": { "type": "int" }
-      }
-    },
-    "jotFeedEmpty": "No jots yet. Be the first to post!",
-    "feedLoadFailed": "Failed to load feed",
-    "retry": "Retry",
-    "imageLoadFailed": "Image failed to load",
-    "postShared": "Post shared!",
-    "createPost": "Create Post",
-    "newMessageCreate": "Create New Message",
-    "whatIsOnYourMind": "What's on your mind?",
-    "pleaseWriteSomething": "Please write something",
-    "addMedia": "Add Media",
-    "imageUrlHint": "Image URL (https://...)",
-    "preview": "Preview",
-    "noPostsYet": "No posts yet.",
-    "reportReceived": "Report received.",
-    "posts": "Posts",
-    "noDiscoveryContent": "No content to discover yet.",
-    "followers": "Followers",
-    "following": "Following",
-    "followingStatus": "Following",
-    "followingListStatus": "Following",
-    "follow": "Follow",
-    "errorLabel": "Error: {message}",
-    "@errorLabel": {
-      "placeholders": {
-        "message": { "type": "String" }
-      }
-    },
-    "friendship": "Friendship",
-    "myFriends": "My Friends",
-    "pendingRequests": "Pending Requests",
-    "sentRequests": "Sent Requests",
-    "newChat": "New Chat",
-    "selectPerson": "Select Person",
-    "messageTooltip": "Message",
-    "deleteTooltip": "Delete",
-    "add": "Add",
-    "waiting": "Waiting",
-    "online": "Online",
-    "offline": "Offline",
-    "chattingWith": "Chatting with {username}",
-    "@chattingWith": {
-      "placeholders": {
-        "username": { "type": "String" }
-      }
-    },
-    "noPendingRequests": "No pending requests.",
-    "requestedOnDate": "Requested on {day}/{month}",
-    "@requestedOnDate": {
-      "placeholders": {
-        "day": { "type": "int" },
-        "month": { "type": "int" }
-      }
-    },
-    "notFriendsYet": "Not friends yet.",
-    "left_session": "Left session",
-    "already_in_active_ride_error": "You are already in an active ride. To create a new group, leave the current ride first.",
-    "permissions_not_granted_error": "Necessary permissions for the session were not granted.",
-    "group_ride": "Group Ride",
-    "error_creating_group": "An error occurred while creating the group: {error}",
-    "@error_creating_group": {
-        "placeholders": {
-            "error": { "type": "String" }
-        }
-    },
-    "could_not_join_room": "Could not join the room.",
-    "successfully_joined_room": "Successfully joined the room",
-    "leaving_session": "Leaving session...",
-    "successfully_left_session": "Successfully left the session",
-    "session_terminated_error": "Session terminated (Error: {error})",
-    "@session_terminated_error": {
-        "placeholders": {
-            "error": { "type": "String" }
-        }
-    },
-    "session_terminated_successfully": "Session terminated successfully",
-    "already_in_ride_accept_error": "You are already in an active ride. To accept the invitation, leave the current ride first.",
-    "group_ride_terminated": "Group ride terminated. Session closed.",
-    "profile_unavailable": "Profile unavailable",
-    "friendRequestDefaultMessage": "Hi, let's be friends!",
-    "noSentRequestsYet": "No sent requests yet.",
-    "unknownUser": "Unknown User",
-    "unnamedUser": "Unnamed User",
-    "requestSent": "Request Sent",
-    "sentStatus": "Sent",
-    "categories": "Categories",
-    "howCanWeHelp": "How can we help?",
-    "searchYourProblem": "Search your problem...",
-    "faqQuestion1": "How do I join a group ride?",
-    "faqAnswer1": "You can join by entering the room code shared by your friend or by accepting an invitation.",
-    "faqQuestion2": "What is Ghost Mode?",
-    "faqAnswer2": "When Ghost Mode is on, your location isn't visible on the map, but you can still use the app.",
-    "faqQuestion3": "How to prevent audio lag?",
-    "faqAnswer3": "Check your internet connection. We use optimal architectures to minimize lag, but low signal can affect it.",
-    "solutionNotFound": "Solution not found?",
-    "contactSupport": "Contact our support team.",
-    "additionalInfo": "Additional Info (Optional)",
-    "explainSituation": "Briefly explain the situation...",
-    "sendReport": "Send Report",
-    "rating": "Rating",
-    "friends": "Friends",
-    "edit": "Edit",
-    "addContent": "Add Content",
-    "createNewContent": "Create New Content",
-    "postType": "Post",
-    "sharePhotoOrVideo": "Share photo or video",
-    "jotType": "Jot",
-    "shareShortTextOrThought": "Share a short text or thought",
-    "youAreFriends": "You are friends",
-    "confirm": "Confirm",
-    "unfollow": "Unfollow",
-    "feedbackSuccess": "Feedback sent successfully!",
-    "feedbackError": "Error: {message}",
-    "@feedbackError": {
-      "placeholders": {
-        "message": { "type": "String" }
-      }
-    },
-    "selectCategory": "Select Category",
-    "writeTitle": "Please write a title.",
-    "writeMessage": "Please write a message.",
-    "writeTitleHint": "Short title...",
-    "writeMessageHint": "Type here...",
-    "audioMedia": "Audio & Media",
-    "backgroundMusic": "Background Music",
-    "automatic": "Automatic",
-    "dimWhileTalking": "Dim while talking",
-    "on": "On",
-    "musicAlwaysDimmed": "Music always dimmed",
-    "off": "Off",
-    "noChangeInMusic": "No change in music",
-    "reduceWindNoise": "Reduce wind noise",
-    "voiceRouteInstructions": "Voice route instructions",
-    "nobody": "Nobody",
-    "notifications": "Notifications",
-    "system": "System",
-    "light": "Light",
-    "dark": "Dark",
-    "addPost": "Add Post",
-    "cameraError": "Error accessing camera",
-    "retake": "Retake",
-    "continueText": "Continue",
-    "welcomeBack": "Welcome Back!",
-    "loginSubtitle": "Login to start riding.",
-    "email": "Email",
-    "invalidEmail": "Enter a valid email",
-    "password": "Password",
-    "passwordTooShort": "At least 6 characters required",
-    "rememberMe": "Remember Me",
-    "forgotPassword": "Forgot Password?",
-    "login": "Login",
-    "continueWithGoogle": "Continue with Google",
-    "dontHaveAccount": "Don't have an account?",
-    "register": "Register",
-    "alreadyHaveAccount": "Already have an account?",
-    "joinUs": "Join Us",
-    "registerSubtitle": "Start your riding experience.",
     "registrationSuccessful": "Registration successful! You can now login.",
     "registrationFailed": "Registration Failed",
     "username": "Username",
@@ -631,7 +98,7 @@
     "settings_privacy": "Privacy",
     "settings_security": "Security",
     "settings_help": "Help",
-    "version": "Version",
+    "version": "v{version} ({stage})",
     "about_app": "About App",
     "checkUpdates": "Check for updates",
     "intermediate": "Intermediate",
@@ -701,22 +168,50 @@
     "kickUserConfirmation": "Are you sure you want to kick {userName}?",
     "@kickUserConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "cancel": "Cancel",
+    "edit_profile": "Edit Profile",
+    "region": "Region",
+    "sessionInfoUnavailable": "Session info is unavailable.",
+    "inviteRejected": "Invite rejected.",
+    "idNotFound": "ID not found.",
+    "acceptInviteError": "Failed to accept invite.",
+    "inviteFromUser": "Invite from {userName}",
+    "@inviteFromUser": {
+        "placeholders": {
+            "userName": {
+                "type": "String"
+            }
+        }
+    },
+    "alreadyInRideWarning": "You are already in {sessionTitle}. Leave and join this one?",
+    "@alreadyInRideWarning": {
+        "placeholders": {
+            "sessionTitle": {
+                "type": "String"
+            }
+        }
+    },
     "kick": "Kick",
     "muteUserTitle": "Mute User",
     "muteUserConfirmation": "Are you sure you want to mute {userName}?",
     "@muteUserConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "transferLeadershipConfirmation": "Are you sure you want to transfer leadership to {userName}?",
     "@transferLeadershipConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "transfer": "Transfer",
@@ -724,14 +219,18 @@
     "promoteToCaptainConfirmation": "Are you sure you want to give Captain authority to {userName}?",
     "@promoteToCaptainConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "demoteToRiderTitle": "Demote to Rider",
     "demoteToRiderConfirmation": "Are you sure you want to remove Captain authority from {userName}?",
     "@demoteToRiderConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "terminateGroupTitle": "Terminate Group",
@@ -754,7 +253,7 @@
     "premiumPlans": "Premium Plans",
     "communities": "Communities",
     "helpAndSupport": "Help & Support",
-    "logout": "Log Out",
+    "logout": "Logout",
     "user": "User",
     "share": "Share",
     "report": "Report",
@@ -778,13 +277,17 @@
     "timeMinutesShort": "{count}m",
     "@timeMinutesShort": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "timeHoursShort": "{count}h",
     "@timeHoursShort": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "subjectTitle": "Subject Title",
@@ -795,7 +298,9 @@
     "reportDetailed": "Report {target}",
     "@reportDetailed": {
         "placeholders": {
-            "target": { "type": "String" }
+            "target": {
+                "type": "String"
+            }
         }
     },
     "reportDescription": "Please specify why you think this content violates our community guidelines.",
@@ -870,11 +375,9 @@
     "copyright": "Copyright",
     "privacyPolicy": "Privacy Policy",
     "about": "About",
-    "logout": "Logout",
+    "aboutMe": "About Me",
     "logoutConfirm": "Are you sure you want to log out?",
-    "cancel": "Cancel",
     "loading": "Loading...",
-    "version": "v{version} ({stage})",
     "measurementUnits": "Measurement Units",
     "distance": "Distance",
     "kilometer": "Kilometer (km)",
@@ -888,14 +391,196 @@
     "terrain": "Terrain",
     "hybrid": "Hybrid",
     "trafficInfo": "Traffic Information",
-    "showTrafficDensity": "Show density status", "validationTitle": "Title is required", "validationMessage": "Message is required",
+    "showTrafficDensity": "Show density status",
     "validationTitle": "Title is required",
+    "validationMessage": "Message is required",
+    "savedSessions": "Saved Sessions",
+    "createRideGroup": "Create Ride Group",
+    "leaveGroupWarning": "Please leave your current ride before creating a new group.",
+    "yourActiveGroup": "Your Active Group",
+    "nearbyGroups": "Nearby Groups",
+    "defaultGroupName": "Weekend Ride",
+    "notSpecified": "Not specified",
+    "groupNameHint": "Group Name (e.g. Weekend Tour)",
+    "pPublic": "Public",
+    "pPrivate": "Private",
+    "destinationOptional": "Destination (Optional)",
+    "destinationHint": "e.g. Sapanca Lake",
+    "tour": "Tour",
+    "fast": "Fast",
+    "city": "City",
+    "beginner": "Beginner",
+    "description": "Description",
+    "descriptionHint": "Write a short description about the ride...",
+    "inviteUsers": "Invite Users",
+    "inviteRiders": "Invite Riders",
+    "mute": "Mute",
+    "transferLeadership": "Transfer Leadership",
+    "makeCaptain": "Make Captain",
+    "demote": "Demote",
+    "noActiveRoomSubtitle": "Create a new room or wait for an invite",
+    "you": "You",
+    "kickFromSession": "Kick from Session",
+    "timeDaysShort": "{count}d",
+    "@timeDaysShort": {
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "jotFeedEmpty": "No jots yet. Be the first to post!",
+    "feedLoadFailed": "Failed to load feed",
+    "retry": "Retry",
+    "imageLoadFailed": "Image failed to load",
+    "postShared": "Post shared!",
+    "createPost": "Create Post",
+    "newMessageCreate": "Create New Message",
+    "whatIsOnYourMind": "What's on your mind?",
+    "pleaseWriteSomething": "Please write something",
+    "addMedia": "Add Media",
+    "imageUrlHint": "Image URL (https://...)",
+    "preview": "Preview",
+    "noPostsYet": "No posts yet.",
+    "reportReceived": "Report received.",
+    "posts": "Posts",
+    "noDiscoveryContent": "No content to discover yet.",
+    "followers": "Followers",
+    "following": "Following",
+    "followingStatus": "Following",
+    "followingListStatus": "Following",
+    "follow": "Follow",
+    "errorLabel": "Error: {message}",
+    "@errorLabel": {
+        "placeholders": {
+            "message": {
+                "type": "String"
+            }
+        }
+    },
+    "friendship": "Friendship",
+    "myFriends": "My Friends",
+    "pendingRequests": "Pending Requests",
+    "sentRequests": "Sent Requests",
+    "newChat": "New Chat",
+    "selectPerson": "Select Person",
+    "messageTooltip": "Message",
+    "deleteTooltip": "Delete",
+    "add": "Add",
+    "waiting": "Waiting",
+    "online": "Online",
+    "offline": "Offline",
+    "chattingWith": "Chatting with {username}",
+    "@chattingWith": {
+        "placeholders": {
+            "username": {
+                "type": "String"
+            }
+        }
+    },
+    "noPendingRequests": "No pending requests.",
+    "requestedOnDate": "Requested on {day}/{month}",
+    "@requestedOnDate": {
+        "placeholders": {
+            "day": {
+                "type": "int"
+            },
+            "month": {
+                "type": "int"
+            }
+        }
+    },
+    "notFriendsYet": "Not friends yet.",
+    "left_session": "You left the session",
+    "already_in_active_ride_error": "You are already in an active ride. To create a new group, leave the current ride first.",
+    "permissions_not_granted_error": "Necessary permissions for the session were not granted.",
+    "group_ride": "Group Ride",
+    "error_creating_group": "An error occurred while creating the group: {error}",
+    "@error_creating_group": {
+        "placeholders": {
+            "error": {
+                "type": "String"
+            }
+        }
+    },
+    "could_not_join_room": "Could not join the room.",
+    "successfully_joined_room": "Successfully joined the room",
+    "leaving_session": "Leaving session...",
+    "successfully_left_session": "Successfully left the session",
+    "session_terminated_error": "Session terminated (Error: {error})",
+    "@session_terminated_error": {
+        "placeholders": {
+            "error": {
+                "type": "String"
+            }
+        }
+    },
+    "session_terminated_successfully": "Session terminated successfully",
+    "already_in_ride_accept_error": "You are already in an active ride. To accept the invitation, leave the current ride first.",
+    "group_ride_terminated": "Group ride terminated. Session closed.",
+    "profile_unavailable": "Profile unavailable",
+    "friendRequestDefaultMessage": "Hi, let's be friends!",
+    "noSentRequestsYet": "No sent requests yet.",
+    "unknownUser": "Unknown User",
+    "unnamedUser": "Unnamed User",
+    "requestSent": "Request Sent",
+    "sentStatus": "Sent",
+    "categories": "Categories",
+    "howCanWeHelp": "How can we help?",
+    "searchYourProblem": "Search your problem...",
+    "faqQuestion1": "How do I join a group ride?",
+    "faqAnswer1": "You can join by entering the room code shared by your friend or by accepting an invitation.",
+    "faqQuestion2": "What is Ghost Mode?",
+    "faqAnswer2": "When Ghost Mode is on, your location isn't visible on the map, but you can still use the app.",
+    "faqQuestion3": "How to prevent audio lag?",
+    "faqAnswer3": "Check your internet connection. We use optimal architectures to minimize lag, but low signal can affect it.",
+    "solutionNotFound": "Solution not found?",
+    "contactSupport": "Contact our support team.",
+    "additionalInfo": "Additional Info (Optional)",
+    "explainSituation": "Briefly explain the situation...",
+    "sendReport": "Send Report",
+    "rating": "Rating",
+    "friends": "Friends",
+    "edit": "Edit",
+    "addContent": "Add Content",
+    "createNewContent": "Create New Content",
+    "postType": "Post",
+    "sharePhotoOrVideo": "Share photo or video",
+    "jotType": "Jot",
+    "shareShortTextOrThought": "Share a short text or thought",
+    "youAreFriends": "You are friends",
+    "confirm": "Confirm",
+    "unfollow": "Unfollow",
+    "feedbackSuccess": "Feedback sent successfully!",
+    "feedbackError": "Error: {message}",
+    "@feedbackError": {
+        "placeholders": {
+            "message": {
+                "type": "String"
+            }
+        }
+    },
+    "selectCategory": "Select Category",
+    "writeTitle": "Please write a title.",
+    "writeMessage": "Please write a message.",
+    "writeTitleHint": "Short title...",
+    "writeMessageHint": "Type here...",
+    "audioMedia": "Audio & Media",
+    "backgroundMusic": "Background Music",
+    "automatic": "Automatic",
+    "dimWhileTalking": "Dim while talking",
+    "on": "On",
+    "musicAlwaysDimmed": "Music always dimmed",
+    "off": "Off",
+    "noChangeInMusic": "No change in music",
+    "reduceWindNoise": "Reduce wind noise",
+    "voiceRouteInstructions": "Voice route instructions",
+    "nobody": "Nobody",
     "groupName": "Group Name",
     "groupPrivacy": "Group Privacy",
     "maxRiders": "Max Riders",
     "destination": "Destination",
     "reject": "Reject",
-    "validationMessage": "Message is required",
     "commentsTitle": "Comments",
     "addCommentHint": "Add a comment...",
     "errorOccurred": "An error occurred",
@@ -926,12 +611,8 @@
     "yesterday": "Yesterday",
     "userBlocked": "User blocked",
     "clearChat": "Clear Chat",
-    "errorOccurred": "An error occurred",
-    "noCommentsYet": "No comments yet.",
     "startChattingPrompt": "Start chatting with your friends!",
-    "noResultsFound": "No results found",
     "today": "Today",
-    "yesterday": "Yesterday",
     "thisWeek": "This Week",
     "thisMonth": "This Month",
     "older": "Older",
@@ -987,46 +668,42 @@
     "map_alternative_routes_title": "Alternative Routes",
     "map_route_count": "{count} routes",
     "@map_route_count": {
-      "placeholders": {
-        "count": {
-          "type": "int"
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
         }
-      }
     },
     "map_route_badge_short_fast": "Short & Fast",
     "map_route_badge_shortest": "Shortest",
     "map_route_badge_fastest": "Fastest",
     "map_route_badge_alternative": "Alternative",
-    "reply": "Reply",
-    "delete": "Delete",
-    "report": "Report",
     "delete_comment_title": "Delete Comment?",
-    "cancel": "Cancel",
     "add_comment_hint": "Add a comment...",
     "now": "Now",
     "time_day_short": "{count}d",
     "@time_day_short": {
-      "placeholders": {
-        "count": {
-          "type": "int"
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
         }
-      }
     },
     "time_hour_short": "{count}h",
     "@time_hour_short": {
-      "placeholders": {
-        "count": {
-          "type": "int"
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
         }
-      }
     },
     "time_minute_short": "{count}m",
     "@time_minute_short": {
-      "placeholders": {
-        "count": {
-          "type": "int"
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
         }
-      }
     },
     "clear_chat": "Clear Chat",
     "block_user": "Block",
@@ -1036,7 +713,9 @@
     "share_profile_text": "Check out my profile on MotoComm! {url}",
     "@share_profile_text": {
         "placeholders": {
-            "url": { "type": "String" }
+            "url": {
+                "type": "String"
+            }
         }
     },
     "user_followed": "User followed",
@@ -1111,32 +790,27 @@
     "enter_min_characters": "Please enter at least {count} characters.",
     "@enter_min_characters": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "post_shared": "Post shared!",
     "new_post": "New Post",
     "write_description": "Write a description...",
-    "left_session": "You left the session",
     "already_in_ride": "You are already in an active ride...",
     "permissions_not_granted": "Required permissions for the session were not granted.",
     "group_creation_failed": "Group could not be created.",
     "group_creation_error": "An error occurred while creating the group: {error}",
     "@group_creation_error": {
         "placeholders": {
-            "error": { "type": "String" }
+            "error": {
+                "type": "String"
+            }
         }
     },
-    "could_not_join_room": "Could not join the room.",
     "joined_room_success": "Successfully joined the room",
-    "leaving_session": "Leaving session...",
     "left_session_success": "Successfully left the session",
-    "session_terminated_error": "Session terminated (Error: {error})",
-    "@session_terminated_error": {
-        "placeholders": {
-            "error": { "type": "String" }
-        }
-    },
     "session_terminated_success": "Session terminated successfully",
     "settingsOperationSuccess": "Operation successful",
     "settingsOperationError": "An error occurred",
@@ -1196,7 +870,9 @@
     "copyrightHeader": "© {year} Helmove",
     "@copyrightHeader": {
         "placeholders": {
-            "year": { "type": "int" }
+            "year": {
+                "type": "int"
+            }
         }
     },
     "copyrightAllRightsReserved": "All rights reserved.",
@@ -1225,5 +901,6 @@
     "privacySection6Content": "If you have questions about our privacy policy, you can reach us at support@Helmove.app.",
     "privacyWebInfoText": "For more information, please visit our website.",
     "privacyWebLinkText": "Helmove Privacy Policy",
-    "privacyBottomBannerText": "Helmove Safe Riding Platform"
+    "privacyBottomBannerText": "Helmove Safe Riding Platform",
+    "supportVisitWebsite": "You can visit our website for more information."
 }

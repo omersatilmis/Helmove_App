@@ -400,6 +400,18 @@ class RealtimeStateCoordinator {
     );
 
     _signalREventSubscriptions.add(
+      signalRService.voiceSessionEndedStream.listen(
+        (payload) => _realtimeEventsController.add(
+          VoiceSessionEndedRealtimeEvent(
+            sessionId: payload.sessionId,
+            version: payload.version,
+            reason: payload.reason,
+          ),
+        ),
+      ),
+    );
+
+    _signalREventSubscriptions.add(
       signalRService.participantStatusUpdatedStream.listen(
         (payload) => _realtimeEventsController.add(
           ParticipantStatusUpdatedRealtimeEvent(payload),

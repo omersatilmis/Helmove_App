@@ -103,3 +103,14 @@ class UserMuteStateChangedRealtimeEvent extends CommunicationRealtimeEvent {
   final UserMuteStatePayload payload;
   const UserMuteStateChangedRealtimeEvent(this.payload);
 }
+
+class VoiceSessionEndedRealtimeEvent extends CommunicationRealtimeEvent {
+  final int sessionId;
+  final int? version;
+  final String? reason;
+  const VoiceSessionEndedRealtimeEvent({
+    required this.sessionId,
+    this.version,
+    this.reason,
+  });
+}

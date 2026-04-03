@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "moto_comm_app_1 (Flutter)",
+            "name": "helmove (Flutter)",
             "program": "lib/main.dart",
             "request": "launch",
             "type": "dart"

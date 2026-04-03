@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import '../../app/app_router.dart';
+import '../navigation/navigator_keys.dart';
 import '../../features/communication/presentation/pages/sos_alert_page.dart';
 import '../utils/app_logger.dart';
 import 'models/signalr_payloads.dart';

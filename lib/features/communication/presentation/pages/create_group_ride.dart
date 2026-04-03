@@ -268,12 +268,12 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                                         onSelected: (val) => setState(
                                           () => selectedRidingStyle = val ==
                                                   l10n.chill
-                                              ? 'Chill'
+                                              ? 'Sakin'
                                               : val == l10n.tour
                                                   ? 'Tour'
                                                   : val == l10n.fast
-                                                      ? 'Fast'
-                                                      : 'City',
+                                                      ? 'Viraj'
+                                                      : 'Sehir',
                                         ),
                                       ),
                                     ],

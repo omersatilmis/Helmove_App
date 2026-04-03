@@ -152,11 +152,13 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage> {
                         currentUserId: postsState.currentUserId,
                         onLike: () {
                           context.read<PostsBloc>().add(LikePostEvent(post.id));
+                          context.read<DiscoverBloc>().add(LocalLikeDiscoverPostEvent(post.id));
                         },
                         onDelete: () {
                           context.read<PostsBloc>().add(
                             DeletePostEvent(post.id),
                           );
+                          context.read<DiscoverBloc>().add(LocalDeleteDiscoverPostEvent(post.id));
                         },
                         onComment: () {
                           showModalBottomSheet(
@@ -176,9 +178,11 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage> {
                       currentUserId: postsState.currentUserId,
                       onLike: () {
                         context.read<PostsBloc>().add(LikePostEvent(post.id));
+                        context.read<DiscoverBloc>().add(LocalLikeDiscoverPostEvent(post.id));
                       },
                       onDelete: () {
                         context.read<PostsBloc>().add(DeletePostEvent(post.id));
+                        context.read<DiscoverBloc>().add(LocalDeleteDiscoverPostEvent(post.id));
                       },
                       onComment: () {
                         showModalBottomSheet(

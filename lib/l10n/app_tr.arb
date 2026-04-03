@@ -32,7 +32,7 @@
     "alreadyHaveAccount": "Zaten bir hesabınız mı var?",
     "joinUs": "Bize Katıl",
     "registerSubtitle": "Sürüş deneyimine başla.",
-    "registrationSuccessful": "Kayıt başarılı! Şimdi giriş yapabilirsiniz.",    
+    "registrationSuccessful": "Kayıt başarılı! Şimdi giriş yapabilirsiniz.",
     "registrationFailed": "Kayıt Başarısız",
     "username": "Kullanıcı Adı",
     "usernameTooShort": "En az 3 karakter girin",
@@ -98,7 +98,7 @@
     "settings_privacy": "Gizlilik",
     "settings_security": "Güvenlik",
     "settings_help": "Yardım",
-    "version": "Versiyon",
+    "version": "v{version} ({stage})",
     "about_app": "Uygulama Hakkında",
     "checkUpdates": "Güncellemeleri kontrol et",
     "intermediate": "Orta Seviye",
@@ -110,7 +110,7 @@
     "preparingGroupInfo": "Grup bilgileri hazırlanıyor...",
     "preparingRideInfo": "Sürüş bilgileri hazırlanıyor...",
     "invalidGroupId": "Geçersiz Grup ID",
-    "noValidVoiceSessionFound": "Davet için geçerli ses oturumu bulunamadı.", 
+    "noValidVoiceSessionFound": "Davet için geçerli ses oturumu bulunamadı.",
     "voiceSessionUnavailableOnlyRide": "Sesli oturum kullanılamıyor. Sadece sürüş detayları aktif.",
     "errorPrefix": "Hata",
     "liveKitErrorPrefix": "LiveKit Hatası",
@@ -128,7 +128,7 @@
     "lost": "Kayıp",
     "management": "Yönetim",
     "groupSettings": "Grup Ayarları",
-    "groupRideAndVoiceSessionEnded": "Grup sürüşü ve sesli oturum sona erdi",      
+    "groupRideAndVoiceSessionEnded": "Grup sürüşü ve sesli oturum sona erdi",
     "updated": "güncellendi",
     "terminate": "Sonlandır",
     "update": "Güncelle",
@@ -155,7 +155,7 @@
     "voiceSessionCreated": "Sesli oturum oluşturuldu!",
     "invitesSentSuccess": "Davetler başarıyla gönderildi!",
     "unknownError": "Bilinmeyen bir hata oluştu",
-    "groupAndVoiceCreated": "Grup ve Sesli Oturum başarıyla oluşturuldu!",    
+    "groupAndVoiceCreated": "Grup ve Sesli Oturum başarıyla oluşturuldu!",
     "searchUsers": "Kullanıcı Ara...",
     "noResultsFound": "Sonuç bulunamadı",
     "pressSearchToStart": "Aramaya başlamak için yazın",
@@ -165,10 +165,12 @@
     "destinationNotSpecified": "Hedef Belirtilmedi",
     "errorWithPrefix": "Hata: {message}",
     "kickUserTitle": "Kullanıcıyı At",
-    "kickUserConfirmation": "{userName} kullanıcısını atmak istediğinize emin misiniz?",        
+    "kickUserConfirmation": "{userName} kullanıcısını atmak istediğinize emin misiniz?",
     "@kickUserConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "cancel": "İptal",
@@ -180,28 +182,36 @@
     "acceptInviteError": "Davet kabul edilemedi.",
     "inviteFromUser": "{userName} daveti",
     "@inviteFromUser": {
-      "placeholders": {
-        "userName": { "type": "String" }
-      }
+        "placeholders": {
+            "userName": {
+                "type": "String"
+            }
+        }
     },
     "alreadyInRideWarning": "Zaten {sessionTitle} oturumundasınız. Çıkıp buna katılmak ister misiniz?",
     "@alreadyInRideWarning": {
-      "placeholders": {
-        "sessionTitle": { "type": "String" }
-      }
+        "placeholders": {
+            "sessionTitle": {
+                "type": "String"
+            }
+        }
     },
     "kick": "At",
     "muteUserTitle": "Kullanıcıyı Sustur",
-    "muteUserConfirmation": "{userName} kullanıcısını susturmak istediğinize emin misiniz?",        
+    "muteUserConfirmation": "{userName} kullanıcısını susturmak istediğinize emin misiniz?",
     "@muteUserConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "transferLeadershipConfirmation": "Liderliği {userName} kullanıcısına devretmek istediğinize emin misiniz?",
     "@transferLeadershipConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "transfer": "Devret",
@@ -209,14 +219,18 @@
     "promoteToCaptainConfirmation": "{userName} kullanıcısına Kaptan yetkisi vermek istediğinize emin misiniz?",
     "@promoteToCaptainConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "demoteToRiderTitle": "Sürücüye Düşür",
     "demoteToRiderConfirmation": "{userName} kullanıcısının Kaptan yetkisini almak istediğinize emin misiniz?",
     "@demoteToRiderConfirmation": {
         "placeholders": {
-            "userName": { "type": "String" }
+            "userName": {
+                "type": "String"
+            }
         }
     },
     "terminateGroupTitle": "Grubu Sonlandır",
@@ -239,10 +253,10 @@
     "premiumPlans": "Premium Planlar",
     "communities": "Topluluklar",
     "helpAndSupport": "Yardım & Destek",
-    "logout": "Çıkış Yap",
+    "logout": "Çıkış",
     "user": "Kullanıcı",
     "share": "Paylaş",
-    "report": "Bildir",
+    "report": "Şikayet Et",
     "delete": "Sil",
     "send": "Gönder",
     "save": "Kaydet",
@@ -263,13 +277,17 @@
     "timeMinutesShort": "{count}dk",
     "@timeMinutesShort": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "timeHoursShort": "{count}sa",
     "@timeHoursShort": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "subjectTitle": "Konu Başlığı",
@@ -280,7 +298,9 @@
     "reportDetailed": "{target} Bildir",
     "@reportDetailed": {
         "placeholders": {
-            "target": { "type": "String" }
+            "target": {
+                "type": "String"
+            }
         }
     },
     "reportDescription": "Lütfen bu içeriğin neden topluluk kurallarımızı ihlal ettiğini düşündüğünüzü belirtin.",
@@ -302,9 +322,9 @@
     "motoMessage3": "Benzin kaç para oldu haberin var mı reisim? ⛽",
     "motoMessage4": "Vizörün temiz, yolun açık olsun. ✨",
     "motoMessage5": "Tekerine taş, gözüne yaş değmesin. ✨",
-    "motoMessage6": "Motoru tozlu gördüm, bir ara yıka istersen... 🤔", 
+    "motoMessage6": "Motoru tozlu gördüm, bir ara yıka istersen... 🤔",
     "motoMessage7": "Motor biraz tozlanmış... güzel anılar birikmiş demektir 😏",
-    "motoMessage8": "Ekipmanlar tamam mı? Şekilden önce eve sağ salim dönelim 😎", 
+    "motoMessage8": "Ekipmanlar tamam mı? Şekilden önce eve sağ salim dönelim 😎",
     "motoMessage9": "Rota neresi olursa olsun, tekerin düz bassın 😌",
     "motoMessage10": "Vizör temiz, kafa karışık olabilir, takma biz buradayız ✨",
     "motoMessage11": "Ekipmanına değer ver, sen bize lazımsın 😎",
@@ -356,10 +376,8 @@
     "privacyPolicy": "Gizlilik Politikası",
     "about": "Hakkında",
     "aboutMe": "Hakkımda",
-    "logout": "Çıkış",
     "logoutConfirm": "Çıkış yapmak istediğinize emin misiniz?",
     "loading": "Yükleniyor...",
-    "version": "v{version} ({stage})",
     "measurementUnits": "Ölçüm Birimleri",
     "distance": "Mesafe",
     "kilometer": "Kilometre (km)",
@@ -374,7 +392,7 @@
     "hybrid": "Hibrit",
     "trafficInfo": "Trafik Bilgisi",
     "showTrafficDensity": "Yoğunluk durumunu göster",
-    "validationTitle": "Başlık gerekli", 
+    "validationTitle": "Başlık gerekli",
     "validationMessage": "Mesaj gerekli",
     "savedSessions": "Kayıtlı Oturumlar",
     "createRideGroup": "Sürüş Grubu Oluştur",
@@ -405,9 +423,11 @@
     "kickFromSession": "Oturumdan At",
     "timeDaysShort": "{count}g",
     "@timeDaysShort": {
-      "placeholders": {
-        "count": { "type": "int" }
-      }
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
     },
     "jotFeedEmpty": "Henüz jot yok. İlk paylaşan sen ol!",
     "feedLoadFailed": "Akış yüklenemedi",
@@ -432,9 +452,11 @@
     "follow": "Takip Et",
     "errorLabel": "Hata: {message}",
     "@errorLabel": {
-      "placeholders": {
-        "message": { "type": "String" }
-      }
+        "placeholders": {
+            "message": {
+                "type": "String"
+            }
+        }
     },
     "friendship": "Arkadaşlık",
     "myFriends": "Arkadaşlarım",
@@ -450,17 +472,23 @@
     "offline": "Çevrimdışı",
     "chattingWith": "{username} ile sohbet et",
     "@chattingWith": {
-      "placeholders": {
-        "username": { "type": "String" }
-      }
+        "placeholders": {
+            "username": {
+                "type": "String"
+            }
+        }
     },
     "noPendingRequests": "Bekleyen istek yok.",
     "requestedOnDate": "{day}/{month} tarihinde istendi",
     "@requestedOnDate": {
-      "placeholders": {
-        "day": { "type": "int" },
-        "month": { "type": "int" }
-      }
+        "placeholders": {
+            "day": {
+                "type": "int"
+            },
+            "month": {
+                "type": "int"
+            }
+        }
     },
     "notFriendsYet": "Henüz arkadaş değilsiniz.",
     "left_session": "Oturumdan ayrıldınız",
@@ -470,7 +498,9 @@
     "error_creating_group": "Grup oluşturulurken bir hata oluştu: {error}",
     "@error_creating_group": {
         "placeholders": {
-            "error": { "type": "String" }
+            "error": {
+                "type": "String"
+            }
         }
     },
     "could_not_join_room": "Odaya katılınamadı.",
@@ -480,7 +510,9 @@
     "session_terminated_error": "Oturum sonlandırıldı (Hata: {error})",
     "@session_terminated_error": {
         "placeholders": {
-            "error": { "type": "String" }
+            "error": {
+                "type": "String"
+            }
         }
     },
     "session_terminated_successfully": "Oturum başarıyla sonlandırıldı",
@@ -522,9 +554,11 @@
     "feedbackSuccess": "Geri bildirim başarıyla gönderildi!",
     "feedbackError": "Hata: {message}",
     "@feedbackError": {
-      "placeholders": {
-        "message": { "type": "String" }
-      }
+        "placeholders": {
+            "message": {
+                "type": "String"
+            }
+        }
     },
     "selectCategory": "Kategori Seçin",
     "writeTitle": "Lütfen bir başlık yazın.",
@@ -577,12 +611,8 @@
     "yesterday": "Dün",
     "userBlocked": "Kullanıcı engellendi",
     "clearChat": "Sohbeti Temizle",
-    "errorOccurred": "Hata oluştu",
-    "noCommentsYet": "Henüz yorum yok.",
     "startChattingPrompt": "Arkadaşlarınla sohbet etmeye başla!",
-    "noResultsFound": "Sonuç bulunamadı",
     "today": "Bugün",
-    "yesterday": "Dün",
     "thisWeek": "Bu Hafta",
     "thisMonth": "Bu Ay",
     "older": "Daha Eski",
@@ -624,36 +654,32 @@
     "map_select_stop": "Durak Seç",
     "map_businesses": "İşletmeler",
     "map_go_back": "Geri Dön",
-    "reply": "Yanıtla",
-    "delete": "Sil",
-    "report": "Şikayet Et",
     "delete_comment_title": "Yorumu Sil?",
-    "cancel": "İptal",
     "add_comment_hint": "Yorum ekle...",
     "now": "Şimdi",
     "time_day_short": "{count}g",
     "@time_day_short": {
-      "placeholders": {
-        "count": {
-          "type": "int"
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
         }
-      }
     },
     "time_hour_short": "{count}sa",
     "@time_hour_short": {
-      "placeholders": {
-        "count": {
-          "type": "int"
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
         }
-      }
     },
     "time_minute_short": "{count}dk",
     "@time_minute_short": {
-      "placeholders": {
-        "count": {
-          "type": "int"
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
         }
-      }
     },
     "clear_chat": "Sohbeti Temizle",
     "block_user": "Engelle",
@@ -663,7 +689,9 @@
     "share_profile_text": "MotoComm'da profilime göz at! {url}",
     "@share_profile_text": {
         "placeholders": {
-            "url": { "type": "String" }
+            "url": {
+                "type": "String"
+            }
         }
     },
     "user_followed": "Kullanıcı takip ediliyor",
@@ -738,32 +766,27 @@
     "enter_min_characters": "Lütfen en az {count} karakter giriniz.",
     "@enter_min_characters": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "post_shared": "Gönderi paylaşıldı!",
     "new_post": "Yeni Gönderi",
     "write_description": "Bir açıklama yaz...",
-    "left_session": "Oturumdan ayrıldınız",
     "already_in_ride": "Zaten aktif bir sürüştesiniz...",
     "permissions_not_granted": "Oturum için gerekli izinler verilmedi.",
     "group_creation_failed": "Grup oluşturulamadı.",
     "group_creation_error": "Grup oluşturulurken bir hata oluştu: {error}",
     "@group_creation_error": {
         "placeholders": {
-            "error": { "type": "String" }
+            "error": {
+                "type": "String"
+            }
         }
     },
-    "could_not_join_room": "Odaya katılınamadı.",
     "joined_room_success": "Odaya başarıyla katılındı",
-    "leaving_session": "Oturumdan ayrılınıyor...",
     "left_session_success": "Oturumdan başarıyla ayrıldınız",
-    "session_terminated_error": "Oturum sonlandırıldı (Hata: {error})",
-    "@session_terminated_error": {
-        "placeholders": {
-            "error": { "type": "String" }
-        }
-    },
     "session_terminated_success": "Oturum başarıyla sonlandırıldı",
     "settingsOperationSuccess": "İşlem başarılı",
     "settingsOperationError": "Hata oluştu",
@@ -823,7 +846,9 @@
     "copyrightHeader": "© {year} Helmove",
     "@copyrightHeader": {
         "placeholders": {
-            "year": { "type": "int" }
+            "year": {
+                "type": "int"
+            }
         }
     },
     "copyrightAllRightsReserved": "Tüm Hakları Saklıdır.",
@@ -868,11 +893,14 @@
     "map_route_count": "{count} rota",
     "@map_route_count": {
         "placeholders": {
-            "count": { "type": "int" }
+            "count": {
+                "type": "int"
+            }
         }
     },
     "map_route_badge_short_fast": "Kısa ve Hızlı",
     "map_route_badge_shortest": "En Kısa",
     "map_route_badge_fastest": "En Hızlı",
-    "map_route_badge_alternative": "Alternatif"
+    "map_route_badge_alternative": "Alternatif",
+    "supportVisitWebsite": "Daha fazla bilgi için web sitemizi ziyaret edebilirsiniz."
 }

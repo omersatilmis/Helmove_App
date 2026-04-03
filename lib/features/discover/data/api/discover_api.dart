@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../friendship/data/dto/friend_user_dto.dart';
 import '../../../profile/data/api/profile_endpoints.dart';
@@ -53,7 +53,7 @@ class DiscoverApi {
   }) async {
     try {
       final response = await _dio.get(
-        '/api/posts/feed',
+        '/api/posts/explore',
         queryParameters: {'page': page, 'limit': limit},
       );
 

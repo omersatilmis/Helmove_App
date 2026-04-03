@@ -24,3 +24,17 @@ class LoadDiscoveryContent extends DiscoverEvent {
   @override
   List<Object> get props => [isRefresh];
 }
+
+class LocalLikeDiscoverPostEvent extends DiscoverEvent {
+  final int postId;
+  const LocalLikeDiscoverPostEvent(this.postId);
+  @override
+  List<Object> get props => [postId];
+}
+
+class LocalDeleteDiscoverPostEvent extends DiscoverEvent {
+  final int postId;
+  const LocalDeleteDiscoverPostEvent(this.postId);
+  @override
+  List<Object> get props => [postId];
+}

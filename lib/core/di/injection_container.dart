@@ -519,6 +519,22 @@ Future<void> resetOnLogout() async {
 }
 
 void _registerCoreFeatureSingletons() {
+  // Attendance Feature (Core dependency for GroupRideBloc)
+  if (!sl.isRegistered<AttendanceApi>()) {
+    sl.registerLazySingleton(() => AttendanceApi(sl()));
+  }
+  if (!sl.isRegistered<AttendanceRemoteDataSource>()) {
+    sl.registerLazySingleton<AttendanceRemoteDataSource>(
+      () => AttendanceRemoteDataSourceImpl(sl<AttendanceApi>()),
+    );
+  }
+  if (!sl.isRegistered<AttendanceRepository>()) {
+    sl.registerLazySingleton<AttendanceRepository>(
+      () => AttendanceRepositoryImpl(sl()),
+    );
+  }
+
+
   // Auth Feature (AuthApi, AuthRemoteDataSource, AuthRepository)
   if (!sl.isRegistered<AuthApi>()) {
     sl.registerLazySingleton(() => AuthApi(sl()));
@@ -1625,7 +1641,69 @@ Future<void> initCore() async {
 
     // Feature'ları kaydet (Auth, Profile, Friendship, Voice, Discover vb.)
     _registerCoreFeatureSingletons();
-    _logInitProfile('registerCoreFeatureSingletons', stopwatch);
+    _logInitProfile('registerCoreFeatureSingletons', stopwatch);    
+    // Voice Session Feature (Core dependence for global Blocs)
+    if (!sl.isRegistered<VoiceSessionApi>()) {
+      sl.registerLazySingleton(() => VoiceSessionApi(sl()));
+    }
+    if (!sl.isRegistered<VoiceSessionRemoteDataSource>()) {
+      sl.registerLazySingleton<VoiceSessionRemoteDataSource>(
+        () => VoiceSessionRemoteDataSourceImpl(sl<VoiceSessionApi>()),
+      );
+    }
+    if (!sl.isRegistered<VoiceSessionRepository>()) {
+      sl.registerLazySingleton<VoiceSessionRepository>(
+        () => VoiceSessionRepositoryImpl(sl()),
+      );
+    }
+
+    // Voice Session UseCases
+    if (!sl.isRegistered<CreateVoiceSessionUseCase>()) {
+      sl.registerLazySingleton(() => CreateVoiceSessionUseCase(sl()));
+    }
+    if (!sl.isRegistered<JoinVoiceSessionUseCase>()) {
+      sl.registerLazySingleton(() => JoinVoiceSessionUseCase(sl()));
+    }
+    if (!sl.isRegistered<LeaveVoiceSessionUseCase>()) {
+      sl.registerLazySingleton(() => LeaveVoiceSessionUseCase(sl()));
+    }
+    if (!sl.isRegistered<InviteToVoiceSessionUseCase>()) {
+      sl.registerLazySingleton(() => InviteToVoiceSessionUseCase(sl()));
+    }
+    if (!sl.isRegistered<GetVoiceSessionDetailsUseCase>()) {
+      sl.registerLazySingleton(() => GetVoiceSessionDetailsUseCase(sl()));
+    }
+    if (!sl.isRegistered<GetMyVoiceSessionsUseCase>()) {
+      sl.registerLazySingleton(() => GetMyVoiceSessionsUseCase(sl()));
+    }
+    if (!sl.isRegistered<AcceptVoiceSessionInvitationUseCase>()) {
+      sl.registerLazySingleton(() => AcceptVoiceSessionInvitationUseCase(sl()));
+    }
+    if (!sl.isRegistered<RejectVoiceSessionInvitationUseCase>()) {
+      sl.registerLazySingleton(() => RejectVoiceSessionInvitationUseCase(sl()));
+    }
+    if (!sl.isRegistered<EndVoiceSessionUseCase>()) {
+      sl.registerLazySingleton(() => EndVoiceSessionUseCase(sl()));
+    }
+    if (!sl.isRegistered<KickUserUseCase>()) {
+      sl.registerLazySingleton(() => KickUserUseCase(sl()));
+    }
+    if (!sl.isRegistered<MuteUserUseCase>()) {
+      sl.registerLazySingleton(() => MuteUserUseCase(sl()));
+    }
+    if (!sl.isRegistered<TransferHostUseCase>()) {
+      sl.registerLazySingleton(() => TransferHostUseCase(sl()));
+    }
+    if (!sl.isRegistered<PromoteParticipantUseCase>()) {
+      sl.registerLazySingleton(() => PromoteParticipantUseCase(sl()));
+    }
+    if (!sl.isRegistered<DemoteParticipantUseCase>()) {
+      sl.registerLazySingleton(() => DemoteParticipantUseCase(sl()));
+    }
+    if (!sl.isRegistered<KickParticipantUseCase>()) {
+      sl.registerLazySingleton(() => KickParticipantUseCase(sl()));
+    }
+
 
     if (!sl.isRegistered<GroupRideApi>()) {
       sl.registerLazySingleton(() => GroupRideApi(sl()));

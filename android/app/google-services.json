@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "129465119098",
+    "project_id": "helmove",
+    "storage_bucket": "helmove.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "YOUR_ANDROID_APP_ID_HERE",
+        "android_client_info": {
+          "package_name": "com.example.helmove"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDk4HBBnnMDg5Cs6xYvStRguk3Xuv7UFMQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

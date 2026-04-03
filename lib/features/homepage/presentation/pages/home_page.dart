@@ -144,6 +144,8 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
     if (_isBootstrapInFlight) {
       return;
     }
+    
+    debugPrint('🏠 Starting Home Bootstrap...');
     _isBootstrapInFlight = true;
 
     try {
@@ -151,6 +153,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
       final bootstrap = await bootstrapService.getHomeBootstrap(limit: 10);
 
       if (bootstrap != null) {
+        debugPrint('✅ Home Bootstrap successful: ${bootstrap.feed.items.length} posts');
         _identityFallbackNotifier.value = _HomeIdentityFallback(
           firstName: bootstrap.user?.firstName,
           lastName: bootstrap.user?.lastName,
@@ -170,8 +173,8 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
               bootstrap.user?.profilePictureUrl,
             );
           }
-        } catch (_) {
-          // Göz ardı et
+        } catch (e) {
+          debugPrint('⚠️ Error updating local auth cache during bootstrap: $e');
         }
 
         _setTopbarCounts(
@@ -197,13 +200,15 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
                 hasNextPage: bootstrap.feed.hasNextPage,
               ),
             );
-          } catch (_) {
-            // Best-effort seed.
+          } catch (e) {
+            debugPrint('⚠️ Error seeding PostsBloc: $e');
           }
         }
+      } else {
+        debugPrint('⚠️ Home Bootstrap returned null (Service caught 404 or other error)');
       }
     } catch (e) {
-      // Intentionally ignored.
+      debugPrint('❌ Home Bootstrap CRITICAL error: $e');
     } finally {
       _isBootstrapInFlight = false;
       if (mounted && !_isHomeBootstrapSettled) {
@@ -213,6 +218,7 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
       } else {
         _isHomeBootstrapSettled = true;
       }
+      debugPrint('🏠 Home Bootstrap settled.');
     }
   }
 
@@ -416,7 +422,15 @@ class _HomePageWithDrawerState extends State<HomePageWithDrawer> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    if (l10n == null) return const SizedBox.shrink();
+    if (l10n == null) {
+      // Fallback UI to avoid complete blank screen if localization is not yet ready
+      return const AppBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
     
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;

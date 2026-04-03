@@ -128,9 +128,14 @@ class SignalRService {
   final _voiceSessionRefreshController =
       StreamController<VoiceSessionRefreshRealtimePayload>.broadcast();
   final _userForceRemovedController = StreamController<int>.broadcast();
+  final _voiceSessionEndedController =
+      StreamController<VoiceSessionEndedRealtimePayload>.broadcast();
+
   Stream<VoiceSessionRefreshRealtimePayload> get voiceSessionRefreshStream =>
       _voiceSessionRefreshController.stream;
   Stream<int> get userForceRemovedStream => _userForceRemovedController.stream;
+  Stream<VoiceSessionEndedRealtimePayload> get voiceSessionEndedStream =>
+      _voiceSessionEndedController.stream;
 
   final _participantStatusUpdatedController =
       StreamController<ParticipantStatusPayload>.broadcast();
@@ -365,6 +370,16 @@ class SignalRService {
       if (sessionId == null) return;
       AppLogger.info("SignalR: User Force Removed -> $sessionId");
       _userForceRemovedController.add(sessionId);
+    });
+
+    _hubConnection!.on("VoiceSessionEnded", (arguments) {
+      _trackSignalREvent('VoiceSessionEnded');
+      final payload = _parseVoiceSessionEndedRealtimePayload(arguments);
+      if (payload == null) return;
+      AppLogger.info(
+        "SignalR: VoiceSession Ended -> Session: ${payload.sessionId}, Version: ${payload.version ?? '-'}, Reason: ${payload.reason ?? '-'}",
+      );
+      _voiceSessionEndedController.add(payload);
     });
 
     _hubConnection!.on("GroupRideUpdated", (arguments) {
@@ -1451,6 +1466,45 @@ class SignalRService {
     final version = arguments.length > 2 ? _asInt(arguments[2]) : null;
     return VoiceSessionMembershipRealtimePayload(
       userId: userId,
+      sessionId: sessionId,
+      version: version,
+      eventId: null,
+      occurredAtUtc: null,
+    );
+  }
+
+  VoiceSessionEndedRealtimePayload? _parseVoiceSessionEndedRealtimePayload(
+    List<Object?>? arguments,
+  ) {
+    if (arguments == null || arguments.isEmpty) return null;
+
+    final mapped = _asMap(arguments[0]);
+    if (mapped != null) {
+      if (!_hasRequiredRealtimeMetadata(
+        mapped,
+        'VoiceSessionEndedRealtimePayload',
+        allowMissingMetadata: true,
+      )) {
+        return null;
+      }
+      
+      // Data field is sometimes flattened or nested, map directly or extract data
+      Map<String, dynamic> dataMap = mapped;
+      if (mapped.containsKey('data') && mapped['data'] is Map) {
+         final nested = Map<String, dynamic>.from(mapped['data']);
+         dataMap = {...mapped, ...nested};
+      }
+      
+      final payload = VoiceSessionEndedRealtimePayload.fromMap(dataMap);
+      if (payload.sessionId > 0) {
+        return payload;
+      }
+    }
+
+    final sessionId = _asInt(arguments[0]);
+    if (sessionId == null || sessionId <= 0) return null;
+    final version = arguments.length > 1 ? _asInt(arguments[1]) : null;
+    return VoiceSessionEndedRealtimePayload(
       sessionId: sessionId,
       version: version,
       eventId: null,

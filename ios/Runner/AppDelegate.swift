@@ -1,19 +1,32 @@
+import Firebase
+import FirebaseMessaging
 import Flutter
 import PushKit
 import UIKit
 import flutter_callkit_incoming
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, PKPushRegistryDelegate {
+@objc class AppDelegate: FlutterAppDelegate, PKPushRegistryDelegate, MessagingDelegate {
   private var voipRegistry: PKPushRegistry?
 
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    FirebaseApp.configure()
+    Messaging.messaging().delegate = self
     GeneratedPluginRegistrant.register(with: self)
     configureVoIPPush()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+    let dataDict: [String: String] = ["token": fcmToken ?? ""]
+    NotificationCenter.default.post(
+      name: Notification.Name("FCMToken"),
+      object: nil,
+      userInfo: dataDict
+    )
   }
 
   private func configureVoIPPush() {

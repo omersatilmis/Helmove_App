@@ -33,6 +33,18 @@ class DiscoverDiscoveryLoaded extends DiscoverState {
     this.hasReachedMax = false,
   });
 
+  DiscoverDiscoveryLoaded copyWith({
+    List<PostEntity>? content,
+    int? page,
+    bool? hasReachedMax,
+  }) {
+    return DiscoverDiscoveryLoaded(
+      content: content ?? this.content,
+      page: page ?? this.page,
+      hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+    );
+  }
+
   @override
   List<Object> get props => [content, page, hasReachedMax];
 }

@@ -150,7 +150,11 @@ class SubscriptionServiceImpl implements SubscriptionService {
       
       debugPrint('✅ Subscription state synced with backend: ${currentTier.name}');
     } catch (e) {
-      debugPrint('❌ Subscription sync failed: $e');
+      if (e is DioException && e.response?.statusCode == 404) {
+        debugPrint('⚠️ Subscription sync endpoint /api/subscription/sync not found (404). This is expected if not yet implemented on backend.');
+      } else {
+        debugPrint('❌ Subscription sync failed: $e');
+      }
     }
   }
 }

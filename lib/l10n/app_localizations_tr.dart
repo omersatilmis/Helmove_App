@@ -2234,4 +2234,8 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get privacyBottomBannerText => 'Helmove Güvenli Sürüş Platformu';
+
+  @override
+  String get supportVisitWebsite =>
+      'Daha fazla bilgi için web sitemizi ziyaret edebilirsiniz.';
 }

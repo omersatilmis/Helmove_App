@@ -13,6 +13,39 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     : super(DiscoverInitial()) {
     on<SearchUsersEvent>(_onSearchUsers);
     on<LoadDiscoveryContent>(_onLoadDiscoveryContent);
+    on<LocalLikeDiscoverPostEvent>(_onLocalLikePost);
+    on<LocalDeleteDiscoverPostEvent>(_onLocalDeletePost);
+  }
+
+  void _onLocalLikePost(
+    LocalLikeDiscoverPostEvent event,
+    Emitter<DiscoverState> emit,
+  ) {
+    if (state is DiscoverDiscoveryLoaded) {
+      final loadedState = state as DiscoverDiscoveryLoaded;
+      final updatedContent = loadedState.content.map((post) {
+        if (post.id == event.postId) {
+          final isLiked = !post.isLiked;
+          return post.copyWith(
+            isLiked: isLiked,
+            likeCount: isLiked ? post.likeCount + 1 : post.likeCount - 1,
+          );
+        }
+        return post;
+      }).toList();
+      emit(loadedState.copyWith(content: updatedContent));
+    }
+  }
+
+  void _onLocalDeletePost(
+    LocalDeleteDiscoverPostEvent event,
+    Emitter<DiscoverState> emit,
+  ) {
+    if (state is DiscoverDiscoveryLoaded) {
+      final loadedState = state as DiscoverDiscoveryLoaded;
+      final updatedContent = loadedState.content.where((p) => p.id != event.postId).toList();
+      emit(loadedState.copyWith(content: updatedContent));
+    }
   }
 
   Future<void> _onSearchUsers(

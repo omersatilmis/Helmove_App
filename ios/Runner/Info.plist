@@ -64,6 +64,8 @@
 		<string>remote-notification</string>
 		<string>processing</string>
 	</array>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Sesli iletisim kurabilmeniz icin mikrofona ihtiyacimiz var.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

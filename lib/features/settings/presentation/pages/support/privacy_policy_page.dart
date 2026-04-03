@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:helmove/core/theme/app_colors.dart';
 import 'package:helmove/l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 class PrivacyPolicyPage extends StatelessWidget {
   const PrivacyPolicyPage({super.key});
@@ -38,6 +38,8 @@ class PrivacyPolicyPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildLastUpdated(isDark, l10n),
+
+            _buildWebLink(context, isDark, l10n),
             const SizedBox(height: 24),
 
             _buildSection(
@@ -77,7 +79,6 @@ class PrivacyPolicyPage extends StatelessWidget {
             ),
 
             const SizedBox(height: 16),
-            _buildWebLink(isDark, l10n),
 
             const SizedBox(height: 40),
             _buildBottomBanner(isDark, l10n),
@@ -88,31 +89,33 @@ class PrivacyPolicyPage extends StatelessWidget {
     );
   }
 
-  Widget _buildWebLink(bool isDark, AppLocalizations l10n) {
+  Widget _buildWebLink(
+    BuildContext context,
+    bool isDark,
+    AppLocalizations l10n,
+  ) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          l10n.privacyWebInfoText,
+          l10n.supportVisitWebsite,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+            color: isDark
+                ? AppColors.darkTextSecondary
+                : AppColors.lightTextSecondary,
           ),
         ),
         const SizedBox(height: 8),
         InkWell(
-          onTap: () async {
-            final url = Uri.parse('https://helmove.com/privacy-policy');
-            try {
-              if (await canLaunchUrl(url)) {
-                await launchUrl(
-                  url,
-                  mode: LaunchMode.inAppBrowserView,
-                );
-              }
-            } catch (e) {
-              debugPrint('Url açılamadı: $e');
-            }
+          onTap: () {
+            context.push(
+              '/webview',
+              extra: {
+                'url': 'https://helmove.com/privacy-policy',
+                'title': l10n.privacyWebLinkText,
+              },
+            );
           },
           child: Text(
             l10n.privacyWebLinkText,
@@ -124,6 +127,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 32),
       ],
     );
   }
