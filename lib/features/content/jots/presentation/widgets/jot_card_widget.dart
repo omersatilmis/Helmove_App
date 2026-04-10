@@ -199,7 +199,7 @@ class JotCardWidget extends StatelessWidget {
                                             ),
                                           ),
                                           Text(
-                                            " â€¢ $timeAgo",
+                                            " - $timeAgo",
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: textSecondary,

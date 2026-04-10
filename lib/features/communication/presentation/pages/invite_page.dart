@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_background.dart';
+import '../../../../core/utils/friendship_error_mapper.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
 // --- DOMAIN & ENTITIES ---
@@ -152,9 +153,15 @@ class _InviteViewState extends State<_InviteView> {
               );
               context.pop();
             } else if (state.status == VoiceSessionStatus.error) {
+              final mappedMessage = FriendshipErrorMapper.mapForUi(
+                rawMessage: state.message ?? l10n.unknownError,
+                l10n: l10n,
+                fallback: l10n.unknownError,
+              );
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.message ?? l10n.unknownError),
+                  content: Text(mappedMessage),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -164,9 +171,15 @@ class _InviteViewState extends State<_InviteView> {
         BlocListener<GroupRideBloc, GroupRideState>(
           listener: (context, state) {
             if (state is GroupRideFailure) {
+              final mappedMessage = FriendshipErrorMapper.mapForUi(
+                rawMessage: state.message,
+                l10n: l10n,
+                fallback: l10n.errorOccurred,
+              );
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(l10n.errorWithPrefix(state.message)),
+                  content: Text(l10n.errorWithPrefix(mappedMessage)),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -526,7 +539,12 @@ class _InviteViewState extends State<_InviteView> {
         if (state is DiscoverLoading) {
           return const Center(child: CircularProgressIndicator());
         } else if (state is DiscoverFailure) {
-          return Center(child: Text(state.message));
+          final mappedMessage = FriendshipErrorMapper.mapForUi(
+            rawMessage: state.message,
+            l10n: l10n,
+            fallback: l10n.errorOccurred,
+          );
+          return Center(child: Text(mappedMessage));
         } else if (state is DiscoverLoaded) {
           final results = state.results;
           if (results.isEmpty) {
@@ -550,7 +568,12 @@ class _InviteViewState extends State<_InviteView> {
         if (state is FriendshipListLoading) {
           return const Center(child: CircularProgressIndicator());
         } else if (state is FriendshipListFailure) {
-          return Center(child: Text(state.message));
+          final mappedMessage = FriendshipErrorMapper.mapForUi(
+            rawMessage: state.message,
+            l10n: l10n,
+            fallback: l10n.errorOccurred,
+          );
+          return Center(child: Text(mappedMessage));
         } else if (state is MyFriendsLoaded) {
           final friends = state.friends;
           if (friends.isEmpty) {

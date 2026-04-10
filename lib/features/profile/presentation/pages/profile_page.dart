@@ -20,6 +20,7 @@ import 'package:helmove/l10n/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart'
     hide ReadContext, WatchContext, SelectContext;
 import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/utils/friendship_error_mapper.dart';
 import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_bloc.dart';
 import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_event.dart';
 import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_state.dart';
@@ -542,8 +543,14 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
               }
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(actionState.message)));
             } else if (actionState is FriendshipActionFailure) {
+              final mappedMessage = FriendshipErrorMapper.mapForUi(
+                rawMessage: actionState.error,
+                l10n: l10n,
+                fallback: l10n.errorOccurred,
+              );
+
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(actionState.error), backgroundColor: Colors.red),
+                SnackBar(content: Text(mappedMessage), backgroundColor: Colors.red),
               );
             }
           },
@@ -616,6 +623,27 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => FollowListPage(userId: targetId, type: FollowListType.following)),
                     );
                   }
+                },
+                onMessageTap: () {
+                  final targetId = otherUserId;
+                  if (targetId == null || targetId <= 0) return;
+
+                  final safeFirstName = firstName.trim().isNotEmpty
+                      ? firstName
+                      : (username.trim().isNotEmpty ? username : 'User');
+
+                  final uri = Uri(
+                    path: '/chat/$targetId',
+                    queryParameters: {
+                      'firstName': safeFirstName,
+                      'lastName': lastName,
+                      'username': username,
+                      if (profileImageUrl != null && profileImageUrl!.isNotEmpty)
+                        'profileImageUrl': profileImageUrl!,
+                    },
+                  );
+
+                  context.push(uri.toString());
                 },
                 onFollowTap: () {
                   if (otherUserId != null) {

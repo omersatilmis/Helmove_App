@@ -1477,6 +1477,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorOccurred => 'An error occurred';
 
   @override
+  String get chatFriendshipRequiredMessage =>
+      'You need to be friends with this person to message them. Please send a friend request.';
+
+  @override
+  String get chatTypingIndicator => 'typing...';
+
+  @override
   String get mapSelectStop => 'Select stop from map';
 
   @override

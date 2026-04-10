@@ -348,13 +348,19 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/prepare_media',
         redirect: (context, state) {
-          if (state.extra == null || state.extra is! File) {
+          final hasExtraFile = state.extra is File;
+          final pathParam = state.uri.queryParameters['path'];
+          final hasPathParam = pathParam != null && pathParam.trim().isNotEmpty;
+
+          if (!hasExtraFile && !hasPathParam) {
             return '/homepage';
           }
           return null;
         },
         builder: (context, state) {
-          final file = state.extra as File;
+          final file = state.extra is File
+              ? state.extra as File
+              : File(state.uri.queryParameters['path']!);
           return PrepareMediaPage(imageFile: file);
         },
       ),

@@ -5,6 +5,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/utils/friendship_error_mapper.dart';
 import '../../../follow/presentation/bloc/list/follow_list_bloc.dart';
 import '../../../follow/presentation/bloc/list/follow_list_event.dart';
 import '../../../follow/presentation/bloc/list/follow_list_state.dart';
@@ -62,9 +63,15 @@ class _BlockedUsersView extends StatelessWidget {
           // Refresh the list after unblocking
           context.read<BlockedListBloc>().add(const LoadBlockedUsersEvent(refresh: true));
         } else if (state is FollowActionError) {
+          final mappedMessage = FriendshipErrorMapper.mapForUi(
+            rawMessage: state.message,
+            l10n: l10n,
+            fallback: l10n.errorOccurred,
+          );
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(mappedMessage),
               backgroundColor: Colors.red,
             ),
           );

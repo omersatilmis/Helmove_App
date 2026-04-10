@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/widgets/app_input_field.dart';
+import '../../../../core/utils/friendship_error_mapper.dart';
 import '../../../../core/di/injection_container.dart';
 import '../bloc/chat/chat_bloc.dart';
 import '../bloc/chat/chat_event.dart';
@@ -209,8 +210,14 @@ class _ChatViewState extends State<ChatView> {
             );
             if (Navigator.canPop(context)) Navigator.pop(context);
           } else if (state is FollowActionError) {
+            final mappedMessage = FriendshipErrorMapper.mapForUi(
+              rawMessage: state.message,
+              l10n: l10n,
+              fallback: l10n.errorOccurred,
+            );
+
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              SnackBar(content: Text(mappedMessage), backgroundColor: Colors.red),
             );
           }
         },
@@ -228,8 +235,20 @@ class _ChatViewState extends State<ChatView> {
                 }
 
                 if (state is ChatError) {
+                  final l10n = AppLocalizations.of(context)!;
+                  final displayMessage = state.type == ChatErrorType.friendshipRequired
+                      ? l10n.chatFriendshipRequiredMessage
+                      : (state.message.isNotEmpty ? state.message : l10n.errorOccurred);
+
                   return Center(
-                    child: Text('${AppLocalizations.of(context)!.errorOccurred}: ${state.message}'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Text(
+                        displayMessage,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
                   );
                 }
 
@@ -383,7 +402,7 @@ class _ChatViewState extends State<ChatView> {
                     ),
                     Text(
                       isTyping
-                          ? 'yazıyor...'
+                          ? AppLocalizations.of(context)!.chatTypingIndicator
                           : _presenceLabel(isOnline: isOnline, lastSeen: lastSeen),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: isTyping

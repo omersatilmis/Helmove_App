@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:helmove/l10n/app_localizations.dart';
 
 import '../../../content/jots/domain/entities/jot_entity.dart';
 import '../../../content/jots/presentation/widgets/jot_card_widget.dart';
@@ -251,7 +252,7 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
           onPressed: () => Navigator.of(context).maybePop(),
           tooltip: 'Geri',
         ),
-        title: const Text('Kesfet'),
+        title: Text(AppLocalizations.of(context)!.bottomNavDiscover),
       ),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -433,6 +434,7 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
     );
   }
 }
+
 
 
 

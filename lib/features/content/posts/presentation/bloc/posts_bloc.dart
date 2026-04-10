@@ -2,6 +2,7 @@
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/services/app_session.dart';
+import '../../../../../core/services/post_like_sync_bus.dart';
 import '../../../../auth/domain/usecases/get_current_user_id_use_case.dart';
 import '../../domain/usecases/delete_post_usecase.dart';
 import '../../domain/usecases/get_feed_usecase.dart';
@@ -25,6 +26,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
   final AppSession appSession;
   final PostFeedCache postFeedCache;
   StreamSubscription<int?>? _appSessionUserIdSubscription;
+  StreamSubscription<PostLikeSyncPayload>? _postLikeSyncSubscription;
 
   PostsBloc({
     required this.getFeed,
@@ -39,11 +41,26 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     on<GetUserPostsEvent>(_onGetUserPosts);
     on<DeletePostEvent>(_onDeletePost);
     on<LikePostEvent>(_onLikePost);
+    on<SyncPostLikeStateEvent>(_onSyncPostLikeState);
     on<AdjustPostCommentCountEvent>(_onAdjustPostCommentCount);
     on<PostsCurrentUserChangedEvent>(_onPostsCurrentUserChanged);
     on<SeedInitialFeedEvent>(_onSeedInitialFeed);
 
     Future.microtask(_initializeCurrentUserBridge);
+
+    _postLikeSyncSubscription = PostLikeSyncBus.instance.stream.listen((payload) {
+      if (payload.origin == PostLikeSyncOrigin.posts || isClosed) {
+        return;
+      }
+
+      add(
+        SyncPostLikeStateEvent(
+          postId: payload.postId,
+          isLiked: payload.isLiked,
+          likeCount: payload.likeCount,
+        ),
+      );
+    });
   }
 
   Future<void> _initializeCurrentUserBridge() async {
@@ -382,6 +399,15 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
 
         emit(state.copyWith(posts: updatedPosts));
         _syncFirstPageCacheIfPossible(updatedPosts);
+        final syncedPost = updatedPosts[targetIndex];
+        PostLikeSyncBus.instance.emit(
+          PostLikeSyncPayload(
+            postId: event.postId,
+            isLiked: syncedPost.isLiked,
+            likeCount: syncedPost.likeCount,
+            origin: PostLikeSyncOrigin.posts,
+          ),
+        );
       } else if (event.currentIsLiked != null) {
         optimisticIsLiked = !event.currentIsLiked!;
       } else {
@@ -404,6 +430,19 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
               errorMessage: failure.message,
             ),
           );
+
+          final originalPost = originalPosts.firstWhere(
+            (post) => post.id == event.postId,
+            orElse: () => updatedPosts[targetIndex],
+          );
+          PostLikeSyncBus.instance.emit(
+            PostLikeSyncPayload(
+              postId: event.postId,
+              isLiked: originalPost.isLiked,
+              likeCount: originalPost.likeCount,
+              origin: PostLikeSyncOrigin.posts,
+            ),
+          );
         },
         (_) => null,
       );
@@ -415,6 +454,31 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
         ),
       );
     }
+  }
+
+  void _onSyncPostLikeState(
+    SyncPostLikeStateEvent event,
+    Emitter<PostsState> emit,
+  ) {
+    var changed = false;
+    final updatedPosts = state.posts.map((post) {
+      if (post.id != event.postId) {
+        return post;
+      }
+
+      changed = true;
+      return post.copyWith(
+        isLiked: event.isLiked,
+        likeCount: event.likeCount,
+      );
+    }).toList();
+
+    if (!changed) {
+      return;
+    }
+
+    emit(state.copyWith(posts: updatedPosts));
+    _syncFirstPageCacheIfPossible(updatedPosts);
   }
 
   void _onAdjustPostCommentCount(
@@ -472,6 +536,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
   @override
   Future<void> close() {
     _appSessionUserIdSubscription?.cancel();
+    _postLikeSyncSubscription?.cancel();
     return super.close();
   }
 }

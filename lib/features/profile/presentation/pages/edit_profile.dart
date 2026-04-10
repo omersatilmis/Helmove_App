@@ -327,7 +327,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         )
                       else
                         Image.asset(
-                          'assets/images/profile_bg_photo.png',
+                          'assets/images/background_placeholder.png',
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(

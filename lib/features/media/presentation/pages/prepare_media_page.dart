@@ -32,6 +32,16 @@ class _PrepareMediaPageState extends State<PrepareMediaPage> {
   void initState() {
     super.initState();
     _currentImageFile = widget.imageFile;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_currentImageFile.existsSync()) {
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n?.image_upload_error ?? 'Image not found.')),
+        );
+        context.pop();
+      }
+    });
   }
 
   @override

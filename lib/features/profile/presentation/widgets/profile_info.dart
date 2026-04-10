@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:helmove/core/utils/image_url_extensions.dart';
@@ -10,9 +8,8 @@ import 'package:helmove/features/friendship/domain/entities/friendship_status.da
 import 'package:helmove/features/friendship/presentation/bloc/status/friendship_status_state.dart';
 import 'package:helmove/core/theme/app_colors.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
-import 'package:go_router/go_router.dart';
 import 'package:helmove/core/enums/user_tier.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:helmove/core/widgets/add_content_bottom_sheet.dart';
 
 class ProfileInfo extends StatelessWidget {
   final String firstName;
@@ -101,9 +98,6 @@ class ProfileInfo extends StatelessWidget {
             tier: tier,
           ),
 
-          // Bio bölümü (varsa göster)
-          if (bio != null && bio!.isNotEmpty) _BioSection(bio: bio!),
-
           _StatsSection(
             friendCount: friendCount ?? "0",
             followerCount: followerCount ?? "0",
@@ -139,69 +133,6 @@ class ProfileInfo extends StatelessWidget {
   }
 }
 
-class _AddContentItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _AddContentItem({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: theme.colorScheme.primary, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ProfileHeaderSection extends StatelessWidget {
   final String? profileImageUrl;
 
@@ -228,7 +159,7 @@ class _ProfileHeaderSection extends StatelessWidget {
               },
               blendMode: BlendMode.dstIn,
               child: Image.asset(
-                'assets/images/profile_bg_photo.png',
+                'assets/images/background_placeholder.png',
                 fit: BoxFit.cover,
               ),
             ),
@@ -522,7 +453,7 @@ class _ActionButtonsSection extends StatelessWidget {
       const SizedBox(width: 12),
       Expanded(
         child: OutlinedButton.icon(
-          onPressed: () => _showAddContentSheet(context),
+          onPressed: () => AddContentBottomSheet.show(context),
           icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
           label: Text(
             AppLocalizations.of(context)!.addContent,
@@ -540,166 +471,6 @@ class _ActionButtonsSection extends StatelessWidget {
         ),
       ),
     ];
-  }
-
-  void _showAddContentSheet(BuildContext context) {
-    final theme = Theme.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.dividerColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  AppLocalizations.of(context)!.createNewContent,
-                  style: AppTextStyles.h3.copyWith(fontSize: 18),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _AddContentItem(
-                icon: Icons.image_outlined,
-                title: AppLocalizations.of(context)!.postType,
-                subtitle: AppLocalizations.of(context)!.sharePhotoOrVideo,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showAddPostSourceSheet(context);
-                },
-              ),
-              const SizedBox(height: 8),
-              _AddContentItem(
-                icon: Icons.edit_note_rounded,
-                title: AppLocalizations.of(context)!.jotType,
-                subtitle: AppLocalizations.of(context)!.shareShortTextOrThought,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  context.push('/create_jots');
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showAddPostSourceSheet(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-
-    if (l10n == null) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.dividerColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  l10n.createPost,
-                  style: AppTextStyles.h3.copyWith(fontSize: 18),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _AddContentItem(
-                icon: Icons.photo_camera_rounded,
-                title: l10n.shareSheetCameraTitle,
-                subtitle: l10n.shareSheetCameraSubtitle,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  context.push('/add_post');
-                },
-              ),
-              const SizedBox(height: 8),
-              _AddContentItem(
-                icon: Icons.photo_library_rounded,
-                title: l10n.shareSheetGalleryTitle,
-                subtitle: l10n.shareSheetGallerySubtitle,
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  await _pickFromGalleryAndOpenPrepareMedia(context);
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _pickFromGalleryAndOpenPrepareMedia(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
-    if (l10n == null) return;
-
-    try {
-      final picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 90,
-        maxWidth: 2048,
-      );
-
-      if (image == null) return;
-
-      final file = File(image.path);
-      if (!file.existsSync()) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.image_upload_error)),
-          );
-        }
-        return;
-      }
-
-      if (context.mounted) {
-        context.push('/prepare_media', extra: file);
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.image_upload_error),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    }
   }
 
   List<Widget> _buildOtherProfileButtons(BuildContext context) {

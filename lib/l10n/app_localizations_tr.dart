@@ -1475,6 +1475,13 @@ class AppLocalizationsTr extends AppLocalizations {
   String get errorOccurred => 'Hata oluştu';
 
   @override
+  String get chatFriendshipRequiredMessage =>
+      'Bu kişi ile mesajlaşmanız için arkadaş olmanız gerekiyor. Lütfen arkadaşlık isteği gönderin.';
+
+  @override
+  String get chatTypingIndicator => 'yazıyor...';
+
+  @override
   String get mapSelectStop => 'Haritadan durak seçiniz';
 
   @override

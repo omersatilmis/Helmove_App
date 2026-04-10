@@ -2870,6 +2870,18 @@ abstract class AppLocalizations {
   /// **'An error occurred'**
   String get errorOccurred;
 
+  /// No description provided for @chatFriendshipRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You need to be friends with this person to message them. Please send a friend request.'**
+  String get chatFriendshipRequiredMessage;
+
+  /// No description provided for @chatTypingIndicator.
+  ///
+  /// In en, this message translates to:
+  /// **'typing...'**
+  String get chatTypingIndicator;
+
   /// No description provided for @mapSelectStop.
   ///
   /// In en, this message translates to:

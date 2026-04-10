@@ -1,17 +1,18 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import '../../../friendship/data/dto/friend_user_dto.dart';
-import '../../../profile/data/api/profile_endpoints.dart';
-import '../../../content/posts/data/models/post_model.dart';
+
 import '../../../../core/models/paged_result.dart';
 import '../../../../core/models/pagination_metadata.dart';
+import '../../../content/posts/data/models/post_model.dart';
+import '../../../friendship/data/dto/friend_user_dto.dart';
+import '../../../profile/data/api/profile_endpoints.dart';
 
 class DiscoverApi {
   final Dio _dio;
 
   DiscoverApi(this._dio);
 
-  /// KullanÄ±cÄ± arama
+  /// Kullanici arama
   Future<List<FriendUserModel>> searchUsers(
     String query, {
     String? city,
@@ -27,10 +28,8 @@ class DiscoverApi {
         queryParams['city'] = city;
       }
 
-      debugPrint(
-        'ğŸ” [DiscoverApi] searchUsers - URL: ${ProfileEndpoints.search}',
-      );
-      debugPrint('ğŸ” [DiscoverApi] searchUsers - Params: $queryParams');
+      debugPrint('[DiscoverApi] searchUsers - URL: ${ProfileEndpoints.search}');
+      debugPrint('[DiscoverApi] searchUsers - Params: $queryParams');
 
       final response = await _dio.get(
         ProfileEndpoints.search,
@@ -42,11 +41,11 @@ class DiscoverApi {
         (json) => FriendUserModel.fromJson(json),
       );
     } catch (e) {
-      throw _handleError(e, 'KullanÄ±cÄ± aramasÄ± baÅŸarÄ±sÄ±z');
+      throw _handleError(e, 'Kullanici aramasi basarisiz');
     }
   }
 
-  /// KeÅŸfet iÃ§eriÄŸi â€” herkese aÃ§Ä±k postlar (arkadaÅŸ/takip filtresi yok)
+  /// Kesfet icerigi - herkese acik postlar (arkadas/takip filtresi yok)
   Future<PagedResult<PostModel>> getExploreContent({
     int page = 1,
     int limit = 20,
@@ -70,7 +69,7 @@ class DiscoverApi {
 
       return PagedResult(items: items, metadata: meta);
     } catch (e) {
-      throw _handleError(e, 'KeÅŸfet iÃ§eriÄŸi yÃ¼klenemedi');
+      throw _handleError(e, 'Kesfet icerigi yuklenemedi');
     }
   }
 
@@ -86,9 +85,8 @@ class DiscoverApi {
 
   Exception _handleError(dynamic e, String defaultMessage) {
     if (e is DioException) {
-      return Exception("$defaultMessage: ${e.response?.statusCode}");
+      return Exception('$defaultMessage: ${e.response?.statusCode}');
     }
-    return Exception("$defaultMessage: $e");
+    return Exception('$defaultMessage: $e');
   }
 }
-

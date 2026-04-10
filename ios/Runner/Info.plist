@@ -68,6 +68,12 @@
 	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Sesli iletisim kurabilmeniz icin mikrofona ihtiyacimiz var.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Post paylasabilmeniz icin kameraya erisim iznine ihtiyacimiz var.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Galeriden gorsel secip paylasabilmeniz icin fotograflara erisim iznine ihtiyacimiz var.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Gorselleri kaydedebilmeniz icin fotograf kitapligina yazma iznine ihtiyacimiz var.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Kask interkom cihaziniza baglanabilmek icin Bluetooth iznine ihtiyacimiz var.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

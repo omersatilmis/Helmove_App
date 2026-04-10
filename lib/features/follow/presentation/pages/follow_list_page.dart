@@ -8,6 +8,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/utils/friendship_error_mapper.dart';
 import '../bloc/list/follow_list_bloc.dart';
 import '../bloc/list/follow_list_event.dart';
 import '../bloc/list/follow_list_state.dart';
@@ -61,8 +62,15 @@ class FollowListPage extends StatelessWidget {
                   isFollowing: false,
                 );
               } else if (state is FollowActionError) {
+                final l10n = AppLocalizations.of(context)!;
+                final mappedMessage = FriendshipErrorMapper.mapForUi(
+                  rawMessage: state.message,
+                  l10n: l10n,
+                  fallback: l10n.errorOccurred,
+                );
+
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+                  SnackBar(content: Text(mappedMessage), backgroundColor: Colors.red),
                 );
               }
             },

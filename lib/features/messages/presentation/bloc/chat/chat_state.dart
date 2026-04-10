@@ -8,6 +8,8 @@ abstract class ChatState extends Equatable {
   List<Object> get props => [];
 }
 
+enum ChatErrorType { generic, friendshipRequired }
+
 class ChatInitial extends ChatState {}
 
 class ChatLoading extends ChatState {}
@@ -60,9 +62,10 @@ class ChatLoaded extends ChatState {
 
 class ChatError extends ChatState {
   final String message;
+  final ChatErrorType type;
 
-  const ChatError(this.message);
+  const ChatError(this.message, {this.type = ChatErrorType.generic});
 
   @override
-  List<Object> get props => [message];
+  List<Object> get props => [message, type];
 }

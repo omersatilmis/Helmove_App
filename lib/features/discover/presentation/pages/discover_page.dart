@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:async';
 import 'package:helmove/core/di/injection_container.dart' as di;
 import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/utils/friendship_error_mapper.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../bloc/discover_bloc.dart';
@@ -25,7 +25,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
   late final TextEditingController _searchController;
   final Future<void> _initFuture = di.initDeferredFeatures();
   DiscoverBloc? _discoverBloc;
-  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -37,19 +36,10 @@ class _DiscoverPageState extends State<DiscoverPage> {
     if (_discoverBloc != null) return;
 
     _discoverBloc = sl<DiscoverBloc>()..add(const LoadDiscoveryContent());
-    _refreshTimer = Timer.periodic(const Duration(seconds: 25), (_) {
-      if (!mounted || _discoverBloc == null) return;
-
-      final route = ModalRoute.of(context);
-      if (route?.isCurrent != true) return;
-
-      _discoverBloc!.add(const LoadDiscoveryContent(isRefresh: true));
-    });
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     _discoverBloc?.close();
     _searchController.dispose();
     super.dispose();
@@ -105,7 +95,13 @@ class _DiscoverPageState extends State<DiscoverPage> {
                             if (state is DiscoverLoading) {
                               return const DiscoverShimmer();
                             } else if (state is DiscoverFailure) {
-                              return Center(child: Text(state.message));
+                              final l10n = AppLocalizations.of(context)!;
+                              final mappedMessage = FriendshipErrorMapper.mapForUi(
+                                rawMessage: state.message,
+                                l10n: l10n,
+                                fallback: l10n.errorOccurred,
+                              );
+                              return Center(child: Text(mappedMessage));
                             } else if (state is DiscoverDiscoveryLoaded) {
                               return _buildDiscoveryGrid(state, theme, context);
                             }

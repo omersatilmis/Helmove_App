@@ -3,6 +3,7 @@ import 'package:helmove/l10n/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/friendship_error_mapper.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
@@ -107,13 +108,20 @@ class _DiscoverSearchPageState extends State<DiscoverSearchPage> {
           } 
           
           if (state is DiscoverFailure) {
+            final l10n = AppLocalizations.of(context)!;
+            final mappedMessage = FriendshipErrorMapper.mapForUi(
+              rawMessage: state.message,
+              l10n: l10n,
+              fallback: l10n.errorOccurred,
+            );
+
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                    Icon(Icons.error_outline_rounded, size: 64, color: cs.error.withValues(alpha: 0.5)),
                    const SizedBox(height: 16),
-                   Text(state.message),
+                   Text(mappedMessage),
                 ],
               ),
             );

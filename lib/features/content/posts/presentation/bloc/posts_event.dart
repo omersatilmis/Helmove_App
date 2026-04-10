@@ -55,6 +55,21 @@ class LikePostEvent extends PostsEvent {
   List<Object?> get props => [postId, currentIsLiked];
 }
 
+class SyncPostLikeStateEvent extends PostsEvent {
+  final int postId;
+  final bool isLiked;
+  final int likeCount;
+
+  const SyncPostLikeStateEvent({
+    required this.postId,
+    required this.isLiked,
+    required this.likeCount,
+  });
+
+  @override
+  List<Object?> get props => [postId, isLiked, likeCount];
+}
+
 class AdjustPostCommentCountEvent extends PostsEvent {
   final int postId;
   final int delta;

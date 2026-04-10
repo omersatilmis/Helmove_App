@@ -112,6 +112,7 @@ class _JotDetailPageState extends State<JotDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
 
     return BlocProvider(
       create: (context) => sl<CommentsBloc>()
@@ -129,6 +130,7 @@ class _JotDetailPageState extends State<JotDetailPage> {
         child: AppBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
+            resizeToAvoidBottomInset: false,
             appBar: AppBar(
               title: Text(AppLocalizations.of(context)!.jot),
               centerTitle: true,
@@ -229,6 +231,7 @@ class _JotDetailPageState extends State<JotDetailPage> {
                   contentId: _currentJot.id,
                   controller: _commentController,
                   focusNode: _commentFocusNode,
+                  keyboardInset: keyboardInset,
                 ),
               ],
             ),
@@ -251,107 +254,107 @@ class _CommentInput extends StatelessWidget {
   final int contentId;
   final TextEditingController controller;
   final FocusNode focusNode;
+  final double keyboardInset;
 
   const _CommentInput({
     required this.contentId,
     required this.controller,
     required this.focusNode,
+    required this.keyboardInset,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final safeBottom = MediaQuery.of(context).padding.bottom;
+    final keyboard = keyboardInset.clamp(0.0, double.infinity);
+    final bottomInset = keyboard > 0 ? keyboard : safeBottom + 8;
 
-    return AnimatedPadding(
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      duration: const Duration(milliseconds: 220),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      child: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-        ),
-        padding: EdgeInsets.only(
-          bottom: safeBottom + 8,
-          left: 16,
-          right: 8,
-          top: 8,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: AppInputField(
-                controller: controller,
-                focusNode: focusNode,
-                type: AppInputType.standard,
-                variant: AppInputVariant.filled,
-                size: AppInputSize.small,
-                hint: AppLocalizations.of(context)!.shareYourReply,
-                minLines: 1,
-                maxLines: 4,
-                radius: 22,
-                showFocusBorder: false,
-              ),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+      ),
+      padding: EdgeInsets.only(
+        bottom: bottomInset,
+        left: 16,
+        right: 8,
+        top: 8,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: AppInputField(
+              controller: controller,
+              focusNode: focusNode,
+              type: AppInputType.standard,
+              variant: AppInputVariant.filled,
+              size: AppInputSize.small,
+              hint: AppLocalizations.of(context)!.shareYourReply,
+              minLines: 1,
+              maxLines: 4,
+              radius: 22,
+              showFocusBorder: false,
             ),
-            const SizedBox(width: 8),
-            ValueListenableBuilder<TextEditingValue>(
-              valueListenable: controller,
-              builder: (context, value, child) {
-                final hasText = value.text.trim().isNotEmpty;
-                return BlocBuilder<CommentsBloc, CommentsState>(
-                  builder: (context, state) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0, left: 8.0),
-                      child: TextButton(
-                        onPressed: (state.isPostingComment || !hasText)
-                            ? null
-                            : () {
-                                final text = controller.text.trim();
-                                if (text.isNotEmpty) {
-                                  context.read<CommentsBloc>().add(
-                                        AddCommentEvent(contentId: contentId, text: text),
-                                      );
-                                  controller.clear();
-                                  focusNode.unfocus();
-                                }
-                              },
-                        style: TextButton.styleFrom(
-                          backgroundColor: hasText ? colorScheme.primary : Colors.transparent,
-                          foregroundColor: hasText ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          minimumSize: Size.zero,
+          ),
+          const SizedBox(width: 8),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, child) {
+              final hasText = value.text.trim().isNotEmpty;
+              return BlocBuilder<CommentsBloc, CommentsState>(
+                builder: (context, state) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0, left: 8.0),
+                    child: TextButton(
+                      onPressed: (state.isPostingComment || !hasText)
+                          ? null
+                          : () {
+                              final text = controller.text.trim();
+                              if (text.isNotEmpty) {
+                                context.read<CommentsBloc>().add(
+                                      AddCommentEvent(contentId: contentId, text: text),
+                                    );
+                                controller.clear();
+                                focusNode.unfocus();
+                              }
+                            },
+                      style: TextButton.styleFrom(
+                        backgroundColor: hasText ? colorScheme.primary : Colors.transparent,
+                        foregroundColor: hasText ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: state.isPostingComment
-                            ? SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
-                                ),
-                              )
-                            : Text(
-                                AppLocalizations.of(context)!.reply,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: hasText ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.4),
-                                ),
-                              ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        minimumSize: Size.zero,
                       ),
-                    );
-                  },
-                );
-              },
-            ),
-          ],
-        ),
+                      child: state.isPostingComment
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
+                              ),
+                            )
+                          : Text(
+                              AppLocalizations.of(context)!.reply,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: hasText ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.4),
+                              ),
+                            ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
 import '../../../../core/widgets/app_background.dart';
+import '../../../../core/utils/friendship_error_mapper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
@@ -217,9 +218,15 @@ class _GroupSettingsState extends State<GroupSettings>
           );
           context.go('/communication');
         } else if (state is GroupRideFailure) {
+          final mappedMessage = FriendshipErrorMapper.mapForUi(
+            rawMessage: state.message,
+            l10n: l10n,
+            fallback: l10n.errorOccurred,
+          );
+
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text("${l10n.errorPrefix}: ${state.message}")));
+          ).showSnackBar(SnackBar(content: Text(l10n.errorWithPrefix(mappedMessage))));
         } else if (state is GroupRideSuccess) {
           _updateControllers(state.ride);
           if (state.message.contains(l10n.updated)) {

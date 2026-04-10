@@ -59,8 +59,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Klavye yüksekliğini dinlemek için
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
 
     return BlocProvider(
       create: (context) => sl<CommentsBloc>()
@@ -80,8 +79,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
             widget.onCommentCountDelta?.call(delta);
           }
         },
-        child: Padding(
-          padding: EdgeInsets.only(bottom: bottomPadding),
+        child: MediaQuery.removeViewInsets(
+          context: context,
+          removeBottom: true,
           child: DraggableScrollableSheet(
             initialChildSize: 0.75,
             minChildSize: 0.5,
@@ -110,11 +110,12 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       ),
                     ),
 
-                    // Input Alanı
+                    // Input Alanı (yalnızca bu alan klavyeye göre hareket eder)
                     _CommentInputArea(
                       contentId: widget.contentId,
                       controller: _commentController,
                       focusNode: _commentFocusNode,
+                      keyboardInset: keyboardInset,
                     ),
                   ],
                 ),
@@ -589,11 +590,13 @@ class _CommentInputArea extends StatefulWidget {
   final int contentId;
   final TextEditingController controller;
   final FocusNode focusNode;
+  final double keyboardInset;
 
   const _CommentInputArea({
     required this.contentId,
     required this.controller,
     required this.focusNode,
+    required this.keyboardInset,
   });
 
   @override
@@ -607,6 +610,16 @@ class _CommentInputAreaState extends State<_CommentInputArea> {
   void initState() {
     super.initState();
     widget.controller.addListener(_updateComposing);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CommentInputArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_updateComposing);
+      widget.controller.addListener(_updateComposing);
+      _updateComposing();
+    }
   }
 
   @override
@@ -635,8 +648,14 @@ class _CommentInputAreaState extends State<_CommentInputArea> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+    final keyboardInset = widget.keyboardInset.clamp(0.0, double.infinity);
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    final bottomInset = keyboardInset > 0 ? keyboardInset : safeBottom + 12;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.fromLTRB(12, 12, 12, bottomInset),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
@@ -646,58 +665,56 @@ class _CommentInputAreaState extends State<_CommentInputArea> {
           ),
         ),
       ),
-      child: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // Mevcut Kullanıcının Profil Fotoğrafı
-            const Padding(
-              padding: EdgeInsets.only(bottom: 6),
-              child: AppAvatar(radius: 18, isCurrentUser: true),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Mevcut Kullanıcının Profil Fotoğrafı
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: AppAvatar(radius: 18, isCurrentUser: true),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: AppInputField(
+              controller: widget.controller,
+              focusNode: widget.focusNode,
+              minLines: 1,
+              maxLines: 5,
+              hint: AppLocalizations.of(context)!.add_comment_hint,
+              radius: 24,
+              size: AppInputSize.small,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: AppInputField(
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                minLines: 1,
-                maxLines: 5,
-                hint: AppLocalizations.of(context)!.add_comment_hint,
-                radius: 24,
-                size: AppInputSize.small,
-              ),
-            ),
-            const SizedBox(width: 8),
-            BlocBuilder<CommentsBloc, CommentsState>(
-              builder: (context, state) {
-                if (state.isPostingComment) {
-                  return const SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Padding(
-                      padding: EdgeInsets.all(12.0),
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                }
-                return AnimatedOpacity(
-                  opacity: _isComposing ? 1.0 : 0.4,
-                  duration: const Duration(milliseconds: 200),
-                  child: IconButton(
-                    iconSize: 28,
-                    icon: Icon(
-                      Icons.arrow_circle_up_rounded,
-                      color: _isComposing
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    onPressed: _isComposing ? _submit : null,
+          ),
+          const SizedBox(width: 8),
+          BlocBuilder<CommentsBloc, CommentsState>(
+            builder: (context, state) {
+              if (state.isPostingComment) {
+                return const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 );
-              },
-            ),
-          ],
-        ),
+              }
+              return AnimatedOpacity(
+                opacity: _isComposing ? 1.0 : 0.4,
+                duration: const Duration(milliseconds: 200),
+                child: IconButton(
+                  iconSize: 28,
+                  icon: Icon(
+                    Icons.arrow_circle_up_rounded,
+                    color: _isComposing
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  onPressed: _isComposing ? _submit : null,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

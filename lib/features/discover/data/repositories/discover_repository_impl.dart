@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/error/error_handler.dart';
 import '../../../friendship/domain/entities/friend_user_entity.dart';
 import '../../../content/posts/domain/entities/post_entity.dart';
 import '../../../../core/models/paged_result.dart';
@@ -25,7 +26,7 @@ class DiscoverRepositoryImpl implements DiscoverRepository {
       );
       return Right(result);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      return Left(ServerFailure(ErrorHandler.getErrorMessage(e)));
     }
   }
 
@@ -41,7 +42,7 @@ class DiscoverRepositoryImpl implements DiscoverRepository {
       );
       return Right(PagedResult(items: result.items, metadata: result.metadata));
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      return Left(ServerFailure(ErrorHandler.getErrorMessage(e)));
     }
   }
 }

@@ -37,7 +37,7 @@ class MediaRepositoryImpl implements MediaRepository {
       final tempDir = await getTemporaryDirectory();
       final targetPath = p.join(
         tempDir.path, 
-        "${DateTime.now().millisecondsSinceEpoch}_compressed${p.extension(file.path)}"
+        "${DateTime.now().millisecondsSinceEpoch}_compressed.jpg"
       );
 
       final result = await FlutterImageCompress.compressAndGetFile(
@@ -46,6 +46,8 @@ class MediaRepositoryImpl implements MediaRepository {
         quality: 70, // %70 kalite (boyut/kalite dengesi en iyisi)
         minWidth: 1024, // Max genişlik 1024px
         minHeight: 1024,
+        format: CompressFormat.jpeg,
+        keepExif: true,
       );
 
       if (result != null) {

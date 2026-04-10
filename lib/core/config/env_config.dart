@@ -1,4 +1,4 @@
-﻿/// Environment configuration for the application.
+/// Environment configuration for the application.
 /// This centralizes all environment-specific settings.
 class EnvConfig {
   // Prevent instantiation
@@ -28,4 +28,3 @@ class EnvConfig {
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 15);
 }
-

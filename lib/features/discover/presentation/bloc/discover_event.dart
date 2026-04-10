@@ -33,6 +33,21 @@ class ToggleDiscoverPostLikeEvent extends DiscoverEvent {
   List<Object> get props => [postId];
 }
 
+class SyncDiscoverPostLikeStateEvent extends DiscoverEvent {
+  final int postId;
+  final bool isLiked;
+  final int likeCount;
+
+  const SyncDiscoverPostLikeStateEvent({
+    required this.postId,
+    required this.isLiked,
+    required this.likeCount,
+  });
+
+  @override
+  List<Object> get props => [postId, isLiked, likeCount];
+}
+
 class LocalDeleteDiscoverPostEvent extends DiscoverEvent {
   final int postId;
   const LocalDeleteDiscoverPostEvent(this.postId);

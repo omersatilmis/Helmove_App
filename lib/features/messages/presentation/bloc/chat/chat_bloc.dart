@@ -139,7 +139,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         ),
       );
     } catch (e) {
-      emit(ChatError(e.toString()));
+      emit(_mapChatError(e));
     }
   }
 
@@ -161,9 +161,33 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           currentState.copyWith(messages: updatedMessages, isSending: false),
         );
       } catch (e) {
-        emit(ChatError(e.toString()));
+        emit(_mapChatError(e));
       }
     }
+  }
+
+  ChatError _mapChatError(Object error) {
+    final raw = error.toString().toLowerCase();
+
+    final isFriendshipRestriction =
+        raw.contains('arkadas') ||
+        raw.contains('arkadaş') ||
+        raw.contains('friend') ||
+        raw.contains('not friends') ||
+        raw.contains('friendship') ||
+        raw.contains('forbidden') ||
+        raw.contains('403');
+
+    if (isFriendshipRestriction) {
+      return const ChatError(
+        '',
+        type: ChatErrorType.friendshipRequired,
+      );
+    }
+
+    return ChatError(
+      error.toString().replaceFirst(RegExp(r'^Exception:\s*'), '').trim(),
+    );
   }
 
   Future<void> _onReceiveMessage(

@@ -274,9 +274,17 @@ class CallKitIncomingService {
       id: uuid,
       nameCaller: nameCaller ?? handle,
       handle: handle,
-      type: 1, // 1 for outgoing
+      // Keep call type audio-only. `type: 1` is treated as video by CallKit UIs.
+      type: 0,
       extra: <String, dynamic>{'userId': handle},
-      ios: const IOSParams(handleType: 'generic'),
+      ios: const IOSParams(
+        handleType: 'generic',
+        supportsVideo: false,
+        supportsDTMF: false,
+        supportsHolding: false,
+        supportsGrouping: false,
+        supportsUngrouping: false,
+      ),
       android: const AndroidParams(
         isCustomNotification: true,
         isShowLogo: false,

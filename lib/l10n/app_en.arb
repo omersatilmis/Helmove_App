@@ -584,6 +584,8 @@
     "commentsTitle": "Comments",
     "addCommentHint": "Add a comment...",
     "errorOccurred": "An error occurred",
+    "chatFriendshipRequiredMessage": "You need to be friends with this person to message them. Please send a friend request.",
+    "chatTypingIndicator": "typing...",
     "mapSelectStop": "Select stop from map",
     "mapSearchStops": "Search stops...",
     "mapDirection": "Directions",
