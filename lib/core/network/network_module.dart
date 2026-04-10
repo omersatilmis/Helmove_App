@@ -50,7 +50,7 @@ class NetworkModule {
           androidInfo.product.contains('sdk')) {
         return EnvConfig.emulatorBaseUrl;
       } else {
-        return EnvConfig.localDeviceBaseUrl;
+        return EnvConfig.productionBaseUrl;
       }
     } else if (Platform.isIOS) {
       final deviceInfo = DeviceInfoPlugin();
@@ -58,13 +58,12 @@ class NetworkModule {
       if (!iosInfo.isPhysicalDevice) {
         return EnvConfig.iosSimulatorBaseUrl;
       }
-      return EnvConfig.localDeviceBaseUrl;
+      return EnvConfig.productionBaseUrl;
     } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-      // Desktop platforms usually prefer localhost for local development
-      return EnvConfig.webBaseUrl;
+      return EnvConfig.productionBaseUrl;
     }
 
-    return EnvConfig.localDeviceBaseUrl;
+    return EnvConfig.productionBaseUrl;
   }
 
   static Future<Dio> provideDio(

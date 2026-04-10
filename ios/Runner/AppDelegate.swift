@@ -85,7 +85,7 @@ import flutter_callkit_incoming
     if let callerDisplayName = raw["callerDisplayName"] { extra["callerDisplayName"] = callerDisplayName }
     if let callId = raw["callId"] { extra["callId"] = callId }
     if !extra.isEmpty {
-      callData.extra = extra
+      callData.extra = extra as NSDictionary
     }
 
     SwiftFlutterCallkitIncomingPlugin.sharedInstance?.showCallkitIncoming(

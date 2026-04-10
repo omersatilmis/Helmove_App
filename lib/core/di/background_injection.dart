@@ -20,7 +20,7 @@ Future<void> initBackgroundDi() async {
     backgroundSl.registerLazySingleton<Dio>(
       () => Dio(
         BaseOptions(
-          baseUrl: EnvConfig.localDeviceBaseUrl,
+          baseUrl: EnvConfig.productionBaseUrl,
           connectTimeout: EnvConfig.connectTimeout,
           receiveTimeout: EnvConfig.receiveTimeout,
           headers: const {

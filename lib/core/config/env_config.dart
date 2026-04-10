@@ -16,13 +16,13 @@ class EnvConfig {
 
   /// Base URL for physical devices on the local network
   /// Update this IP address to match your development machine's local IP.
-  static const String localDeviceBaseUrl = "http://192.168.1.100:5089/";
+  static const String localDeviceBaseUrl = "http://192.168.68.50:5089/";
 
   /// Base URL for Web
   static const String webBaseUrl = "http://localhost:5089/";
 
-  // --- Production URLs (for future use) ---
-  // static const String productionBaseUrl = "https://api.yourapp.com/";
+  // --- Production URL ---
+  static const String productionBaseUrl = "https://api.helmove.com/";
 
   // --- Timeouts ---
   static const Duration connectTimeout = Duration(seconds: 15);

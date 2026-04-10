@@ -397,6 +397,11 @@ class _AppInputFieldState extends State<AppInputField>
   }
 
   TextInputType get _keyboardType {
+    // multiline TextField'da keyboardType mutlaka multiline olmalı
+    final isMultiline = (widget.maxLines == null || widget.maxLines! > 1) &&
+        widget.textInputAction == TextInputAction.newline;
+    if (isMultiline) return TextInputType.multiline;
+
     switch (widget.type) {
       case AppInputType.email:
         return TextInputType.emailAddress;

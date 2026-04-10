@@ -49,7 +49,10 @@ class HelpApi {
       AppLogger.debug("Response Data: ${response.data}");
       AppLogger.info("======== SEND FEEDBACK END ========");
 
-      return FeedbackDto.fromJson(response.data);
+      final responseData = response.data is Map && response.data['data'] != null
+          ? response.data['data'] as Map<String, dynamic>
+          : response.data as Map<String, dynamic>;
+      return FeedbackDto.fromJson(responseData);
     } on DioException catch (e) {
       _handleDioError(e, "Geri bildirim gönderimi");
       rethrow;

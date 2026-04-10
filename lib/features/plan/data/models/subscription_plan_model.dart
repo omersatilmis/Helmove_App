@@ -25,12 +25,16 @@ class SubscriptionPlanModel extends SubscriptionPlanEntity {
       currency: json['currency'] as String,
       description: json['description'] as String,
       fullDescription: json['fullDescription'] as String,
-      features: (jsonDecode(json['featuresJson'] as String) as List<dynamic>)
-          .map((e) => e as String)
-          .toList(),
+      features: json['features'] != null
+          ? (json['features'] as List<dynamic>).map((e) => e as String).toList()
+          : json['featuresJson'] != null
+              ? (jsonDecode(json['featuresJson'] as String) as List<dynamic>)
+                  .map((e) => e as String)
+                  .toList()
+              : <String>[],
       durationDays: json['durationDays'] as int,
-      isActive: json['isActive'] as bool,
-      isRecommended: json['isRecommended'] as bool,
+      isActive: json['isActive'] as bool? ?? true,
+      isRecommended: json['isRecommended'] as bool? ?? false,
     );
   }
 
