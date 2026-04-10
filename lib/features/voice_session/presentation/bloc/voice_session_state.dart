@@ -75,15 +75,26 @@ class VoiceSessionState extends Equatable {
 
     // session senkronizasyonu:
     //   1. Eğer çağıran kod açıkça sessionOverride verdiyse onu kullan
-    //   2. Eğer mySessions güncellendiyse (ve session null ise) listeden türet
-    //   3. Hiçbiri yoksa mevcut değeri koru
+    //   2. Eğer session açıkça verilmişse onu kullan
+    //   3. Eğer mySessions güncellendiyse listeden türet —
+    //      ama mevcut session'ın detaylı verisi (participants) varsa onu koru
+    //   4. Hiçbiri yoksa mevcut değeri koru
     VoiceSessionEntity? resolvedSession;
     if (sessionOverride != null) {
       resolvedSession = sessionOverride();
     } else if (session != null) {
       resolvedSession = session;
     } else if (mySessions != null) {
-      resolvedSession = _deriveActiveSessionFromList(newMySessions);
+      final derived = _deriveActiveSessionFromList(newMySessions);
+      final existing = this.session;
+      // Eğer mevcut session detaylı (participants dolu) ve aynı ID ise koru
+      if (existing != null &&
+          existing.participants.isNotEmpty &&
+          derived?.id == existing.id) {
+        resolvedSession = existing;
+      } else {
+        resolvedSession = derived;
+      }
     } else {
       resolvedSession = this.session;
     }

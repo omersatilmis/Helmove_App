@@ -11,6 +11,8 @@ import '../../../../../core/widgets/app_button.dart';
 import '../../../../../core/widgets/app_input_field.dart';
 import 'package:helmove/features/content/posts/presentation/bloc/create_post_cubit.dart';
 import 'package:helmove/features/content/posts/presentation/bloc/create_post_state.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/posts_bloc.dart';
+import 'package:helmove/features/content/posts/presentation/bloc/posts_event.dart';
 
 class PrepareMediaPage extends StatefulWidget {
   final File imageFile;
@@ -72,6 +74,9 @@ class _PrepareMediaPageState extends State<PrepareMediaPage> {
                 ),
               );
             }
+            sl<PostsBloc>().add(
+              const GetFeedEvent(page: 1, limit: 10, isRefresh: true),
+            );
             context.go('/homepage');
           } else if (state.status == CreatePostStatus.failure) {
             ScaffoldMessenger.of(context).showSnackBar(

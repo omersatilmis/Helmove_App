@@ -97,10 +97,9 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
       // Prevent duplicate requests if already loading or reached max/has no more pages
       if (state.status == PostsStatus.loading) return;
       if (state.hasReachedMax && !event.isRefresh && event.page != 1) return;
-      // Guard: avoid double-fetch on startup if we already have data in memory.
-      if (event.page == 1 && !event.isRefresh && state.posts.isNotEmpty) {
-        return;
-      }
+      // Avoid showing loading state if we already have data (e.g. from bootstrap),
+      // but STILL proceed with the network call to refresh the feed in the background.
+      final hasInitialData = event.page == 1 && !event.isRefresh && state.posts.isNotEmpty;
 
       final currentUserId = state.currentUserId ?? appSession.currentUserId;
       final shouldLoadFromCache =
@@ -134,11 +133,11 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
         }
       }
 
-      if (!cacheApplied) {
+      if (!cacheApplied && !hasInitialData) {
         emit(
           state.copyWith(
             status: PostsStatus.loading,
-            posts: event.isRefresh ? [] : state.posts,
+            posts: state.posts, // Keep existing posts visible while refreshing
           ),
         );
       }
@@ -147,13 +146,14 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
         GetFeedParams(
           page: event.page,
           limit: event.limit,
-          ifNoneMatch: event.page == 1 ? firstPageSnapshot?.etag : null,
+          // On refresh, skip ETag so the server always returns fresh data (not 304)
+          ifNoneMatch: (event.page == 1 && !event.isRefresh) ? firstPageSnapshot?.etag : null,
         ),
       );
 
       result.fold(
         (failure) {
-          if (cacheApplied) {
+          if (cacheApplied || hasInitialData) {
             emit(state.copyWith(status: PostsStatus.success));
             return;
           }
@@ -177,7 +177,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
                   page: 1,
                 ),
               );
-            } else if (cacheApplied) {
+            } else if (cacheApplied || hasInitialData) {
               emit(state.copyWith(status: PostsStatus.success));
             } else {
               emit(
@@ -192,7 +192,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
 
           final pagedResult = fetchResult.data;
           if (pagedResult == null) {
-            if (cacheApplied) {
+            if (cacheApplied || hasInitialData) {
               emit(state.copyWith(status: PostsStatus.success));
               return;
             }
@@ -205,7 +205,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
             return;
           }
 
-          final List<PostEntity> allPosts = event.isRefresh
+          final List<PostEntity> allPosts = (event.isRefresh || event.page == 1)
               ? []
               : List<PostEntity>.from(state.posts);
 

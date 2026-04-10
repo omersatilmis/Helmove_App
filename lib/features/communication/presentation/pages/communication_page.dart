@@ -337,11 +337,17 @@ class _CommunicationPageState extends State<CommunicationPage> {
           state.status != VoiceSessionStatus.loading &&
           state.status != VoiceSessionStatus.mySessionsLoaded) {
         voiceBloc.add(const GetMyVoiceSessionsEvent(immediate: true));
+      } else if (hasSessions && state.session?.participants.isEmpty == true) {
+        // Session var ama detaylar (katılımcılar) henüz yüklenmemiş
+        final sessionId = state.session!.id;
+        voiceBloc.add(
+          GetVoiceSessionDetailsEvent(sessionId, immediate: true),
+        );
       }
 
       if (activeSessionId != null &&
           activeSessionId > 0 &&
-          state.session?.id != activeSessionId) {
+          state.session?.participants.isEmpty == true) {
         voiceBloc.add(
           GetVoiceSessionDetailsEvent(activeSessionId, immediate: true),
         );

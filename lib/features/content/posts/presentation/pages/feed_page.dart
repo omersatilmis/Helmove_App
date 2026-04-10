@@ -27,9 +27,8 @@ class _FeedViewState extends State<FeedView> {
   void initState() {
     super.initState();
     _postsBloc = sl<PostsBloc>();
-    if (_postsBloc.state.posts.isEmpty) {
-      _postsBloc.add(const GetFeedEvent(page: 1, limit: _feedPageSize));
-    }
+    // Always trigger a fetch. PostsBloc will handle caching and background updates.
+    _postsBloc.add(const GetFeedEvent(page: 1, limit: _feedPageSize));
     _scrollController.addListener(_onScroll);
   }
 

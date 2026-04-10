@@ -56,7 +56,7 @@ class NetworkModule {
       final deviceInfo = DeviceInfoPlugin();
       final iosInfo = await deviceInfo.iosInfo;
       if (!iosInfo.isPhysicalDevice) {
-        return EnvConfig.iosSimulatorBaseUrl;
+        return EnvConfig.productionBaseUrl;
       }
       return EnvConfig.productionBaseUrl;
     } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {

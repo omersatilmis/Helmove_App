@@ -39,7 +39,14 @@ class ActiveSessionCard extends StatelessWidget {
           bloc.state.status == VoiceSessionStatus.loading,
     );
 
-    if (isInitialLoading) {
+    // Detay yükleme: session var ama katılımcılar henüz gelmedi (detay bekleniyor)
+    final isDetailsLoading = context.select<VoiceSessionBloc, bool>(
+      (bloc) =>
+          bloc.state.session != null &&
+          bloc.state.session!.participants.isEmpty,
+    );
+
+    if (isInitialLoading || isDetailsLoading) {
       return const _ActiveGroupLoadingCard();
     }
 

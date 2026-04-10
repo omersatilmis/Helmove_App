@@ -17,6 +17,8 @@ import 'package:helmove/features/group_ride/presentation/models/group_ride_args.
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_event.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_state.dart';
+import 'package:helmove/features/friendship/presentation/bloc/action/friendship_action_bloc.dart';
+import 'package:helmove/features/friendship/presentation/bloc/action/friendship_action_event.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
 class NotificationsPage extends StatelessWidget {
@@ -32,6 +34,7 @@ class NotificationsPage extends StatelessWidget {
             ..add(GetUnreadCountEvent()),
         ),
         BlocProvider.value(value: sl<VoiceSessionBloc>()),
+        BlocProvider.value(value: sl<FriendshipActionBloc>()),
       ],
       child: const _NotificationsView(),
     );
@@ -179,10 +182,12 @@ class _NotificationsViewState extends State<_NotificationsView> {
               child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.only(top: 8, bottom: 20),
-                // Pagination loader için +1
-                itemCount: state.hasReachedMax
-                    ? groupedItems.length
-                    : groupedItems.length + 1,
+                // Pagination loader için +1 (sadece aktif yükleme sırasında)
+                itemCount: (!state.hasReachedMax &&
+                        state.status == NotificationsStatus.loading &&
+                        state.currentPage > 1)
+                    ? groupedItems.length + 1
+                    : groupedItems.length,
                 itemBuilder: (context, index) {
                   if (index >= groupedItems.length) {
                     return const Center(
@@ -466,6 +471,61 @@ class _NotificationItemModern extends StatelessWidget {
                         ],
                       ),
                     ],
+                    if (_isFriendRequestKind(notification)) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () =>
+                                _handleAcceptFriendRequest(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 0,
+                              ),
+                              minimumSize: const Size(80, 32),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Kabul Et',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            onPressed: () =>
+                                _handleRejectFriendRequest(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 0,
+                              ),
+                              minimumSize: const Size(80, 32),
+                              side: BorderSide(
+                                color: isDark ? Colors.white24 : Colors.black12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'Reddet',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -492,6 +552,12 @@ class _NotificationItemModern extends StatelessWidget {
       _handleVoiceSessionNavigation(context);
       return;
     }
+
+    // Profile navigation for follow/friend request notifications
+    final senderId = notification.senderId;
+    if (senderId != null && senderId > 0) {
+      GoRouter.of(context).push('/profile/$senderId');
+    }
   }
 
   bool _isVoiceInviteKind(NotificationEntity notification) {
@@ -499,8 +565,16 @@ class _NotificationItemModern extends StatelessWidget {
     // 5 = VoiceSessionInvite from Backend Enum usually
     return (notification.type == 'VoiceSessionInvite') ||
         (notification.type == '5') ||
-        msg.contains('davet') ||
+        msg.contains('sürüşüne davet') ||
         msg.contains('sesli');
+  }
+
+  bool _isFriendRequestKind(NotificationEntity notification) {
+    final msg = notification.message.toLowerCase();
+    return (notification.type == 'FriendRequest') ||
+        (notification.type == '3') ||
+        msg.contains('arkadaşlık isteği') ||
+        msg.contains('friend request');
   }
 
   Future<void> _handleAcceptInvite(BuildContext context) async {
@@ -611,6 +685,32 @@ class _NotificationItemModern extends StatelessWidget {
         ).showSnackBar(SnackBar(content: Text(l10n.inviteRejected)));
       }
     }
+  }
+
+  void _handleAcceptFriendRequest(BuildContext context) {
+    final friendshipId = notification.relatedId;
+    if (friendshipId != null && friendshipId > 0) {
+      context.read<FriendshipActionBloc>().add(
+        AcceptFriendRequestEvent(friendshipId: friendshipId),
+      );
+    }
+    _deleteNotification(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Arkadaşlık isteği kabul edildi')),
+    );
+  }
+
+  void _handleRejectFriendRequest(BuildContext context) {
+    final friendshipId = notification.relatedId;
+    if (friendshipId != null && friendshipId > 0) {
+      context.read<FriendshipActionBloc>().add(
+        RejectFriendRequestEvent(friendshipId: friendshipId),
+      );
+    }
+    _deleteNotification(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Arkadaşlık isteği reddedildi')),
+    );
   }
 
   Future<void> _handleVoiceSessionNavigation(BuildContext context) async {
