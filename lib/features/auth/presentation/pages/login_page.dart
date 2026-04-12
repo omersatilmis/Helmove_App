@@ -5,6 +5,8 @@ import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_header_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_footer_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_error_widget.dart';
+import 'package:helmove/features/auth/presentation/widgets/eula_consent_widget.dart';
+import 'package:helmove/features/auth/presentation/widgets/eula_webview_bottom_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
@@ -23,6 +25,8 @@ class _LoginPageState extends State<LoginPage> {
 
   // State
   bool _rememberMe = false;
+  bool _acceptedEula = false;
+  bool _showEulaWarning = false;
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -41,6 +45,11 @@ class _LoginPageState extends State<LoginPage> {
 
   // Giriş işlemini tetikleyen fonksiyon
   Future<void> _handleLogin(AuthProvider authProvider) async {
+    if (!_acceptedEula) {
+      setState(() => _showEulaWarning = true);
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       // Klavyeyi kapat
       FocusScope.of(context).unfocus();
@@ -55,6 +64,22 @@ class _LoginPageState extends State<LoginPage> {
         context.go('/homepage');
       }
     }
+  }
+
+  Future<void> _openEula() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: false,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const EulaWebViewBottomSheet(
+        url: 'https://helmove.com/terms-of-use',
+      ),
+    );
   }
 
   Future<void> _openForgotPasswordPage() async {
@@ -229,6 +254,22 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                         ],
                                       ),
+                                    ),
+
+                                    SizedBox(height: sectionGap),
+
+                                    EulaConsentWidget(
+                                      value: _acceptedEula,
+                                      showWarning: _showEulaWarning,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _acceptedEula = value;
+                                          if (value) {
+                                            _showEulaWarning = false;
+                                          }
+                                        });
+                                      },
+                                      onTapEula: _openEula,
                                     ),
 
                                     SizedBox(height: sectionGap),

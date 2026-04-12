@@ -263,13 +263,15 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> confirmForgotPassword({
-    required String token,
+    required String email,
+    required String code,
     required String newPassword,
     required String confirmNewPassword,
   }) async {
     try {
       final requestDto = ConfirmForgotPasswordRequestDto(
-        token: token,
+        email: email,
+        code: code,
         newPassword: newPassword,
         confirmNewPassword: confirmNewPassword,
       );

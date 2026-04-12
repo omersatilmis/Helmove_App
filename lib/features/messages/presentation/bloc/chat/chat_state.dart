@@ -17,12 +17,16 @@ class ChatLoaded extends ChatState {
   final bool isSending;
   final int otherUserId;
   final bool isOtherUserTyping;
+  final bool isOtherUserOnline;
+  final DateTime? otherUserLastSeen;
 
   const ChatLoaded({
     required this.messages,
     this.isSending = false,
     required this.otherUserId,
     this.isOtherUserTyping = false,
+    this.isOtherUserOnline = false,
+    this.otherUserLastSeen,
   });
 
   ChatLoaded copyWith({
@@ -30,12 +34,16 @@ class ChatLoaded extends ChatState {
     bool? isSending,
     int? otherUserId,
     bool? isOtherUserTyping,
+    bool? isOtherUserOnline,
+    DateTime? otherUserLastSeen,
   }) {
     return ChatLoaded(
       messages: messages ?? this.messages,
       isSending: isSending ?? this.isSending,
       otherUserId: otherUserId ?? this.otherUserId,
       isOtherUserTyping: isOtherUserTyping ?? this.isOtherUserTyping,
+      isOtherUserOnline: isOtherUserOnline ?? this.isOtherUserOnline,
+      otherUserLastSeen: otherUserLastSeen ?? this.otherUserLastSeen,
     );
   }
 
@@ -45,6 +53,8 @@ class ChatLoaded extends ChatState {
     isSending,
     otherUserId,
     isOtherUserTyping,
+    isOtherUserOnline,
+    otherUserLastSeen ?? '',
   ];
 }
 

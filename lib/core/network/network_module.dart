@@ -15,6 +15,24 @@ class NetworkModule {
   static String? _cachedBaseUrl;
   static Future<String>? _baseUrlFuture;
 
+  /// initCore() sonrası her zaman dolu olur. Sync erişim için kullanılabilir.
+  static String get resolvedBaseUrl =>
+      _cachedBaseUrl ?? EnvConfig.productionBaseUrl;
+
+  /// Backend'den gelen relative image path'i (/uploads/...) absolute URL'e çevirir.
+  /// Zaten http/https ile başlıyorsa dokunmaz. DTO'larda kullanılır.
+  static String? resolveImageUrl(String? url) {
+    if (url == null || url.isEmpty) return url;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/')) {
+      final base = resolvedBaseUrl.endsWith('/')
+          ? resolvedBaseUrl.substring(0, resolvedBaseUrl.length - 1)
+          : resolvedBaseUrl;
+      return '$base$url';
+    }
+    return url;
+  }
+
   static Future<String> getBaseUrl() async {
     final cached = _cachedBaseUrl;
     if (cached != null && cached.isNotEmpty) {

@@ -191,9 +191,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Şifremi Unuttum Onayı (Token ile)
+  // Şifremi Unuttum Onayı (OTP kodu ile)
   Future<bool> confirmForgotPassword({
-    required String token,
+    required String email,
+    required String code,
     required String newPassword,
     required String confirmNewPassword,
   }) async {
@@ -202,7 +203,8 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await _authRepository.confirmForgotPassword(
-        token: token,
+        email: email,
+        code: code,
         newPassword: newPassword,
         confirmNewPassword: confirmNewPassword,
       );

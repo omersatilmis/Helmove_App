@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
 import 'package:helmove/core/di/injection_container.dart' as di;
 import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/l10n/app_localizations.dart';
@@ -23,6 +24,8 @@ class DiscoverPage extends StatefulWidget {
 class _DiscoverPageState extends State<DiscoverPage> {
   late final TextEditingController _searchController;
   final Future<void> _initFuture = di.initDeferredFeatures();
+  DiscoverBloc? _discoverBloc;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -30,8 +33,24 @@ class _DiscoverPageState extends State<DiscoverPage> {
     _searchController = TextEditingController();
   }
 
+  void _ensureDiscoverRuntime() {
+    if (_discoverBloc != null) return;
+
+    _discoverBloc = sl<DiscoverBloc>()..add(const LoadDiscoveryContent());
+    _refreshTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+      if (!mounted || _discoverBloc == null) return;
+
+      final route = ModalRoute.of(context);
+      if (route?.isCurrent != true) return;
+
+      _discoverBloc!.add(const LoadDiscoveryContent(isRefresh: true));
+    });
+  }
+
   @override
   void dispose() {
+    _refreshTimer?.cancel();
+    _discoverBloc?.close();
     _searchController.dispose();
     super.dispose();
   }
@@ -49,9 +68,11 @@ class _DiscoverPageState extends State<DiscoverPage> {
               return const DiscoverShimmer();
             }
 
-            return BlocProvider(
-              create: (context) =>
-                  sl<DiscoverBloc>()..add(const LoadDiscoveryContent()),
+            _ensureDiscoverRuntime();
+            final discoverBloc = _discoverBloc!;
+
+            return BlocProvider.value(
+              value: discoverBloc,
               child: Builder(
                 builder: (blocContext) {
                   return Column(

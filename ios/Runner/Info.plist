@@ -70,6 +70,8 @@
 	<string>Sesli iletisim kurabilmeniz icin mikrofona ihtiyacimiz var.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Kask interkom cihaziniza baglanabilmek icin Bluetooth iznine ihtiyacimiz var.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Kask interkom cihaziniza baglanabilmek icin Bluetooth iznine ihtiyacimiz var.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Grup suruslerinde canli konum paylasimi icin konum erisimine ihtiyacimiz var.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

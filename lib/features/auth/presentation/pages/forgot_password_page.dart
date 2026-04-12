@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:helmove/core/widgets/app_button.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
@@ -39,36 +40,26 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     }
   }
 
-  Future<void> _handleForgotPassword() async {
+  Future<void> _handleSendCode() async {
     if (!_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
     final authProvider = context.read<AuthProvider>();
+    final email = _emailController.text.trim();
 
-    final success = await authProvider.forgotPassword(
-      _emailController.text.trim(),
-    );
+    final success = await authProvider.forgotPassword(email);
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Eğer bu e-posta adresi kayıtlıysa, şifre sıfırlama bağlantısı gönderilecektir.',
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      Navigator.of(context).pop();
-    } else if (authProvider.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage!),
-          behavior: SnackBarBehavior.floating,
-        ),
+      // E-posta'yı query param olarak taşı — OTP ekranında kullanılacak
+      context.push(
+        Uri(
+          path: '/forgot-password/confirm',
+          queryParameters: {'email': email},
+        ).toString(),
       );
     }
+    // Hata durumunda AuthErrorWidget zaten gösteriyor
   }
 
   @override
@@ -98,7 +89,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   child: AuthHeaderWidget(
                     title: l10n.forgotPassword,
                     subtitle:
-                        'E-posta adresinizi girin, sıfırlama bağlantısını gönderelim.',
+                        'E-posta adresinizi girin, 6 haneli doğrulama kodunu gönderelim.',
                   ),
                 ),
                 Expanded(
@@ -138,19 +129,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                     (val == null || !val.contains('@'))
                                     ? l10n.invalidEmail
                                     : null,
-                                onFieldSubmitted: (_) =>
-                                    _handleForgotPassword(),
+                                onFieldSubmitted: (_) => _handleSendCode(),
                               ),
                               SizedBox(height: sectionGap),
                               Consumer<AuthProvider>(
                                 builder: (context, auth, _) {
                                   return AppButton(
-                                    text: l10n.send,
+                                    text: 'Kod Gönder',
                                     isLoading: auth.isLoading,
                                     size: AppButtonSize.large,
                                     borderRadius: BorderRadius.circular(16),
                                     isFullWidth: true,
-                                    onPressed: _handleForgotPassword,
+                                    onPressed: _handleSendCode,
                                   );
                                 },
                               ),

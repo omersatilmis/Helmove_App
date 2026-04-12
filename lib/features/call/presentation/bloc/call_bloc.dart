@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../../../core/services/callkit_incoming_service.dart'; // Added
@@ -82,6 +83,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     on<CallHangUp>(_onCallHangUp);
     on<CallEndedByRemote>(_onCallEndedByRemote);
     on<CallToggleMicrophone>(_onToggleMicrophone);
+    on<CallToggleSpeaker>(_onToggleSpeaker);
     on<CallConnectionStateChanged>(_onConnectionStateChanged);
     on<CallSignalingFailed>(_onCallSignalingFailed);
     on<CallOutgoingTimeoutReached>(_onCallOutgoingTimeoutReached);
@@ -138,6 +140,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
         CallIncomingReceived(
           callerId: callerId,
           callerDisplayName: payload.callerDisplayName,
+          callerProfileImageUrl: payload.callerProfileImageUrl,
           callId: payload.callId,
         ),
       );
@@ -273,7 +276,10 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     CallRequested event,
     Emitter<CallState> emit,
   ) async {
-    final permissionsOk = await permissionsService.ensureCallPermissions();
+    final permissionsOk = await permissionsService.ensureCallPermissions(
+      requestIfNeeded: true,
+      openSettingsOnFailure: true,
+    );
     if (!permissionsOk) {
       emit(const CallError(message: 'Arama icin gerekli izinler verilmedi'));
       return;
@@ -366,31 +372,92 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     CallIncomingReceived event,
     Emitter<CallState> emit,
   ) async {
+    // Duplicate incoming signals can arrive back-to-back (first without callId,
+    // then with full payload). If the same caller is already being handled,
+    // keep a single call flow and only backfill callId when missing.
+    if ((_stateIsIncomingFlow(state)) && _remoteUserId == event.callerId) {
+      if ((_currentCallId == null || _currentCallId! <= 0) &&
+          event.callId != null &&
+          event.callId! > 0) {
+        _currentCallId = event.callId;
+        AppLogger.info(
+          'CallBloc: Backfilled incoming callId from duplicate signal: ${event.callId}',
+        );
+      } else {
+        AppLogger.warning(
+          'CallBloc: Duplicate incoming signal ignored for caller=${event.callerId} callId=${event.callId ?? 0}',
+        );
+      }
+      return;
+    }
+
     _remoteUserId = event.callerId;
     _resetSignalingSessionState();
+
+    String? resolvedDisplayName = event.callerDisplayName?.trim();
+        String? resolvedProfileImageUrl = event.callerProfileImageUrl?.trim();
+        if (resolvedProfileImageUrl != null && resolvedProfileImageUrl.isEmpty) {
+          resolvedProfileImageUrl = null;
+        }
+
+    if (resolvedDisplayName != null && resolvedDisplayName.isEmpty) {
+      resolvedDisplayName = null;
+    }
+
+    // SignalR bazen sadece callerId gonderiyor. Ekranda "Kullanici"
+    // yerine pending call verisinden isim fallback'i dene.
+    if (resolvedDisplayName == null || event.callId == null) {
+      try {
+        final pendingCalls = await getPendingCallsUseCase.execute();
+        final match = pendingCalls.firstWhere(
+          (c) =>
+              (event.callId != null && c.callId == event.callId) ||
+              c.callerId == event.callerId,
+          orElse: () => throw Exception('Pending call not found for caller'),
+        );
+
+        _currentCallId ??= match.callId;
+        resolvedDisplayName ??= match.callerDisplayName?.trim();
+        resolvedProfileImageUrl ??= match.callerProfileImageUrl?.trim();
+      } catch (_) {
+        // Fallback silently
+      }
+    }
 
     emit(
       CallIncoming(
         callerId: event.callerId,
-        callerDisplayName: event.callerDisplayName,
+        callerDisplayName: resolvedDisplayName,
+        callerProfileImageUrl: resolvedProfileImageUrl,
       ),
     );
 
-    // [NEW] CallKit: Show incoming UI (WhatsApp Style lock screen)
-    try {
-      final uuid = _activeCallKitId ?? callKitIncomingService.generateCallKitId();
-      _activeCallKitId = uuid;
-      
-      unawaited(callKitIncomingService.showIncomingCall(
-        CallInvitePayload(
-          callKitId: uuid,
-          callerId: event.callerId,
-          callerDisplayName: event.callerDisplayName ?? 'Gelen Arama',
-          callId: event.callId,
-        ),
-      ));
-    } catch (e) {
-      AppLogger.warning('CallBloc: CallKit show failed: $e');
+    // Foreground: in-app call UI; Background/locked: CallKit UI.
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    final isForeground = lifecycle == AppLifecycleState.resumed;
+    if (!isForeground) {
+      try {
+        final uuid = _activeCallKitId ??
+            callKitIncomingService.generateCallKitId();
+        _activeCallKitId = uuid;
+
+        unawaited(
+          callKitIncomingService.showIncomingCall(
+            CallInvitePayload(
+              callKitId: uuid,
+              callerId: event.callerId,
+              callerDisplayName: event.callerDisplayName ?? 'Gelen Arama',
+              callId: event.callId,
+            ),
+          ),
+        );
+      } catch (e) {
+        AppLogger.warning('CallBloc: CallKit show failed: $e');
+      }
+    } else {
+      AppLogger.info(
+        'CallBloc: Incoming call in foreground, using in-app UI only.',
+      );
     }
 
     if (event.callId != null) {
@@ -413,13 +480,20 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     }
   }
 
+  bool _stateIsIncomingFlow(CallState s) {
+    return s is CallIncoming || s is CallConnecting || s is CallActive;
+  }
+
   Future<void> _onCallAccepted(
     CallAccepted event,
     Emitter<CallState> emit,
   ) async {
     try {
       await _enqueueSignaling('CallAccepted', () async {
-        final permissionsOk = await permissionsService.ensureCallPermissions();
+        final permissionsOk = await permissionsService.ensureCallPermissions(
+          requestIfNeeded: true,
+          openSettingsOnFailure: true,
+        );
         if (!permissionsOk) {
           emit(
             const CallError(message: 'Arama icin gerekli izinler verilmedi'),
@@ -744,6 +818,16 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     CallEndedByRemote event,
     Emitter<CallState> emit,
   ) async {
+    if (_cleanupFuture != null ||
+        state is CallEnded ||
+        state is CallError ||
+        state is CallInitial) {
+      AppLogger.info(
+        'CallBloc: Remote ended event ignored because terminal cleanup/state is already active.',
+      );
+      return;
+    }
+
     if (_isLocalHangupInProgress) {
       AppLogger.info(
         'CallBloc: Remote ended event ignored during local hangup. '
@@ -778,7 +862,8 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     }
 
     final duration = _callDuration;
-    // Remote taraf sonlandırdıysa tekrar "EndCall" sinyali yollamayalım (ping-pong yapabilir).
+    // Remote taraf sonlandırdıysa tekrar REST/SignalR end çağrısı yapmayalım.
+    // Aksi halde "Bu arama zaten sonlandırılmış" 400 hatasına ve duplicate trafiğe yol açıyor.
     await _safeEndCurrentCall(
       remoteUserId: activeRemoteUserId,
       signalREnd: false,
@@ -805,6 +890,23 @@ class CallBloc extends Bloc<CallEvent, CallState> {
           isMicrophoneOn: webRTCService.isMicrophoneOn,
         ),
       );
+    }
+  }
+
+  Future<void> _onToggleSpeaker(
+    CallToggleSpeaker event,
+    Emitter<CallState> emit,
+  ) async {
+    if (state is! CallActive) return;
+
+    final current = state as CallActive;
+    final nextSpeakerState = !current.isSpeakerOn;
+
+    try {
+      await webRTCService.setSpeakerphone(nextSpeakerState);
+      emit(current.copyWith(isSpeakerOn: nextSpeakerState));
+    } catch (e) {
+      AppLogger.warning('CallBloc: Speaker toggle failed: $e');
     }
   }
 
@@ -1035,7 +1137,7 @@ class CallBloc extends Bloc<CallEvent, CallState> {
     bool signalREnd = true,
   }) async {
     final callId = _currentCallId;
-    if (callId != null && callId > 0) {
+    if (signalREnd && callId != null && callId > 0) {
       try {
         await endCallUseCase.execute(callId);
       } catch (e) {
@@ -1045,13 +1147,15 @@ class CallBloc extends Bloc<CallEvent, CallState> {
 
     final effectiveRemoteUserId = remoteUserId ?? _remoteUserId;
     if (effectiveRemoteUserId != null && effectiveRemoteUserId > 0) {
-      try {
-        await _endPendingCallsFallback(
-          remoteUserId: effectiveRemoteUserId,
-          preferredCallId: callId,
-        );
-      } catch (e) {
-        AppLogger.warning('CallBloc: safe end pending fallback failed: $e');
+      if (signalREnd) {
+        try {
+          await _endPendingCallsFallback(
+            remoteUserId: effectiveRemoteUserId,
+            preferredCallId: callId,
+          );
+        } catch (e) {
+          AppLogger.warning('CallBloc: safe end pending fallback failed: $e');
+        }
       }
 
       // Emniyet kemeri: REST ile call ended olsa bile, SignalR "in-call" state'i takılı kalabiliyor.

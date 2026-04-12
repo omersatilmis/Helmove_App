@@ -16,6 +16,8 @@ class CallResponseEntity {
   final int targetUserId;
   final String status;
   final DateTime createdAt;
+  final String? callerDisplayName;
+  final String? callerProfileImageUrl;
 
   CallResponseEntity({
     required this.callId,
@@ -23,6 +25,8 @@ class CallResponseEntity {
     required this.targetUserId,
     required this.status,
     required this.createdAt,
+    this.callerDisplayName,
+    this.callerProfileImageUrl,
   });
 }
 

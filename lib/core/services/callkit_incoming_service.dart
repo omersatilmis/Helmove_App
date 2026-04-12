@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter_callkit_incoming/entities/android_params.dart';
 import 'package:flutter_callkit_incoming/entities/call_event.dart';
@@ -27,12 +28,14 @@ class CallInvitePayload {
   final String callKitId;
   final int callerId;
   final String callerDisplayName;
+  final String? callerProfileImageUrl;
   final int? callId;
 
   const CallInvitePayload({
     required this.callKitId,
     required this.callerId,
     required this.callerDisplayName,
+    this.callerProfileImageUrl,
     this.callId,
   });
 
@@ -41,6 +44,7 @@ class CallInvitePayload {
       'callKitId': callKitId,
       'callerId': callerId,
       'callerDisplayName': callerDisplayName,
+      if (callerProfileImageUrl != null) 'callerProfileImageUrl': callerProfileImageUrl,
       if (callId != null) 'callId': callId,
       'kind': 'incoming_call',
     };
@@ -91,6 +95,11 @@ class CallInvitePayload {
       callerDisplayName: displayName.isEmpty
           ? 'Bilinmeyen kullanici'
           : displayName,
+      callerProfileImageUrl: (map['callerProfileImageUrl'] ??
+              map['callerProfilePictureUrl'] ??
+              map['profilePictureUrl'] ??
+              map['avatarUrl'])
+          ?.toString(),
       callId: _toInt(map['callId']),
     );
   }
@@ -202,7 +211,9 @@ class CallKitIncomingService {
     // ── [DEDUPLICATION LOGIC] ──────────────────────────────────────────
     // Aynı CallId veya UUID ile üst üste gelen ekranları engelle.
     // (Örn: Hem Push hem SignalR aynı anda gelirse)
-    final cacheKey = payload.callId?.toString() ?? payload.callKitId;
+    final cacheKey = payload.callId != null
+      ? 'call:${payload.callId}'
+      : 'caller:${payload.callerId}';
     final now = DateTime.now();
 
     if (_shownCallIds.containsKey(cacheKey)) {
@@ -300,6 +311,7 @@ class CallKitIncomingService {
   }
 
   Future<void> playOutgoingTone() async {
+    if (!Platform.isAndroid) return;
     try {
       await _audioChannel.invokeMethod('playTone');
     } catch (e) {
@@ -308,6 +320,7 @@ class CallKitIncomingService {
   }
 
   Future<void> stopOutgoingTone() async {
+    if (!Platform.isAndroid) return;
     try {
       await _audioChannel.invokeMethod('stopTone');
     } catch (e) {

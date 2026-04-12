@@ -33,19 +33,30 @@ class CallToggleMicrophone extends CallEvent {
   const CallToggleMicrophone();
 }
 
+class CallToggleSpeaker extends CallEvent {
+  const CallToggleSpeaker();
+}
+
 class CallIncomingReceived extends CallEvent {
   final int callerId;
   final String? callerDisplayName;
+  final String? callerProfileImageUrl;
   final int? callId;
 
   const CallIncomingReceived({
     required this.callerId,
     this.callerDisplayName,
+    this.callerProfileImageUrl,
     this.callId,
   });
 
   @override
-  List<Object?> get props => [callerId, callerDisplayName, callId];
+  List<Object?> get props => [
+    callerId,
+    callerDisplayName,
+    callerProfileImageUrl,
+    callId,
+  ];
 }
 
 class CallAcceptedByRemote extends CallEvent {

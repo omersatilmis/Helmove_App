@@ -1,5 +1,6 @@
 import '../../features/content/posts/data/models/post_model.dart';
 import '../../features/content/posts/domain/entities/post_entity.dart';
+import '../network/network_module.dart';
 import 'pagination_metadata.dart';
 
 class HomeBootstrapResponse {
@@ -83,7 +84,11 @@ class HomeBootstrapUser {
     }
 
     final picture = readString(
-      json['profilePictureUrl'] ?? json['profileImageUrl'],
+      NetworkModule.resolveImageUrl(
+            (json['profilePictureUrl'] ?? json['profileImageUrl'])
+                ?.toString(),
+          ) ??
+          '',
     );
 
     return HomeBootstrapUser(

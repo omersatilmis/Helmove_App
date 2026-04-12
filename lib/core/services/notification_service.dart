@@ -1,5 +1,8 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 import 'package:go_router/go_router.dart';
 import '../utils/app_logger.dart';
 import '../navigation/navigator_keys.dart';
@@ -106,8 +109,8 @@ class NotificationService {
         _handleIncomingPayload(initialMessage.data, source: 'initial');
       }
 
-      // 7. Get FCM Token
-      String? token = await _fcm.getToken();
+      // 7. Get FCM Token (APNS token may not be ready yet on iOS)
+      String? token = await _safeGetFcmToken();
       if (token != null) {
         AppLogger.info('FCM Token: $token');
       }
@@ -138,7 +141,7 @@ class NotificationService {
 
   Future<void> login(String userId) async {
     try {
-      String? token = await _fcm.getToken();
+      String? token = await _safeGetFcmToken();
       if (token != null) {
         AppLogger.info('NotificationService: login - syncing FCM token for user $userId');
       }
@@ -149,6 +152,26 @@ class NotificationService {
       }
     } catch (e, st) {
       AppLogger.error('NotificationService: login error', e, st);
+    }
+  }
+
+  Future<String?> _safeGetFcmToken() async {
+    try {
+      return await _fcm.getToken();
+    } on FirebaseException catch (e, st) {
+      final isApnsNotReady = e.code == 'apns-token-not-set';
+      final isApplePlatform = !kIsWeb && (Platform.isIOS || Platform.isMacOS);
+      if (isApnsNotReady && isApplePlatform) {
+        AppLogger.warning(
+          'NotificationService: APNS token not ready yet. FCM token will be retried later.',
+        );
+        return null;
+      }
+      AppLogger.error('NotificationService: getToken error', e, st);
+      return null;
+    } catch (e, st) {
+      AppLogger.error('NotificationService: getToken error', e, st);
+      return null;
     }
   }
 

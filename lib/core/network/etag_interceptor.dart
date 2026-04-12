@@ -20,6 +20,12 @@ class ETagInterceptor extends Interceptor {
     return options.method.toUpperCase() == 'GET';
   }
 
+  bool _shouldBypassEtag(RequestOptions options) {
+    final path = options.path.toLowerCase();
+    // Explore is highly dynamic and should always be fetched from server.
+    return path.contains('/api/posts/explore');
+  }
+
   String _cacheKeyFor(RequestOptions options) {
     final url = options.uri.toString();
     final encoded = base64Url.encode(utf8.encode(url));
@@ -110,6 +116,10 @@ class ETagInterceptor extends Interceptor {
         return handler.next(options);
       }
 
+      if (_shouldBypassEtag(options)) {
+        return handler.next(options);
+      }
+
       final cacheKey = _cacheKeyFor(options);
       options.extra[_extraCacheKey] = cacheKey;
 
@@ -140,6 +150,10 @@ class ETagInterceptor extends Interceptor {
     try {
       final options = response.requestOptions;
       if (!_isGet(options)) {
+        return handler.next(response);
+      }
+
+      if (_shouldBypassEtag(options)) {
         return handler.next(response);
       }
 
@@ -187,6 +201,11 @@ class ETagInterceptor extends Interceptor {
     final options = err.requestOptions;
 
     if (!_isGet(options) || response?.statusCode != 304) {
+      handler.next(err);
+      return;
+    }
+
+    if (_shouldBypassEtag(options)) {
       handler.next(err);
       return;
     }

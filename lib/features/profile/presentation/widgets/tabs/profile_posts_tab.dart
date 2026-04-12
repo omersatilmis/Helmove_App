@@ -3,6 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/di/injection_container.dart';
+import 'package:helmove/core/services/app_session.dart';
+import 'package:helmove/features/auth/domain/usecases/get_current_user_id_use_case.dart';
+import 'package:helmove/features/content/posts/data/cache/post_feed_cache.dart';
+import 'package:helmove/features/content/posts/domain/usecases/delete_post_usecase.dart';
+import 'package:helmove/features/content/posts/domain/usecases/get_feed_usecase.dart';
+import 'package:helmove/features/content/posts/domain/usecases/get_user_posts_usecase.dart';
+import 'package:helmove/features/content/posts/domain/usecases/like_post_usecase.dart';
 import 'package:helmove/features/content/posts/presentation/bloc/posts_bloc.dart';
 import 'package:helmove/features/content/posts/presentation/bloc/posts_event.dart';
 import 'package:helmove/features/content/posts/presentation/bloc/posts_state.dart';
@@ -27,7 +34,15 @@ class _ProfilePostsTabState extends State<ProfilePostsTab>
   @override
   void initState() {
     super.initState();
-    _postsBloc = sl<PostsBloc>();
+    _postsBloc = PostsBloc(
+      getFeed: sl<GetPostsFeedUseCase>(),
+      getUserPosts: sl<GetUserPostsUseCase>(),
+      deletePost: sl<DeletePostUseCase>(),
+      likePost: sl<LikePostUseCase>(),
+      getCurrentUserIdUseCase: sl<GetCurrentUserIdUseCase>(),
+      appSession: sl<AppSession>(),
+      postFeedCache: sl<PostFeedCache>(),
+    );
     _scrollController.addListener(_onScroll);
     _loadPosts(page: 1);
   }

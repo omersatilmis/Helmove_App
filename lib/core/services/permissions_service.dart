@@ -5,6 +5,7 @@ import '../utils/app_logger.dart';
 
 class PermissionsService {
   bool _startupRequestDone = false;
+  bool _settingsOpenedForCallPermission = false;
 
   bool get _isWeb => kIsWeb;
   bool get _isIOS => !_isWeb && defaultTargetPlatform == TargetPlatform.iOS;
@@ -18,29 +19,76 @@ class PermissionsService {
     return <Permission>[Permission.bluetoothConnect, Permission.bluetoothScan];
   }
 
-  Future<bool> ensureCallPermissions() async {
+  Future<bool> ensureCallPermissions({
+    bool requestIfNeeded = false,
+    bool openSettingsOnFailure = false,
+  }) async {
     if (_isWeb) return true;
 
+    // Call flow is blocked only by essential permissions.
+    // iOS: microphone
+    // Android: microphone + phone
     final permissions = <Permission>[
       Permission.microphone,
-      ..._bluetoothPermissions(),
-      Permission.notification,
       if (_isAndroid) Permission.phone,
     ];
 
-    final results = await _checkPermissions(permissions);
+    Map<Permission, PermissionStatus> results = await _checkPermissions(
+      permissions,
+    );
     final micOk = _isGranted(results[Permission.microphone]);
-    final btOk = _isIOS
-        ? _isGranted(results[Permission.bluetooth])
-        : _isGranted(results[Permission.bluetoothConnect]);
-    final notificationOk = _isGranted(results[Permission.notification]);
     final phoneOk = _isAndroid ? _isGranted(results[Permission.phone]) : true;
 
-    if (!micOk || !btOk || !phoneOk || !notificationOk) {
+    AppLogger.info(
+      'PermissionsService: call status before request '
+      'mic=${results[Permission.microphone]} '
+      'phone=${_isAndroid ? results[Permission.phone] : 'n/a'} '
+      'platform=${defaultTargetPlatform.name}',
+    );
+
+    final essentialOk = micOk && phoneOk;
+
+    if (!essentialOk) {
+      if (requestIfNeeded) {
+        AppLogger.warning(
+          'PermissionsService: call permissions missing. Requesting now...',
+        );
+        results = await _requestPermissions(permissions);
+
+        final micOkAfterRequest = _isGranted(results[Permission.microphone]);
+        final phoneOkAfterRequest = _isAndroid
+            ? _isGranted(results[Permission.phone])
+            : true;
+
+        AppLogger.info(
+          'PermissionsService: call status after request '
+          'mic=${results[Permission.microphone]} '
+          'phone=${_isAndroid ? results[Permission.phone] : 'n/a'} '
+          'platform=${defaultTargetPlatform.name}',
+        );
+
+        final essentialOkAfterRequest = micOkAfterRequest && phoneOkAfterRequest;
+        if (essentialOkAfterRequest) {
+          return true;
+        }
+
+        AppLogger.warning(
+          'PermissionsService: call permissions denied (AFTER REQUEST) '
+          'mic=$micOkAfterRequest phone=$phoneOkAfterRequest platform=${defaultTargetPlatform.name}',
+        );
+        if (openSettingsOnFailure && _shouldOpenSettingsForCall(results)) {
+          await openSettings();
+        }
+        return false;
+      }
+
       AppLogger.warning(
         'PermissionsService: call permissions denied (CHECK ONLY) '
-        'mic=$micOk bt=$btOk phone=$phoneOk notification=$notificationOk platform=${defaultTargetPlatform.name}',
+        'mic=$micOk phone=$phoneOk platform=${defaultTargetPlatform.name}',
       );
+      if (openSettingsOnFailure && _shouldOpenSettingsForCall(results)) {
+        await openSettings();
+      }
       return false;
     }
 
@@ -175,6 +223,27 @@ class PermissionsService {
   bool _isGranted(PermissionStatus? status) {
     if (status == null) return false;
     return status.isGranted || status.isLimited;
+  }
+
+  bool _shouldOpenSettingsForCall(Map<Permission, PermissionStatus> results) {
+    final mic = results[Permission.microphone];
+    final phone = _isAndroid ? results[Permission.phone] : null;
+
+    final settingsRequired = (mic?.isPermanentlyDenied ?? false) ||
+        (mic?.isRestricted ?? false) ||
+        (_isAndroid &&
+            ((phone?.isPermanentlyDenied ?? false) ||
+                (phone?.isRestricted ?? false)));
+
+    if (!settingsRequired) {
+      return false;
+    }
+
+    if (_settingsOpenedForCallPermission) {
+      return false;
+    }
+    _settingsOpenedForCallPermission = true;
+    return true;
   }
 
   static Future<void> openSettings() async {

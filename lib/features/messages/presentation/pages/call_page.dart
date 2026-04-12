@@ -126,10 +126,14 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _fadeController;
   bool _endPopScheduled = false;
+  String? _resolvedDisplayName;
+  String? _resolvedProfileImageUrl;
 
   @override
   void initState() {
     super.initState();
+    _resolvedDisplayName = widget.targetDisplayName;
+    _resolvedProfileImageUrl = widget.targetProfileImageUrl;
     // Pulse animasyonu (arama sırasında)
     _pulseController = AnimationController(
       vsync: this,
@@ -154,6 +158,23 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return BlocConsumer<CallBloc, CallState>(
       listener: (context, state) {
+        if (state is CallIncoming) {
+          final incomingName = state.callerDisplayName?.trim();
+          final incomingPhoto = state.callerProfileImageUrl?.trim();
+          if (incomingName != null && incomingName.isNotEmpty) {
+            _resolvedDisplayName = incomingName;
+          }
+          if (incomingPhoto != null && incomingPhoto.isNotEmpty) {
+            _resolvedProfileImageUrl = incomingPhoto;
+          }
+        }
+        if (state is CallOutgoing) {
+          final outgoingName = state.targetDisplayName?.trim();
+          if (outgoingName != null && outgoingName.isNotEmpty) {
+            _resolvedDisplayName = outgoingName;
+          }
+        }
+
         if (state is CallEnded) {
           if (_endPopScheduled) return;
           _endPopScheduled = true;
@@ -239,17 +260,20 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
   // OUTGOING — Arıyor
   // ============================================================
   Widget _buildOutgoingView(BuildContext context, CallOutgoing state) {
+    final displayName =
+        state.targetDisplayName ?? _resolvedDisplayName ?? widget.targetDisplayName;
     return FadeTransition(
       opacity: _fadeController,
       child: Column(
         children: [
           const Spacer(flex: 2),
           _buildAvatar(
-            displayName: state.targetDisplayName ?? widget.targetDisplayName,
+            displayName: displayName,
+            profileImageUrl: widget.targetProfileImageUrl,
           ),
           const SizedBox(height: 24),
           Text(
-            state.targetDisplayName ?? widget.targetDisplayName ?? 'Kullanıcı',
+            displayName ?? 'Kullanıcı',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -278,17 +302,22 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
   // INCOMING — Gelen Arama
   // ============================================================
   Widget _buildIncomingView(BuildContext context, CallIncoming state) {
+    final displayName =
+        state.callerDisplayName ?? _resolvedDisplayName ?? widget.targetDisplayName;
+    final profileUrl =
+        state.callerProfileImageUrl ?? _resolvedProfileImageUrl ?? widget.targetProfileImageUrl;
     return FadeTransition(
       opacity: _fadeController,
       child: Column(
         children: [
           const Spacer(flex: 2),
           _buildAvatar(
-            displayName: state.callerDisplayName ?? widget.targetDisplayName,
+            displayName: displayName,
+            profileImageUrl: profileUrl,
           ),
           const SizedBox(height: 24),
           Text(
-            state.callerDisplayName ?? widget.targetDisplayName ?? 'Kullanıcı',
+            displayName ?? 'Kullanıcı',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -317,13 +346,18 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
   // CONNECTING — Bağlanıyor
   // ============================================================
   Widget _buildConnectingView(BuildContext context, CallConnecting state) {
+    final displayName = _resolvedDisplayName ?? widget.targetDisplayName;
+    final profileUrl = _resolvedProfileImageUrl ?? widget.targetProfileImageUrl;
     return Column(
       children: [
         const Spacer(flex: 2),
-        _buildAvatar(displayName: widget.targetDisplayName),
+        _buildAvatar(
+          displayName: displayName,
+          profileImageUrl: profileUrl,
+        ),
         const SizedBox(height: 24),
         Text(
-          widget.targetDisplayName ?? 'Kullanıcı',
+          displayName ?? 'Kullanıcı',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 28,
@@ -350,13 +384,19 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
   // ACTIVE — Konuşma
   // ============================================================
   Widget _buildActiveView(BuildContext context, CallActive state) {
+    final displayName = _resolvedDisplayName ?? widget.targetDisplayName;
+    final profileUrl = _resolvedProfileImageUrl ?? widget.targetProfileImageUrl;
     return Column(
       children: [
         const Spacer(flex: 2),
-        _buildAvatar(displayName: widget.targetDisplayName, isActive: true),
+        _buildAvatar(
+          displayName: displayName,
+          profileImageUrl: profileUrl,
+          isActive: true,
+        ),
         const SizedBox(height: 24),
         Text(
-          widget.targetDisplayName ?? 'Kullanıcı',
+          displayName ?? 'Kullanıcı',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 28,
@@ -482,7 +522,11 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
   // ============================================================
 
   /// Animasyonlu avatar (pulse efekti)
-  Widget _buildAvatar({String? displayName, bool isActive = false}) {
+  Widget _buildAvatar({
+    String? displayName,
+    String? profileImageUrl,
+    bool isActive = false,
+  }) {
     final initial = (displayName?.isNotEmpty == true)
         ? displayName![0].toUpperCase()
         : '?';
@@ -551,14 +595,15 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                     ),
                   ],
                 ),
-                child: widget.targetProfileImageUrl != null
+                child: (profileImageUrl != null &&
+                        profileImageUrl.trim().isNotEmpty)
                     ? ClipOval(
                         child: CachedNetworkImage(
-                          imageUrl: widget.targetProfileImageUrl!,
+                          imageUrl: profileImageUrl,
                           fit: BoxFit.cover,
                           errorWidget: (_, _, _) => Center(
                             child: Text(
-                              widget.targetDisplayName?[0] ?? '?',
+                              initial,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 40,
@@ -807,7 +852,10 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
         ),
         // Speaker (placeholder)
         GestureDetector(
-          onTap: () => HapticFeedback.lightImpact(),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            context.read<CallBloc>().add(const CallToggleSpeaker());
+          },
           child: Column(
             children: [
               Container(
@@ -815,19 +863,33 @@ class _CallViewState extends State<_CallView> with TickerProviderStateMixin {
                 height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.1),
-                  border: Border.all(color: Colors.white24, width: 1.5),
+                  color: state.isSpeakerOn
+                      ? const Color(0xFF22C55E).withValues(alpha: 0.25)
+                      : Colors.white.withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: state.isSpeakerOn
+                        ? const Color(0xFF22C55E)
+                        : Colors.white24,
+                    width: 1.5,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.volume_up_rounded,
+                child: Icon(
+                  state.isSpeakerOn
+                      ? Icons.volume_up_rounded
+                      : Icons.hearing_rounded,
                   color: Colors.white,
                   size: 24,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Hoparlör',
-                style: TextStyle(color: Colors.white60, fontSize: 12),
+                style: TextStyle(
+                  color: state.isSpeakerOn
+                      ? const Color(0xFF86EFAC)
+                      : Colors.white60,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),

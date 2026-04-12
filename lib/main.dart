@@ -31,6 +31,8 @@ import 'package:helmove/core/services/deep_link_store.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:helmove/features/call/presentation/bloc/call_bloc.dart';
 import 'package:helmove/features/call/presentation/bloc/call_event.dart';
+import 'package:helmove/features/presence/services/presence_controller.dart';
+import 'package:helmove/features/presence/utils/timeago_setup.dart';
 
 void main() async {
   // ── runZonedGuarded: Catches ALL unhandled async errors globally ──
@@ -120,8 +122,9 @@ void main() async {
         authBootstrapGate.complete();
       }
 
-      // 2. Date Formatting Başlatma (Türkçe için)
+      // 2. Date Formatting + Timeago Türkçe locale
       await initializeDateFormatting('tr_TR', null);
+      setupTimeagoLocales();
 
       // 3. Root widget
       runApp(const MyApp());
@@ -196,26 +199,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       return;
     }
 
-    if (uri.host == 'reset-password') {
-      final token = uri.queryParameters['token']?.trim();
-      final email = uri.queryParameters['email']?.trim();
-
-      if (token == null || token.isEmpty) {
-        _router.go('/forgot-password');
-        return;
-      }
-
-      final query = <String, String>{'token': token};
-      if (email != null && email.isNotEmpty) {
-        query['email'] = email;
-      }
-
-      final route = Uri(
-        path: '/forgot-password/confirm',
-        queryParameters: query,
-      ).toString();
-      _router.go(route);
-    }
+    // OTP akışında deep link yok — yönlendirme butonla yapılıyor.
+    // Eski 'reset-password' deep link'i artık desteklenmiyor.
   }
 
   void _onThemeChanged() {
@@ -240,7 +225,30 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       } catch (e) {
         // Bloc henüz register edilmemiş olabilir veya hata almış olabilir.
       }
+
+      // Presence: foreground'a dönüşte heartbeat yeniden başlat.
+      _notifyPresenceForeground();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      // Presence: background'a geçişte offline sinyali gönder + timer durdur.
+      _notifyPresenceBackground();
     }
+  }
+
+  void _notifyPresenceForeground() {
+    try {
+      if (sl.isRegistered<PresenceController>()) {
+        sl<PresenceController>().onForeground();
+      }
+    } catch (_) {}
+  }
+
+  void _notifyPresenceBackground() {
+    try {
+      if (sl.isRegistered<PresenceController>()) {
+        sl<PresenceController>().onBackground();
+      }
+    } catch (_) {}
   }
 
   @override

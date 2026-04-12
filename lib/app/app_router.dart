@@ -179,16 +179,15 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/forgot-password/confirm',
         redirect: (context, state) {
-          final token = state.uri.queryParameters['token'];
-          if (token == null || token.trim().isEmpty) {
+          final email = state.uri.queryParameters['email'];
+          if (email == null || email.trim().isEmpty) {
             return '/forgot-password';
           }
           return null;
         },
         builder: (context, state) {
-          final token = state.uri.queryParameters['token']!;
-          final email = state.uri.queryParameters['email'];
-          return ForgotPasswordConfirmPage(token: token, email: email);
+          final email = state.uri.queryParameters['email']!;
+          return ForgotPasswordConfirmPage(email: email);
         },
       ),
 

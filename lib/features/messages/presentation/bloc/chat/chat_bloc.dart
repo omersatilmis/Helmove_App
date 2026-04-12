@@ -22,6 +22,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   StreamSubscription<List<int>>? _messagesReadSubscription;
   StreamSubscription<dynamic>? _messageEditedSubscription;
   StreamSubscription<int>? _messageDeletedSubscription;
+  StreamSubscription<dynamic>? _userStatusChangedSubscription;
 
   ChatBloc({
     required this.getMessages,
@@ -42,6 +43,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<UpdateTypingStatus>(_onUpdateTypingStatus);
     on<OtherUserTypingReceived>(_onOtherUserTypingReceived);
     on<RefreshMessagesReadStatus>(_onRefreshMessagesReadStatus);
+    on<OtherUserPresenceChanged>(_onOtherUserPresenceChanged);
 
     // Set up SignalR Direct Message listener
     messageSignalRService.setOnReceiveDirectMessage((messageData) {
@@ -89,6 +91,23 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         add(MessageDeletedReceived(messageId));
       }
     });
+
+    // Set up SignalR Presence listener
+    _userStatusChangedSubscription =
+        messageSignalRService.onUserStatusChanged.listen((presence) {
+      if (!isClosed) {
+        final currentState = state;
+        if (currentState is ChatLoaded &&
+            currentState.otherUserId == presence.userId) {
+          add(
+            OtherUserPresenceChanged(
+              isOnline: presence.isOnline,
+              lastSeen: presence.lastSeen,
+            ),
+          );
+        }
+      }
+    });
   }
 
   Future<void> _onMarkAsRead(MarkAsRead event, Emitter<ChatState> emit) async {
@@ -111,7 +130,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       final messages = await getMessages(otherUserId: event.otherUserId);
       // Ensure messages are sorted descending (newest first) for reversed list
       messages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
-      emit(ChatLoaded(messages: messages, otherUserId: event.otherUserId));
+      emit(
+        ChatLoaded(
+          messages: messages,
+          otherUserId: event.otherUserId,
+          isOtherUserOnline: event.initialIsOnline,
+          otherUserLastSeen: event.initialLastSeen,
+        ),
+      );
     } catch (e) {
       emit(ChatError(e.toString()));
     }
@@ -327,12 +353,28 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
   }
 
+  Future<void> _onOtherUserPresenceChanged(
+    OtherUserPresenceChanged event,
+    Emitter<ChatState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is ChatLoaded) {
+      emit(
+        currentState.copyWith(
+          isOtherUserOnline: event.isOnline,
+          otherUserLastSeen: event.lastSeen,
+        ),
+      );
+    }
+  }
+
   @override
   Future<void> close() {
     _typingTimer?.cancel();
     _messagesReadSubscription?.cancel();
     _messageEditedSubscription?.cancel();
     _messageDeletedSubscription?.cancel();
+    _userStatusChangedSubscription?.cancel();
     return super.close();
   }
 }

@@ -1,3 +1,4 @@
+import 'package:helmove/core/network/network_module.dart';
 import '../../domain/entities/post_entity.dart';
 
 class PostModel extends PostEntity {
@@ -45,12 +46,14 @@ class PostModel extends PostEntity {
       username: _pickString([userJson['username'], json['username'], fullName]),
       userFirstName: firstName.isEmpty ? null : firstName,
       userLastName: lastName.isEmpty ? null : lastName,
-      userProfileImage: _pickNullableString([
-        userJson['profilePictureUrl'],
-        userJson['avatarUrl'],
-        json['userProfileImage'],
-        json['profilePictureUrl'],
-      ]),
+      userProfileImage: NetworkModule.resolveImageUrl(
+        _pickNullableString([
+          userJson['profilePictureUrl'],
+          userJson['avatarUrl'],
+          json['userProfileImage'],
+          json['profilePictureUrl'],
+        ]),
+      ),
       createdAt: _parseDateTime(json['createdAt']),
       likeCount: _toInt(json['likeCount'] ?? json['likesCount']),
       commentCount: _toInt(json['commentCount'] ?? json['commentsCount']),

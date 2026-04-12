@@ -455,6 +455,7 @@ class SignalRService {
 
         String? callerId;
         String? callerDisplayName;
+        String? callerProfileImageUrl;
         int? callId;
 
         // Backend can send arguments as a single object or positional args
@@ -485,11 +486,26 @@ class SignalRService {
             'callerName',
             'CallerName',
           ]);
+          callerProfileImageUrl = _readString(data, const [
+            'callerProfileImageUrl',
+            'CallerProfileImageUrl',
+            'callerProfilePictureUrl',
+            'CallerProfilePictureUrl',
+            'actorProfilePictureUrl',
+            'ActorProfilePictureUrl',
+            'profilePictureUrl',
+            'ProfilePictureUrl',
+            'avatarUrl',
+            'AvatarUrl',
+          ]);
           callId = _readInt(data, const ['callId', 'CallId', 'id', 'Id']);
         } else {
           callerId = arguments[0]?.toString();
           callerDisplayName = arguments.length > 1
               ? arguments[1]?.toString()
+              : null;
+          callerProfileImageUrl = arguments.length > 3
+              ? arguments[3]?.toString()
               : null;
           callId = arguments.length > 2
               ? int.tryParse(arguments[2]?.toString() ?? '')
@@ -508,6 +524,7 @@ class SignalRService {
           CallRequestPayload(
             callerId: callerId,
             callerDisplayName: callerDisplayName,
+            callerProfileImageUrl: callerProfileImageUrl,
             callId: callId,
           ),
         );

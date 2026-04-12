@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../navigation/navigator_keys.dart';
 import '../di/injection_container.dart';
@@ -50,10 +51,22 @@ class CallListenerService {
         return;
       }
 
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      final isForeground = lifecycle == AppLifecycleState.resumed;
+
+      if (!isForeground) {
+        AppLogger.info(
+          'CallListenerService: Incoming SignalR event received for caller=$callerId while app is background. '
+          'Waiting for CallKit flow.',
+        );
+        return;
+      }
+
       _openIncomingCallPage(
         callerId: callerId,
         callId: _toInt(payload.callId),
         callerDisplayName: payload.callerDisplayName,
+        callerProfileImageUrl: payload.callerProfileImageUrl,
         autoAcceptIncoming: false,
       );
     });
@@ -73,6 +86,7 @@ class CallListenerService {
             callerId: payload.callerId,
             callId: payload.callId,
             callerDisplayName: payload.callerDisplayName,
+            callerProfileImageUrl: payload.callerProfileImageUrl,
             autoAcceptIncoming: true,
           );
           if (!opened) {
@@ -80,6 +94,7 @@ class CallListenerService {
               callerId: payload.callerId,
               callId: payload.callId,
               callerDisplayName: payload.callerDisplayName,
+              callerProfileImageUrl: payload.callerProfileImageUrl,
             );
           }
           break;
@@ -99,15 +114,30 @@ class CallListenerService {
         case CallKitActionType.ended:
           final callBloc = sl<CallBloc>();
           final callState = callBloc.state;
-          final hasActiveCall =
-              callState is CallOutgoing ||
-              callState is CallIncoming ||
-              callState is CallConnecting ||
-              callState is CallActive;
+
+          // Simulator/iOS CallKit bazen connecting/active sırasında false ended
+          // callback üretebiliyor. Bu durumda görüşmeyi otomatik kapatma.
+          if (callState is CallConnecting || callState is CallActive) {
+            AppLogger.warning(
+              'CallListenerService: Ignoring CallKit ${action.type.name} while call is ${callState.runtimeType}.',
+            );
+            break;
+          }
+
+          // iOS outgoing CallKit bazen anlik timeout/ended callback uretebiliyor.
+          // Bu durumda aramayi otomatik kapatmak false-positive'e neden olur.
+          if (callState is CallOutgoing) {
+            AppLogger.warning(
+              'CallListenerService: Ignoring CallKit ${action.type.name} while outgoing call is active.',
+            );
+            break;
+          }
+
+            final hasActiveCall = callState is CallIncoming;
           if (hasActiveCall) {
             callBloc.add(const CallHangUp());
+            await callKitService.endAllCalls();
           }
-          await callKitService.endAllCalls();
           break;
         case CallKitActionType.devicePushTokenUpdated:
         case CallKitActionType.incoming:
@@ -124,6 +154,7 @@ class CallListenerService {
     required bool autoAcceptIncoming,
     int? callId,
     String? callerDisplayName,
+    String? callerProfileImageUrl,
   }) {
     if (_isOpeningIncomingCall) return false;
 
@@ -146,6 +177,7 @@ class CallListenerService {
       builder: (_) => CallPage(
         targetUserId: callerId,
         targetDisplayName: callerDisplayName,
+        targetProfileImageUrl: callerProfileImageUrl,
         isOutgoing: false,
         autoAcceptIncoming: autoAcceptIncoming,
         callId: callId,
@@ -165,12 +197,14 @@ class CallListenerService {
     required int callerId,
     int? callId,
     String? callerDisplayName,
+    String? callerProfileImageUrl,
   }) {
     final bloc = sl<CallBloc>();
     bloc.add(
       CallIncomingReceived(
         callerId: callerId,
         callerDisplayName: callerDisplayName,
+        callerProfileImageUrl: callerProfileImageUrl,
         callId: callId,
       ),
     );

@@ -295,6 +295,8 @@ class _ConversationsViewState extends State<ConversationsView> {
                                     username: conversation.username,
                                     profileImageUrl:
                                         conversation.profilePictureUrl,
+                                    initialIsOnline: conversation.isOnline,
+                                    initialLastSeen: conversation.lastSeen,
                                   ),
                                 ),
                               ).then((_) {

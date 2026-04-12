@@ -240,6 +240,7 @@ import '../../features/content/posts/presentation/bloc/create_post_cubit.dart';
 
 import '../services/signalr_service.dart';
 import '../services/communication_realtime_bus.dart';
+import '../../features/presence/services/presence_controller.dart';
 import '../services/communication_refresh_coordinator.dart';
 import '../services/message_signalr_service.dart';
 import '../services/callkit_incoming_service.dart';
@@ -338,6 +339,8 @@ Future<void> ensureCommunicationRuntimeStarted() async {
     sl<CallListenerService>().start();
     sl<SosAlertListenerService>().start();
     await sl<IntercomEngine>().start();
+    // Presence: SignalR bağlantısı kurulunca heartbeat'i başlat.
+    sl<PresenceController>().initialize();
     _communicationRuntimeStarted = true;
     completer.complete();
   } catch (e, st) {
@@ -1609,6 +1612,12 @@ Future<void> initCore() async {
     sl.registerLazySingleton(() => HomeSummaryService(sl()));
     sl.registerLazySingleton(
       () => MessageSignalRService(sl<AuthLocalDataSource>()),
+    );
+    sl.registerLazySingleton(
+      () => PresenceController(
+        signalRService: sl<MessageSignalRService>(),
+        dio: sl<Dio>(),
+      ),
     );
     if (!sl.isRegistered<CallListenerService>()) {
       sl.registerLazySingleton<CallListenerService>(

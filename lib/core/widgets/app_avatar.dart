@@ -49,16 +49,11 @@ class AppAvatar extends StatelessWidget {
 
   Widget _buildAvatar(String? imageUrl) {
     ImageProvider imageProvider;
-    if (imageUrl != null && imageUrl.trim().isNotEmpty) {
-      if (imageUrl.startsWith('http')) {
-        imageProvider = CachedNetworkImageProvider(
-          imageUrl.toAvatarThumbnail(),
-        );
-      } else {
-        imageProvider = AssetImage(
-          imageUrl,
-        ); // In case it's a local assert for some reason
-      }
+    final absoluteUrl = imageUrl?.toAbsoluteImageUrl();
+    if (absoluteUrl != null && absoluteUrl.isNotEmpty) {
+      imageProvider = CachedNetworkImageProvider(
+        absoluteUrl.toAvatarThumbnail(),
+      );
     } else {
       imageProvider = const AssetImage('assets/icons/ic_profile.png');
     }

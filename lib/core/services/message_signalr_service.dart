@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:rxdart/rxdart.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import '../network/network_module.dart';
 import '../utils/app_logger.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
+import '../../features/presence/data/models/user_presence_model.dart';
 
 class MessageSignalRService {
   HubConnection? _hubConnection;
@@ -33,8 +35,33 @@ class MessageSignalRService {
   final _messageDeletedController = StreamController<int>.broadcast();
   Stream<int> get onMessageDeleted => _messageDeletedController.stream;
 
-  final _userTypingStreamController = StreamController<Map<String, dynamic>>.broadcast();
-  Stream<Map<String, dynamic>> get onUserTypingStream => _userTypingStreamController.stream;
+  final _userTypingStreamController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get onUserTypingStream =>
+      _userTypingStreamController.stream;
+
+  // ── Presence Streams ──────────────────────────────────────────────────────
+
+  /// İlk bağlantıda gelen çevrimiçi arkadaş ID listesi.
+  final _onlineFriendsController = StreamController<List<int>>.broadcast();
+  Stream<List<int>> get onOnlineFriends => _onlineFriendsController.stream;
+
+  /// Herhangi bir kullanıcının online/offline durumu değiştiğinde tetiklenir.
+  final _userStatusChangedController =
+      StreamController<UserPresenceModel>.broadcast();
+  Stream<UserPresenceModel> get onUserStatusChanged =>
+      _userStatusChangedController.stream;
+
+  /// Heartbeat'e karşılık sunucudan gelen ACK.
+  final _heartbeatResponseController = StreamController<void>.broadcast();
+  Stream<void> get onHeartbeatResponse => _heartbeatResponseController.stream;
+
+  /// Bağlantı durumu — BehaviorSubject: yeni dinleyici her zaman son değeri alır.
+  final _connectionStateController = BehaviorSubject<HubConnectionState>.seeded(
+    HubConnectionState.Disconnected,
+  );
+  Stream<HubConnectionState> get connectionStateStream =>
+      _connectionStateController.stream;
 
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
 
@@ -59,8 +86,26 @@ class MessageSignalRService {
                   await authLocalDataSource.getToken() ?? '',
             ),
           )
-          .withAutomaticReconnect()
+          .withAutomaticReconnect(
+            // Exponential backoff: 2s, 4s, 8s, 16s, 32s, 60s (sonrasında 60s sabit)
+            retryDelays: [2000, 4000, 8000, 16000, 32000, 60000],
+          )
           .build();
+
+      _hubConnection!.onreconnecting(({error}) {
+        AppLogger.warning("Message SignalR: Reconnecting... $error");
+        _connectionStateController.add(HubConnectionState.Reconnecting);
+      });
+
+      _hubConnection!.onreconnected(({connectionId}) {
+        AppLogger.info("Message SignalR: Reconnected. id=$connectionId");
+        _connectionStateController.add(HubConnectionState.Connected);
+      });
+
+      _hubConnection!.onclose(({error}) {
+        AppLogger.warning("Message SignalR: Connection closed. $error");
+        _connectionStateController.add(HubConnectionState.Disconnected);
+      });
 
       _registerEventHandlers();
 
@@ -123,6 +168,44 @@ class MessageSignalRService {
         _messageDeletedController.add(messageId);
       }
     });
+
+    // ── Presence Event Handlers ──────────────────────────────────────────────
+
+    _hubConnection!.on("OnlineFriends", (arguments) {
+      if (arguments == null || arguments.isEmpty) return;
+      final raw = arguments[0];
+      final ids = <int>[];
+      if (raw is List) {
+        for (final item in raw) {
+          final id = item is int ? item : int.tryParse(item.toString());
+          if (id != null) ids.add(id);
+        }
+      }
+      AppLogger.info("SignalR: OnlineFriends count=${ids.length}");
+      _onlineFriendsController.add(ids);
+    });
+
+    _hubConnection!.on("UserStatusChanged", (arguments) {
+      if (arguments == null || arguments.isEmpty) return;
+      try {
+        final raw = arguments[0];
+        final map = raw is Map<String, dynamic>
+            ? raw
+            : Map<String, dynamic>.from(raw as Map);
+        final model = UserPresenceModel.fromMap(map);
+        AppLogger.info(
+          "SignalR: UserStatusChanged userId=${model.userId} online=${model.isOnline}",
+        );
+        _userStatusChangedController.add(model);
+      } catch (e) {
+        AppLogger.error("SignalR: UserStatusChanged parse error", e);
+      }
+    });
+
+    _hubConnection!.on("HeartbeatResponse", (arguments) {
+      AppLogger.info("SignalR: HeartbeatResponse received");
+      _heartbeatResponseController.add(null);
+    });
   }
 
   Future<void> start() async {
@@ -130,9 +213,12 @@ class MessageSignalRService {
 
     if (_hubConnection!.state == HubConnectionState.Disconnected) {
       try {
+        _connectionStateController.add(HubConnectionState.Connecting);
         await _hubConnection!.start();
+        _connectionStateController.add(HubConnectionState.Connected);
         AppLogger.info("Message SignalR Connection Started");
       } catch (e) {
+        _connectionStateController.add(HubConnectionState.Disconnected);
         AppLogger.error("Message SignalR Connection Start Error", e);
       }
     }
@@ -142,7 +228,18 @@ class MessageSignalRService {
     if (_hubConnection != null) {
       await _hubConnection!.stop();
       _hubConnection = null;
+      _connectionStateController.add(HubConnectionState.Disconnected);
       AppLogger.info("Message SignalR Connection Stopped");
+    }
+  }
+
+  /// Sunucuya heartbeat gönderir. Sadece bağlıyken çağrılmalı.
+  Future<void> sendHeartbeat() async {
+    if (!isConnected) return;
+    try {
+      await _hubConnection!.invoke("Heartbeat");
+    } catch (e) {
+      AppLogger.error("Message SignalR: Heartbeat invoke error", e);
     }
   }
 
@@ -170,5 +267,18 @@ class MessageSignalRService {
 
   void setOnUserTyping(Function(String senderId, bool isTyping) callback) {
     _onUserTyping = callback;
+  }
+
+  void dispose() {
+    _directMessageController.close();
+    _messagesReadController.close();
+    _messagesReadPayloadController.close();
+    _messageEditedController.close();
+    _messageDeletedController.close();
+    _userTypingStreamController.close();
+    _onlineFriendsController.close();
+    _userStatusChangedController.close();
+    _heartbeatResponseController.close();
+    _connectionStateController.close();
   }
 }

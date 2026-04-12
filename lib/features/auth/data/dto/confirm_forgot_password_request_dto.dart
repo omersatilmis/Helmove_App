@@ -1,18 +1,21 @@
-/// DTO for confirm forgot-password request
+/// DTO for OTP-based confirm forgot-password request
 class ConfirmForgotPasswordRequestDto {
-  final String token;
+  final String email;
+  final String code;
   final String newPassword;
   final String confirmNewPassword;
 
   ConfirmForgotPasswordRequestDto({
-    required this.token,
+    required this.email,
+    required this.code,
     required this.newPassword,
     required this.confirmNewPassword,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'token': token,
+      'email': email,
+      'code': code,
       'newPassword': newPassword,
       'confirmNewPassword': confirmNewPassword,
     };

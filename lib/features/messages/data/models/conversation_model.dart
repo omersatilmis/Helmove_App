@@ -1,3 +1,4 @@
+import 'package:helmove/core/network/network_module.dart';
 import '../../domain/entities/conversation.dart';
 import 'message_model.dart';
 
@@ -21,7 +22,7 @@ class ConversationModel extends Conversation {
       username: json['username'] ?? '',
       firstName: json['firstName'],
       lastName: json['lastName'],
-      profilePictureUrl: json['profilePictureUrl'],
+      profilePictureUrl: NetworkModule.resolveImageUrl(json['profilePictureUrl']?.toString()),
       isOnline: json['isOnline'] ?? false,
       lastSeen: json['lastSeen'] != null
           ? DateTime.parse(json['lastSeen'])

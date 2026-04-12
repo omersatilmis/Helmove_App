@@ -26,6 +26,8 @@ class ChatPage extends StatelessWidget {
   final String lastName;
   final String username;
   final String? profileImageUrl;
+  final bool initialIsOnline;
+  final DateTime? initialLastSeen;
 
   const ChatPage({
     super.key,
@@ -34,6 +36,8 @@ class ChatPage extends StatelessWidget {
     required this.lastName,
     required this.username,
     this.profileImageUrl,
+    this.initialIsOnline = false,
+    this.initialLastSeen,
   });
 
   @override
@@ -42,7 +46,13 @@ class ChatPage extends StatelessWidget {
       providers: [
         BlocProvider(
           create: (_) => sl<ChatBloc>()
-            ..add(LoadMessages(otherUserId))
+            ..add(
+              LoadMessages(
+                otherUserId,
+                initialIsOnline: initialIsOnline,
+                initialLastSeen: initialLastSeen,
+              ),
+            )
             ..add(MarkAsRead(otherUserId)),
         ),
         BlocProvider(
@@ -55,6 +65,8 @@ class ChatPage extends StatelessWidget {
         lastName: lastName,
         username: username,
         profileImageUrl: profileImageUrl,
+        initialIsOnline: initialIsOnline,
+        initialLastSeen: initialLastSeen,
       ),
     );
   }
@@ -66,6 +78,8 @@ class ChatView extends StatefulWidget {
   final String lastName;
   final String username;
   final String? profileImageUrl;
+  final bool initialIsOnline;
+  final DateTime? initialLastSeen;
 
   const ChatView({
     super.key,
@@ -74,6 +88,8 @@ class ChatView extends StatefulWidget {
     required this.lastName,
     required this.username,
     this.profileImageUrl,
+    required this.initialIsOnline,
+    this.initialLastSeen,
   });
 
   @override
@@ -85,6 +101,19 @@ class _ChatViewState extends State<ChatView> {
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isTypingNotifier = ValueNotifier<bool>(false);
   int? _editingMessageId; // Mesaj düzenleme için ID
+
+  String _presenceLabel({required bool isOnline, DateTime? lastSeen}) {
+    if (isOnline) {
+      return 'çevrimiçi';
+    }
+    if (lastSeen != null) {
+      final formatted = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR').format(
+        lastSeen.toLocal(),
+      );
+      return 'son görülme: $formatted';
+    }
+    return 'çevrimdışı';
+  }
 
 
   @override
@@ -325,14 +354,21 @@ class _ChatViewState extends State<ChatView> {
               buildWhen: (previous, current) {
                 if (previous is ChatLoaded && current is ChatLoaded) {
                   return previous.isOtherUserTyping !=
-                      current.isOtherUserTyping;
+                          current.isOtherUserTyping ||
+                      previous.isOtherUserOnline !=
+                          current.isOtherUserOnline ||
+                      previous.otherUserLastSeen != current.otherUserLastSeen;
                 }
                 return true;
               },
               builder: (context, state) {
                 bool isTyping = false;
+                bool isOnline = widget.initialIsOnline;
+                DateTime? lastSeen = widget.initialLastSeen;
                 if (state is ChatLoaded) {
                   isTyping = state.isOtherUserTyping;
+                  isOnline = state.isOtherUserOnline;
+                  lastSeen = state.otherUserLastSeen;
                 }
 
                 return Column(
@@ -346,11 +382,15 @@ class _ChatViewState extends State<ChatView> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      isTyping ? 'yazıyor...' : 'çevrimiçi',
+                      isTyping
+                          ? 'yazıyor...'
+                          : _presenceLabel(isOnline: isOnline, lastSeen: lastSeen),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: isTyping
                             ? Colors.greenAccent
-                            : colorScheme.primary,
+                            : (isOnline
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant),
                         fontWeight: FontWeight.w500,
                         fontStyle: isTyping
                             ? FontStyle.italic

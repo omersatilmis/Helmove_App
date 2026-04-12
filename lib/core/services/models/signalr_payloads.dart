@@ -1,11 +1,13 @@
 class CallRequestPayload {
   final String callerId;
   final String? callerDisplayName;
+  final String? callerProfileImageUrl;
   final int? callId;
 
   CallRequestPayload({
     required this.callerId,
     this.callerDisplayName,
+    this.callerProfileImageUrl,
     this.callId,
   });
 
@@ -13,6 +15,10 @@ class CallRequestPayload {
     return CallRequestPayload(
       callerId: map['callerId'] ?? '',
       callerDisplayName: map['callerDisplayName'],
+      callerProfileImageUrl:
+          map['callerProfileImageUrl'] ??
+          map['callerProfilePictureUrl'] ??
+          map['profilePictureUrl'],
       callId: map['callId'],
     );
   }

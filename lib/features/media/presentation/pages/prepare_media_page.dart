@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
 import '../../../../../core/di/injection_container.dart';
@@ -25,6 +26,13 @@ class PrepareMediaPage extends StatefulWidget {
 
 class _PrepareMediaPageState extends State<PrepareMediaPage> {
   final TextEditingController _captionController = TextEditingController();
+  late File _currentImageFile;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentImageFile = widget.imageFile;
+  }
 
   @override
   void dispose() {
@@ -47,8 +55,47 @@ class _PrepareMediaPageState extends State<PrepareMediaPage> {
     context.read<CreatePostCubit>().submitPost(
       text: text,
       visibility: 0,
-      mediaUrl: widget.imageFile.path,
+      mediaUrl: _currentImageFile.path,
     );
+  }
+
+  Future<void> _cropImage() async {
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: _currentImageFile.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Image',
+          toolbarColor: Theme.of(context).colorScheme.surface,
+          toolbarWidgetColor: Theme.of(context).colorScheme.onSurface,
+          hideBottomControls: false,
+          lockAspectRatio: false,
+          aspectRatioPresets: const [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.ratio16x9,
+          ],
+        ),
+        IOSUiSettings(
+          title: 'Crop Image',
+          aspectRatioLockEnabled: false,
+          resetAspectRatioEnabled: true,
+          aspectRatioPresets: const [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.ratio16x9,
+          ],
+        ),
+      ],
+    );
+
+    if (cropped == null || !mounted) return;
+    setState(() {
+      _currentImageFile = File(cropped.path);
+    });
   }
 
   @override
@@ -113,6 +160,8 @@ class _PrepareMediaPageState extends State<PrepareMediaPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
+                          width: double.infinity,
+                          height: 420,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
@@ -128,13 +177,22 @@ class _PrepareMediaPageState extends State<PrepareMediaPage> {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(20),
-                            child: AspectRatio(
-                              aspectRatio: 4 / 5,
+                            child: ColoredBox(
+                              color: colorScheme.surfaceContainerHighest,
                               child: Image.file(
-                                widget.imageFile,
-                                fit: BoxFit.cover,
+                                _currentImageFile,
+                                fit: BoxFit.contain,
                               ),
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: _cropImage,
+                            icon: const Icon(Icons.crop_rounded),
+                            label: const Text('Adjust Crop'),
                           ),
                         ),
                         const SizedBox(height: 20),

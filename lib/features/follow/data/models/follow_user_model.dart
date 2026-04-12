@@ -1,3 +1,4 @@
+import 'package:helmove/core/network/network_module.dart';
 import '../../domain/entities/follow_user.dart';
 
 class FollowUserModel extends FollowUser {
@@ -35,11 +36,13 @@ class FollowUserModel extends FollowUser {
       username: _asString(usernameValue),
       firstName: _asNullableString(json['firstName'] ?? json['first_name']),
       lastName: _asNullableString(json['lastName'] ?? json['last_name']),
-      profilePictureUrl: _asNullableString(
-        json['profilePictureUrl'] ??
-            json['profileImageUrl'] ??
-            json['avatarUrl'] ??
-            json['profile_picture_url'],
+      profilePictureUrl: NetworkModule.resolveImageUrl(
+        _asNullableString(
+          json['profilePictureUrl'] ??
+              json['profileImageUrl'] ??
+              json['avatarUrl'] ??
+              json['profile_picture_url'],
+        ),
       ),
       isFollowing: parsedIsFollowing ?? false,
       isFollower: parsedIsFollower ?? false,

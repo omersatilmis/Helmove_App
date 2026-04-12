@@ -34,11 +34,16 @@ class CallOutgoing extends CallState {
 class CallIncoming extends CallState {
   final int callerId;
   final String? callerDisplayName;
+  final String? callerProfileImageUrl;
 
-  const CallIncoming({required this.callerId, this.callerDisplayName});
+  const CallIncoming({
+    required this.callerId,
+    this.callerDisplayName,
+    this.callerProfileImageUrl,
+  });
 
   @override
-  List<Object?> get props => [callerId, callerDisplayName];
+  List<Object?> get props => [callerId, callerDisplayName, callerProfileImageUrl];
 }
 
 /// Bağlanıyor — WebRTC PeerConnection kuruluyor (ICE exchange)
@@ -55,24 +60,36 @@ class CallConnecting extends CallState {
 class CallActive extends CallState {
   final int remoteUserId;
   final bool isMicrophoneOn;
+  final bool isSpeakerOn;
   final Duration callDuration;
 
   const CallActive({
     required this.remoteUserId,
     this.isMicrophoneOn = true,
+    this.isSpeakerOn = false,
     this.callDuration = Duration.zero,
   });
 
-  CallActive copyWith({bool? isMicrophoneOn, Duration? callDuration}) {
+  CallActive copyWith({
+    bool? isMicrophoneOn,
+    bool? isSpeakerOn,
+    Duration? callDuration,
+  }) {
     return CallActive(
       remoteUserId: remoteUserId,
       isMicrophoneOn: isMicrophoneOn ?? this.isMicrophoneOn,
+      isSpeakerOn: isSpeakerOn ?? this.isSpeakerOn,
       callDuration: callDuration ?? this.callDuration,
     );
   }
 
   @override
-  List<Object?> get props => [remoteUserId, isMicrophoneOn, callDuration];
+  List<Object?> get props => [
+    remoteUserId,
+    isMicrophoneOn,
+    isSpeakerOn,
+    callDuration,
+  ];
 }
 
 /// Arama bitti

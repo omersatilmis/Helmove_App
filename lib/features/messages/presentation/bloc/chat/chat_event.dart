@@ -9,11 +9,17 @@ abstract class ChatEvent extends Equatable {
 
 class LoadMessages extends ChatEvent {
   final int otherUserId;
+  final bool initialIsOnline;
+  final DateTime? initialLastSeen;
 
-  const LoadMessages(this.otherUserId);
+  const LoadMessages(
+    this.otherUserId, {
+    this.initialIsOnline = false,
+    this.initialLastSeen,
+  });
 
   @override
-  List<Object> get props => [otherUserId];
+  List<Object> get props => [otherUserId, initialIsOnline, initialLastSeen ?? ''];
 }
 
 class SendMessageEvent extends ChatEvent {
@@ -110,4 +116,17 @@ class RefreshMessagesReadStatus extends ChatEvent {
 
   @override
   List<Object> get props => [messageIds];
+}
+
+class OtherUserPresenceChanged extends ChatEvent {
+  final bool isOnline;
+  final DateTime? lastSeen;
+
+  const OtherUserPresenceChanged({
+    required this.isOnline,
+    this.lastSeen,
+  });
+
+  @override
+  List<Object> get props => [isOnline, lastSeen ?? ''];
 }

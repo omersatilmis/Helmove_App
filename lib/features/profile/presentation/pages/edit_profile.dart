@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
@@ -315,7 +316,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         Image.file(_localCoverPhoto!, fit: BoxFit.cover)
                       else if (provider.profile?.coverImageUrl != null)
                         CachedNetworkImage(
-                          imageUrl: provider.profile!.coverImageUrl!,
+                          imageUrl: provider.profile!.coverImageUrl!
+                              .toAbsoluteImageUrl(),
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(
                             color: theme.colorScheme.surfaceContainerHighest,
@@ -401,9 +403,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       radius: 60,
                       backgroundColor:
                           theme.colorScheme.surfaceContainerHighest,
-                      backgroundImage: profileUrl != null
-                          ? CachedNetworkImageProvider(profileUrl) as ImageProvider
-                          : const AssetImage('assets/icons/ic_profile.png'),
+                      backgroundImage: () {
+                        final url = profileUrl?.toAbsoluteImageUrl();
+                        if (url != null && url.isNotEmpty) {
+                          return CachedNetworkImageProvider(url) as ImageProvider;
+                        }
+                        return const AssetImage('assets/icons/ic_profile.png')
+                            as ImageProvider;
+                      }(),
                     ),
                   ),
                   // Profile Edit Badge

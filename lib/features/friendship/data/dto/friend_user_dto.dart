@@ -1,3 +1,4 @@
+import 'package:helmove/core/network/network_module.dart';
 import '../../domain/entities/friend_user_entity.dart';
 
 class FriendUserModel extends FriendUserEntity {
@@ -25,7 +26,7 @@ class FriendUserModel extends FriendUserEntity {
       username: json['username'] ?? '',
       firstName: json['firstName'],
       lastName: json['lastName'],
-      profilePictureUrl: json['profilePictureUrl'],
+      profilePictureUrl: NetworkModule.resolveImageUrl(json['profilePictureUrl']?.toString()),
       isOnline: json['isOnline'] ?? false,
       lastSeen: json['lastSeen'] != null
           ? DateTime.parse(json['lastSeen'])

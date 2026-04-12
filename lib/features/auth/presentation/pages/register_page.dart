@@ -6,6 +6,8 @@ import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_footer_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_header_widget.dart';
+import 'package:helmove/features/auth/presentation/widgets/eula_consent_widget.dart';
+import 'package:helmove/features/auth/presentation/widgets/eula_webview_bottom_sheet.dart';
 import 'register/register_form_widget.dart';
 import 'package:helmove/core/presentation/widgets/professional_error_bottom_sheet.dart';
 
@@ -26,6 +28,8 @@ class _RegisterPageState extends State<RegisterPage> {
   late final TextEditingController _confirmPasswordController;
 
   final _formKey = GlobalKey<FormState>();
+  bool _acceptedEula = false;
+  bool _showEulaWarning = false;
 
   @override
   void initState() {
@@ -70,6 +74,11 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Kayıt İşlemi
   Future<void> _handleRegister(AuthProvider authProvider) async {
+    if (!_acceptedEula) {
+      setState(() => _showEulaWarning = true);
+      return;
+    }
+
     // 1. Klavyeyi Kapat
     FocusScope.of(context).unfocus();
 
@@ -102,6 +111,22 @@ class _RegisterPageState extends State<RegisterPage> {
         );
       }
     }
+  }
+
+  Future<void> _openEula() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: false,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const EulaWebViewBottomSheet(
+        url: 'https://helmove.com/terms-of-use',
+      ),
+    );
   }
 
   @override
@@ -169,6 +194,30 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: horizontalPadding,
+                      right: horizontalPadding,
+                      bottom: isCompactHeight ? 8 : 12,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 450),
+                      child: EulaConsentWidget(
+                        value: _acceptedEula,
+                        showWarning: _showEulaWarning,
+                        onChanged: (value) {
+                          setState(() {
+                            _acceptedEula = value;
+                            if (value) {
+                              _showEulaWarning = false;
+                            }
+                          });
+                        },
+                        onTapEula: _openEula,
                       ),
                     ),
                   ),

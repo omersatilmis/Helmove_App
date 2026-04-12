@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/features/profile/presentation/pages/edit_profile.dart';
@@ -239,11 +240,14 @@ class _ProfileHeaderSection extends StatelessWidget {
               ),
               child: CircleAvatar(
                 radius: 52,
-                backgroundImage:
-                    (profileImageUrl != null && profileImageUrl!.isNotEmpty)
-                    ? CachedNetworkImageProvider(profileImageUrl!)
-                    : const AssetImage('assets/icons/ic_profile.png')
-                          as ImageProvider,
+                backgroundImage: () {
+                  final url = profileImageUrl?.toAbsoluteImageUrl();
+                  if (url != null && url.isNotEmpty) {
+                    return CachedNetworkImageProvider(url) as ImageProvider;
+                  }
+                  return const AssetImage('assets/icons/ic_profile.png')
+                      as ImageProvider;
+                }(),
               ),
             ),
           ),

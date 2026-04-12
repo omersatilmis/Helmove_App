@@ -1,3 +1,4 @@
+import 'package:helmove/core/network/network_module.dart';
 import '../../domain/entities/jot_entity.dart';
 
 /// Request model for creating a new Jot
@@ -84,11 +85,13 @@ class JotModel extends JotEntity {
       username: json['username'] ?? json['user']?['username'],
       firstName: json['firstName'] ?? json['user']?['firstName'],
       lastName: json['lastName'] ?? json['user']?['lastName'],
-      userProfilePictureUrl:
-          json['userProfilePictureUrl'] ??
-          json['user']?['profilePictureUrl'] ??
-          json['profileImageUrl'] ??
-          json['avatarUrl'],
+      userProfilePictureUrl: NetworkModule.resolveImageUrl(
+        (json['userProfilePictureUrl'] ??
+                json['user']?['profilePictureUrl'] ??
+                json['profileImageUrl'] ??
+                json['avatarUrl'])
+            ?.toString(),
+      ),
       bikeModel: json['bikeModel'] ?? json['motorModel'],
       likeCount: json['likeCount'] ?? json['LikeCount'] ?? 0,
       commentCount: json['commentCount'] ?? json['CommentCount'] ?? 0,

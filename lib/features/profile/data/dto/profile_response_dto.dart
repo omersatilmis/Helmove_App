@@ -1,4 +1,6 @@
-﻿/// Profile API response DTO
+﻿import 'package:helmove/core/network/network_module.dart';
+
+/// Profile API response DTO
 class ProfileResponseDto {
   final bool success;
   final String? message;
@@ -148,8 +150,9 @@ class ProfileDataDto {
       address: json['address']?.toString(),
       city: json['city']?.toString(),
       region: json['region']?.toString(),
-      profileImageUrl:
-          (json['profileImageUrl'] ?? json['profilePictureUrl'])?.toString(),
+      profileImageUrl: NetworkModule.resolveImageUrl(
+        (json['profileImageUrl'] ?? json['profilePictureUrl'])?.toString(),
+      ),
       shareLocation: json['shareLocation'] ?? false,
       showProfileToOthers: json['showProfileToOthers'] ?? true,
       latitude: (json['latitude'] as num?)?.toDouble(),
@@ -209,7 +212,9 @@ class ProfileDataDto {
           ) ??
           false,
       premiumTier: (json['premiumTier'] ?? json['PremiumTier'])?.toString(),
-      coverImageUrl: (json['coverImageUrl'] ?? json['CoverImageUrl'])?.toString(),
+      coverImageUrl: NetworkModule.resolveImageUrl(
+        (json['coverImageUrl'] ?? json['CoverImageUrl'])?.toString(),
+      ),
       instagramUrl: (json['instagramUrl'] ?? json['InstagramUrl'])?.toString(),
       youtubeUrl: (json['youtubeUrl'] ?? json['YoutubeUrl'])?.toString(),
       twitterUrl: (json['twitterUrl'] ?? json['TwitterUrl'])?.toString(),
