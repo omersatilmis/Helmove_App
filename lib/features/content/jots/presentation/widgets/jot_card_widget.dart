@@ -1,7 +1,7 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:helmove/l10n/app_localizations.dart';
-import 'package:flutter/services.dart'; // Haptic Feedback (Titreşim) için eklendi
+import 'package:flutter/services.dart'; // Haptic Feedback (TitreÅŸim) iÃ§in eklendi
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
@@ -15,6 +15,7 @@ class JotCardWidget extends StatelessWidget {
   final VoidCallback? onLike;
   final VoidCallback? onComment;
   final VoidCallback? onDelete;
+  final ValueChanged<int>? onCommentCountDelta;
   final int? currentUserId;
   final bool isDetailView;
 
@@ -24,6 +25,7 @@ class JotCardWidget extends StatelessWidget {
     this.onLike,
     this.onComment,
     this.onDelete,
+    this.onCommentCountDelta,
     this.currentUserId,
     this.isDetailView = false,
   });
@@ -46,7 +48,7 @@ class JotCardWidget extends StatelessWidget {
     final timeAgo = _formatDate(context, jot.createdAt);
     final bikeModel = jot.bikeModel;
 
-    // KART YAPISI: Alttaki ince çizgiyi kaldırıp Threads/X tarzı 8px "havada duran" kart boşluğu verdik
+    // KART YAPISI: Alttaki ince Ã§izgiyi kaldÄ±rÄ±p Threads/X tarzÄ± 8px "havada duran" kart boÅŸluÄŸu verdik
     return Container(
       margin: const EdgeInsets.only(bottom: 8, left: 12, right: 12),
       child: ClipRRect(
@@ -77,7 +79,7 @@ class JotCardWidget extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              JotDetailPage(jot: jot, currentUserId: currentUserId),
+                              JotDetailPage(jot: jot, currentUserId: currentUserId, onCommentCountDelta: onCommentCountDelta),
                         ),
                       );
                     },
@@ -85,7 +87,7 @@ class JotCardWidget extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 16,
-                ), // Ferahlatılmış padding
+                ), // FerahlatÄ±lmÄ±ÅŸ padding
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -93,7 +95,7 @@ class JotCardWidget extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // AVATAR VE İSİM GRUBU (TIKLANABİLİR)
+                        // AVATAR VE Ä°SÄ°M GRUBU (TIKLANABÄ°LÄ°R)
                         Expanded(
                           child: GestureDetector(
                             onTap: () => context.push('/profile/${jot.userId}'),
@@ -101,7 +103,7 @@ class JotCardWidget extends StatelessWidget {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // AVATAR ÇERÇEVESİ: Tatlı bir premium halka eklendi
+                                // AVATAR Ã‡ERÃ‡EVESÄ°: TatlÄ± bir premium halka eklendi
                                 Container(
                                   padding: const EdgeInsets.all(2),
                                   decoration: BoxDecoration(
@@ -144,7 +146,7 @@ class JotCardWidget extends StatelessWidget {
                                           ),
                                           if (bikeModel != null) ...[
                                             const SizedBox(width: 8),
-                                            // MOTOR ROZETİ: İkonlu, tok ve rütbe gibi duran etiket
+                                            // MOTOR ROZETÄ°: Ä°konlu, tok ve rÃ¼tbe gibi duran etiket
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
@@ -186,7 +188,7 @@ class JotCardWidget extends StatelessWidget {
                                       ),
                                       const SizedBox(
                                         height: 0,
-                                      ), // İsim ile username dikeyde yaklaştırıldı
+                                      ), // Ä°sim ile username dikeyde yaklaÅŸtÄ±rÄ±ldÄ±
                                       Row(
                                         children: [
                                           Text(
@@ -197,7 +199,7 @@ class JotCardWidget extends StatelessWidget {
                                             ),
                                           ),
                                           Text(
-                                            " • $timeAgo",
+                                            " â€¢ $timeAgo",
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: textSecondary,
@@ -218,7 +220,7 @@ class JotCardWidget extends StatelessWidget {
                           offset: const Offset(
                             8,
                             -8,
-                          ), // Sağa ve yukarı kaydırarak köşe hizasını iyileştirdik
+                          ), // SaÄŸa ve yukarÄ± kaydÄ±rarak kÃ¶ÅŸe hizasÄ±nÄ± iyileÅŸtirdik
                           child: IconButton(
                             icon: Icon(
                               Icons.more_horiz,
@@ -227,7 +229,7 @@ class JotCardWidget extends StatelessWidget {
                             ),
                             onPressed: () async {
                               HapticFeedback
-                                  .lightImpact(); // Menü açılırken hafif titreşim
+                                  .lightImpact(); // MenÃ¼ aÃ§Ä±lÄ±rken hafif titreÅŸim
                               final renderBox =
                                   context.findRenderObject() as RenderBox;
                               final offset = renderBox.localToGlobal(
@@ -328,7 +330,7 @@ class JotCardWidget extends StatelessWidget {
                     if (jot.mediaUrl != null && jot.mediaUrl!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16, top: 4),
-                        // GÖRSEL ÇERÇEVESİ: İncecik saydam bir border ile resmi toklaştırdık
+                        // GÃ–RSEL Ã‡ERÃ‡EVESÄ°: Ä°ncecik saydam bir border ile resmi toklaÅŸtÄ±rdÄ±k
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
@@ -340,10 +342,10 @@ class JotCardWidget extends StatelessWidget {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(
                               15,
-                            ), // Border içine otursun diye 1px küçük
+                            ), // Border iÃ§ine otursun diye 1px kÃ¼Ã§Ã¼k
                             child: Container(
                               constraints: const BoxConstraints(
-                                maxHeight: 350, // Biraz daha dengeli yükseklik
+                                maxHeight: 350, // Biraz daha dengeli yÃ¼kseklik
                               ),
                               width: double.infinity,
                               child: CachedNetworkImage(
@@ -388,20 +390,20 @@ class JotCardWidget extends StatelessWidget {
                       ),
 
                     // --- 3. ACTIONS ---
-                    // YERLEŞİM: Etkileşimler sola, dağıtım sağa. Spacer() ile arayı açtık.
+                    // YERLEÅÄ°M: EtkileÅŸimler sola, daÄŸÄ±tÄ±m saÄŸa. Spacer() ile arayÄ± aÃ§tÄ±k.
                     Row(
                       children: [
                         _ActionButton(
                           icon: Icons.mode_comment_outlined,
                           label: jot.commentCount.toString(),
                           onTap: () {
-                            HapticFeedback.lightImpact(); // Titreşim
+                            HapticFeedback.lightImpact(); // TitreÅŸim
                             onComment?.call();
                           },
                         ),
                         const SizedBox(
                           width: 24,
-                        ), // Butonlar arası ferah boşluk
+                        ), // Butonlar arasÄ± ferah boÅŸluk
                         _ActionButton(
                           icon: Icons.favorite_border_rounded,
                           activeIcon: Icons.favorite_rounded,
@@ -409,15 +411,15 @@ class JotCardWidget extends StatelessWidget {
                           activeColor: Colors.red,
                           isActive: jot.isLiked,
                           onTap: () {
-                            HapticFeedback.lightImpact(); // Titreşim
+                            HapticFeedback.lightImpact(); // TitreÅŸim
                             onLike?.call();
                           },
                         ),
-                        const Spacer(), // Geriye kalan boşluğu doldurur, share butonunu sağa iter
+                        const Spacer(), // Geriye kalan boÅŸluÄŸu doldurur, share butonunu saÄŸa iter
                         _ActionButton(
                           icon: Icons.share_rounded,
                           onTap: () {
-                            HapticFeedback.lightImpact(); // Titreşim
+                            HapticFeedback.lightImpact(); // TitreÅŸim
                             final shareText = jot.text ?? "";
                             if (shareText.isNotEmpty) {
                               share_plus.SharePlus.instance.share(
@@ -428,7 +430,7 @@ class JotCardWidget extends StatelessWidget {
                         ),
                         const SizedBox(
                           width: 4,
-                        ), // Paylaş butonunu kebab menü ile aynı hizaya çekmek için sağdan küçük boşluk
+                        ), // PaylaÅŸ butonunu kebab menÃ¼ ile aynÄ± hizaya Ã§ekmek iÃ§in saÄŸdan kÃ¼Ã§Ã¼k boÅŸluk
                       ],
                     ),
                   ],
@@ -502,7 +504,7 @@ class _ActionButton extends StatelessWidget {
                 label!,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w500, // Sayıları biraz daha tok yaptık
+                  fontWeight: FontWeight.w500, // SayÄ±larÄ± biraz daha tok yaptÄ±k
                   color: color,
                 ),
               ),

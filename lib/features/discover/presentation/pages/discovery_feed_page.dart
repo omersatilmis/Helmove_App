@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../content/jots/domain/entities/jot_entity.dart';
@@ -78,6 +78,32 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
     return [tappedPost, ...rest];
   }
 
+  List<PostEntity> _buildDisplayPosts(List<PostEntity> latestContent) {
+    if (latestContent.isEmpty) {
+      return const [];
+    }
+
+    final postsById = {for (final post in latestContent) post.id: post};
+    final usedIds = <int>{};
+    final merged = <PostEntity>[];
+
+    for (final reorderedPost in _reorderedPosts) {
+      final latest = postsById[reorderedPost.id];
+      if (latest != null) {
+        merged.add(latest);
+        usedIds.add(reorderedPost.id);
+      }
+    }
+
+    for (final post in latestContent) {
+      if (!usedIds.contains(post.id)) {
+        merged.add(post);
+      }
+    }
+
+    return merged;
+  }
+
   void _onScroll() {
     if (_isBottom) {
       context.read<DiscoverBloc>().add(const LoadDiscoveryContent());
@@ -131,7 +157,7 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
       final movedEnough = (_accumulatedDx + _accumulatedDy) > 8;
       if (!movedEnough) return;
 
-      // Dikey kaydırma baskınsa gesture'ı listeye bırak.
+      // Dikey kaydÄ±rma baskÄ±nsa gesture'Ä± listeye bÄ±rak.
       if (_accumulatedDy > _accumulatedDx) {
         _canDragBack = false;
         return;
@@ -153,8 +179,8 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
   }
 
   void _onHorizontalDragStart(DragStartDetails details) {
-    // Daha akıcı kullanım için başlangıcı ekrana sabitlemiyoruz.
-    // Yatay niyet tespit edilirse aktifleşiyor.
+    // Daha akÄ±cÄ± kullanÄ±m iÃ§in baÅŸlangÄ±cÄ± ekrana sabitlemiyoruz.
+    // Yatay niyet tespit edilirse aktifleÅŸiyor.
     _canDragBack = true;
     _horizontalIntentLocked = false;
     _accumulatedDx = 0;
@@ -236,7 +262,7 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
         child: SafeArea(
           child: Stack(
             children: [
-              // Altta kalan katman: swipe sırasında hoş bir derinlik efekti verir.
+              // Altta kalan katman: swipe sÄ±rasÄ±nda hoÅŸ bir derinlik efekti verir.
               IgnorePointer(
                 child: Container(
                   decoration: BoxDecoration(
@@ -278,17 +304,8 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
                   bool hasReachedMax = false;
 
                   if (discoverState is DiscoverDiscoveryLoaded) {
-                    final allBlocPosts = discoverState.content;
                     hasReachedMax = discoverState.hasReachedMax;
-
-                    final existingIds = _reorderedPosts.map((p) => p.id).toSet();
-                    final newPosts = allBlocPosts
-                        .where((p) => !existingIds.contains(p.id))
-                        .toList();
-
-                    if (newPosts.isNotEmpty) {
-                      displayPosts = [..._reorderedPosts, ...newPosts];
-                    }
+                    displayPosts = _buildDisplayPosts(discoverState.content);
                   }
 
                   return BlocBuilder<PostsBloc, PostsState>(
@@ -320,24 +337,38 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
                               jot: jot,
                               currentUserId: postsState.currentUserId,
                               onLike: () {
-                                context.read<PostsBloc>().add(LikePostEvent(post.id));
-                                context.read<DiscoverBloc>().add(
-                                  LocalLikeDiscoverPostEvent(post.id),
-                                );
-                              },
-                              onDelete: () {
-                                context.read<PostsBloc>().add(DeletePostEvent(post.id));
-                                context.read<DiscoverBloc>().add(
-                                  LocalDeleteDiscoverPostEvent(post.id),
-                                );
-                              },
-                              onComment: () {
+                              context.read<DiscoverBloc>().add(
+                                ToggleDiscoverPostLikeEvent(post.id),
+                              );
+                            },
+                            onDelete: () {
+                              context.read<PostsBloc>().add(DeletePostEvent(post.id));
+                              context.read<DiscoverBloc>().add(
+                                LocalDeleteDiscoverPostEvent(post.id),
+                              );
+                            },
+                            onComment: () {
                                 showModalBottomSheet(
                                   context: context,
                                   isScrollControlled: true,
                                   backgroundColor: Colors.transparent,
-                                  builder: (context) =>
-                                      CommentsSheet(contentId: post.id),
+                                  builder: (context) => CommentsSheet(
+                                    contentId: post.id,
+                                    onCommentCountDelta: (delta) {
+                                      context.read<DiscoverBloc>().add(
+                                        AdjustDiscoverPostCommentCountEvent(
+                                          postId: post.id,
+                                          delta: delta,
+                                        ),
+                                      );
+                                      context.read<PostsBloc>().add(
+                                        AdjustPostCommentCountEvent(
+                                          postId: post.id,
+                                          delta: delta,
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 );
                               },
                             );
@@ -347,9 +378,8 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
                             post: post,
                             currentUserId: postsState.currentUserId,
                             onLike: () {
-                              context.read<PostsBloc>().add(LikePostEvent(post.id));
                               context.read<DiscoverBloc>().add(
-                                LocalLikeDiscoverPostEvent(post.id),
+                                ToggleDiscoverPostLikeEvent(post.id),
                               );
                             },
                             onDelete: () {
@@ -363,8 +393,23 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
                                 context: context,
                                 isScrollControlled: true,
                                 backgroundColor: Colors.transparent,
-                                builder: (context) =>
-                                    CommentsSheet(contentId: post.id),
+                                builder: (context) => CommentsSheet(
+                                  contentId: post.id,
+                                  onCommentCountDelta: (delta) {
+                                    context.read<DiscoverBloc>().add(
+                                      AdjustDiscoverPostCommentCountEvent(
+                                        postId: post.id,
+                                        delta: delta,
+                                      ),
+                                    );
+                                    context.read<PostsBloc>().add(
+                                      AdjustPostCommentCountEvent(
+                                        postId: post.id,
+                                        delta: delta,
+                                      ),
+                                    );
+                                  },
+                                ),
                               );
                             },
                             onShare: () {},
@@ -388,3 +433,7 @@ class _DiscoveryFeedPageState extends State<DiscoveryFeedPage>
     );
   }
 }
+
+
+
+

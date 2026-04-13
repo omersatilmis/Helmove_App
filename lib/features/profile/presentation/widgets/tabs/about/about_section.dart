@@ -8,7 +8,9 @@ import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
 class AboutSection extends StatefulWidget {
-  const AboutSection({super.key});
+  final bool isOwnProfile;
+
+  const AboutSection({super.key, required this.isOwnProfile});
 
   @override
   State<AboutSection> createState() => _AboutSectionState();
@@ -31,11 +33,23 @@ class _AboutSectionState extends State<AboutSection> {
   }
 
   @override
+  void didUpdateWidget(covariant AboutSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isOwnProfile && _isEditing) {
+      setState(() {
+        _isEditing = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<ProfileProvider>();
-    final bio = provider.bio ?? "";
+    final bio = widget.isOwnProfile
+        ? (provider.profile?.bio ?? "")
+        : (provider.visitedProfile?.bio ?? "");
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,6 +69,7 @@ class _AboutSectionState extends State<AboutSection> {
                 : _buildViewActions(
                     theme,
                     bio,
+                    isOwnProfile: widget.isOwnProfile,
                   ), // bio'yu parametre olarak geçelim
           ],
         ),
@@ -64,7 +79,13 @@ class _AboutSectionState extends State<AboutSection> {
     );
   }
 
-  Widget _buildViewActions(ThemeData theme, String currentBio) {
+  Widget _buildViewActions(
+    ThemeData theme,
+    String currentBio, {
+    required bool isOwnProfile,
+  }) {
+    if (!isOwnProfile) return const SizedBox.shrink();
+
     return IconButton(
       onPressed: () {
         setState(() {
@@ -97,6 +118,8 @@ class _AboutSectionState extends State<AboutSection> {
   }
 
   Future<void> _saveAbout() async {
+    if (!widget.isOwnProfile) return;
+
     final provider = context.read<ProfileProvider>();
     final success = await provider.updateProfile(bio: _controller.text.trim());
 
@@ -111,6 +134,8 @@ class _AboutSectionState extends State<AboutSection> {
   }
 
   Future<void> _deleteAbout() async {
+    if (!widget.isOwnProfile) return;
+
     final provider = context.read<ProfileProvider>();
     final success = await provider.updateProfile(bio: "");
 

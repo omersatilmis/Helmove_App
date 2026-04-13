@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 
 import '../navigation/navigator_keys.dart';
 import '../di/injection_container.dart';
@@ -133,7 +132,7 @@ class CallListenerService {
             break;
           }
 
-            final hasActiveCall = callState is CallIncoming;
+          final hasActiveCall = callState is CallIncoming;
           if (hasActiveCall) {
             callBloc.add(const CallHangUp());
             await callKitService.endAllCalls();

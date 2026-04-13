@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import '../../domain/entities/post_entity.dart';
 
 abstract class PostsEvent extends Equatable {
@@ -47,11 +47,22 @@ class DeletePostEvent extends PostsEvent {
 
 class LikePostEvent extends PostsEvent {
   final int postId;
+  final bool? currentIsLiked;
 
-  const LikePostEvent(this.postId);
+  const LikePostEvent(this.postId, {this.currentIsLiked});
 
   @override
-  List<Object?> get props => [postId];
+  List<Object?> get props => [postId, currentIsLiked];
+}
+
+class AdjustPostCommentCountEvent extends PostsEvent {
+  final int postId;
+  final int delta;
+
+  const AdjustPostCommentCountEvent({required this.postId, required this.delta});
+
+  @override
+  List<Object?> get props => [postId, delta];
 }
 
 class PostsCurrentUserChangedEvent extends PostsEvent {

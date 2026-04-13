@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 
 abstract class DiscoverEvent extends Equatable {
   const DiscoverEvent();
@@ -25,9 +25,10 @@ class LoadDiscoveryContent extends DiscoverEvent {
   List<Object> get props => [isRefresh];
 }
 
-class LocalLikeDiscoverPostEvent extends DiscoverEvent {
+class ToggleDiscoverPostLikeEvent extends DiscoverEvent {
   final int postId;
-  const LocalLikeDiscoverPostEvent(this.postId);
+  const ToggleDiscoverPostLikeEvent(this.postId);
+
   @override
   List<Object> get props => [postId];
 }
@@ -35,6 +36,20 @@ class LocalLikeDiscoverPostEvent extends DiscoverEvent {
 class LocalDeleteDiscoverPostEvent extends DiscoverEvent {
   final int postId;
   const LocalDeleteDiscoverPostEvent(this.postId);
+
   @override
   List<Object> get props => [postId];
+}
+
+class AdjustDiscoverPostCommentCountEvent extends DiscoverEvent {
+  final int postId;
+  final int delta;
+
+  const AdjustDiscoverPostCommentCountEvent({
+    required this.postId,
+    required this.delta,
+  });
+
+  @override
+  List<Object> get props => [postId, delta];
 }

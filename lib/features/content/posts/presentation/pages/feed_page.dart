@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -141,14 +141,21 @@ class _FeedViewState extends State<FeedView> {
                     _postsBloc.add(DeletePostEvent(post.id));
                   },
                   onLike: () {
-                    _postsBloc.add(LikePostEvent(post.id));
+                    _postsBloc.add(LikePostEvent(post.id, currentIsLiked: post.isLiked));
                   },
                   onComment: () {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (context) => CommentsSheet(contentId: post.id),
+                      builder: (context) => CommentsSheet(
+                        contentId: post.id,
+                        onCommentCountDelta: (delta) {
+                          _postsBloc.add(
+                            AdjustPostCommentCountEvent(postId: post.id, delta: delta),
+                          );
+                        },
+                      ),
                     );
                   },
                   onShare: () {},
@@ -184,3 +191,5 @@ class _BottomLoader extends StatelessWidget {
     );
   }
 }
+
+

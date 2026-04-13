@@ -1,40 +1,89 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+﻿import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/search_users_usecase.dart';
 import '../../domain/usecases/get_explore_usecase.dart';
 import '../../../content/posts/domain/entities/post_entity.dart';
+import '../../../content/posts/domain/usecases/like_post_usecase.dart';
 import 'discover_event.dart';
 import 'discover_state.dart';
 
 class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
   final SearchUsersUseCase searchUsers;
   final GetExploreUseCase getExplore;
+  final LikePostUseCase likePost;
 
-  DiscoverBloc({required this.searchUsers, required this.getExplore})
-    : super(DiscoverInitial()) {
+  DiscoverBloc({
+    required this.searchUsers,
+    required this.getExplore,
+    required this.likePost,
+  }) : super(DiscoverInitial()) {
     on<SearchUsersEvent>(_onSearchUsers);
     on<LoadDiscoveryContent>(_onLoadDiscoveryContent);
-    on<LocalLikeDiscoverPostEvent>(_onLocalLikePost);
+    on<ToggleDiscoverPostLikeEvent>(_onToggleLikePost);
     on<LocalDeleteDiscoverPostEvent>(_onLocalDeletePost);
+    on<AdjustDiscoverPostCommentCountEvent>(_onAdjustCommentCount);
   }
 
-  void _onLocalLikePost(
-    LocalLikeDiscoverPostEvent event,
+  Future<void> _onToggleLikePost(
+    ToggleDiscoverPostLikeEvent event,
     Emitter<DiscoverState> emit,
-  ) {
-    if (state is DiscoverDiscoveryLoaded) {
-      final loadedState = state as DiscoverDiscoveryLoaded;
-      final updatedContent = loadedState.content.map((post) {
-        if (post.id == event.postId) {
-          final isLiked = !post.isLiked;
-          return post.copyWith(
-            isLiked: isLiked,
-            likeCount: isLiked ? post.likeCount + 1 : post.likeCount - 1,
-          );
-        }
-        return post;
-      }).toList();
-      emit(loadedState.copyWith(content: updatedContent));
+  ) async {
+    if (state is! DiscoverDiscoveryLoaded) {
+      return;
     }
+
+    final loadedState = state as DiscoverDiscoveryLoaded;
+    final currentPostIndex = loadedState.content.indexWhere(
+      (post) => post.id == event.postId,
+    );
+
+    if (currentPostIndex < 0) {
+      return;
+    }
+
+    final currentPost = loadedState.content[currentPostIndex];
+
+    final optimisticIsLiked = !currentPost.isLiked;
+    final optimisticLikeCount = optimisticIsLiked
+        ? currentPost.likeCount + 1
+        : (currentPost.likeCount > 0 ? currentPost.likeCount - 1 : 0);
+
+    final optimisticContent = loadedState.content.map((post) {
+      if (post.id != event.postId) {
+        return post;
+      }
+      return post.copyWith(
+        isLiked: optimisticIsLiked,
+        likeCount: optimisticLikeCount,
+      );
+    }).toList();
+
+    emit(loadedState.copyWith(content: optimisticContent));
+
+    final result = await likePost(
+      LikePostParams(postId: event.postId, isLiked: optimisticIsLiked),
+    );
+
+    result.fold(
+      (_) {
+        final latestState = state;
+        if (latestState is! DiscoverDiscoveryLoaded) {
+          return;
+        }
+
+        final rollbackContent = latestState.content.map((post) {
+          if (post.id != event.postId) {
+            return post;
+          }
+          return post.copyWith(
+            isLiked: currentPost.isLiked,
+            likeCount: currentPost.likeCount,
+          );
+        }).toList();
+
+        emit(latestState.copyWith(content: rollbackContent));
+      },
+      (_) {},
+    );
   }
 
   void _onLocalDeletePost(
@@ -46,6 +95,26 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
       final updatedContent = loadedState.content.where((p) => p.id != event.postId).toList();
       emit(loadedState.copyWith(content: updatedContent));
     }
+  }
+
+  void _onAdjustCommentCount(
+    AdjustDiscoverPostCommentCountEvent event,
+    Emitter<DiscoverState> emit,
+  ) {
+    if (event.delta == 0 || state is! DiscoverDiscoveryLoaded) {
+      return;
+    }
+
+    final loadedState = state as DiscoverDiscoveryLoaded;
+    final updatedContent = loadedState.content.map((post) {
+      if (post.id != event.postId) {
+        return post;
+      }
+      final nextCount = post.commentCount + event.delta;
+      return post.copyWith(commentCount: nextCount < 0 ? 0 : nextCount);
+    }).toList();
+
+    emit(loadedState.copyWith(content: updatedContent));
   }
 
   Future<void> _onSearchUsers(
@@ -117,3 +186,4 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     );
   }
 }
+

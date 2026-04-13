@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -48,6 +48,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     on<CreateJotEvent>(_onCreateJot);
     on<DeleteJotEvent>(_onDeleteJot);
     on<LikeJotEvent>(_onLikeJot);
+    on<AdjustJotCommentCountEvent>(_onAdjustJotCommentCount);
     on<JotsCurrentUserChangedEvent>(_onJotsCurrentUserChanged);
 
     // Initialize bridge
@@ -84,7 +85,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     DeleteJotEvent event,
     Emitter<JotsState> emit,
   ) async {
-    // Optimistic UI: Önce listeden sil
+    // Optimistic UI: Ã–nce listeden sil
     final previousJots = List.of(state.jots);
     final updatedList = List.of(state.jots)
       ..removeWhere((jot) => jot.id == event.jotId);
@@ -99,12 +100,12 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
         emit(
           state.copyWith(
             jots: previousJots,
-            errorMessage: "Silme işlemi başarısız: ${failure.message}",
+            errorMessage: "Silme iÅŸlemi baÅŸarÄ±sÄ±z: ${failure.message}",
           ),
         );
       },
       (_) {
-        // Başarılı, cache'i güncelle
+        // BaÅŸarÄ±lÄ±, cache'i gÃ¼ncelle
         syncFirstPageCacheIfPossible(updatedList);
       },
     );
@@ -148,7 +149,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
           // Revert on failure
           emit(
             state.copyWith(
-              errorMessage: "Beğenme işlemi başarısız: ${failure.message}",
+              errorMessage: "BeÄŸenme iÅŸlemi baÅŸarÄ±sÄ±z: ${failure.message}",
               jots: originalJots,
             ),
           );
@@ -166,11 +167,37 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     }
   }
 
+  void _onAdjustJotCommentCount(
+    AdjustJotCommentCountEvent event,
+    Emitter<JotsState> emit,
+  ) {
+    if (event.delta == 0) {
+      return;
+    }
+
+    var changed = false;
+    final updatedJots = state.jots.map((jot) {
+      if (jot.id != event.jotId) {
+        return jot;
+      }
+
+      changed = true;
+      final nextCount = jot.commentCount + event.delta;
+      return jot.copyWith(commentCount: nextCount < 0 ? 0 : nextCount);
+    }).toList();
+
+    if (!changed) {
+      return;
+    }
+
+    emit(state.copyWith(jots: updatedJots));
+    syncFirstPageCacheIfPossible(updatedJots);
+  }
   Future<void> _onFetchUserJots(
     FetchUserJotsEvent event,
     Emitter<JotsState> emit,
   ) async {
-    // Eğer zaten veri yüklendiyse ve bu bir yenileme (refresh) değilse tekrar çekme
+    // EÄŸer zaten veri yÃ¼klendiyse ve bu bir yenileme (refresh) deÄŸilse tekrar Ã§ekme
     if (!event.isRefresh &&
         state.status == JotsStatus.success &&
         state.source == JotsSource.profile) {
@@ -199,7 +226,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
 
     result.fold(
       (failure) {
-        debugPrint('❌ [JotsBloc] Fetch failed: ${failure.message}');
+        debugPrint('âŒ [JotsBloc] Fetch failed: ${failure.message}');
         emit(
           state.copyWith(
             status: JotsStatus.failure,
@@ -211,7 +238,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
       (pagedResult) {
         final jots = pagedResult.items;
         debugPrint(
-          '✅ [JotsBloc] Fetched ${jots.length} jots for user ${event.userId}',
+          'âœ… [JotsBloc] Fetched ${jots.length} jots for user ${event.userId}',
         );
         emit(
           state.copyWith(
@@ -230,7 +257,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     FetchMoreUserJotsEvent event,
     Emitter<JotsState> emit,
   ) async {
-    // Eğer zaten max'a ulaşılmışsa, hata varsa veya ŞU AN YÜKLENİYORSA işlem yapma
+    // EÄŸer zaten max'a ulaÅŸÄ±lmÄ±ÅŸsa, hata varsa veya ÅU AN YÃœKLENÄ°YORSA iÅŸlem yapma
     if (state.hasReachedMax ||
         state.status != JotsStatus.success ||
         state.isFetchingMore ||
@@ -238,7 +265,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
       return;
     }
 
-    // Yükleniyor durumuna çek
+    // YÃ¼kleniyor durumuna Ã§ek
     emit(state.copyWith(isFetchingMore: true));
 
     final nextPage = state.currentPage + 1;
@@ -335,7 +362,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
       },
       (fetchResult) {
         if (fetchResult.notModified) {
-          debugPrint('✅ [JotsBloc] Feed not modified (304). Keeping cache.');
+          debugPrint('âœ… [JotsBloc] Feed not modified (304). Keeping cache.');
           return;
         }
 
@@ -413,13 +440,13 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
 
     String? finalMediaUrl = event.mediaUrl;
 
-    // Eğer mediaUrl bir dosya yolu ise (http ile başlamıyorsa), önce yükle
+    // EÄŸer mediaUrl bir dosya yolu ise (http ile baÅŸlamÄ±yorsa), Ã¶nce yÃ¼kle
     if (finalMediaUrl != null &&
         finalMediaUrl.isNotEmpty &&
         !finalMediaUrl.startsWith('http')) {
       final file = File(finalMediaUrl);
       if (file.existsSync()) {
-      debugPrint('📸 [JotsBloc] Uploading image: ${file.path}');
+      debugPrint('ğŸ“¸ [JotsBloc] Uploading image: ${file.path}');
       final uploadResult = await uploadImage(file);
       
       bool uploadFailed = false;
@@ -427,13 +454,13 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
 
       uploadResult.fold(
         (failure) {
-          debugPrint('❌ [JotsBloc] Upload failed: ${failure.message}');
+          debugPrint('âŒ [JotsBloc] Upload failed: ${failure.message}');
           uploadFailed = true;
           failureMessage = failure.message;
         },
         (url) {
           finalMediaUrl = url;
-          debugPrint('✅ [JotsBloc] Image uploaded success: $url');
+          debugPrint('âœ… [JotsBloc] Image uploaded success: $url');
         },
       );
 
@@ -441,7 +468,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
         emit(
           state.copyWith(
             createStatus: JotsStatus.failure,
-            createError: failureMessage ?? 'Resim yüklenirken hata oluştu',
+            createError: failureMessage ?? 'Resim yÃ¼klenirken hata oluÅŸtu',
           ),
         );
         return;
@@ -466,7 +493,7 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
         ),
       ),
       (newJot) {
-        // Yeni Jot'u listenin başına ekle
+        // Yeni Jot'u listenin baÅŸÄ±na ekle
         final updatedList = List.of(state.jots)..insert(0, newJot);
         emit(
           state.copyWith(createStatus: JotsStatus.success, jots: updatedList),
@@ -487,3 +514,5 @@ class JotsBloc extends Bloc<JotsEvent, JotsState> {
     );
   }
 }
+
+

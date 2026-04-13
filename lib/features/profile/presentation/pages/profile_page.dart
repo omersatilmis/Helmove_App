@@ -325,7 +325,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         const ProfileTabBarSliver(),
                       ];
                     },
-                    body: const ProfileTabViews(),
+                    body: ProfileTabViews(
+                      isOwnProfile: isOwnProfile,
+                      viewedUserId: displayedUser?.id,
+                    ),
                   ),
                 ),
                 Positioned(

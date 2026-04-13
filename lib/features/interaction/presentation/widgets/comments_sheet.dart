@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/constants/report_enums.dart';
@@ -17,8 +17,13 @@ const int _commentsPageSize = 10;
 
 class CommentsSheet extends StatefulWidget {
   final int contentId;
+  final ValueChanged<int>? onCommentCountDelta;
 
-  const CommentsSheet({super.key, required this.contentId});
+  const CommentsSheet({
+    super.key,
+    required this.contentId,
+    this.onCommentCountDelta,
+  });
 
   @override
   State<CommentsSheet> createState() => _CommentsSheetState();
@@ -66,46 +71,56 @@ class _CommentsSheetState extends State<CommentsSheet> {
             limit: _commentsPageSize,
           ),
         ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomPadding),
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.75,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                // DİNAMİK ARKA PLAN RENGİ (Theme'den alır)
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
+      child: BlocListener<CommentsBloc, CommentsState>(
+        listenWhen: (previous, current) =>
+            previous.mutationRevision != current.mutationRevision,
+        listener: (context, state) {
+          final delta = state.lastMutationDelta;
+          if (delta != 0) {
+            widget.onCommentCountDelta?.call(delta);
+          }
+        },
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomPadding),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.75,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  // DİNAMİK ARKA PLAN RENGİ (Theme'den alır)
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
                 ),
-              ),
-              child: Column(
-                children: [
-                  const _SheetHeader(),
-                  // Divider kaldırıldı, daha ferah bir görünüm için padding kullanıldı.
+                child: Column(
+                  children: [
+                    const _SheetHeader(),
+                    // Divider kaldırıldı, daha ferah bir görünüm için padding kullanıldı.
 
-                  // Liste Alanı
-                  Expanded(
-                    child: _CommentsList(
-                      scrollController: scrollController,
-                      contentId: widget.contentId,
-                      onReply: _handleReply,
+                    // Liste Alanı
+                    Expanded(
+                      child: _CommentsList(
+                        scrollController: scrollController,
+                        contentId: widget.contentId,
+                        onReply: _handleReply,
+                      ),
                     ),
-                  ),
 
-                  // Input Alanı
-                  _CommentInputArea(
-                    contentId: widget.contentId,
-                    controller: _commentController,
-                    focusNode: _commentFocusNode,
-                  ),
-                ],
-              ),
-            );
-          },
+                    // Input Alanı
+                    _CommentInputArea(
+                      contentId: widget.contentId,
+                      controller: _commentController,
+                      focusNode: _commentFocusNode,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

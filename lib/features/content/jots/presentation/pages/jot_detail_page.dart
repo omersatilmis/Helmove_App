@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -11,16 +11,19 @@ import '../../../../interaction/presentation/bloc/comments_event.dart';
 import '../../../../interaction/presentation/bloc/comments_state.dart';
 import '../../../../../core/widgets/app_input_field.dart';
 import '../../domain/entities/jot_entity.dart';
+import '../../domain/usecases/like_jot_usecase.dart';
 import '../widgets/jot_card_widget.dart';
 
 class JotDetailPage extends StatefulWidget {
   final JotEntity jot;
   final int? currentUserId;
+  final ValueChanged<int>? onCommentCountDelta;
 
   const JotDetailPage({
     super.key,
     required this.jot,
     this.currentUserId,
+    this.onCommentCountDelta,
   });
 
   @override
@@ -30,12 +33,15 @@ class JotDetailPage extends StatefulWidget {
 class _JotDetailPageState extends State<JotDetailPage> {
   late final TextEditingController _commentController;
   late final FocusNode _commentFocusNode;
+  late JotEntity _currentJot;
+  bool _isLikeInFlight = false;
 
   @override
   void initState() {
     super.initState();
     _commentController = TextEditingController();
     _commentFocusNode = FocusNode();
+    _currentJot = widget.jot;
   }
 
   @override
@@ -45,6 +51,64 @@ class _JotDetailPageState extends State<JotDetailPage> {
     super.dispose();
   }
 
+  void _applyCommentDelta(int delta) {
+    if (delta == 0 || !mounted) {
+      return;
+    }
+
+    setState(() {
+      final nextCount = _currentJot.commentCount + delta;
+      _currentJot = _currentJot.copyWith(commentCount: nextCount < 0 ? 0 : nextCount);
+    });
+
+    widget.onCommentCountDelta?.call(delta);
+  }
+
+  Future<void> _toggleLike() async {
+    if (_isLikeInFlight) {
+      return;
+    }
+
+    final previousJot = _currentJot;
+    final optimisticIsLiked = !previousJot.isLiked;
+    final optimisticLikeCount = optimisticIsLiked
+        ? previousJot.likeCount + 1
+        : (previousJot.likeCount > 0 ? previousJot.likeCount - 1 : 0);
+
+    setState(() {
+      _isLikeInFlight = true;
+      _currentJot = previousJot.copyWith(
+        isLiked: optimisticIsLiked,
+        likeCount: optimisticLikeCount,
+      );
+    });
+
+    final result = await sl<LikeJotUseCase>()(
+      LikeJotParams(id: previousJot.id, isLiked: optimisticIsLiked),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (_) {
+        setState(() {
+          _currentJot = previousJot;
+          _isLikeInFlight = false;
+        });
+      },
+      (_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _isLikeInFlight = false;
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -52,114 +116,122 @@ class _JotDetailPageState extends State<JotDetailPage> {
     return BlocProvider(
       create: (context) => sl<CommentsBloc>()
         ..add(LoadCommentsEvent(
-          contentId: widget.jot.id,
+          contentId: _currentJot.id,
           page: 1,
           limit: 20,
         )),
-      child: AppBackground(
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            title: Text(AppLocalizations.of(context)!.jot),
-            centerTitle: true,
+      child: BlocListener<CommentsBloc, CommentsState>(
+        listenWhen: (previous, current) =>
+            previous.mutationRevision != current.mutationRevision,
+        listener: (context, state) {
+          _applyCommentDelta(state.lastMutationDelta);
+        },
+        child: AppBackground(
+          child: Scaffold(
             backgroundColor: Colors.transparent,
-            elevation: 0,
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: JotCardWidget(
-                        jot: widget.jot,
-                        currentUserId: widget.currentUserId,
-                        onComment: () => _commentFocusNode.requestFocus(),
-                        isDetailView: true,
+            appBar: AppBar(
+              title: Text(AppLocalizations.of(context)!.jot),
+              centerTitle: true,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+            ),
+            body: Column(
+              children: [
+                Expanded(
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: JotCardWidget(
+                          jot: _currentJot,
+                          currentUserId: widget.currentUserId,
+                          onLike: _toggleLike,
+                          onComment: () => _commentFocusNode.requestFocus(),
+                          isDetailView: true,
+                        ),
                       ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text(
-                          AppLocalizations.of(context)!.replies,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Text(
+                            AppLocalizations.of(context)!.replies,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    BlocBuilder<CommentsBloc, CommentsState>(
-                      builder: (context, state) {
-                        if (state.status == CommentsStatus.loading && state.comments.isEmpty) {
-                          return const SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-                        
-                        if (state.comments.isEmpty) {
-                          return SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(
-                              child: Text(AppLocalizations.of(context)!.noCommentsYet),
+                      BlocBuilder<CommentsBloc, CommentsState>(
+                        builder: (context, state) {
+                          if (state.status == CommentsStatus.loading && state.comments.isEmpty) {
+                            return const SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+
+                          if (state.comments.isEmpty) {
+                            return SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: Center(
+                                child: Text(AppLocalizations.of(context)!.noCommentsYet),
+                              ),
+                            );
+                          }
+
+                          return SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final comment = state.comments[index];
+                                return ListTile(
+                                  leading: GestureDetector(
+                                    onTap: () => context.push('/profile/${comment.userId}'),
+                                    child: CircleAvatar(
+                                      backgroundImage: comment.userAvatar != null
+                                          ? CachedNetworkImageProvider(comment.userAvatar!)
+                                          : null,
+                                      child: comment.userAvatar == null
+                                          ? Text(comment.username[0].toUpperCase())
+                                          : null,
+                                    ),
+                                  ),
+                                  title: GestureDetector(
+                                    onTap: () => context.push('/profile/${comment.userId}'),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          comment.username,
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          _formatTimeAgo(comment.createdAt),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: theme.colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  subtitle: Text(comment.text),
+                                );
+                              },
+                              childCount: state.comments.length,
                             ),
                           );
-                        }
-
-                        return SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final comment = state.comments[index];
-                              return ListTile(
-                                leading: GestureDetector(
-                                  onTap: () => context.push('/profile/${comment.userId}'),
-                                  child: CircleAvatar(
-                                    backgroundImage: comment.userAvatar != null
-                                        ? CachedNetworkImageProvider(comment.userAvatar!)
-                                        : null,
-                                    child: comment.userAvatar == null 
-                                        ? Text(comment.username[0].toUpperCase())
-                                        : null,
-                                  ),
-                                ),
-                                title: GestureDetector(
-                                  onTap: () => context.push('/profile/${comment.userId}'),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        comment.username,
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _formatTimeAgo(comment.createdAt),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                subtitle: Text(comment.text),
-                              );
-                            },
-                            childCount: state.comments.length,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              _CommentInput(
-                contentId: widget.jot.id,
-                controller: _commentController,
-                focusNode: _commentFocusNode,
-              ),
-            ],
+                _CommentInput(
+                  contentId: _currentJot.id,
+                  controller: _commentController,
+                  focusNode: _commentFocusNode,
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 ﻿import 'package:helmove/core/network/network_module.dart';
+import 'motorcycle_dto.dart';
 
 /// Profile API response DTO
 class ProfileResponseDto {
@@ -58,6 +59,7 @@ class ProfileDataDto {
   final bool isFollowing;
   final bool isFollower;
   final String? premiumTier;
+  final List<MotorcycleDto> motorcycles;
 
   ProfileDataDto({
     required this.id,
@@ -87,6 +89,7 @@ class ProfileDataDto {
     this.instagramUrl,
     this.youtubeUrl,
     this.twitterUrl,
+    this.motorcycles = const [],
   });
 
   factory ProfileDataDto.fromJson(Map<String, dynamic> json) {
@@ -137,6 +140,38 @@ class ProfileDataDto {
       if (normalized == 'true' || normalized == '1') return true;
       if (normalized == 'false' || normalized == '0') return false;
       return null;
+    }
+
+    List<MotorcycleDto> parseMotorcycles(dynamic value) {
+      if (value == null) return const [];
+
+      List<dynamic>? items;
+      if (value is List) {
+        items = value;
+      } else if (value is Map) {
+        final map = Map<String, dynamic>.from(value);
+        final nested =
+            map['data'] ??
+            map['Data'] ??
+            map['items'] ??
+            map['Items'] ??
+            map['motorcycles'] ??
+            map['Motorcycles'];
+        if (nested is List) {
+          items = nested;
+        }
+      }
+
+      if (items == null) return const [];
+
+      return items
+          .whereType<Map>()
+          .map(
+            (e) => MotorcycleDto.fromJson(
+              Map<String, dynamic>.from(e),
+            ),
+          )
+          .toList();
     }
 
     return ProfileDataDto(
@@ -191,6 +226,12 @@ class ProfileDataDto {
           ) ??
           0,
       friendsCount: toInt(json['friendsCount'] ?? json['FriendsCount']) ?? 0,
+      motorcycles: parseMotorcycles(
+        pickValue([
+          'motorcycles',
+          'Motorcycles',
+        ]),
+      ),
       isFollowing: toBool(
             pickValue([
               'isFollowing',

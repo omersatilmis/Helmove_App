@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:helmove/core/utils/image_url_extensions.dart';
@@ -10,6 +12,7 @@ import 'package:helmove/core/theme/app_colors.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/enums/user_tier.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileInfo extends StatelessWidget {
   final String firstName;
@@ -548,7 +551,7 @@ class _ActionButtonsSection extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -576,8 +579,8 @@ class _ActionButtonsSection extends StatelessWidget {
                 title: AppLocalizations.of(context)!.postType,
                 subtitle: AppLocalizations.of(context)!.sharePhotoOrVideo,
                 onTap: () {
-                  context.pop();
-                  context.push('/add_post');
+                  Navigator.pop(sheetContext);
+                  _showAddPostSourceSheet(context);
                 },
               ),
               const SizedBox(height: 8),
@@ -586,7 +589,7 @@ class _ActionButtonsSection extends StatelessWidget {
                 title: AppLocalizations.of(context)!.jotType,
                 subtitle: AppLocalizations.of(context)!.shareShortTextOrThought,
                 onTap: () {
-                  context.pop();
+                  Navigator.pop(sheetContext);
                   context.push('/create_jots');
                 },
               ),
@@ -596,6 +599,107 @@ class _ActionButtonsSection extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _showAddPostSourceSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    if (l10n == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  l10n.createPost,
+                  style: AppTextStyles.h3.copyWith(fontSize: 18),
+                ),
+              ),
+              const SizedBox(height: 24),
+              _AddContentItem(
+                icon: Icons.photo_camera_rounded,
+                title: l10n.shareSheetCameraTitle,
+                subtitle: l10n.shareSheetCameraSubtitle,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push('/add_post');
+                },
+              ),
+              const SizedBox(height: 8),
+              _AddContentItem(
+                icon: Icons.photo_library_rounded,
+                title: l10n.shareSheetGalleryTitle,
+                subtitle: l10n.shareSheetGallerySubtitle,
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await _pickFromGalleryAndOpenPrepareMedia(context);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickFromGalleryAndOpenPrepareMedia(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
+
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 90,
+        maxWidth: 2048,
+      );
+
+      if (image == null) return;
+
+      final file = File(image.path);
+      if (!file.existsSync()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.image_upload_error)),
+          );
+        }
+        return;
+      }
+
+      if (context.mounted) {
+        context.push('/prepare_media', extra: file);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.image_upload_error),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   List<Widget> _buildOtherProfileButtons(BuildContext context) {

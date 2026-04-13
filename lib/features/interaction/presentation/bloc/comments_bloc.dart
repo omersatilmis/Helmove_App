@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/app_session.dart';
@@ -142,7 +142,14 @@ class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
       ),
       (newComment) {
         final updatedList = List.of(state.comments)..add(newComment);
-        emit(state.copyWith(isPostingComment: false, comments: updatedList));
+        emit(
+          state.copyWith(
+            isPostingComment: false,
+            comments: updatedList,
+            mutationRevision: state.mutationRevision + 1,
+            lastMutationDelta: 1,
+          ),
+        );
       },
     );
   }
@@ -171,7 +178,14 @@ class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
           ),
         );
       },
-      (_) {}, // Success
+      (_) {
+        emit(
+          state.copyWith(
+            mutationRevision: state.mutationRevision + 1,
+            lastMutationDelta: -1,
+          ),
+        );
+      },
     );
   }
 

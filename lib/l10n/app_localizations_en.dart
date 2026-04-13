@@ -2067,6 +2067,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noBikesYet => 'No motorcycles added yet.';
 
   @override
+  String get userGarageEmpty => 'This user\'s garage is empty.';
+
+  @override
   String get addBike => 'Add Motorcycle';
 
   @override

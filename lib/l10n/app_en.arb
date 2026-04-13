@@ -843,6 +843,7 @@
     "noBlockedUsers": "No blocked accounts.",
     "unblockUser": "Unblock",
     "noBikesYet": "No motorcycles added yet.",
+    "userGarageEmpty": "This user's garage is empty.",
     "addBike": "Add Motorcycle",
     "bottomNavDiscover": "Discover",
     "bottomNavCommunication": "Voice",

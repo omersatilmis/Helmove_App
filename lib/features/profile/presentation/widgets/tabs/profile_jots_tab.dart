@@ -3,16 +3,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/core/theme/text_styles.dart';
-import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/content/jots/presentation/bloc/jots_bloc.dart';
 import 'package:helmove/features/content/jots/presentation/bloc/jots_event.dart';
 import 'package:helmove/features/content/jots/presentation/bloc/jots_state.dart';
 import 'package:helmove/features/content/jots/presentation/widgets/jot_card_widget.dart';
 import 'package:helmove/features/interaction/presentation/widgets/comments_sheet.dart';
-import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 
 class ProfileJotsTab extends StatefulWidget {
-  const ProfileJotsTab({super.key});
+  final bool isOwnProfile;
+  final int? viewedUserId;
+
+  const ProfileJotsTab({
+    super.key,
+    required this.isOwnProfile,
+    required this.viewedUserId,
+  });
 
   @override
   State<ProfileJotsTab> createState() => _ProfileJotsTabState();
@@ -31,39 +36,21 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
 
     // Auth ve Profile provider'dan verileri güvenli şekilde al
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadJots();
+      _loadJotsForUser(widget.viewedUserId);
     });
   }
 
-  void _loadJots() {
-    final profileProvider = context.read<ProfileProvider>();
-    final authProvider = context.read<AuthProvider>();
-
-    // Görüntülenen profilin ID'sini bul
-    int? targetUserId;
-    String source = "None";
-
-    if (profileProvider.visitedProfile != null) {
-      targetUserId = profileProvider.visitedProfile!.id;
-      source = "Visited";
-    } else if (profileProvider.profile != null) {
-      targetUserId = profileProvider.profile!.id;
-      source = "Self-Profile";
-    } else {
-      targetUserId = authProvider.currentUser?.id;
-      source = "Auth-Session";
+  @override
+  void didUpdateWidget(covariant ProfileJotsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.viewedUserId != widget.viewedUserId) {
+      _loadJotsForUser(widget.viewedUserId, isRefresh: true);
     }
+  }
 
-    if (targetUserId != null) {
-      debugPrint(
-        '📝 [ProfileJotsTab] Loading jots for UID: $targetUserId (Source: $source)',
-      );
-      _jotsBloc.add(FetchUserJotsEvent(userId: targetUserId));
-    } else {
-      debugPrint(
-        '⚠️ [ProfileJotsTab] targetUserId is NULL. Auth ID: ${authProvider.currentUser?.id}',
-      );
-    }
+  void _loadJotsForUser(int? userId, {bool isRefresh = false}) {
+    if (userId == null) return;
+    _jotsBloc.add(FetchUserJotsEvent(userId: userId, isRefresh: isRefresh));
   }
 
   @override
@@ -78,12 +65,7 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
       final currentState = _jotsBloc.state;
       // Duplicate fetch prevention
       if (currentState.isFetchingMore || currentState.hasReachedMax) return;
-
-      final profileProvider = context.read<ProfileProvider>();
-      final authProvider = context.read<AuthProvider>();
-      int? targetUserId =
-          profileProvider.visitedProfile?.id ?? authProvider.currentUser?.id;
-
+      final targetUserId = widget.viewedUserId;
       if (targetUserId != null) {
         _jotsBloc.add(FetchMoreUserJotsEvent(userId: targetUserId));
       }
@@ -99,6 +81,8 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
 
   // Yeni Jot oluşturma sayfasını aç
   void _openCreateJot() async {
+    if (!widget.isOwnProfile) return;
+
     final result = await context.push<String>('/create_jots');
 
     if (result != null && result.isNotEmpty) {
@@ -121,14 +105,16 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
       value: _jotsBloc,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        floatingActionButton: FloatingActionButton(
-          onPressed: _openCreateJot,
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.edit_note_rounded, size: 28),
-        ),
+        floatingActionButton: widget.isOwnProfile
+            ? FloatingActionButton(
+                onPressed: _openCreateJot,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
+                elevation: 4,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.edit_note_rounded, size: 28),
+              )
+            : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
         body: BlocConsumer<JotsBloc, JotsState>(
@@ -167,7 +153,7 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
                       style: AppTextStyles.bodyMedium,
                     ),
                     TextButton(
-                      onPressed: _loadJots,
+                      onPressed: () => _loadJotsForUser(widget.viewedUserId),
                       child: const Text("Tekrar Dene"),
                     ),
                   ],
@@ -199,16 +185,7 @@ class _ProfileJotsTabState extends State<ProfileJotsTab>
 
             return RefreshIndicator(
               onRefresh: () async {
-                final profileProvider = context.read<ProfileProvider>();
-                final authProvider = context.read<AuthProvider>();
-                int? targetUserId =
-                    profileProvider.visitedProfile?.id ??
-                    authProvider.currentUser?.id;
-                if (targetUserId != null) {
-                  _jotsBloc.add(
-                    FetchUserJotsEvent(userId: targetUserId, isRefresh: true),
-                  );
-                }
+                _loadJotsForUser(widget.viewedUserId, isRefresh: true);
                 // Bloc tamamlanana kadar beklemek şık olur ama şimdilik fire&forget
                 // (Bloc state değişince UI güncellenir)
                 await Future.delayed(const Duration(seconds: 1));

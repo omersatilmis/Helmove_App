@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -339,7 +339,7 @@ Future<void> ensureCommunicationRuntimeStarted() async {
     sl<CallListenerService>().start();
     sl<SosAlertListenerService>().start();
     await sl<IntercomEngine>().start();
-    // Presence: SignalR bağlantısı kurulunca heartbeat'i başlat.
+    // Presence: SignalR baÄŸlantÄ±sÄ± kurulunca heartbeat'i baÅŸlat.
     sl<PresenceController>().initialize();
     _communicationRuntimeStarted = true;
     completer.complete();
@@ -357,7 +357,7 @@ Future<void> _handleAuthInvalidationFromInterceptor() async {
       sl<AppSession>().clearSession();
     }
   } catch (e) {
-    debugPrint("⚠️ Auth invalidation handler error: $e");
+    debugPrint("âš ï¸ Auth invalidation handler error: $e");
   }
 }
 
@@ -367,7 +367,7 @@ Future<void> _handleTokenRefreshedFromInterceptor(String token) async {
       sl<AppSession>().updateToken(token);
     }
   } catch (e) {
-    debugPrint("⚠️ Token refresh handler error: $e");
+    debugPrint("âš ï¸ Token refresh handler error: $e");
   }
 }
 
@@ -375,8 +375,8 @@ void setup() {
   sl.allowReassignment = true;
 }
 
-/// Logout sırasında çağrılmalı - singleton önbelleklerini temizler
-/// Dio ve SharedPreferences hariç tüm singleton'ları resetler
+/// Logout sÄ±rasÄ±nda Ã§aÄŸrÄ±lmalÄ± - singleton Ã¶nbelleklerini temizler
+/// Dio ve SharedPreferences hariÃ§ tÃ¼m singleton'larÄ± resetler
 Future<void> resetOnLogout() async {
   if (sl.isRegistered<AppSession>()) {
     sl<AppSession>().clearSession();
@@ -387,7 +387,7 @@ Future<void> resetOnLogout() async {
     try {
       sl<FriendshipRepository>().clearCache();
     } catch (e) {
-      debugPrint("⚠️ Error clearing friendship cache: $e");
+      debugPrint("âš ï¸ Error clearing friendship cache: $e");
     }
   }
 
@@ -396,10 +396,10 @@ Future<void> resetOnLogout() async {
     if (sl.isRegistered<SharedPreferences>()) {
       final sharedPreferences = sl<SharedPreferences>();
       await sharedPreferences.clear();
-      debugPrint("🧹 SharedPreferences cleared.");
+      debugPrint("ğŸ§¹ SharedPreferences cleared.");
     }
   } catch (e) {
-    debugPrint("⚠️ Error clearing SharedPreferences: $e");
+    debugPrint("âš ï¸ Error clearing SharedPreferences: $e");
   }
 
   // 1.5 No need to re-register Dio or SharedPreferences as they are root singletons
@@ -457,7 +457,7 @@ Future<void> resetOnLogout() async {
   if (sl.isRegistered<MessageRepository>()) {
     sl.unregister<MessageRepository>();
   }
-  // MessageApi yok, direkt DS kullanıyor olabilir.
+  // MessageApi yok, direkt DS kullanÄ±yor olabilir.
 
   // 6. Discover Feature Resets
   if (sl.isRegistered<DiscoverRemoteDataSource>()) {
@@ -518,7 +518,7 @@ Future<void> resetOnLogout() async {
   // Auth + Profile + Friendship + VoiceSession + Discover + Messages + Jots vb.
   _registerFeatureSingletons();
 
-  debugPrint("🔄 resetOnLogout completed. Dio and Features reset.");
+  debugPrint("ğŸ”„ resetOnLogout completed. Dio and Features reset.");
 }
 
 void _registerCoreFeatureSingletons() {
@@ -1100,6 +1100,7 @@ void _registerFeatureSingletons() {
       () => DiscoverBloc(
         searchUsers: sl<SearchUsersUseCase>(),
         getExplore: sl<GetExploreUseCase>(),
+        likePost: sl<LikePostUseCase>(),
       ),
     );
   }
@@ -1139,9 +1140,9 @@ void _registerFeatureSingletons() {
     );
   }
 
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Notification Feature (data layer + use cases + bloc)
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!sl.isRegistered<NotificationRemoteDataSource>()) {
     sl.registerLazySingleton<NotificationRemoteDataSource>(
       () => NotificationRemoteDataSourceImpl(client: sl()),
@@ -1180,9 +1181,9 @@ void _registerFeatureSingletons() {
     );
   }
 
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Settings Feature (data layer + use cases + bloc)
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!sl.isRegistered<SettingsRemoteDataSource>()) {
     sl.registerLazySingleton<SettingsRemoteDataSource>(
       () => SettingsRemoteDataSourceImpl(client: sl()),
@@ -1217,9 +1218,9 @@ void _registerFeatureSingletons() {
     );
   }
 
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Subscription / Plan Feature (data layer + use cases + bloc)
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!sl.isRegistered<SubscriptionRemoteDataSource>()) {
     sl.registerLazySingleton<SubscriptionRemoteDataSource>(
       () => SubscriptionRemoteDataSourceImpl(client: sl()),
@@ -1246,9 +1247,9 @@ void _registerFeatureSingletons() {
     );
   }
 
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Friendship UseCases + Blocs
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // List Bloc use cases
   if (!sl.isRegistered<GetMyFriendsUseCase>()) {
     sl.registerLazySingleton(() => GetMyFriendsUseCase(sl()));
@@ -1333,9 +1334,9 @@ void _registerFeatureSingletons() {
     );
   }
 
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Messages UseCases + Blocs (ConversationsBloc, ChatBloc)
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!sl.isRegistered<GetConversationsUseCase>()) {
     sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
   }
@@ -1384,9 +1385,9 @@ void _registerFeatureSingletons() {
     );
   }
 
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Interaction (Comments) UseCases + Bloc
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!sl.isRegistered<GetCommentsUseCase>()) {
     sl.registerLazySingleton(() => GetCommentsUseCase(sl()));
   }
@@ -1408,16 +1409,16 @@ void _registerFeatureSingletons() {
     );
   }
 
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Media UseCases
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!sl.isRegistered<UploadImageUseCase>()) {
     sl.registerLazySingleton(() => UploadImageUseCase(sl()));
   }
 
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Posts CreatePostCubit
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!sl.isRegistered<CreatePostUseCase>()) {
     sl.registerLazySingleton(() => CreatePostUseCase(sl()));
   }
@@ -1638,9 +1639,9 @@ Future<void> initCore() async {
     sl.registerLazySingleton(() => NotificationService(sl(), sl()));
     _logInitProfile('Core service registrations', stopwatch);
 
-    // ────────────────────────────────────────────────────────
-    // 💳 REVENUECAT (SUBSCRIPTION) SERVICE INITIALIZATION
-    // ────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ğŸ’³ REVENUECAT (SUBSCRIPTION) SERVICE INITIALIZATION
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (!sl.isRegistered<SubscriptionService>()) {
       final subscriptionService = SubscriptionServiceImpl(sl<Dio>());
       sl.registerLazySingleton<SubscriptionService>(() => subscriptionService);
@@ -1648,7 +1649,7 @@ Future<void> initCore() async {
       await subscriptionService.initialize();
     }
 
-    // Feature'ları kaydet (Auth, Profile, Friendship, Voice, Discover vb.)
+    // Feature'larÄ± kaydet (Auth, Profile, Friendship, Voice, Discover vb.)
     _registerCoreFeatureSingletons();
     _logInitProfile('registerCoreFeatureSingletons', stopwatch);    
     // Voice Session Feature (Core dependence for global Blocs)
@@ -1794,9 +1795,9 @@ Future<void> initCore() async {
       );
     }
 
-    // --- ChangeNotifier Providers (GetIt singleton, root tree'den çıkarıldı) ---
-    // NOT: AuthRepository ve ProfileRepository artık _registerFeatureSingletons()
-    // tarafından yukarıda kaydedildi.
+    // --- ChangeNotifier Providers (GetIt singleton, root tree'den Ã§Ä±karÄ±ldÄ±) ---
+    // NOT: AuthRepository ve ProfileRepository artÄ±k _registerFeatureSingletons()
+    // tarafÄ±ndan yukarÄ±da kaydedildi.
     sl.registerLazySingleton(
       () => AuthProvider(
         sl<AuthRepository>(),
@@ -1825,3 +1826,5 @@ Future<void> initCore() async {
 Future<void> init() async {
   await initCore();
 }
+
+

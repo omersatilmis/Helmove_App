@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -86,14 +86,21 @@ class _UserPostsFeedPageState extends State<UserPostsFeedPage> {
                     context.read<PostsBloc>().add(DeletePostEvent(post.id));
                   },
                   onLike: () {
-                    context.read<PostsBloc>().add(LikePostEvent(post.id));
+                    context.read<PostsBloc>().add(LikePostEvent(post.id, currentIsLiked: post.isLiked));
                   },
                   onComment: () {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (context) => CommentsSheet(contentId: post.id),
+                      builder: (context) => CommentsSheet(
+                        contentId: post.id,
+                        onCommentCountDelta: (delta) {
+                          context.read<PostsBloc>().add(
+                            AdjustPostCommentCountEvent(postId: post.id, delta: delta),
+                          );
+                        },
+                      ),
                     );
                   },
                   onShare: () {},
@@ -112,3 +119,5 @@ class _UserPostsFeedPageState extends State<UserPostsFeedPage> {
     );
   }
 }
+
+

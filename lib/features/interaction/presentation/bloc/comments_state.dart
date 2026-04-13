@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import '../../domain/entities/comment_entity.dart';
 
 enum CommentsStatus { initial, loading, success, failure }
@@ -11,6 +11,8 @@ class CommentsState extends Equatable {
   final bool isPostingComment;
   final bool hasReachedMax;
   final int currentPage;
+  final int mutationRevision;
+  final int lastMutationDelta;
 
   const CommentsState({
     this.status = CommentsStatus.initial,
@@ -20,6 +22,8 @@ class CommentsState extends Equatable {
     this.isPostingComment = false,
     this.hasReachedMax = false,
     this.currentPage = 1,
+    this.mutationRevision = 0,
+    this.lastMutationDelta = 0,
   });
 
   CommentsState copyWith({
@@ -30,6 +34,8 @@ class CommentsState extends Equatable {
     bool? isPostingComment,
     bool? hasReachedMax,
     int? currentPage,
+    int? mutationRevision,
+    int? lastMutationDelta,
   }) {
     return CommentsState(
       status: status ?? this.status,
@@ -39,6 +45,8 @@ class CommentsState extends Equatable {
       isPostingComment: isPostingComment ?? this.isPostingComment,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       currentPage: currentPage ?? this.currentPage,
+      mutationRevision: mutationRevision ?? this.mutationRevision,
+      lastMutationDelta: lastMutationDelta ?? this.lastMutationDelta,
     );
   }
 
@@ -51,5 +59,7 @@ class CommentsState extends Equatable {
     isPostingComment,
     hasReachedMax,
     currentPage,
+    mutationRevision,
+    lastMutationDelta,
   ];
 }

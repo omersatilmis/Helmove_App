@@ -13,6 +13,7 @@ class BikeCardWidget extends StatefulWidget {
   onDelete; // Opsiyonel yaptık, provider üzerinden de silinebilir
   final VoidCallback? onSave; // 🔥 Kayıt başarılı olduğunda çağrılır
   final bool initialEdit;
+  final bool readOnly;
 
   const BikeCardWidget({
     super.key,
@@ -20,6 +21,7 @@ class BikeCardWidget extends StatefulWidget {
     this.onDelete,
     this.onSave,
     this.initialEdit = false,
+    this.readOnly = false,
   });
 
   @override
@@ -40,7 +42,7 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
   @override
   void initState() {
     super.initState();
-    _isEditing = widget.initialEdit;
+    _isEditing = !widget.readOnly && widget.initialEdit;
 
     _makeModelCtrl = TextEditingController(
       text: "${widget.bike.brand} ${widget.bike.model}".trim(),
@@ -160,48 +162,52 @@ class _BikeCardWidgetState extends State<BikeCardWidget> {
       ),
       child: Column(
         children: [
-          // --- ÜST PANEL (İkonlar) ---
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // FAVORİ BUTONU
-                IconButton(
-                  onPressed: () async {
-                    // Favori (Primary) yapma işlemi
-                    if (widget.bike.id != null) {
-                      await context
-                          .read<ProfileProvider>()
-                          .setPrimaryMotorcycle(widget.bike.id!);
-                    }
-                  },
-                  icon: Icon(
-                    widget.bike.isPrimary
-                        ? Icons
-                              .star_rounded // Favori için yıldız daha uygun
-                        : Icons.star_border_rounded,
-                    color: widget.bike.isPrimary
-                        ? Colors
-                              .amber // Favori rengi
-                        : theme.colorScheme.onSurface.withValues(alpha:0.3),
+          if (!widget.readOnly) ...[
+            // --- ÜST PANEL (İkonlar) ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // FAVORİ BUTONU
+                  IconButton(
+                    onPressed: () async {
+                      // Favori (Primary) yapma işlemi
+                      if (widget.bike.id != null) {
+                        await context
+                            .read<ProfileProvider>()
+                            .setPrimaryMotorcycle(widget.bike.id!);
+                      }
+                    },
+                    icon: Icon(
+                      widget.bike.isPrimary
+                          ? Icons
+                                .star_rounded // Favori için yıldız daha uygun
+                          : Icons.star_border_rounded,
+                      color: widget.bike.isPrimary
+                          ? Colors
+                                .amber // Favori rengi
+                          : theme.colorScheme.onSurface.withValues(alpha:0.3),
+                    ),
                   ),
-                ),
-                // AKSİYON BUTONLARI
-                _isEditing
-                    ? _buildEditActions(theme)
-                    : _buildViewActions(theme),
-              ],
+                  // AKSİYON BUTONLARI
+                  _isEditing
+                      ? _buildEditActions(theme)
+                      : _buildViewActions(theme),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1),
+            const Divider(height: 1),
+          ],
 
           // --- İÇERİK ALANI ---
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
-              child: _isEditing ? _buildEditForm(theme) : _buildViewInfo(theme),
+              child: _isEditing && !widget.readOnly
+                  ? _buildEditForm(theme)
+                  : _buildViewInfo(theme),
             ),
           ),
         ],

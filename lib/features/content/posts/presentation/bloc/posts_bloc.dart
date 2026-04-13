@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/services/app_session.dart';
@@ -39,6 +39,7 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     on<GetUserPostsEvent>(_onGetUserPosts);
     on<DeletePostEvent>(_onDeletePost);
     on<LikePostEvent>(_onLikePost);
+    on<AdjustPostCommentCountEvent>(_onAdjustPostCommentCount);
     on<PostsCurrentUserChangedEvent>(_onPostsCurrentUserChanged);
     on<SeedInitialFeedEvent>(_onSeedInitialFeed);
 
@@ -354,37 +355,57 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     final originalPosts = List<PostEntity>.from(state.posts);
 
     try {
-      // Optimistic Update
-      final updatedPosts = state.posts.map((post) {
-        if (post.id == event.postId) {
-          final isLiked = !post.isLiked;
+      final targetIndex = state.posts.indexWhere((post) => post.id == event.postId);
+      final hasTargetInState = targetIndex >= 0;
+
+      var optimisticIsLiked = false;
+      var updatedPosts = List<PostEntity>.from(state.posts);
+
+      if (hasTargetInState) {
+        final targetPost = state.posts[targetIndex];
+        optimisticIsLiked = !targetPost.isLiked;
+
+        updatedPosts = state.posts.map((post) {
+          if (post.id != event.postId) {
+            return post;
+          }
+
+          final nextLikeCount = optimisticIsLiked
+              ? post.likeCount + 1
+              : (post.likeCount > 0 ? post.likeCount - 1 : 0);
+
           return post.copyWith(
-            isLiked: isLiked,
-            likeCount: isLiked ? post.likeCount + 1 : post.likeCount - 1,
+            isLiked: optimisticIsLiked,
+            likeCount: nextLikeCount,
           );
-        }
-        return post;
-      }).toList();
+        }).toList();
 
-      emit(state.copyWith(posts: updatedPosts));
-      _syncFirstPageCacheIfPossible(updatedPosts);
+        emit(state.copyWith(posts: updatedPosts));
+        _syncFirstPageCacheIfPossible(updatedPosts);
+      } else if (event.currentIsLiked != null) {
+        optimisticIsLiked = !event.currentIsLiked!;
+      } else {
+        return;
+      }
 
-      // Call UseCase
-      final isLiked = updatedPosts
-          .firstWhere((p) => p.id == event.postId)
-          .isLiked;
       final result = await likePost(
-        LikePostParams(postId: event.postId, isLiked: isLiked),
+        LikePostParams(postId: event.postId, isLiked: optimisticIsLiked),
       );
 
       result.fold(
         (failure) {
-          // Revert on failure
+          if (!hasTargetInState) {
+            return;
+          }
+
           emit(
-            state.copyWith(posts: originalPosts, errorMessage: failure.message),
+            state.copyWith(
+              posts: originalPosts,
+              errorMessage: failure.message,
+            ),
           );
         },
-        (_) => null, // Success: already updated optimistically
+        (_) => null,
       );
     } catch (e) {
       emit(
@@ -396,6 +417,32 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     }
   }
 
+  void _onAdjustPostCommentCount(
+    AdjustPostCommentCountEvent event,
+    Emitter<PostsState> emit,
+  ) {
+    if (event.delta == 0) {
+      return;
+    }
+
+    var changed = false;
+    final updatedPosts = state.posts.map((post) {
+      if (post.id != event.postId) {
+        return post;
+      }
+
+      changed = true;
+      final nextCount = post.commentCount + event.delta;
+      return post.copyWith(commentCount: nextCount < 0 ? 0 : nextCount);
+    }).toList();
+
+    if (!changed) {
+      return;
+    }
+
+    emit(state.copyWith(posts: updatedPosts));
+    _syncFirstPageCacheIfPossible(updatedPosts);
+  }
   void _syncFirstPageCacheIfPossible(List<PostEntity> posts) {
     if (state.page != 1 || posts.isEmpty) {
       return;
@@ -428,3 +475,5 @@ class PostsBloc extends Bloc<PostsEvent, PostsState> {
     return super.close();
   }
 }
+
+

@@ -1,4 +1,5 @@
 import '../../../../core/enums/user_tier.dart';
+import 'motorcycle_entity.dart';
 
 /// Profil Domain Entity
 class ProfileEntity {
@@ -29,6 +30,7 @@ class ProfileEntity {
   final String? instagramUrl;
   final String? youtubeUrl;
   final String? twitterUrl;
+  final List<MotorcycleEntity> motorcycles;
 
   const ProfileEntity({
     required this.id,
@@ -58,6 +60,7 @@ class ProfileEntity {
     this.instagramUrl,
     this.youtubeUrl,
     this.twitterUrl,
+    this.motorcycles = const [],
   });
 
   /// Full name helper
@@ -98,6 +101,7 @@ class ProfileEntity {
     String? youtubeUrl,
     String? twitterUrl,
     UserTier? tier,
+    List<MotorcycleEntity>? motorcycles,
   }) {
     return ProfileEntity(
       id: id ?? this.id,
@@ -127,6 +131,7 @@ class ProfileEntity {
       instagramUrl: instagramUrl ?? this.instagramUrl,
       youtubeUrl: youtubeUrl ?? this.youtubeUrl,
       twitterUrl: twitterUrl ?? this.twitterUrl,
+      motorcycles: motorcycles ?? this.motorcycles,
     );
   }
 

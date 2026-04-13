@@ -85,7 +85,14 @@ class _ProfileTabBarDelegate extends SliverPersistentHeaderDelegate {
 }
 
 class ProfileTabViews extends StatefulWidget {
-  const ProfileTabViews({super.key});
+  final bool isOwnProfile;
+  final int? viewedUserId;
+
+  const ProfileTabViews({
+    super.key,
+    required this.isOwnProfile,
+    required this.viewedUserId,
+  });
 
   @override
   State<ProfileTabViews> createState() => _ProfileTabViewsState();
@@ -129,8 +136,16 @@ class _ProfileTabViewsState extends State<ProfileTabViews> {
   @override
   Widget build(BuildContext context) {
     final tabViews = <Widget>[
-      const ProfileAboutTab(),
-      _loadedTabs[1] ? const ProfileJotsTab() : const SizedBox.shrink(),
+      ProfileAboutTab(
+        isOwnProfile: widget.isOwnProfile,
+        viewedUserId: widget.viewedUserId,
+      ),
+      _loadedTabs[1]
+          ? ProfileJotsTab(
+              isOwnProfile: widget.isOwnProfile,
+              viewedUserId: widget.viewedUserId,
+            )
+          : const SizedBox.shrink(),
       _loadedTabs[2] ? const ProfilePostsTab() : const SizedBox.shrink(),
     ];
 

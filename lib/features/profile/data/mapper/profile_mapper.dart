@@ -37,6 +37,7 @@ class ProfileMapper {
       instagramUrl: dto.instagramUrl,
       youtubeUrl: dto.youtubeUrl,
       twitterUrl: dto.twitterUrl,
+      motorcycles: toMotorcycleEntityList(dto.motorcycles),
     );
   }
 

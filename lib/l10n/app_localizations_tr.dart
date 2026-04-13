@@ -2064,6 +2064,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get noBikesYet => 'Henüz motor eklenmemiş.';
 
   @override
+  String get userGarageEmpty => 'Kullanıcının garajı boş.';
+
+  @override
   String get addBike => 'Motor Ekle';
 
   @override

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/core/di/injection_container.dart';
@@ -61,7 +61,7 @@ class _JotFeedViewState extends State<JotFeedView>
       value: _jotsBloc,
       child: BlocBuilder<JotsBloc, JotsState>(
         builder: (context, state) {
-          // 1. Veri varsa (Cache'den gelmiş olabilir), hata olsa veya yükleniyor olsa bile listeyi göster.
+          // 1. Veri varsa (Cache'den gelmiÅŸ olabilir), hata olsa veya yÃ¼kleniyor olsa bile listeyi gÃ¶ster.
           if (state.jots.isNotEmpty) {
             return RefreshIndicator(
               onRefresh: _onRefresh,
@@ -88,6 +88,11 @@ class _JotFeedViewState extends State<JotFeedView>
                     currentUserId: state.currentUserId,
                     onLike: () => _jotsBloc.add(LikeJotEvent(jotId: jot.id)),
                     onDelete: () => _jotsBloc.add(DeleteJotEvent(jotId: jot.id)),
+                    onCommentCountDelta: (delta) {
+                      _jotsBloc.add(
+                        AdjustJotCommentCountEvent(jotId: jot.id, delta: delta),
+                      );
+                    },
                     onComment: () {
                       Navigator.push(
                         context,
@@ -95,6 +100,14 @@ class _JotFeedViewState extends State<JotFeedView>
                           builder: (context) => JotDetailPage(
                             jot: jot,
                             currentUserId: state.currentUserId,
+                            onCommentCountDelta: (delta) {
+                              _jotsBloc.add(
+                                AdjustJotCommentCountEvent(
+                                  jotId: jot.id,
+                                  delta: delta,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       );
@@ -105,12 +118,12 @@ class _JotFeedViewState extends State<JotFeedView>
             );
           }
 
-          // 2. Veri yoksa ve yükleniyorsa tam ekran loader göster
+          // 2. Veri yoksa ve yÃ¼kleniyorsa tam ekran loader gÃ¶ster
           if (state.status == JotsStatus.loading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 3. Veri yoksa ve hata varsa hata ekranı göster
+          // 3. Veri yoksa ve hata varsa hata ekranÄ± gÃ¶ster
           if (state.status == JotsStatus.failure) {
             return _FeedError(
               onRetry: () => _jotsBloc.add(const FetchJotsFeedEvent(isRefresh: true)),
@@ -118,7 +131,7 @@ class _JotFeedViewState extends State<JotFeedView>
             );
           }
 
-          // 4. Veri yoksa ve durum başarılıysa (gerçekten boşsa) boş ekran göster
+          // 4. Veri yoksa ve durum baÅŸarÄ±lÄ±ysa (gerÃ§ekten boÅŸsa) boÅŸ ekran gÃ¶ster
           return const _FeedEmpty();
         },
       ),

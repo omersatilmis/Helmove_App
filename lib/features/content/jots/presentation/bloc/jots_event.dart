@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import '../../domain/entities/jot_entity.dart';
 
 abstract class JotsEvent extends Equatable {
@@ -76,6 +76,16 @@ class LikeJotEvent extends JotsEvent {
 
   @override
   List<Object?> get props => [jotId];
+}
+
+class AdjustJotCommentCountEvent extends JotsEvent {
+  final int jotId;
+  final int delta;
+
+  const AdjustJotCommentCountEvent({required this.jotId, required this.delta});
+
+  @override
+  List<Object?> get props => [jotId, delta];
 }
 
 class JotsCurrentUserChangedEvent extends JotsEvent {

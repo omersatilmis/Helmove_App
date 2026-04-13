@@ -819,6 +819,7 @@
     "noBlockedUsers": "Engellenmiş hesap bulunmuyor.",
     "unblockUser": "Engeli Kaldır",
     "noBikesYet": "Henüz motor eklenmemiş.",
+    "userGarageEmpty": "Kullanıcının garajı boş.",
     "addBike": "Motor Ekle",
     "bottomNavDiscover": "Keşfet",
     "bottomNavCommunication": "İletişim",

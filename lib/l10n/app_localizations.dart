@@ -3986,6 +3986,12 @@ abstract class AppLocalizations {
   /// **'No motorcycles added yet.'**
   String get noBikesYet;
 
+  /// No description provided for @userGarageEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This user\'s garage is empty.'**
+  String get userGarageEmpty;
+
   /// No description provided for @addBike.
   ///
   /// In en, this message translates to:
