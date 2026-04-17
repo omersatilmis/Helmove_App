@@ -96,32 +96,55 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
         const SizedBox(height: 16),
 
         // --- INPUT: DURAK ARAMA (GlassInputField) ---
-        BlocBuilder<MapBloc, MapState>(
-          buildWhen: (p, c) => p.lastQuery != c.lastQuery,
-          builder: (context, state) {
-            return GlassInputField(
-              controller: _controller,
-              focusNode: _focusNode,
-              hintText: l10n.map_search_stop_hint,
-              prefixIcon: Icons.search_rounded,
-              onChanged: (value) {
-                context.read<MapBloc>().add(
-                  MapSearchQueryChanged(
-                    query: value,
-                    isStart: false,
-                    isStop: true,
+        BlocListener<MapBloc, MapState>(
+          listenWhen: (p, c) =>
+              p.lastQuery != c.lastQuery ||
+              p.searchTargetIsStop != c.searchTargetIsStop,
+          listener: (context, state) {
+            if (state.searchTargetIsStop) {
+              if (_controller.text != state.lastQuery) {
+                _controller.value = TextEditingValue(
+                  text: state.lastQuery,
+                  selection: TextSelection.collapsed(
+                    offset: state.lastQuery.length,
                   ),
                 );
-              },
-            );
+              }
+              return;
+            }
+
+            if (!_focusNode.hasFocus && _controller.text.isNotEmpty) {
+              _controller.clear();
+            }
           },
+          child: BlocBuilder<MapBloc, MapState>(
+            buildWhen: (p, c) => p.lastQuery != c.lastQuery,
+            builder: (context, state) {
+              return GlassInputField(
+                controller: _controller,
+                focusNode: _focusNode,
+                hintText: l10n.map_search_stop_hint,
+                prefixIcon: Icons.search_rounded,
+                onChanged: (value) {
+                  context.read<MapBloc>().add(
+                    MapSearchQueryChanged(
+                      query: value,
+                      isStart: false,
+                      isStop: true,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
         const SizedBox(height: 20),
 
         // --- SUGGESTIONS OR POIS ---
         BlocBuilder<MapBloc, MapState>(
           builder: (context, state) {
-            final hasQuery = state.lastQuery.isNotEmpty && state.searchTargetIsStop;
+            final hasQuery =
+              state.lastQuery.trim().isNotEmpty && state.searchTargetIsStop;
             
             if (hasQuery) {
               return _buildSuggestionsList(context, state);
@@ -398,7 +421,7 @@ class _MapBottomSheetAddStopState extends State<MapBottomSheetAddStop> {
 
     return ListView.separated(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       itemCount: state.suggestions.length,
       separatorBuilder: (_, _) => Divider(
         height: 1,

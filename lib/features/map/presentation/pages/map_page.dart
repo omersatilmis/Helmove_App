@@ -1126,6 +1126,29 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  String _resolveMapErrorMessage(String key, AppLocalizations l10n) {
+    switch (key) {
+      case 'map_error_search_failed':
+        return l10n.map_error_search_failed;
+      case 'map_error_location_not_found':
+        return l10n.map_error_location_not_found;
+      case 'map_error_configuration':
+        return l10n.map_error_configuration;
+      case 'map_error_unauthorized':
+        return l10n.map_error_unauthorized;
+      case 'map_error_rate_limited':
+        return l10n.map_error_rate_limited;
+      case 'map_error_network':
+        return l10n.map_error_network;
+      case 'map_error_invalid_response':
+        return l10n.map_error_invalid_response;
+      case 'map_error_unknown':
+        return l10n.map_error_unknown;
+      default:
+        return key;
+    }
+  }
+
   void _onLayersPressed() {
     _showSnackBar(AppLocalizations.of(context)!.map_layers_coming_soon);
   }
@@ -1153,7 +1176,8 @@ class _MapPageState extends State<MapPage> {
             previous.selectedPoiIndex != current.selectedPoiIndex,
         listener: (context, state) {
           if (state.status == MapStatus.error && state.error != null) {
-            _showSnackBar(state.error!);
+            final l10n = AppLocalizations.of(context)!;
+            _showSnackBar(_resolveMapErrorMessage(state.error!, l10n));
           }
 
           _updateMarkers(state.startPoint?.point, state.endPoint?.point);

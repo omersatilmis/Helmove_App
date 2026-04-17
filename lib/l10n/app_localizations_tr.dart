@@ -1596,6 +1596,31 @@ class AppLocalizationsTr extends AppLocalizations {
   String get map_location_error => 'Konum alınırken hata oluştu.';
 
   @override
+  String get map_error_search_failed => 'Harita araması başarısız oldu.';
+
+  @override
+  String get map_error_location_not_found => 'Konum bulunamadı.';
+
+  @override
+  String get map_error_configuration => 'Harita servisi yapılandırma hatası.';
+
+  @override
+  String get map_error_unauthorized => 'Harita servisi yetkilendirme hatası.';
+
+  @override
+  String get map_error_rate_limited => 'Harita servisi kota sınırı aşıldı.';
+
+  @override
+  String get map_error_network => 'İnternet bağlantısı yok veya zayıf.';
+
+  @override
+  String get map_error_invalid_response =>
+      'Harita servisinden geçersiz yanıt alındı.';
+
+  @override
+  String get map_error_unknown => 'Harita servisinde beklenmeyen hata oluştu.';
+
+  @override
   String get map_layers_coming_soon => 'Katmanlar yakında.';
 
   @override

@@ -14,6 +14,15 @@ import 'map_state.dart';
 export 'map_state.dart';
 
 class MapBloc extends Bloc<MapEvent, MapState> {
+  static const String _errorSearchFailedKey = 'map_error_search_failed';
+  static const String _errorLocationNotFoundKey = 'map_error_location_not_found';
+  static const String _errorConfigurationKey = 'map_error_configuration';
+  static const String _errorUnauthorizedKey = 'map_error_unauthorized';
+  static const String _errorRateLimitedKey = 'map_error_rate_limited';
+  static const String _errorNetworkKey = 'map_error_network';
+  static const String _errorInvalidResponseKey = 'map_error_invalid_response';
+  static const String _errorUnknownKey = 'map_error_unknown';
+
   final SearchLocationUseCase _searchLocation;
   final SearchLocationSuggestionsUseCase _searchSuggestions;
   final GetRouteUseCase _getRoute;
@@ -92,7 +101,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       emit(
         state.copyWith(
           status: MapStatus.error,
-          error: 'Harita arama hatası.',
+          error: _errorSearchFailedKey,
           isSearching: false,
         ),
       );
@@ -103,7 +112,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       emit(
         state.copyWith(
           status: MapStatus.error,
-          error: 'Konum bulunamadı',
+          error: _errorLocationNotFoundKey,
           isSearching: false,
         ),
       );
@@ -728,17 +737,17 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   String _mapboxErrorMessage(MapboxException exception) {
     switch (exception.type) {
       case MapboxErrorType.configuration:
-        return 'Harita servisi yapılandırma hatası.';
+        return _errorConfigurationKey;
       case MapboxErrorType.unauthorized:
-        return 'Harita servisi yetkilendirme hatası.';
+        return _errorUnauthorizedKey;
       case MapboxErrorType.rateLimited:
-        return 'Harita servisi kota sınırı aşıldı.';
+        return _errorRateLimitedKey;
       case MapboxErrorType.network:
-        return 'İnternet bağlantısı yok veya zayıf.';
+        return _errorNetworkKey;
       case MapboxErrorType.invalidResponse:
-        return 'Harita servisinden geçersiz yanıt alındı.';
+        return _errorInvalidResponseKey;
       case MapboxErrorType.unknown:
-        return 'Harita servisinde beklenmeyen hata oluştu.';
+        return _errorUnknownKey;
     }
   }
 }

@@ -217,7 +217,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
               constraints: const BoxConstraints(maxHeight: 240),
               child: ListView.separated(
                 shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 itemCount: state.suggestions.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 6),
                 itemBuilder: (context, index) {

@@ -3110,6 +3110,54 @@ abstract class AppLocalizations {
   /// **'An error occurred while getting location.'**
   String get map_location_error;
 
+  /// No description provided for @map_error_search_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Map search failed.'**
+  String get map_error_search_failed;
+
+  /// No description provided for @map_error_location_not_found.
+  ///
+  /// In en, this message translates to:
+  /// **'Location not found.'**
+  String get map_error_location_not_found;
+
+  /// No description provided for @map_error_configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Map service configuration error.'**
+  String get map_error_configuration;
+
+  /// No description provided for @map_error_unauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Map service authorization failed.'**
+  String get map_error_unauthorized;
+
+  /// No description provided for @map_error_rate_limited.
+  ///
+  /// In en, this message translates to:
+  /// **'Map service rate limit exceeded.'**
+  String get map_error_rate_limited;
+
+  /// No description provided for @map_error_network.
+  ///
+  /// In en, this message translates to:
+  /// **'Network connection is unavailable or unstable.'**
+  String get map_error_network;
+
+  /// No description provided for @map_error_invalid_response.
+  ///
+  /// In en, this message translates to:
+  /// **'Received invalid response from map service.'**
+  String get map_error_invalid_response;
+
+  /// No description provided for @map_error_unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unexpected map service error occurred.'**
+  String get map_error_unknown;
+
   /// No description provided for @map_layers_coming_soon.
   ///
   /// In en, this message translates to:
