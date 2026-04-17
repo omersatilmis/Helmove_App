@@ -13,6 +13,8 @@ class AuthEndpoints {
   static const String sessions = 'api/auth/sessions';
   static const String refreshCurrentUser = 'api/auth/refresh-current-user';
   static const String socialLogin = 'api/auth/social-login';
+  static const String sendRegisterOtp = 'api/auth/send-register-otp';
+  static const String confirmRegister = 'api/auth/confirm-register';
 
   // Some backend branches use alternative naming for social auth.
   // We try these as fallback when the primary path returns 404.

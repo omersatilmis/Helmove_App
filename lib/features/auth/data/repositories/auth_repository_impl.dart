@@ -12,6 +12,8 @@ import '../dto/reset_password_request_dto.dart';
 import '../dto/refresh_token_request_dto.dart';
 import '../dto/revoke_token_request_dto.dart';
 import '../dto/session_dto.dart';
+import '../dto/send_register_otp_request_dto.dart';
+import '../dto/confirm_register_request_dto.dart';
 import '../mapper/auth_mapper.dart';
 import '../../../../core/error/error_handler.dart';
 import '../../../../core/utils/app_logger.dart';
@@ -248,6 +250,43 @@ class AuthRepositoryImpl implements AuthRepository {
     await _localDataSource.saveProfileImageUrl(profileImageUrl);
     if (tier != null) {
       await _localDataSource.saveTier(tier);
+    }
+  }
+
+  @override
+  Future<void> sendRegisterOtp({
+    required String username,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    try {
+      final requestDto = SendRegisterOtpRequestDto(
+        username: username,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+      await _remoteDataSource.sendRegisterOtp(requestDto);
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
+  }
+
+  @override
+  Future<void> confirmRegister({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final requestDto = ConfirmRegisterRequestDto(email: email, code: code);
+      await _remoteDataSource.confirmRegister(requestDto);
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
     }
   }
 

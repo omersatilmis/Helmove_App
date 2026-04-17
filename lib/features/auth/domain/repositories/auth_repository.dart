@@ -30,6 +30,22 @@ abstract class AuthRepository {
     required String confirmPassword,
   });
 
+  /// Kayıt OTP: Form verilerini Redis'e yazar, maile 6 haneli kod gönderir
+  Future<void> sendRegisterOtp({
+    required String username,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+  });
+
+  /// Kayıt onay: OTP kodunu doğrular, hesabı kalıcı olarak oluşturur
+  Future<void> confirmRegister({
+    required String email,
+    required String code,
+  });
+
   Future<void> logout();
 
   Future<bool> isLoggedIn();

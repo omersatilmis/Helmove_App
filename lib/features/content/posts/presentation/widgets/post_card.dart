@@ -299,11 +299,12 @@ class _PostCardModernState extends State<PostCardModern>
                               Icons.share_outlined,
                               AppLocalizations.of(context)!.share,
                             ),
-                          _buildPopupItem(
-                            'report',
-                            Icons.report_gmailerrorred_rounded,
-                            AppLocalizations.of(context)!.report,
-                          ),
+                          if (!isOwner)
+                            _buildPopupItem(
+                              'report',
+                              Icons.report_gmailerrorred_rounded,
+                              AppLocalizations.of(context)!.report,
+                            ),
                           if (isOwner)
                             _buildPopupItem(
                               'delete',

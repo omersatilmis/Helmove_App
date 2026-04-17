@@ -30,39 +30,6 @@ class _FeedViewState extends State<FeedView> {
     // Always trigger a fetch. PostsBloc will handle caching and background updates.
     _postsBloc.add(const GetFeedEvent(page: 1, limit: _feedPageSize));
     _scrollController.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_isBottom) {
-      final state = _postsBloc.state;
-      if (!state.hasReachedMax && state.status != PostsStatus.loading) {
-        _postsBloc.add(
-          GetFeedEvent(page: state.page + 1, limit: _feedPageSize),
-        );
-      }
-    }
-  }
-
-  bool get _isBottom {
-    if (!_scrollController.hasClients) return false;
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final currentScroll = _scrollController.offset;
-    return currentScroll >= (maxScroll * 0.9);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _postsBloc,
-      child: BlocBuilder<PostsBloc, PostsState>(
-        builder: (context, state) {
-          if (state.status == PostsStatus.loading && state.posts.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -74,26 +41,42 @@ class _FeedViewState extends State<FeedView> {
                   const Icon(
                     Icons.error_outline,
                     color: AppColors.error,
-                    size: 48,
+                      _postsBloc.add(
+                        LikePostEvent(post.id, currentIsLiked: post.isLiked),
+                      );
                   ),
                   const SizedBox(height: 16),
                   Text(
                     state.errorMessage ?? AppLocalizations.of(context)!.unknownError,
                     style: AppTextStyles.medium,
                   ),
-                  const SizedBox(height: 16),
+                        builder: (context) => CommentsSheet(
+                          contentId: post.id,
+                          onCommentCountDelta: (delta) {
+                            _postsBloc.add(
+                              AdjustPostCommentCountEvent(
+                                postId: post.id,
+                                delta: delta,
+                              ),
+                            );
+                          },
+                        ),
                   ElevatedButton(
                     onPressed: () {
                       _postsBloc.add(
                         const GetFeedEvent(
                           isRefresh: true,
                           page: 1,
-                          limit: _feedPageSize,
+                        SnackBar(
+                          content: Text(
+                            AppLocalizations.of(context)!.reportReceived,
+                          ),
+                        ),
                         ),
                       );
                     },
                     child: Text(AppLocalizations.of(context)!.retry),
-                  ),
+              },
                 ],
               ),
             );
@@ -133,6 +116,8 @@ class _FeedViewState extends State<FeedView> {
                 }
 
                 final post = state.posts[index];
+                final isLast =
+                    state.hasReachedMax && index == state.posts.length - 1;
 
                 return PostCardModern(
                   post: post,
@@ -165,6 +150,35 @@ class _FeedViewState extends State<FeedView> {
                       SnackBar(content: Text(AppLocalizations.of(context)!.reportReceived)),
                     );
                   },
+                return Padding(
+                  padding: isLast
+                      ? const EdgeInsets.only(bottom: 80)
+                      : EdgeInsets.zero,
+                  child: PostCardModern(
+                    post: post,
+                    currentUserId: state.currentUserId,
+                    onDelete: () {
+                      _postsBloc.add(DeletePostEvent(post.id));
+                    },
+                    onLike: () {
+                      _postsBloc.add(LikePostEvent(post.id));
+                    },
+                    onComment: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => CommentsSheet(contentId: post.id),
+                      );
+                    },
+                    onShare: () {},
+                    onSave: () {},
+                    onReport: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(AppLocalizations.of(context)!.reportReceived)),
+                      );
+                    },
+                  ),
                 );
               },
             ),

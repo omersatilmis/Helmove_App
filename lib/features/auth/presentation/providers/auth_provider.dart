@@ -175,6 +175,53 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Kayıt OTP gönder
+  Future<bool> sendRegisterOtp({
+    required String username,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    _setLoading(true);
+    clearError();
+    try {
+      await _authRepository.sendRegisterOtp(
+        username: username,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  // Kayıt OTP doğrula
+  Future<bool> confirmRegister({
+    required String email,
+    required String code,
+  }) async {
+    _setLoading(true);
+    clearError();
+    try {
+      await _authRepository.confirmRegister(email: email, code: code);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // Şifremi Unuttum
   Future<bool> forgotPassword(String email) async {
     _setLoading(true);

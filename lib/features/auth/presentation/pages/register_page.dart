@@ -31,6 +31,10 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _acceptedEula = false;
   bool _showEulaWarning = false;
 
+  // Alan bazlı API hataları (backend: email/username zaten kayıtlı)
+  String? _emailApiError;
+  String? _usernameApiError;
+
   @override
   void initState() {
     super.initState();
@@ -72,18 +76,22 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  // Kayıt İşlemi
+  // Kayıt İşlemi — OTP akışı
   Future<void> _handleRegister(AuthProvider authProvider) async {
     if (!_acceptedEula) {
       setState(() => _showEulaWarning = true);
       return;
     }
 
-    // 1. Klavyeyi Kapat
+    setState(() {
+      _emailApiError = null;
+      _usernameApiError = null;
+    });
+
     FocusScope.of(context).unfocus();
 
-    // 3. Kayıt İsteği
-    final success = await authProvider.register(
+    // OTP gönderi isteği: backend formu Redis'e yazar, maile 6 haneli kod gönderir
+    final success = await authProvider.sendRegisterOtp(
       username: _usernameController.text.trim(),
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
@@ -92,21 +100,32 @@ class _RegisterPageState extends State<RegisterPage> {
       confirmPassword: _confirmPasswordController.text,
     );
 
-    // 4. Başarı Durumu
-    if (mounted) {
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.registrationSuccessful),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        context.pop(); // Login sayfasına dön
-      } else if (authProvider.errorMessage != null) {
+    if (!mounted) return;
+
+    if (success) {
+      // OTP ekranına geç — tüm form verilerini ilet (resend için gerekli)
+      context.push('/register/confirm', extra: {
+        'email': _emailController.text.trim(),
+        'username': _usernameController.text.trim(),
+        'firstName': _firstNameController.text.trim(),
+        'lastName': _lastNameController.text.trim(),
+        'password': _passwordController.text,
+        'confirmPassword': _confirmPasswordController.text,
+      });
+    } else {
+      final error = authProvider.errorMessage ?? '';
+      // Alan bazlı hata tespiti
+      if (error.toLowerCase().contains('e-posta') ||
+          error.toLowerCase().contains('email') ||
+          error.toLowerCase().contains('mail')) {
+        setState(() => _emailApiError = error);
+      } else if (error.toLowerCase().contains('kullanıcı adı') ||
+          error.toLowerCase().contains('username')) {
+        setState(() => _usernameApiError = error);
+      } else {
         ProfessionalErrorBottomSheet.show(
           context,
-          message: authProvider.errorMessage!,
+          message: error,
           title: AppLocalizations.of(context)!.registrationFailed,
         );
       }
@@ -191,6 +210,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   _confirmPasswordController,
                               authProvider: authProvider,
                               onRegister: () => _handleRegister(authProvider),
+                              usernameApiError: _usernameApiError,
+                              emailApiError: _emailApiError,
                             ),
                           ),
                         ),

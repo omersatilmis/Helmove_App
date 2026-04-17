@@ -3,12 +3,13 @@ import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/constants/report_enums.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../domain/entities/report_entity.dart';
 import '../bloc/help_bloc.dart';
 import '../bloc/help_event.dart';
 import '../bloc/help_state.dart';
 
-class ReportBottomSheet extends StatefulWidget {
+class ReportBottomSheet extends StatelessWidget {
   final String targetId;
   final ReportTargetType targetType;
 
@@ -35,10 +36,26 @@ class ReportBottomSheet extends StatefulWidget {
   }
 
   @override
-  State<ReportBottomSheet> createState() => _ReportBottomSheetState();
+  Widget build(BuildContext context) {
+    // showModalBottomSheet yeni bir route bağlamı açar; HelpBloc'u burada sağlıyoruz.
+    return BlocProvider(
+      create: (_) => sl<HelpBloc>(),
+      child: _ReportContent(targetId: targetId, targetType: targetType),
+    );
+  }
 }
 
-class _ReportBottomSheetState extends State<ReportBottomSheet> {
+class _ReportContent extends StatefulWidget {
+  final String targetId;
+  final ReportTargetType targetType;
+
+  const _ReportContent({required this.targetId, required this.targetType});
+
+  @override
+  State<_ReportContent> createState() => _ReportContentState();
+}
+
+class _ReportContentState extends State<_ReportContent> {
   ReportCategory _selectedCategory = ReportCategory.spam;
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -48,13 +65,26 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
     super.dispose();
   }
 
+  void _submitReport() {
+    final report = ReportEntity(
+      targetId: widget.targetId,
+      targetType: widget.targetType,
+      category: _selectedCategory,
+      description: _descriptionController.text.trim().isEmpty
+          ? 'Kategori: ${_selectedCategory.label}'
+          : _descriptionController.text.trim(),
+      status: ReportStatus.pending,
+    );
+    context.read<HelpBloc>().add(CreateReportEvent(report));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return BlocListener<HelpBloc, HelpState>(
       listener: (context, state) {
-        final l10n = AppLocalizations.of(context)!;
         if (state.status == HelpStatus.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -73,15 +103,16 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
         }
       },
       child: Container(
-        padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottomInset),
         decoration: const BoxDecoration(
           color: Color(0xFF1C1C1C),
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottomInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Handle bar
             Center(
               child: Container(
@@ -101,7 +132,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
                 Icon(widget.targetType.icon, color: Colors.white70, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  AppLocalizations.of(context)!.reportDetailed(widget.targetType.label),
+                  l10n.reportDetailed(widget.targetType.label),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -112,14 +143,14 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              AppLocalizations.of(context)!.reportDescription,
+              l10n.reportDescription,
               style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
             const SizedBox(height: 24),
 
             // Category Selection
             Text(
-              AppLocalizations.of(context)!.selectReason,
+              l10n.selectReason,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -139,24 +170,29 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
                   value: _selectedCategory,
                   dropdownColor: const Color(0xFF252525),
                   isExpanded: true,
-                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54),
+                  icon: const Icon(
+                      Icons.keyboard_arrow_down, color: Colors.white54),
                   items: ReportCategory.values.map((category) {
                     return DropdownMenuItem(
                       value: category,
                       child: Row(
                         children: [
-                          Icon(category.icon, color: category.color, size: 18),
+                          Icon(category.icon,
+                              color: category.color, size: 18),
                           const SizedBox(width: 12),
                           Text(
                             category.label,
-                            style: const TextStyle(color: Colors.white, fontSize: 15),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 15),
                           ),
                         ],
                       ),
                     );
                   }).toList(),
                   onChanged: (value) {
-                    if (value != null) setState(() => _selectedCategory = value);
+                    if (value != null) {
+                      setState(() => _selectedCategory = value);
+                    }
                   },
                 ),
               ),
@@ -165,7 +201,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
 
             // Description
             Text(
-              AppLocalizations.of(context)!.additionalInfo,
+              l10n.additionalInfo,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -176,7 +212,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
             AppInputField(
               controller: _descriptionController,
               maxLines: 3,
-              hint: AppLocalizations.of(context)!.explainSituation,
+              hint: l10n.explainSituation,
               radius: 16,
             ),
             const SizedBox(height: 32),
@@ -185,7 +221,6 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
             BlocBuilder<HelpBloc, HelpState>(
               builder: (context, state) {
                 final isLoading = state.status == HelpStatus.loading;
-
                 return ElevatedButton(
                   onPressed: isLoading ? null : _submitReport,
                   style: ElevatedButton.styleFrom(
@@ -207,7 +242,7 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
                           ),
                         )
                       : Text(
-                          AppLocalizations.of(context)!.sendReport,
+                          l10n.sendReport,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -218,21 +253,8 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
             ),
           ],
         ),
+        ),
       ),
     );
-  }
-
-  void _submitReport() {
-    final report = ReportEntity(
-      targetId: widget.targetId,
-      targetType: widget.targetType,
-      category: _selectedCategory,
-      description: _descriptionController.text.trim().isEmpty
-          ? 'Kategori: ${_selectedCategory.label}'
-          : _descriptionController.text.trim(),
-      status: ReportStatus.pending,
-    );
-
-    context.read<HelpBloc>().add(CreateReportEvent(report));
   }
 }

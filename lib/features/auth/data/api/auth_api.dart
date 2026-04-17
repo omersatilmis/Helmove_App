@@ -11,6 +11,8 @@ import '../dto/reset_password_request_dto.dart';
 import '../dto/refresh_token_request_dto.dart';
 import '../dto/revoke_token_request_dto.dart';
 import '../dto/session_dto.dart';
+import '../dto/send_register_otp_request_dto.dart';
+import '../dto/confirm_register_request_dto.dart';
 import '../../../../core/utils/app_logger.dart';
 
 class AuthApi {
@@ -230,6 +232,34 @@ class AuthApi {
       final errorMessage =
           _parseErrorMessage(e.response?.data) ??
           'Kullanıcı yenileme başarısız: ${e.response?.statusCode}';
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception("Beklenmedik bir hata oluştu: $e");
+    }
+  }
+
+  /// Kayıt OTP gönder - Formu Redis'e yazar, maile 6 haneli kod gönderir
+  Future<void> sendRegisterOtp(SendRegisterOtpRequestDto request) async {
+    try {
+      await _dio.post(AuthEndpoints.sendRegisterOtp, data: request.toJson());
+    } on DioException catch (e) {
+      final errorMessage =
+          _parseErrorMessage(e.response?.data) ??
+          'OTP gönderilemedi: ${e.response?.statusCode}';
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception("Beklenmedik bir hata oluştu: $e");
+    }
+  }
+
+  /// Kayıt OTP doğrula - Kodu onaylar, hesabı oluşturur
+  Future<void> confirmRegister(ConfirmRegisterRequestDto request) async {
+    try {
+      await _dio.post(AuthEndpoints.confirmRegister, data: request.toJson());
+    } on DioException catch (e) {
+      final errorMessage =
+          _parseErrorMessage(e.response?.data) ??
+          'Doğrulama başarısız: ${e.response?.statusCode}';
       throw Exception(errorMessage);
     } catch (e) {
       throw Exception("Beklenmedik bir hata oluştu: $e");

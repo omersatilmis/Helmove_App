@@ -9,6 +9,7 @@ import 'package:helmove/features/auth/presentation/pages/login_page.dart';
 import 'package:helmove/features/auth/presentation/pages/register_page.dart';
 import 'package:helmove/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:helmove/features/auth/presentation/pages/forgot_password_confirm_page.dart';
+import 'package:helmove/features/auth/presentation/pages/register_confirm_page.dart';
 import 'package:helmove/features/auth/presentation/pages/pre_auth_page.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/communication/presentation/models/invite_args.dart';
@@ -143,6 +144,7 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
       final isForgotPassword = path == '/forgot-password';
       final isForgotPasswordConfirm = path == '/forgot-password/confirm';
       final isOnboarding = path == '/onboarding';
+      final isRegisterConfirm = path == '/register/confirm';
       final isPublicAuthRoute =
           isPreAuth ||
           isLoggingIn ||
@@ -150,6 +152,7 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
           isForgotPassword ||
           isForgotPasswordConfirm ||
           isOnboarding;
+          isRegisterConfirm;
 
       if (!isLoggedIn) {
         if (!isPublicAuthRoute) {
@@ -195,6 +198,24 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
         builder: (context, state) {
           final email = state.uri.queryParameters['email']!;
           return ForgotPasswordConfirmPage(email: email);
+        },
+      ),
+      GoRoute(
+        path: '/register/confirm',
+        redirect: (context, state) {
+          if (state.extra is! Map<String, dynamic>) return '/register';
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>;
+          return RegisterConfirmPage(
+            email: args['email'] as String,
+            username: args['username'] as String,
+            firstName: args['firstName'] as String,
+            lastName: args['lastName'] as String,
+            password: args['password'] as String,
+            confirmPassword: args['confirmPassword'] as String,
+          );
         },
       ),
 

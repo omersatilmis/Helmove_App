@@ -50,6 +50,11 @@ post_install do |installer|
         'PERMISSION_NOTIFICATIONS=1',
         'PERMISSION_LOCATION=1',
       ]
+
+      # Fix code signing for gRPC's objective_c.framework (0xe8008014)
+      config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+      config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+      config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
     end
   end
 end

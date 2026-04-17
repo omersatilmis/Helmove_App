@@ -14,6 +14,8 @@ class RegisterFormWidget extends StatefulWidget {
   final TextEditingController confirmPasswordController;
   final AuthProvider authProvider;
   final VoidCallback onRegister;
+  final String? usernameApiError;
+  final String? emailApiError;
 
   const RegisterFormWidget({
     super.key,
@@ -26,6 +28,8 @@ class RegisterFormWidget extends StatefulWidget {
     required this.confirmPasswordController,
     required this.authProvider,
     required this.onRegister,
+    this.usernameApiError,
+    this.emailApiError,
   });
 
   @override
@@ -34,6 +38,19 @@ class RegisterFormWidget extends StatefulWidget {
 
 class _RegisterFormWidgetState extends State<RegisterFormWidget> {
   int _currentStep = 0;
+
+  @override
+  void didUpdateWidget(RegisterFormWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Backend hata geldiğinde ilgili adıma geri dön
+    if (widget.usernameApiError != null &&
+        widget.usernameApiError != oldWidget.usernameApiError) {
+      setState(() => _currentStep = 0);
+    } else if (widget.emailApiError != null &&
+        widget.emailApiError != oldWidget.emailApiError) {
+      setState(() => _currentStep = 1);
+    }
+  }
 
   final _step1Key = GlobalKey<FormState>();
   final _step2Key = GlobalKey<FormState>();
@@ -82,6 +99,10 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
             validator: (val) =>
                 (val == null || val.length < 3) ? l10n.usernameTooShort : null,
           ),
+          if (widget.usernameApiError != null) ...[
+            const SizedBox(height: 6),
+            _ApiErrorBanner(message: widget.usernameApiError!),
+          ],
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,6 +157,10 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
             validator: (val) =>
                 (val == null || !val.contains('@')) ? l10n.invalidMail : null,
           ),
+          if (widget.emailApiError != null) ...[
+            const SizedBox(height: 6),
+            _ApiErrorBanner(message: widget.emailApiError!),
+          ],
         ],
       ),
     );
@@ -260,6 +285,38 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ApiErrorBanner extends StatelessWidget {
+  final String message;
+
+  const _ApiErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline,
+              size: 14, color: theme.colorScheme.error),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.error),
+            ),
+          ),
+        ],
       ),
     );
   }
