@@ -22,6 +22,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   final SignalRService signalRService;
 
   StreamSubscription? _notificationSubscription;
+  final Set<int> _inFlightPages = <int>{};
 
   NotificationsBloc({
     required this.getNotifications,
@@ -139,8 +140,19 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     GetNotificationsEvent event,
     Emitter<NotificationsState> emit,
   ) async {
+    if (_inFlightPages.contains(event.page)) {
+      return;
+    }
+
     try {
+      _inFlightPages.add(event.page);
+
       if (state.hasReachedMax && event.page != 1) return;
+
+      // Drop stale/duplicate page requests (e.g., repeated page=2 triggers on fast scroll).
+      if (event.page != 1 && event.page <= state.currentPage) {
+        return;
+      }
 
       if (event.page == 1) {
         emit(state.copyWith(status: NotificationsStatus.loading));
@@ -156,9 +168,11 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
           ),
         ),
         (notifications) {
-          final updatedList = event.page == 1
+          final mergedList = event.page == 1
               ? notifications
               : [...state.notifications, ...notifications];
+          final updatedList = _dedupeNotificationsById(mergedList);
+
           emit(
             state.copyWith(
               status: NotificationsStatus.success,
@@ -179,6 +193,8 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
           errorMessage: 'Beklenmeyen hata: $e',
         ),
       );
+    } finally {
+      _inFlightPages.remove(event.page);
     }
   }
 
@@ -331,5 +347,18 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     );
     add(const GetNotificationsEvent(page: 1));
     add(GetUnreadCountEvent());
+  }
+
+  List<NotificationEntity> _dedupeNotificationsById(
+    List<NotificationEntity> items,
+  ) {
+    final seenIds = <int>{};
+    final result = <NotificationEntity>[];
+    for (final item in items) {
+      if (seenIds.contains(item.id)) continue;
+      seenIds.add(item.id);
+      result.add(item);
+    }
+    return result;
   }
 }

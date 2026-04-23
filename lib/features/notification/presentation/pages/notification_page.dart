@@ -50,6 +50,7 @@ class _NotificationsView extends StatefulWidget {
 
 class _NotificationsViewState extends State<_NotificationsView> {
   final _scrollController = ScrollController();
+  final Set<String> _expandedGroupKeys = <String>{};
 
   @override
   void initState() {
@@ -167,8 +168,11 @@ class _NotificationsViewState extends State<_NotificationsView> {
               return _buildEmptyState(l10n, context);
             }
 
-            // Gruplandırma Mantığı
-            final groupedItems = _groupNotifications(state.notifications, l10n);
+            // Kullanici bazli gruplama: tum bildirimler sender'a gore gruplanir.
+            final groupedItems = _groupNotificationsBySender(
+              state.notifications,
+              l10n,
+            );
 
             // Liste
             return RefreshIndicator(
@@ -201,29 +205,20 @@ class _NotificationsViewState extends State<_NotificationsView> {
                   }
 
                   final item = groupedItems[index];
-
-                  if (item is String) {
-                    // Başlık (Header)
-                    return Padding(
-                      key: ValueKey('notification_header_$item'),
-                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                      child: Text(
-                        item,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                    );
-                  } else if (item is NotificationEntity) {
-                    // Bildirim Öğesi
-                    return _NotificationItemModern(
-                      key: ValueKey('notification_item_${item.id}'),
-                      notification: item,
-                    );
-                  }
-                  return const SizedBox.shrink();
+                  return _NotificationSenderGroupCard(
+                    key: ValueKey('notification_group_${item.groupKey}'),
+                    group: item,
+                    expanded: _expandedGroupKeys.contains(item.groupKey),
+                    onToggle: () {
+                      setState(() {
+                        if (_expandedGroupKeys.contains(item.groupKey)) {
+                          _expandedGroupKeys.remove(item.groupKey);
+                        } else {
+                          _expandedGroupKeys.add(item.groupKey);
+                        }
+                      });
+                    },
+                  );
                 },
               ),
             );
@@ -233,56 +228,54 @@ class _NotificationsViewState extends State<_NotificationsView> {
     );
   }
 
-  // Bildirimleri gruplayıp düz bir liste (Header + Item karışık) haline getirir
-  List<dynamic> _groupNotifications(
+  List<_SenderGroupListItem> _groupNotificationsBySender(
     List<NotificationEntity> notifications,
     AppLocalizations l10n,
   ) {
-    final groupedList = <dynamic>[];
-    if (notifications.isEmpty) return groupedList;
+    if (notifications.isEmpty) return const <_SenderGroupListItem>[];
 
-    final now = DateTime.now();
-    final yesterday = now.subtract(const Duration(days: 1));
-
-    // Grupları tutacak geçici map
-    final groups = <String, List<NotificationEntity>>{
-      l10n.today: [],
-      l10n.yesterday: [],
-      l10n.thisWeek: [],
-      l10n.thisMonth: [],
-      l10n.older: [],
-    };
-
-    for (var notification in notifications) {
-      final date = notification.createdAt;
-      final diff = now.difference(date);
-
-      if (date.year == now.year &&
-          date.month == now.month &&
-          date.day == now.day) {
-        groups[l10n.today]!.add(notification);
-      } else if (date.year == yesterday.year &&
-          date.month == yesterday.month &&
-          date.day == yesterday.day) {
-        groups[l10n.yesterday]!.add(notification);
-      } else if (diff.inDays < 7) {
-        groups[l10n.thisWeek]!.add(notification);
-      } else if (diff.inDays < 30) {
-        groups[l10n.thisMonth]!.add(notification);
-      } else {
-        groups[l10n.older]!.add(notification);
-      }
+    final bySender = <String, List<NotificationEntity>>{};
+    for (final notification in notifications) {
+      final senderKey = _senderKey(notification);
+      bySender.putIfAbsent(senderKey, () => <NotificationEntity>[]).add(
+        notification,
+      );
     }
 
-    // Map'ten listeye çevir (Sadece dolu grupları ekle)
-    for (var entry in groups.entries) {
-      if (entry.value.isNotEmpty) {
-        groupedList.add(entry.key); // Başlık
-        groupedList.addAll(entry.value); // İçerikler
-      }
+    final result = <_SenderGroupListItem>[];
+    for (final entry in bySender.entries) {
+      final senderNotifications = List<NotificationEntity>.from(entry.value)
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final latest = senderNotifications.first;
+
+      result.add(
+        _SenderGroupListItem(
+          groupKey: entry.key,
+          senderName: latest.senderUsername ?? l10n.guest,
+          senderProfileImage: latest.senderProfileImage,
+          notifications: senderNotifications,
+        ),
+      );
     }
 
-    return groupedList;
+    result.sort(
+      (a, b) => b.notifications.first.createdAt.compareTo(
+        a.notifications.first.createdAt,
+      ),
+    );
+    return result;
+  }
+
+  String _senderKey(NotificationEntity notification) {
+    final id = notification.senderId;
+    if (id != null) {
+      return 'id_$id';
+    }
+    final username = (notification.senderUsername ?? '').trim().toLowerCase();
+    if (username.isNotEmpty) {
+      return 'user_$username';
+    }
+    return 'system_${notification.type ?? 'unknown'}';
   }
 
   Widget _buildEmptyState(AppLocalizations l10n, BuildContext context) {
@@ -323,6 +316,111 @@ class _NotificationsViewState extends State<_NotificationsView> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SenderGroupListItem {
+  final String groupKey;
+  final String senderName;
+  final String? senderProfileImage;
+  final List<NotificationEntity> notifications;
+
+  const _SenderGroupListItem({
+    required this.groupKey,
+    required this.senderName,
+    required this.senderProfileImage,
+    required this.notifications,
+  });
+}
+
+class _NotificationSenderGroupCard extends StatelessWidget {
+  final _SenderGroupListItem group;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  const _NotificationSenderGroupCard({
+    super.key,
+    required this.group,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final latest = group.notifications.reduce(
+      (a, b) => a.createdAt.isAfter(b.createdAt) ? a : b,
+    );
+    final unreadCount = group.notifications.where((n) => !n.isRead).length;
+    final latestMessage = latest.message.trim();
+
+    return Column(
+      children: [
+        InkWell(
+          onTap: onToggle,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: isDark ? const Color(0xFF101010) : const Color(0xFFF3F4F6),
+            child: Row(
+              children: [
+                AppAvatar(
+                  overrideImageUrl: group.senderProfileImage,
+                  radius: 17,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.senderName,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        expanded
+                            ? '${group.notifications.length} bildirim'
+                            : latestMessage,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (unreadCount > 0)
+                  UnreadCountBadge(
+                    count: unreadCount,
+                    backgroundColor: Colors.red,
+                    minWidth: 18,
+                    minHeight: 18,
+                    borderRadius: 10,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (expanded)
+          ...group.notifications.map(
+            (notification) => _NotificationItemModern(
+              key: ValueKey('notification_item_${notification.id}'),
+              notification: notification,
+            ),
+          ),
+      ],
     );
   }
 }

@@ -347,9 +347,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       Container(
                         key: _optionsButtonKey,
-                        child: AppFrostedButton(
-                          icon: Icons.more_horiz_rounded,
-                          onTap: () => _showOptionsMenu(context, isOwnProfile, displayedUser?.id, username),
+                        child: Builder(
+                          builder: (menuContext) => AppFrostedButton(
+                            icon: Icons.more_horiz_rounded,
+                            onTap: () => _showOptionsMenu(
+                              menuContext,
+                              isOwnProfile,
+                              displayedUser?.id,
+                              username,
+                            ),
+                          ),
                         ),
                       ),
                     ],

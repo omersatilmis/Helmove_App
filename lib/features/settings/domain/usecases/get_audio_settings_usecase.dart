@@ -4,13 +4,14 @@ import '../../../../core/usecases/usecase.dart';
 import '../../data/models/audio_settings_model.dart';
 import '../repositories/settings_repository.dart';
 
-class UpdateAudioUseCase implements UseCase<void, AudioSettingsModel> {
+class GetAudioSettingsUseCase
+    implements UseCase<AudioSettingsModel, NoParams> {
   final SettingsRepository repository;
 
-  UpdateAudioUseCase(this.repository);
+  GetAudioSettingsUseCase(this.repository);
 
   @override
-  Future<Either<Failure, void>> call(AudioSettingsModel params) async {
-    return await repository.updateAudio(params);
+  Future<Either<Failure, AudioSettingsModel>> call(NoParams params) async {
+    return await repository.getAudioSettings();
   }
 }

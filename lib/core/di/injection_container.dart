@@ -182,6 +182,9 @@ import '../../features/settings/domain/usecases/update_privacy_usecase.dart';
 import '../../features/settings/domain/usecases/update_units_usecase.dart';
 import '../../features/settings/domain/usecases/update_map_usecase.dart';
 import '../../features/settings/domain/usecases/update_audio_usecase.dart';
+import '../../features/settings/domain/usecases/get_audio_settings_usecase.dart';
+import '../../features/settings/domain/usecases/update_network_usecase.dart';
+import '../../features/settings/domain/usecases/get_network_settings_usecase.dart';
 import '../../features/settings/presentation/bloc/settings_bloc.dart';
 
 // Subscription / Plan Feature (data layer + use cases + bloc)
@@ -672,13 +675,25 @@ void _registerCoreFeatureSingletons() {
   if (!sl.isRegistered<UpdateAudioUseCase>()) {
     sl.registerLazySingleton(() => UpdateAudioUseCase(sl()));
   }
+  if (!sl.isRegistered<GetAudioSettingsUseCase>()) {
+    sl.registerLazySingleton(() => GetAudioSettingsUseCase(sl()));
+  }
+  if (!sl.isRegistered<UpdateNetworkUseCase>()) {
+    sl.registerLazySingleton(() => UpdateNetworkUseCase(sl()));
+  }
+  if (!sl.isRegistered<GetNetworkSettingsUseCase>()) {
+    sl.registerLazySingleton(() => GetNetworkSettingsUseCase(sl()));
+  }
   if (!sl.isRegistered<SettingsBloc>()) {
     sl.registerFactory(
       () => SettingsBloc(
         updatePrivacy: sl(),
         updateUnits: sl(),
         updateMap: sl(),
+        getAudioSettings: sl(),
         updateAudio: sl(),
+        getNetworkSettings: sl(),
+        updateNetwork: sl(),
       ),
     );
   }
@@ -749,6 +764,22 @@ void _registerCoreFeatureSingletons() {
 }
 
 void _registerFeatureSingletons() {
+  // Guard: resetOnLogout can unregister auth local dependencies while core
+  // init flags remain true. Re-register here to keep lazy feature factories safe.
+  if (!sl.isRegistered<FlutterSecureStorage>()) {
+    sl.registerLazySingleton<FlutterSecureStorage>(
+      () => const FlutterSecureStorage(),
+    );
+  }
+  if (!sl.isRegistered<AuthLocalDataSource>()) {
+    sl.registerLazySingleton<AuthLocalDataSource>(
+      () => AuthLocalDataSourceImpl(
+        sharedPreferences: sl(),
+        secureStorage: sl(),
+      ),
+    );
+  }
+
   // Auth Feature (AuthApi, AuthRemoteDataSource, AuthRepository)
   if (!sl.isRegistered<AuthApi>()) {
     sl.registerLazySingleton(() => AuthApi(sl()));
@@ -1207,13 +1238,25 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<UpdateAudioUseCase>()) {
     sl.registerLazySingleton(() => UpdateAudioUseCase(sl()));
   }
+  if (!sl.isRegistered<GetAudioSettingsUseCase>()) {
+    sl.registerLazySingleton(() => GetAudioSettingsUseCase(sl()));
+  }
+  if (!sl.isRegistered<UpdateNetworkUseCase>()) {
+    sl.registerLazySingleton(() => UpdateNetworkUseCase(sl()));
+  }
+  if (!sl.isRegistered<GetNetworkSettingsUseCase>()) {
+    sl.registerLazySingleton(() => GetNetworkSettingsUseCase(sl()));
+  }
   if (!sl.isRegistered<SettingsBloc>()) {
     sl.registerFactory(
       () => SettingsBloc(
         updatePrivacy: sl(),
         updateUnits: sl(),
         updateMap: sl(),
+        getAudioSettings: sl(),
         updateAudio: sl(),
+        getNetworkSettings: sl(),
+        updateNetwork: sl(),
       ),
     );
   }

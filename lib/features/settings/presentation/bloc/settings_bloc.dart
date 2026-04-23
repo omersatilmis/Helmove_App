@@ -1,7 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/usecases/usecase.dart';
+import '../../domain/usecases/get_audio_settings_usecase.dart';
+import '../../domain/usecases/get_network_settings_usecase.dart';
 import '../../domain/usecases/update_audio_usecase.dart';
 import '../../domain/usecases/update_map_usecase.dart';
+import '../../domain/usecases/update_network_usecase.dart';
 import '../../domain/usecases/update_privacy_usecase.dart';
 import '../../domain/usecases/update_units_usecase.dart';
 import 'settings_event.dart';
@@ -11,18 +14,27 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   final UpdatePrivacyUseCase updatePrivacy;
   final UpdateUnitsUseCase updateUnits;
   final UpdateMapUseCase updateMap;
+  final GetAudioSettingsUseCase getAudioSettings;
   final UpdateAudioUseCase updateAudio;
+  final GetNetworkSettingsUseCase getNetworkSettings;
+  final UpdateNetworkUseCase updateNetwork;
 
   SettingsBloc({
     required this.updatePrivacy,
     required this.updateUnits,
     required this.updateMap,
+    required this.getAudioSettings,
     required this.updateAudio,
+    required this.getNetworkSettings,
+    required this.updateNetwork,
   }) : super(const SettingsState()) {
     on<UpdatePrivacyEvent>(_onUpdatePrivacy);
     on<UpdateUnitsEvent>(_onUpdateUnits);
     on<UpdateMapEvent>(_onUpdateMap);
+    on<LoadAudioSettingsEvent>(_onLoadAudioSettings);
     on<UpdateAudioEvent>(_onUpdateAudio);
+    on<LoadNetworkSettingsEvent>(_onLoadNetworkSettings);
+    on<UpdateNetworkEvent>(_onUpdateNetwork);
   }
 
   Future<void> _onUpdatePrivacy(
@@ -91,12 +103,22 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     );
   }
 
+  Future<void> _onLoadAudioSettings(
+    LoadAudioSettingsEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
+    final result = await getAudioSettings(NoParams());
+    result.fold(
+      (_) {},
+      (settings) => emit(state.copyWith(audioSettings: settings)),
+    );
+  }
+
   Future<void> _onUpdateAudio(
     UpdateAudioEvent event,
     Emitter<SettingsState> emit,
   ) async {
-    emit(state.copyWith(status: SettingsStatus.loading));
-    final result = await updateAudio(NoParams());
+    final result = await updateAudio(event.settings);
     result.fold(
       (failure) => emit(
         state.copyWith(
@@ -104,12 +126,34 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
           errorMessage: failure.message,
         ),
       ),
-      (_) => emit(
+      (_) => emit(state.copyWith(status: SettingsStatus.success)),
+    );
+  }
+
+  Future<void> _onLoadNetworkSettings(
+    LoadNetworkSettingsEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
+    final result = await getNetworkSettings(NoParams());
+    result.fold(
+      (_) {},
+      (settings) => emit(state.copyWith(networkSettings: settings)),
+    );
+  }
+
+  Future<void> _onUpdateNetwork(
+    UpdateNetworkEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
+    final result = await updateNetwork(event.settings);
+    result.fold(
+      (failure) => emit(
         state.copyWith(
-          status: SettingsStatus.success,
-          successMessage: 'Ses ayarları güncellendi',
+          status: SettingsStatus.failure,
+          errorMessage: failure.message,
         ),
       ),
+      (_) => emit(state.copyWith(status: SettingsStatus.success)),
     );
   }
 }

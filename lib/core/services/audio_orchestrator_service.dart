@@ -59,6 +59,10 @@ class AudioOrchestratorService {
   }
 
   Future<void> setAudioMixingMode(AudioMixingMode mode) async {
+    if (!_initialized) {
+      await init();
+    }
+
     if (_currentMixingMode == mode) return;
     _currentMixingMode = mode;
 
@@ -81,6 +85,8 @@ class AudioOrchestratorService {
   }
 
   Future<void> _configureSession() async {
+    _session ??= await AudioSession.instance;
+
     // Determine options based on mode
     var iosOptions =
         AVAudioSessionCategoryOptions.allowBluetooth |
