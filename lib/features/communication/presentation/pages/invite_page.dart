@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:go_router/go_router.dart';
 
 // --- DI & CORE WIDGETS ---
@@ -483,7 +484,7 @@ class _InviteViewState extends State<_InviteView> {
                   backgroundImage:
                       (rider.profilePictureUrl != null &&
                           rider.profilePictureUrl!.isNotEmpty)
-                      ? CachedNetworkImageProvider(rider.profilePictureUrl!)
+                      ? CachedNetworkImageProvider(rider.profilePictureUrl!.toAbsoluteImageUrl())
                       : const AssetImage('assets/images/default_avatar.png'),
                   child:
                       (rider.profilePictureUrl == null ||

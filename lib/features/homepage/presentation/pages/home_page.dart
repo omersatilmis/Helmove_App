@@ -6,6 +6,7 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 
 import 'package:helmove/app/bottom_bar.dart';
 import 'package:helmove/core/widgets/app_background.dart';
@@ -571,7 +572,7 @@ class _HomeTopAppBar extends StatelessWidget implements PreferredSizeWidget {
                   final imageProvider =
                       (identity.profileImageUrl != null &&
                           identity.profileImageUrl!.trim().isNotEmpty)
-                      ? CachedNetworkImageProvider(identity.profileImageUrl!)
+                      ? CachedNetworkImageProvider(identity.profileImageUrl!.toAbsoluteImageUrl())
                           : const AssetImage('assets/icons/ic_profile.png')
                              as ImageProvider;
 

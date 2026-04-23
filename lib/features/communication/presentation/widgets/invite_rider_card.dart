@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../l10n/app_localizations.dart';
 
@@ -57,7 +58,7 @@ class InviteRiderCard extends StatelessWidget {
                 // 1. SOL: Avatar
                 CircleAvatar(
                   radius: 22,
-                  backgroundImage: CachedNetworkImageProvider(profileImageUrl),
+                  backgroundImage: CachedNetworkImageProvider(profileImageUrl.toAbsoluteImageUrl()),
                   backgroundColor: colorScheme.surfaceContainerHigh,
                   onBackgroundImageError: (_, _) =>
                       Icon(Icons.person, color: colorScheme.onSurface),

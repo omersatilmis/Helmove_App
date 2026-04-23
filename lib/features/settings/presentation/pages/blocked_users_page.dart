@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/text_styles.dart';
@@ -159,7 +160,7 @@ class _BlockedUserTile extends StatelessWidget {
               radius: 28,
               backgroundColor: theme.colorScheme.surfaceContainerLow,
               backgroundImage: user.profilePictureUrl != null && user.profilePictureUrl!.isNotEmpty
-                  ? CachedNetworkImageProvider(user.profilePictureUrl!) as ImageProvider
+                  ? CachedNetworkImageProvider(user.profilePictureUrl!.toAbsoluteImageUrl()) as ImageProvider
                   : const AssetImage('assets/images/default_avatar.png'),
             ),
           ),

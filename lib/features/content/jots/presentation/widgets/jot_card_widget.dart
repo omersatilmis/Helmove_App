@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 import '../../../../../core/constants/report_enums.dart';
+import '../../../../../core/utils/image_url_extensions.dart';
 import '../../../../help/presentation/widgets/report_bottom_sheet.dart';
 import '../../domain/entities/jot_entity.dart';
 import '../pages/jot_detail_page.dart';
@@ -43,8 +44,7 @@ class JotCardWidget extends StatelessWidget {
     final lastName = jot.lastName ?? "";
     final userName = jot.username ?? "user";
     final content = jot.text ?? "";
-    final profileImage =
-        jot.userProfilePictureUrl ?? 'assets/icons/ic_profile.png';
+    final profileImage = jot.userProfilePictureUrl?.toAbsoluteImageUrl() ?? '';
     final timeAgo = _formatDate(context, jot.createdAt);
     final bikeModel = jot.bikeModel;
 
@@ -116,12 +116,11 @@ class JotCardWidget extends StatelessWidget {
                                   ),
                                   child: CircleAvatar(
                                     radius: 20,
-                                    backgroundImage:
-                                        profileImage.startsWith('http')
-                                            ? CachedNetworkImageProvider(
-                                                profileImage)
-                                            : AssetImage(profileImage)
-                                                as ImageProvider,
+                                    backgroundImage: profileImage.isNotEmpty
+                                        ? CachedNetworkImageProvider(
+                                            profileImage.toAvatarThumbnail())
+                                        : const AssetImage(
+                                            'assets/icons/ic_profile.png'),
                                     backgroundColor:
                                         colorScheme.surfaceContainerHighest,
                                   ),

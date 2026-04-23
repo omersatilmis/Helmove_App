@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 import 'package:helmove/l10n/app_localizations.dart';
@@ -133,7 +134,7 @@ class _FollowUserTile extends StatelessWidget {
           radius: 24,
           backgroundColor: theme.colorScheme.surfaceContainerLow,
           backgroundImage: user.profilePictureUrl != null && user.profilePictureUrl!.isNotEmpty
-              ? CachedNetworkImageProvider(user.profilePictureUrl!) as ImageProvider
+              ? CachedNetworkImageProvider(user.profilePictureUrl!.toAbsoluteImageUrl()) as ImageProvider
               : const AssetImage('assets/icons/ic_profile.png'),
         ),
       ),

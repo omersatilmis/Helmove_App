@@ -1598,31 +1598,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get map_location_error => 'An error occurred while getting location.';
 
-    @override
-    String get map_error_search_failed => 'Map search failed.';
+  @override
+  String get map_error_search_failed => 'Map search failed.';
 
-    @override
-    String get map_error_location_not_found => 'Location not found.';
+  @override
+  String get map_error_location_not_found => 'Location not found.';
 
-    @override
-    String get map_error_configuration => 'Map service configuration error.';
+  @override
+  String get map_error_configuration => 'Map service configuration error.';
 
-    @override
-    String get map_error_unauthorized => 'Map service authorization failed.';
+  @override
+  String get map_error_unauthorized => 'Map service authorization failed.';
 
-    @override
-    String get map_error_rate_limited => 'Map service rate limit exceeded.';
+  @override
+  String get map_error_rate_limited => 'Map service rate limit exceeded.';
 
-    @override
-    String get map_error_network =>
+  @override
+  String get map_error_network =>
       'Network connection is unavailable or unstable.';
 
-    @override
-    String get map_error_invalid_response =>
+  @override
+  String get map_error_invalid_response =>
       'Received invalid response from map service.';
 
-    @override
-    String get map_error_unknown => 'Unexpected map service error occurred.';
+  @override
+  String get map_error_unknown => 'Unexpected map service error occurred.';
 
   @override
   String get map_layers_coming_soon => 'Layers coming soon.';

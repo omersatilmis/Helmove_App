@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:helmove/core/theme/text_styles.dart';
@@ -269,7 +270,7 @@ class _CreateJotsPageState extends State<CreateJotsPage> {
                         backgroundImage:
                             (user?.profileImageUrl != null &&
                                 user!.profileImageUrl!.isNotEmpty)
-                            ? CachedNetworkImageProvider(user.profileImageUrl!)
+                            ? CachedNetworkImageProvider(user.profileImageUrl!.toAbsoluteImageUrl())
                             : const AssetImage('assets/icons/ic_profile.png')
                                   as ImageProvider,
                       ),

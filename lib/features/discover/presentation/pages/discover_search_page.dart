@@ -228,7 +228,7 @@ class _UserSearchTile extends StatelessWidget {
           radius: 26,
           backgroundColor: cs.surfaceContainerLow,
           backgroundImage: user.profilePictureUrl != null && user.profilePictureUrl!.isNotEmpty
-              ? CachedNetworkImageProvider(user.profilePictureUrl!)
+              ? CachedNetworkImageProvider(user.profilePictureUrl!.toAbsoluteImageUrl())
               : null,
           child: user.profilePictureUrl == null || user.profilePictureUrl!.isEmpty
               ? Icon(Icons.person_rounded, color: cs.onSurfaceVariant)

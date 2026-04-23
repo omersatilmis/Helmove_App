@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -355,7 +356,7 @@ class _ChatViewState extends State<ChatView> {
             radius: 18,
             backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
             backgroundImage: widget.profileImageUrl != null
-                ? CachedNetworkImageProvider(widget.profileImageUrl!)
+                ? CachedNetworkImageProvider(widget.profileImageUrl!.toAbsoluteImageUrl())
                 : null,
             child: widget.profileImageUrl == null
                 ? Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../../../core/theme/text_styles.dart';
 import '../../../../../../core/widgets/app_button.dart';
@@ -75,7 +76,7 @@ class FriendStatusCard extends StatelessWidget {
                   radius: 22,
                   backgroundColor: colorScheme.surfaceContainerHighest,
                   backgroundImage: imageUrl.isNotEmpty
-                      ? CachedNetworkImageProvider(imageUrl)
+                      ? CachedNetworkImageProvider(imageUrl.toAbsoluteImageUrl())
                       : null,
                   child: imageUrl.isEmpty
                       ? Text(
