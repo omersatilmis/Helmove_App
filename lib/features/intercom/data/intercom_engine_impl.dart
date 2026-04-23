@@ -384,15 +384,19 @@ class IntercomEngineImpl implements IntercomEngine {
     }
 
     // ── WhatsApp / Discord Davranışı ──────────────────────────────
-    // paused/hidden: Kullanıcı kısa süreli uygulama değiştirdi veya ekran
-    //   kilitledi → ses bağlantısını KORUMA. Kesersek her seferinde
-    //   reconnect döngüsü başlar ve karşı taraf da arka plandaysa
-    //   headless call yanıtsız kalır → sonsuz döngü.
-    // detached: Uygulama tamamen kapatılıyor → ses temizleyip reconnect
-    //   hazırlığına geç (foreground service varsa bile bağlantı riskli).
+    // paused/hidden: Ekran kilidi veya kısa uygulama değiştirme → ses bağlantısını KORUMA.
+    // detached:
+    //   Android → foreground service (stopWithTask=false) process'i canlı tutuyor,
+    //             ses akışını kesmiyoruz; sadece reconnecting moduna giriyoruz.
+    //             Kullanıcı geri döndüğünde resumed → _evaluateTransport(recovery) çalışır.
+    //   iOS/diğer → uygulama gerçekten kapanıyor, sesi durdur.
     if (state == IntercomLifecycleState.detached) {
-      await _stopAllAudio();
-      _enterReconnecting(reason: 'lifecycle.${state.name}');
+      if (Platform.isAndroid) {
+        _enterReconnecting(reason: 'lifecycle.${state.name}');
+      } else {
+        await _stopAllAudio();
+        _enterReconnecting(reason: 'lifecycle.${state.name}');
+      }
     }
   }
 

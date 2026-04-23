@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app_links/app_links.dart';
@@ -34,6 +35,9 @@ import 'package:helmove/features/call/presentation/bloc/call_bloc.dart';
 import 'package:helmove/features/call/presentation/bloc/call_event.dart';
 import 'package:helmove/features/presence/services/presence_controller.dart';
 import 'package:helmove/features/presence/utils/timeago_setup.dart';
+import 'package:helmove/features/intercom/domain/intercom_engine.dart';
+import 'package:helmove/features/intercom/domain/intercom_models.dart';
+import 'package:helmove/core/services/app_background_service.dart';
 
 void main() async {
   // ── runZonedGuarded: Catches ALL unhandled async errors globally ──
@@ -219,25 +223,53 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Uygulama uykudan uyandığında veya ekrana döndüğünde CallBloc'u tetikle.
-      // Eğer arkaplanda SignalR koptuysa ve bildirim gelmediyse,
-      // REST API üzerinden cevapsız veya bekleyen aramayı burada yakalarız.
       try {
         if (sl.isRegistered<CallBloc>()) {
           final callBloc = sl<CallBloc>();
           callBloc.add(const CallAppResumedSyncRequested());
         }
-      } catch (e) {
-        // Bloc henüz register edilmemiş olabilir veya hata almış olabilir.
-      }
+      } catch (_) {}
 
-      // Presence: foreground'a dönüşte heartbeat yeniden başlat.
       _notifyPresenceForeground();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      // Presence: background'a geçişte offline sinyali gönder + timer durdur.
       _notifyPresenceBackground();
     }
+
+    // Sesli iletişim: engine'e lifecycle bildir + Android'de foreground service garantile
+    _notifyIntercomLifecycle(state);
+  }
+
+  void _notifyIntercomLifecycle(AppLifecycleState state) {
+    try {
+      if (!sl.isRegistered<IntercomEngine>()) return;
+      final engine = sl<IntercomEngine>();
+
+      final IntercomLifecycleState engineState;
+      switch (state) {
+        case AppLifecycleState.resumed:
+          engineState = IntercomLifecycleState.resumed;
+        case AppLifecycleState.inactive:
+          engineState = IntercomLifecycleState.inactive;
+        case AppLifecycleState.paused:
+          engineState = IntercomLifecycleState.paused;
+        case AppLifecycleState.detached:
+          engineState = IntercomLifecycleState.detached;
+        case AppLifecycleState.hidden:
+          engineState = IntercomLifecycleState.hidden;
+      }
+
+      unawaited(engine.onLifecycleChanged(engineState));
+
+      // Android: ekran kapanınca / arkaplanda aktif görüşme varsa foreground service garantile
+      if (Platform.isAndroid &&
+          (state == AppLifecycleState.paused ||
+              state == AppLifecycleState.inactive)) {
+        if (engine.snapshot.transport != IntercomTransport.none) {
+          unawaited(AppBackgroundService.start());
+        }
+      }
+    } catch (_) {}
   }
 
   void _notifyPresenceForeground() {
