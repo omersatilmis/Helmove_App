@@ -366,6 +366,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final RenderBox? renderBox = _optionsButtonKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
+    // async gap öncesinde bloc referansını yakala (await sonrası context.read() kopabilir)
+    final followActionBloc = isOwnProfile ? null : context.read<FollowActionBloc>();
+
     final offset = renderBox.localToGlobal(Offset.zero);
     final size = renderBox.size;
     final theme = Theme.of(context);
@@ -446,7 +449,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context.push('/settings');
     } else if (value == 'block' && userId != null) {
       if (!context.mounted) return;
-      context.read<FollowActionBloc>().add(follow_events.BlockUserEvent(userId));
+      followActionBloc?.add(follow_events.BlockUserEvent(userId));
     } else if (value == 'report' && userId != null) {
       if (!context.mounted) return;
       ReportBottomSheet.show(context, targetId: userId.toString(), targetType: ReportTargetType.user);
