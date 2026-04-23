@@ -528,6 +528,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           setState(() {
             _localCoverPhoto = File(pickedFile.path);
           });
+          _checkChanges();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Kapak fotoğrafı seçildi (Önizleme)')),
           );
