@@ -607,16 +607,7 @@ class _ChatViewState extends State<ChatView> {
                       ),
                       onPressed: () {},
                     ),
-                    suffixWidget: _editingMessageId == null
-                        ? IconButton(
-                            icon: Icon(
-                              Icons.camera_alt_outlined,
-                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                              size: 22,
-                            ),
-                            onPressed: () {},
-                          )
-                        : null,
+                    suffixWidget: null,
                   ),
                 ],
               ),
