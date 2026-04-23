@@ -17,6 +17,7 @@ class ProfileInfo extends StatelessWidget {
   final String username;
   final String? bio;
   final String? profileImageUrl;
+  final String? coverImageUrl;
 
   // 🔥 YENİ: Bu profil oturum açan kişiye mi ait?
   final bool isOwnProfile;
@@ -58,7 +59,8 @@ class ProfileInfo extends StatelessWidget {
     required this.username,
     this.bio,
     this.profileImageUrl,
-    this.isOwnProfile = false, // Varsayılan olarak başkası
+    this.coverImageUrl,
+    this.isOwnProfile = false,
     this.friendCount,
     this.followerCount,
     this.followingCount,
@@ -89,7 +91,7 @@ class ProfileInfo extends StatelessWidget {
     return RepaintBoundary(
       child: Column(
         children: [
-          _ProfileHeaderSection(profileImageUrl: profileImageUrl),
+          _ProfileHeaderSection(profileImageUrl: profileImageUrl, coverImageUrl: coverImageUrl),
 
           _NameSection(
             firstName: firstName,
@@ -135,8 +137,9 @@ class ProfileInfo extends StatelessWidget {
 
 class _ProfileHeaderSection extends StatelessWidget {
   final String? profileImageUrl;
+  final String? coverImageUrl;
 
-  const _ProfileHeaderSection({this.profileImageUrl});
+  const _ProfileHeaderSection({this.profileImageUrl, this.coverImageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -158,10 +161,19 @@ class _ProfileHeaderSection extends StatelessWidget {
                 ).createShader(rect);
               },
               blendMode: BlendMode.dstIn,
-              child: Image.asset(
-                'assets/images/background_placeholder.png',
-                fit: BoxFit.cover,
-              ),
+              child: (coverImageUrl != null && coverImageUrl!.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: coverImageUrl!.toAbsoluteImageUrl(),
+                      fit: BoxFit.cover,
+                      errorWidget: (ctx, url, err) => Image.asset(
+                        'assets/images/background_placeholder.png',
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : Image.asset(
+                      'assets/images/background_placeholder.png',
+                      fit: BoxFit.cover,
+                    ),
             ),
           ),
           Positioned(
