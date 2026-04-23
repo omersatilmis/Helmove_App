@@ -561,18 +561,30 @@ class _NotificationItemModern extends StatelessWidget {
   }
 
   bool _isVoiceInviteKind(NotificationEntity notification) {
+    final type = notification.type?.toLowerCase() ?? '';
     final msg = notification.message.toLowerCase();
-    // 5 = VoiceSessionInvite from Backend Enum usually
-    return (notification.type == 'VoiceSessionInvite') ||
-        (notification.type == '5') ||
+
+    // Beğeni ve yorum bildirimleri hiçbir zaman sesli davet değildir
+    if (msg.contains('beğen') || type == 'like' || type == '1') return false;
+    if (msg.contains('yorum') || type == 'comment' || type == '2') return false;
+    if (type == 'friendrequest' || type == '3') return false;
+
+    return (type == 'voicesessioninvite') ||
+        (type == '5') ||
         msg.contains('sürüşüne davet') ||
         msg.contains('sesli');
   }
 
   bool _isFriendRequestKind(NotificationEntity notification) {
+    final type = notification.type?.toLowerCase() ?? '';
     final msg = notification.message.toLowerCase();
-    return (notification.type == 'FriendRequest') ||
-        (notification.type == '3') ||
+
+    // Beğeni ve yorum bildirimleri arkadaşlık isteği değildir
+    if (msg.contains('beğen') || type == 'like' || type == '1') return false;
+    if (msg.contains('yorum') || type == 'comment' || type == '2') return false;
+
+    return (type == 'friendrequest') ||
+        (type == '3') ||
         msg.contains('arkadaşlık isteği') ||
         msg.contains('friend request');
   }

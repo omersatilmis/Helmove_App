@@ -49,7 +49,7 @@ class _DiscoverSearchPageState extends State<DiscoverSearchPage> {
   }
 
   void _performSearch(String query) {
-    final trimmedQuery = query.trim();
+    final trimmedQuery = query.trim().toLowerCase();
     if (trimmedQuery.isNotEmpty) {
       context.read<DiscoverBloc>().add(SearchUsersEvent(query: trimmedQuery));
     }

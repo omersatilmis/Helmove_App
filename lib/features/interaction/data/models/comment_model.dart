@@ -41,9 +41,13 @@ class CommentModel extends CommentEntity {
       ]),
       userAvatar: _pickNullableString([
         userData['profilePictureUrl'],
+        userData['profileImageUrl'],
         userData['avatarUrl'],
+        userData['avatar'],
+        userData['picture'],
         json['userAvatar'],
         json['profilePictureUrl'],
+        json['profileImageUrl'],
       ]),
       createdAt: _parseDateTime(json['createdAt']),
     );

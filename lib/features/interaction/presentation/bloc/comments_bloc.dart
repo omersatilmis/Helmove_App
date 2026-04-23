@@ -3,6 +3,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/app_session.dart';
 import '../../../auth/domain/usecases/get_current_user_id_use_case.dart';
+import '../../data/models/comment_model.dart';
 import '../../domain/usecases/add_comment_usecase.dart';
 import '../../domain/usecases/delete_comment_usecase.dart';
 import '../../domain/usecases/get_comments_usecase.dart';
@@ -141,7 +142,19 @@ class CommentsBloc extends Bloc<CommentsEvent, CommentsState> {
         ),
       ),
       (newComment) {
-        final updatedList = List.of(state.comments)..add(newComment);
+        // If the API response didn't include user info, populate from current session
+        // so AppAvatar can identify the comment as belonging to the current user.
+        final commentToAdd = (newComment.userId == 0 && appSession.currentUserId != null)
+            ? CommentModel(
+                id: newComment.id,
+                text: newComment.text,
+                userId: appSession.currentUserId!,
+                username: newComment.username,
+                userAvatar: newComment.userAvatar,
+                createdAt: newComment.createdAt,
+              )
+            : newComment;
+        final updatedList = List.of(state.comments)..add(commentToAdd);
         emit(
           state.copyWith(
             isPostingComment: false,
