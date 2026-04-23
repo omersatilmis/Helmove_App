@@ -1,5 +1,7 @@
 ﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/core/enums/user_tier.dart';
@@ -274,6 +276,36 @@ class _ProfilePageState extends State<ProfilePage> {
                               background: Stack(
                                 fit: StackFit.expand,
                                 children: [
+                                  // Kapak fotoğrafı — en altta
+                                  if (displayedUser?.coverImageUrl != null &&
+                                      displayedUser!.coverImageUrl!.isNotEmpty)
+                                    CachedNetworkImage(
+                                      imageUrl: displayedUser.coverImageUrl!.toAbsoluteImageUrl(),
+                                      fit: BoxFit.cover,
+                                      errorWidget: (context, url, err) => Container(
+                                        color: theme.colorScheme.surfaceContainerHighest,
+                                      ),
+                                    )
+                                  else
+                                    Container(color: theme.colorScheme.surfaceContainerHighest),
+                                  // Altta gradient — profil bilgisini okunabilir kılar
+                                  Positioned(
+                                    bottom: 0, left: 0, right: 0,
+                                    height: 200,
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.transparent,
+                                            theme.scaffoldBackgroundColor.withValues(alpha: 0.85),
+                                            theme.scaffoldBackgroundColor,
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                   Align(
                                     alignment: Alignment.bottomCenter,
                                     child: SingleChildScrollView(
