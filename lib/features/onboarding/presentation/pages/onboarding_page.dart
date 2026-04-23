@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:helmove/core/widgets/app_button.dart';
 
 class OnboardPageData {
   final String imagePath;
@@ -28,18 +29,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final List<OnboardPageData> pages = [
     OnboardPageData(
       imagePath: 'assets/images/onboard1.png',
-      title: 'Birlikte Sür, Her yerde Bağlı Kal',
-      description: 'Paylaş, mesajlaş, ve motorcularla bir topluluğun parçası ol.',
+      title: 'Birlikte Sür, Her Yerde Bağlı Kal',
+      description:
+          'Paylaş, mesajlaş ve motorcularla bir topluluğun parçası ol.',
     ),
     OnboardPageData(
       imagePath: 'assets/images/onboard2.png',
       title: 'Sürüşünü Planla',
-      description: 'Rotalar oluştur, grup sürüşleri organize et, ve harita üzerinde rotanı paylaş.',
+      description:
+          'Rotalar oluştur, grup sürüşleri organize et ve harita üzerinde rotanı paylaş.',
     ),
     OnboardPageData(
       imagePath: 'assets/images/onboard3.png',
-      title: 'Akıllı Sürüş',
-      description: 'Yapay Zeka desteği ile akıllı, güvenli ve eğlenceli sürüşün tadını çıkar.',
+      title: 'Akıllı Sürüş Deneyimi',
+      description:
+          'Yapay Zeka desteği ile akıllı, güvenli ve eğlenceli sürüşün tadını çıkar.',
     ),
   ];
 
@@ -49,144 +53,188 @@ class _OnboardingPageState extends State<OnboardingPage> {
     super.dispose();
   }
 
-  void _onNext() async {
+  void _onFinish() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_shown', true);
+    if (mounted) {
+      context.go('/pre-auth');
+    }
+  }
+
+  void _onNext() {
     if (_currentPage < pages.length - 1) {
-      _pageController.animateToPage(
-        _currentPage + 1,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeIn,
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
       );
     } else {
-      // --- ONBOARDING BİTTİ ---
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('onboarding_shown', true);
-      
-      // go_router kullanarak ana yetkilendirme (pre-auth) sayfasına geçiş
-      if (mounted) {
-        context.go('/pre-auth');
-      }
+      _onFinish();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Ekran boyutlarına göre orantılı değerler
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: pages.length,
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentPage = index;
-                    });
-                  },
-                  itemBuilder: (context, index) {
-                    final onboard = pages[index];
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            onboard.imagePath,
-                            width: double.infinity,
-                            height: screenHeight * 0.35,
-                            fit: BoxFit.cover,
-                            // Resim bulunamazsa çökmeyi önlemek için placeholder:
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              width: double.infinity,
-                              height: screenHeight * 0.35,
-                              color: Colors.grey.shade300,
-                              child: const Icon(Icons.image, size: 50, color: Colors.grey),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: Stack(
+        children: [
+          // Ana İçerik (PageView)
+          PageView.builder(
+            controller: _pageController,
+            itemCount: pages.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              final onboard = pages[index];
+              return Stack(
+                children: [
+                  // Üst Kısım: Resim ve Gradient Maske
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: size.height * 0.6,
+                    child: ShaderMask(
+                      shaderCallback: (rect) {
+                        return LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black,
+                            Colors.black.withValues(alpha: 0.8),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.6, 1.0],
+                        ).createShader(
+                          Rect.fromLTRB(0, 0, rect.width, rect.height),
+                        );
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: Image.asset(
+                        onboard.imagePath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.image,
+                            size: 80,
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Alt Kısım: Metinler
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      height: size.height * 0.45,
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          Text(
+                            onboard.title,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: theme.colorScheme.onSurface,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                        ),
-                        SizedBox(height: screenHeight * 0.03),
-                        Text(
-                          onboard.title,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: screenWidth * 0.06,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: screenHeight * 0.02),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-                          child: Text(
+                          const SizedBox(height: 16),
+                          Text(
                             onboard.description,
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.045,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                               height: 1.5,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                             ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+
+          // Üst Kontroller: "Geç" Butonu
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextButton(
+                  onPressed: _onFinish,
+                  child: Text(
+                    "Geç",
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
+            ),
+          ),
 
-              // Yatay Gösterge (Horizontal Pager Indicator)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
-                child: Row(
+          // Alt Kontroller: Sayfa Göstergesi ve Buton
+          Positioned(
+            bottom: 40,
+            left: 32,
+            right: 32,
+            child: Column(
+              children: [
+                // Sayfa Göstergesi (Indicator)
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(
                     pages.length,
                     (index) => AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       margin: const EdgeInsets.symmetric(horizontal: 4),
-                      height: 8,
-                      width: _currentPage == index ? 24 : 8,
+                      height: 6,
+                      width: _currentPage == index ? 24 : 6,
                       decoration: BoxDecoration(
                         color: _currentPage == index
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(4),
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.primary.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(3),
                       ),
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 32),
 
-              // İleri/Başla Butonu
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: screenHeight * 0.07,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: _onNext,
-                    child: Text(
-                      _currentPage == pages.length - 1 ? "Başla" : "Next",
-                      style: TextStyle(fontSize: screenWidth * 0.045),
-                    ),
-                  ),
+                // Ana Buton
+                AppButton(
+                  text: _currentPage == pages.length - 1
+                      ? "Hemen Başla"
+                      : "İleri",
+                  isFullWidth: true,
+                  size: AppButtonSize.large,
+                  icon: _currentPage == pages.length - 1
+                      ? Icons.rocket_launch
+                      : Icons.arrow_forward_rounded,
+                  iconRight: true,
+                  onPressed: _onNext,
                 ),
-              ),
-              SizedBox(height: screenHeight * 0.02),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
