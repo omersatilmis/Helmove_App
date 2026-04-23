@@ -11,6 +11,7 @@ import '../bloc/conversations/conversations_event.dart';
 import '../bloc/conversations/conversations_state.dart';
 import 'package:helmove/features/friendship/presentation/pages/pick_friend_page.dart';
 import 'chat_page.dart';
+import 'call_page.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
 class ConversationsPage extends StatelessWidget {
@@ -467,6 +468,24 @@ class _ConversationsViewState extends State<ConversationsView> {
                                         ),
                                       ],
                                     ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.call_outlined, color: colorScheme.primary),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => CallPage(
+                                            targetUserId: conversation.userId,
+                                            targetDisplayName: conversation.firstName != null && conversation.lastName != null
+                                                ? '${conversation.firstName} ${conversation.lastName}'
+                                                : conversation.username,
+                                            targetProfileImageUrl: conversation.profilePictureUrl,
+                                            isOutgoing: true,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),

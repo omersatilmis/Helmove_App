@@ -81,7 +81,7 @@ class CallListenerService {
         case CallKitActionType.accepted:
           if (payload == null) return;
           await callKitService.endAllCalls();
-          final opened = _openIncomingCallPage(
+          final opened = await _openIncomingCallPage(
             callerId: payload.callerId,
             callId: payload.callId,
             callerDisplayName: payload.callerDisplayName,
@@ -148,13 +148,13 @@ class CallListenerService {
     });
   }
 
-  bool _openIncomingCallPage({
+  Future<bool> _openIncomingCallPage({
     required int callerId,
     required bool autoAcceptIncoming,
     int? callId,
     String? callerDisplayName,
     String? callerProfileImageUrl,
-  }) {
+  }) async {
     if (_isOpeningIncomingCall) return false;
 
     if (_lastOpenedCallerId == callerId &&
@@ -164,11 +164,23 @@ class CallListenerService {
       return false;
     }
 
+    _isOpeningIncomingCall = true;
+    _lastOpenedCallerId = callerId;
+    _lastOpenedAt = DateTime.now();
+
+    // UI'ın hazır olmasını bekle (Uygulama kapalıyken tetiklendiyse Navigator hemen hazır olmayabilir)
+    int retries = 0;
+    while (rootNavigatorKey.currentState == null && retries < 20) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      retries++;
+    }
+
     final navigator = rootNavigatorKey.currentState;
     if (navigator == null) {
       AppLogger.warning(
-        'CallListenerService: rootNavigator is null, incoming call not opened.',
+        'CallListenerService: rootNavigator is null after wait, incoming call not opened.',
       );
+      _isOpeningIncomingCall = false;
       return false;
     }
 
@@ -183,9 +195,6 @@ class CallListenerService {
       ),
     );
 
-    _isOpeningIncomingCall = true;
-    _lastOpenedCallerId = callerId;
-    _lastOpenedAt = DateTime.now();
     navigator.push(route).whenComplete(() {
       _isOpeningIncomingCall = false;
     });

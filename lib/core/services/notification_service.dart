@@ -6,14 +6,32 @@ import 'dart:io' show Platform;
 import 'package:go_router/go_router.dart';
 import '../utils/app_logger.dart';
 import '../navigation/navigator_keys.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'callkit_incoming_service.dart';
 import 'sos_alert_listener_service.dart';
 
-// Background message handler must be a top-level function
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // If you're going to use other services here, make sure they are initialized
+  await Firebase.initializeApp();
   AppLogger.info('Handling a background message: ${message.messageId}');
+  
+  final payload = CallInvitePayload.tryParse(message.data);
+  if (payload != null) {
+    AppLogger.info('Background message is an incoming call: callerId=${payload.callerId}');
+    final callKitService = CallKitIncomingService();
+    await callKitService.showIncomingCall(payload);
+    return;
+  }
+  
+  final kind = (message.data['kind'] ?? message.data['notificationType'] ?? message.data['type'])
+      ?.toString()
+      .trim()
+      .toLowerCase();
+      
+  if (kind == 'call_ended' || kind == 'missed_call' || kind == 'call_rejected' || kind == 'call_cancelled') {
+    AppLogger.info('Background message is a call termination event: $kind');
+    await FlutterCallkitIncoming.endAllCalls();
+  }
 }
 
 class NotificationService {
@@ -196,6 +214,13 @@ class NotificationService {
   Future<void> _handleGenericNavigation(Map<String, dynamic> data, {required String source}) async {
     final kind = data['kind'] as String? ?? data['NotificationType']?.toString();
     if (kind == null) return;
+    
+    final normalizedKind = kind.trim().toLowerCase();
+    if (normalizedKind == 'call_ended' || normalizedKind == 'missed_call' || normalizedKind == 'call_rejected' || normalizedKind == 'call_cancelled') {
+      AppLogger.info('Foreground/click message is a call termination event: $normalizedKind');
+      await FlutterCallkitIncoming.endAllCalls();
+      return;
+    }
 
     final navigator = rootNavigatorKey.currentState;
     if (navigator == null) {
