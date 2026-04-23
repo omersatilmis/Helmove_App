@@ -13,6 +13,7 @@ import '../../../../../core/widgets/app_input_field.dart';
 import '../../domain/entities/jot_entity.dart';
 import '../../domain/usecases/like_jot_usecase.dart';
 import '../widgets/jot_card_widget.dart';
+import '../../../../../core/utils/image_url_extensions.dart';
 
 class JotDetailPage extends StatefulWidget {
   final JotEntity jot;
@@ -190,7 +191,7 @@ class _JotDetailPageState extends State<JotDetailPage> {
                                     onTap: () => context.push('/profile/${comment.userId}'),
                                     child: CircleAvatar(
                                       backgroundImage: comment.userAvatar != null
-                                          ? CachedNetworkImageProvider(comment.userAvatar!)
+                                          ? CachedNetworkImageProvider(comment.userAvatar!.toAbsoluteImageUrl())
                                           : null,
                                       child: comment.userAvatar == null
                                           ? Text(comment.username[0].toUpperCase())
