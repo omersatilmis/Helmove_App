@@ -34,6 +34,7 @@ class ConversationsView extends StatefulWidget {
 
 class _ConversationsViewState extends State<ConversationsView> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   bool _isSearchMode = false;
   String _searchQuery = '';
 
@@ -45,6 +46,7 @@ class _ConversationsViewState extends State<ConversationsView> {
       if (query != _searchQuery) {
         _searchQuery = query;
         context.read<ConversationsBloc>().add(SearchConversationsEvent(query));
+        setState(() {});
       }
     });
   }
@@ -52,6 +54,7 @@ class _ConversationsViewState extends State<ConversationsView> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -62,6 +65,8 @@ class _ConversationsViewState extends State<ConversationsView> {
         _searchController.clear();
         _searchQuery = '';
         context.read<ConversationsBloc>().add(const SearchConversationsEvent(''));
+      } else {
+        _searchFocusNode.requestFocus();
       }
     });
   }
@@ -109,12 +114,17 @@ class _ConversationsViewState extends State<ConversationsView> {
           title: _isSearchMode
               ? AppInputField(
                   controller: _searchController,
+                  focusNode: _searchFocusNode,
                   type: AppInputType.discover,
                   size: AppInputSize.small,
                   hint: l10n.searchChatHint,
                   textInputAction: TextInputAction.search,
                   showFocusBorder: false,
                   radius: 12,
+                  trailingIcon: _searchController.text.isNotEmpty ? Icons.cancel_rounded : null,
+                  onTrailingTap: () {
+                    _searchController.clear();
+                  },
                 )
               : Text(
                   l10n.chatsTitle,
