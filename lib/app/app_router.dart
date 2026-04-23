@@ -14,6 +14,7 @@ import 'package:helmove/features/auth/presentation/providers/auth_provider.dart'
 import 'package:helmove/features/communication/presentation/models/invite_args.dart';
 import '../../features/communication/presentation/pages/invite_page.dart';
 import 'package:helmove/core/widgets/app_bloc_listener.dart';
+import 'package:helmove/features/onboarding/presentation/pages/onboarding_page.dart';
 
 // 🔥 YENİ SAYFALARIN IMPORTLARI
 import 'package:helmove/features/homepage/presentation/pages/home_page.dart';
@@ -78,7 +79,7 @@ class PlaceholderScreen extends StatelessWidget {
 // --- REFACTOR: Router'ı bir fonksiyon haline getirdik ---
 // Böylece AuthProvider'ı dinleyip yönlendirme yapabiliriz.
 
-GoRouter createRouter(AuthProvider authProvider) {
+GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
   int? parseRouteInt(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
     return int.tryParse(raw);
@@ -122,7 +123,7 @@ GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     refreshListenable: authProvider,
-    initialLocation: '/pre-auth',
+    initialLocation: hasShownOnboarding ? '/pre-auth' : '/onboarding',
 
     // Unified Redirect Guard (Auth)
     redirect: (context, state) async {
@@ -141,16 +142,18 @@ GoRouter createRouter(AuthProvider authProvider) {
       final isRegistering = path == '/register';
       final isForgotPassword = path == '/forgot-password';
       final isForgotPasswordConfirm = path == '/forgot-password/confirm';
+      final isOnboarding = path == '/onboarding';
       final isPublicAuthRoute =
           isPreAuth ||
           isLoggingIn ||
           isRegistering ||
           isForgotPassword ||
-          isForgotPasswordConfirm;
+          isForgotPasswordConfirm ||
+          isOnboarding;
 
       if (!isLoggedIn) {
         if (!isPublicAuthRoute) {
-          return '/pre-auth';
+          return hasShownOnboarding ? '/pre-auth' : '/onboarding';
         }
       } else {
         if (isPublicAuthRoute) {
@@ -163,6 +166,10 @@ GoRouter createRouter(AuthProvider authProvider) {
 
     routes: [
       // --- 1. TAM EKRAN SAYFALAR ---
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingPage(),
+      ),
       GoRoute(
         path: '/pre-auth',
         builder: (context, state) => const PreAuthPage(),

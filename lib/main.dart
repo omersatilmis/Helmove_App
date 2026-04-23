@@ -11,6 +11,7 @@ import 'package:helmove/core/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:helmove/firebase_options.dart';
 import 'package:helmove/core/di/injection_container.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:helmove/app/app_router.dart';
 import 'package:helmove/core/theme/app_theme.dart';
 import 'package:helmove/core/theme/theme_provider.dart';
@@ -77,6 +78,9 @@ void main() async {
       // 1. Dependency Injection Kurulumu
       await initCore();
 
+      final prefs = await SharedPreferences.getInstance();
+      final hasShownOnboarding = prefs.getBool('onboarding_shown') ?? false;
+
       // 1.1 Auth bootstrap: runApp oncesi token'i storage'dan yukle
       final authBootstrapGate = sl<AuthBootstrapGate>();
       String? bootstrappedToken;
@@ -127,7 +131,7 @@ void main() async {
       setupTimeagoLocales();
 
       // 3. Root widget
-      runApp(const MyApp());
+      runApp(MyApp(hasShownOnboarding: hasShownOnboarding));
     },
     (error, stackTrace) {
       // ── GLOBAL SAFETY NET ──
@@ -143,7 +147,8 @@ void main() async {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final bool hasShownOnboarding;
+  const MyApp({super.key, required this.hasShownOnboarding});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -165,7 +170,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _authProvider = sl<AuthProvider>();
     _themeProvider = sl<ThemeProvider>();
     _languageProvider = sl<LanguageProvider>();
-    _router = createRouter(_authProvider);
+    _router = createRouter(_authProvider, widget.hasShownOnboarding);
     // Tema ve Dil değiştiğinde MaterialApp'ı yeniden çizdir
     _themeProvider.addListener(_onThemeChanged);
     _languageProvider.addListener(_onLanguageChanged);
