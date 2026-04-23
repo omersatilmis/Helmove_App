@@ -84,7 +84,7 @@ class ProfileApi {
       final formData = FormData.fromMap({
         'CoverPicture': await MultipartFile.fromFile(imagePath),
       });
-      final response = await _dio.put('/Profile/me/cover', data: formData);
+      final response = await _dio.put('/api/Profile/me/cover', data: formData);
       return ProfileResponseDto.fromJson(response.data);
     } on DioException catch (e) {
       final errorMessage =
