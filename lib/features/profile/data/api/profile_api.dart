@@ -78,14 +78,17 @@ class ProfileApi {
     }
   }
 
-  /// PUT /api/Profile/me/cover - Kapak resmini günceller
-  Future<ProfileResponseDto> updateCoverPhoto(String imagePath) async {
+  /// PUT /api/profile/me/cover - Kapak resmini günceller
+  /// Response: {"success": true, "data": "/uploads/covers/cover_42_...jpg"}
+  Future<String> updateCoverPhoto(String imagePath) async {
     try {
       final formData = FormData.fromMap({
-        'CoverPicture': await MultipartFile.fromFile(imagePath),
+        'coverImage': await MultipartFile.fromFile(imagePath),
       });
-      final response = await _dio.put('/api/Profile/me/cover', data: formData);
-      return ProfileResponseDto.fromJson(response.data);
+      final response = await _dio.put('/api/profile/me/cover', data: formData);
+      final data = response.data;
+      final url = (data is Map ? data['data'] : null)?.toString() ?? '';
+      return url;
     } on DioException catch (e) {
       final errorMessage =
           _parseErrorMessage(e.response?.data) ??

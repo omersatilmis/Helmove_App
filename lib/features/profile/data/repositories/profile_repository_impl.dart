@@ -94,11 +94,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<String> updateCoverPhoto(String imagePath) async {
     try {
-      final response = await _remoteDataSource.updateCoverPhoto(imagePath);
-      if (!response.success || response.data == null) {
-        throw Exception(response.message ?? "Kapak resmi güncellenemedi");
-      }
-      return response.data!.coverImageUrl ?? '';
+      final url = await _remoteDataSource.updateCoverPhoto(imagePath);
+      return url;
     } catch (e) {
       throw Exception(ErrorHandler.getErrorMessage(e));
     }
