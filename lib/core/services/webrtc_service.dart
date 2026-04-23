@@ -320,22 +320,22 @@ class WebRTCService {
 
     final constraints = <String, dynamic>{
       'audio': {
-        // Düşük gecikme ve donanım hızlandırma için özel ayarlar
-        'echoCancellation': true, // Yankı giderme
+        'echoCancellation': true,
         'googEchoCancellation': true,
         'googEchoCancellation2': true,
-        'googDAEchoCancellation': true, // Donanım tabanlı AEC
-        'noiseSuppression': _noiseSuppressionEnabled, // Gürültü engelleme
-        'googNoiseSuppression':
-            _noiseSuppressionEnabled, // Google gürültü bastırma
-        'googNoiseReduction':
-            _noiseSuppressionEnabled, // Ekstra gürültü azaltma
-        'autoGainControl': false, // Kesintisiz ses: AGC kapalı
-        'googAutoGainControl': false, // Kesintisiz ses: AGC kapalı
-        'googHighpassFilter': false, // Kesintisiz ses: HPF kapalı
+        'googDAEchoCancellation': true,
+        'noiseSuppression': _noiseSuppressionEnabled,
+        'googNoiseSuppression': _noiseSuppressionEnabled,
+        'googNoiseSuppression2': _noiseSuppressionEnabled,
+        'googNoiseReduction': _noiseSuppressionEnabled,
+        'googExperimentalNoiseSuppression': _noiseSuppressionEnabled,
+        // Motor/rüzgar gürültüsü için: NS açıkken HPF ve AGC de etkin
+        'autoGainControl': _noiseSuppressionEnabled,
+        'googAutoGainControl': _noiseSuppressionEnabled,
+        'googHighpassFilter': _noiseSuppressionEnabled,
         'googAudioMirroring': false,
       },
-      'video': false, // Sadece ses â€” video yok
+      'video': false,
     };
 
     _localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -425,10 +425,12 @@ class WebRTCService {
           'googDAEchoCancellation': true,
           'noiseSuppression': noiseSuppression,
           'googNoiseSuppression': noiseSuppression,
+          'googNoiseSuppression2': noiseSuppression,
           'googNoiseReduction': noiseSuppression,
-          'autoGainControl': false, // Kesintisiz iletim
-          'googAutoGainControl': false, // Kesintisiz iletim
-          'googHighpassFilter': false, // Kesintisiz iletim
+          'googExperimentalNoiseSuppression': noiseSuppression,
+          'autoGainControl': noiseSuppression,
+          'googAutoGainControl': noiseSuppression,
+          'googHighpassFilter': noiseSuppression,
           'googAudioMirroring': false,
         },
         'video': false,

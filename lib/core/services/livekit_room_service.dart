@@ -73,7 +73,7 @@ class LiveKitRoomService {
         defaultAudioCaptureOptions: AudioCaptureOptions(
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: false, // Kesintisiz iletim
+          autoGainControl: true,
         ),
       ),
     );
@@ -160,7 +160,7 @@ class LiveKitRoomService {
       audioCaptureOptions: AudioCaptureOptions(
         echoCancellation: true,
         noiseSuppression: noiseSuppression,
-        autoGainControl: false, // Kesintisiz ses için kapatıldı
+        autoGainControl: noiseSuppression,
       ),
     );
   }
