@@ -8,6 +8,7 @@ abstract class ProfileRepository {
 
   /// Kullanıcının profilini günceller
   Future<ProfileEntity> updateProfile({
+    String? username,
     String? firstName,
     String? lastName,
     String? bio,

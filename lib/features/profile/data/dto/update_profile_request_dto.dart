@@ -1,5 +1,6 @@
 /// Profil güncelleme isteği DTO
 class UpdateProfileRequestDto {
+  final String? username;
   final String? firstName;
   final String? lastName;
   final String? bio;
@@ -14,6 +15,7 @@ class UpdateProfileRequestDto {
   final String? twitterUrl;
 
   UpdateProfileRequestDto({
+    this.username,
     this.firstName,
     this.lastName,
     this.bio,
@@ -30,6 +32,7 @@ class UpdateProfileRequestDto {
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (username != null) json['username'] = username;
     if (firstName != null) json['firstName'] = firstName;
     if (lastName != null) json['lastName'] = lastName;
     if (bio != null) json['bio'] = bio;

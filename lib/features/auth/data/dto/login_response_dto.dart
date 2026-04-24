@@ -37,6 +37,7 @@ class LoginDataDto {
   final String? lastName;
   final String? profileImageUrl;
   final String? premiumTier;
+  final bool isNewUser;
 
   LoginDataDto({
     required this.token,
@@ -51,6 +52,7 @@ class LoginDataDto {
     this.lastName,
     this.profileImageUrl,
     this.premiumTier,
+    this.isNewUser = false,
   });
 
   factory LoginDataDto.fromJson(Map<String, dynamic> json) {
@@ -95,6 +97,8 @@ class LoginDataDto {
       premiumTier:
           (json['premiumTier'] ?? json['PremiumTier'] ?? json['PremiumTier'])
               ?.toString(),
+      isNewUser:
+          json['isNewUser'] ?? json['IsNewUser'] ?? json['is_new_user'] ?? false,
     );
   }
 }

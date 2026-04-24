@@ -55,6 +55,30 @@ class AuthApi {
   }
 
   Future<LoginResponseDto> socialSignIn(SocialSignInRequestDto request) async {
+    // Apple has a dedicated endpoint with identityToken + optional name fields
+    if (request.provider.toLowerCase() == 'apple') {
+      try {
+        final body = <String, dynamic>{'identityToken': request.idToken};
+        if (request.email != null && request.email!.isNotEmpty) {
+          body['email'] = request.email;
+        }
+        if (request.displayName != null && request.displayName!.isNotEmpty) {
+          final parts = request.displayName!.trim().split(' ');
+          body['givenName'] = parts.first;
+          if (parts.length > 1) body['familyName'] = parts.sublist(1).join(' ');
+        }
+        final response = await _dio.post(AuthEndpoints.appleLogin, data: body);
+        return LoginResponseDto.fromJson(response.data);
+      } on DioException catch (e) {
+        final errorMessage =
+            _parseErrorMessage(e.response?.data) ??
+            'Apple giriş başarısız: ${e.response?.statusCode}';
+        throw Exception(errorMessage);
+      } catch (e) {
+        throw Exception("Beklenmedik bir hata oluştu: $e");
+      }
+    }
+
     // Google has a dedicated endpoint that only accepts idToken (no provider field)
     if (request.provider.toLowerCase() == 'google') {
       try {

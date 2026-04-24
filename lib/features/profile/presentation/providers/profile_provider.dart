@@ -243,6 +243,7 @@ class ProfileProvider extends ChangeNotifier {
 
   /// Profili günceller (Optimistic UI ile)
   Future<bool> updateProfile({
+    String? username,
     String? firstName,
     String? lastName,
     String? bio,
@@ -288,6 +289,7 @@ class ProfileProvider extends ChangeNotifier {
     // 4. Backend'e gönder
     try {
       _profile = await _profileRepository.updateProfile(
+        username: username,
         firstName: firstName,
         lastName: lastName,
         bio: bio,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:helmove/core/widgets/app_button.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_divider_widget.dart';
@@ -162,7 +163,61 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (success && mounted) {
-        context.go('/homepage');
+        if (authProvider.wasNewSocialUser) {
+          context.go('/complete-profile', extra: {
+            'firstName': account.displayName?.split(' ').firstOrNull,
+            'lastName': account.displayName?.split(' ').skip(1).join(' '),
+          });
+        } else {
+          context.go('/homepage');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleAppleSignIn(AuthProvider authProvider) async {
+    if (!_acceptedEula) {
+      setState(() => _showEulaWarning = true);
+      return;
+    }
+
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final identityToken = credential.identityToken;
+      if (identityToken == null) throw Exception('Apple identity token alınamadı');
+
+      final nameParts = [credential.givenName, credential.familyName]
+          .where((s) => s != null && s.isNotEmpty)
+          .join(' ');
+
+      final success = await authProvider.socialSignIn(
+        provider: 'apple',
+        idToken: identityToken,
+        email: credential.email,
+        displayName: nameParts.isNotEmpty ? nameParts : null,
+      );
+
+      if (success && mounted) {
+        if (authProvider.wasNewSocialUser) {
+          context.go('/complete-profile', extra: {
+            'firstName': credential.givenName,
+            'lastName': credential.familyName,
+          });
+        } else {
+          context.go('/homepage');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -218,27 +273,24 @@ class _LoginPageState extends State<LoginPage> {
 
                   // 2. FORM VE İÇERİK ALANI
                   Expanded(
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalPadding,
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: constraints.maxWidth > 450
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: constraints.maxWidth > 450
                                 ? 450
-                                : constraints.maxWidth -
-                                      (horizontalPadding * 2),
-                            child: Form(
-                              key: _formKey,
-                              child: AutofillGroup(
-                                // Otomatik doldurma desteği
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                                : constraints.maxWidth - (horizontalPadding * 2),
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: AutofillGroup(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
                                   children: [
                                     SizedBox(height: isCompactHeight ? 8 : 12),
 
@@ -430,6 +482,55 @@ class _LoginPageState extends State<LoginPage> {
                                       },
                                     ),
 
+                                    const SizedBox(height: 12),
+
+                                    // Apple ile Giriş Butonu
+                                    Consumer<AuthProvider>(
+                                      builder: (context, authProvider, _) {
+                                        return SizedBox(
+                                          width: double.infinity,
+                                          height: 52,
+                                          child: OutlinedButton(
+                                            onPressed: authProvider.isLoading
+                                                ? null
+                                                : () => _handleAppleSignIn(
+                                                    authProvider),
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(
+                                                color: theme.colorScheme
+                                                    .outlineVariant,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.apple,
+                                                  size: 22,
+                                                  color: theme.colorScheme
+                                                      .onSurface,
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  l10n.continueWithApple,
+                                                  style: theme
+                                                      .textTheme.labelLarge
+                                                      ?.copyWith(
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+
                                     SizedBox(height: isCompactHeight ? 10 : 16),
                                   ],
                                 ),
@@ -439,9 +540,8 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                  ),
 
-                  // 3. FOOTER ALANI (Alt kısma sabitlenen link)
+                  // 3. FOOTER ALANI
                   AuthFooterWidget(
                     questionText: l10n.dontHaveAccount,
                     actionText: l10n.register,

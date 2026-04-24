@@ -7,8 +7,9 @@ class AuthEntity {
   final String token; // API isteklerinde kullanacağımız anahtar
   final String? firstName;
   final String? lastName;
-  final String? profileImageUrl; // İleride lazım olur diye ekledim
+  final String? profileImageUrl;
   final UserTier tier;
+  final bool isNewUser;
 
   const AuthEntity({
     required this.id,
@@ -19,6 +20,7 @@ class AuthEntity {
     this.lastName,
     this.profileImageUrl,
     this.tier = UserTier.free,
+    this.isNewUser = false,
   });
 
   bool get isPremium => tier.isPremium;

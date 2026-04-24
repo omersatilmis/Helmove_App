@@ -27,6 +27,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<ProfileEntity> updateProfile({
+    String? username,
     String? firstName,
     String? lastName,
     String? bio,
@@ -42,6 +43,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }) async {
     try {
       final request = UpdateProfileRequestDto(
+        username: username,
         firstName: firstName,
         lastName: lastName,
         bio: bio,

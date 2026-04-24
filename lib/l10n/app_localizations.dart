@@ -314,6 +314,48 @@ abstract class AppLocalizations {
   /// **'Enter at least 3 characters'**
   String get usernameTooShort;
 
+  /// No description provided for @usernameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Username is required'**
+  String get usernameRequired;
+
+  /// No description provided for @usernameInvalidChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Only letters, numbers, _ and . allowed'**
+  String get usernameInvalidChars;
+
+  /// No description provided for @firstNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'First name is required'**
+  String get firstNameRequired;
+
+  /// No description provided for @lastNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name is required'**
+  String get lastNameRequired;
+
+  /// No description provided for @completeProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost There!'**
+  String get completeProfileTitle;
+
+  /// No description provided for @completeProfileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up your profile to continue.'**
+  String get completeProfileSubtitle;
+
+  /// No description provided for @saveAndContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & Continue'**
+  String get saveAndContinue;
+
   /// No description provided for @firstName.
   ///
   /// In en, this message translates to:

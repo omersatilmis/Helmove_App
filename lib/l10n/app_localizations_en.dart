@@ -118,6 +118,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get usernameTooShort => 'Enter at least 3 characters';
 
   @override
+  String get usernameRequired => 'Username is required';
+
+  @override
+  String get usernameInvalidChars => 'Only letters, numbers, _ and . allowed';
+
+  @override
+  String get firstNameRequired => 'First name is required';
+
+  @override
+  String get lastNameRequired => 'Last name is required';
+
+  @override
+  String get completeProfileTitle => 'Almost There!';
+
+  @override
+  String get completeProfileSubtitle => 'Set up your profile to continue.';
+
+  @override
+  String get saveAndContinue => 'Save & Continue';
+
+  @override
   String get firstName => 'First Name';
 
   @override

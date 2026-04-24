@@ -11,6 +11,13 @@ import 'package:helmove/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+// Geçici: sign-in sırasında alınan isim bilgisini tutmak için
+class _SocialNameInfo {
+  final String? firstName;
+  final String? lastName;
+  const _SocialNameInfo({this.firstName, this.lastName});
+}
+
 class PreAuthPage extends StatefulWidget {
   const PreAuthPage({super.key});
 
@@ -21,6 +28,7 @@ class PreAuthPage extends StatefulWidget {
 class _PreAuthPageState extends State<PreAuthPage> {
   bool _isSocialLoading = false;
   String? _activeProvider;
+  _SocialNameInfo? _lastNameInfo;
 
   // --- SOSYAL GİRİŞ MANTIĞI (UPSERT) ---
   Future<void> _handleSocialSignIn(String provider) async {
@@ -45,7 +53,15 @@ class _PreAuthPageState extends State<PreAuthPage> {
       if (!mounted) return;
 
       if (success) {
-        context.go('/homepage');
+        final authProvider = context.read<AuthProvider>();
+        if (authProvider.wasNewSocialUser) {
+          context.go('/complete-profile', extra: {
+            'firstName': _lastNameInfo?.firstName,
+            'lastName': _lastNameInfo?.lastName,
+          });
+        } else {
+          context.go('/homepage');
+        }
       } else {
         _showErrorSnackBar(context.read<AuthProvider>().errorMessage);
       }
@@ -82,7 +98,11 @@ class _PreAuthPageState extends State<PreAuthPage> {
 
   Future<bool> _signInWithGoogle() async {
     final authProvider = context.read<AuthProvider>();
-    final googleSignIn = GoogleSignIn(scopes: const ['email']);
+    final googleSignIn = GoogleSignIn(
+      serverClientId:
+          '38184125630-qo9bffnh1ul85e5jaun0ldmppb3lm38f.apps.googleusercontent.com',
+      scopes: const ['email', 'profile'],
+    );
     final account = await googleSignIn.signIn();
     if (account == null) return false;
 
@@ -97,6 +117,11 @@ class _PreAuthPageState extends State<PreAuthPage> {
     if (resolvedIdToken == null || resolvedIdToken.trim().isEmpty) {
       return false;
     }
+
+    _lastNameInfo = _SocialNameInfo(
+      firstName: account.displayName?.split(' ').firstOrNull,
+      lastName: account.displayName?.split(' ').skip(1).join(' '),
+    );
 
     return authProvider.socialSignIn(
       provider: 'google',
@@ -122,6 +147,11 @@ class _PreAuthPageState extends State<PreAuthPage> {
     final firstName = credential.givenName?.trim() ?? '';
     final lastName = credential.familyName?.trim() ?? '';
     final displayName = '$firstName $lastName'.trim();
+
+    _lastNameInfo = _SocialNameInfo(
+      firstName: firstName.isNotEmpty ? firstName : null,
+      lastName: lastName.isNotEmpty ? lastName : null,
+    );
 
     return authProvider.socialSignIn(
       provider: 'apple',

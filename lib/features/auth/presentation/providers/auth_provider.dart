@@ -41,11 +41,13 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   AuthEntity? _currentUser;
+  bool _wasNewSocialUser = false;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   AuthEntity? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
+  bool get wasNewSocialUser => _wasNewSocialUser;
 
   // Login
   Future<bool> login(
@@ -117,6 +119,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _currentUser = authEntity;
+      _wasNewSocialUser = authEntity.isNewUser;
       _appSession.updateSession(
         currentUserId: authEntity.id,
         currentUser: authEntity,

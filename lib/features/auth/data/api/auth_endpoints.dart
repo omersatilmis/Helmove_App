@@ -13,6 +13,7 @@ class AuthEndpoints {
   static const String sessions = 'api/auth/sessions';
   static const String refreshCurrentUser = 'api/auth/refresh-current-user';
   static const String googleLogin = 'api/auth/google';
+  static const String appleLogin = 'api/auth/apple';
   static const String socialLogin = 'api/auth/social-login';
   static const String sendRegisterOtp = 'api/auth/send-register-otp';
   static const String confirmRegister = 'api/auth/confirm-register';

@@ -11,6 +11,7 @@ import 'package:helmove/features/auth/presentation/pages/forgot_password_page.da
 import 'package:helmove/features/auth/presentation/pages/forgot_password_confirm_page.dart';
 import 'package:helmove/features/auth/presentation/pages/register_confirm_page.dart';
 import 'package:helmove/features/auth/presentation/pages/pre_auth_page.dart';
+import 'package:helmove/features/auth/presentation/pages/complete_profile_page.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/communication/presentation/models/invite_args.dart';
 import '../../features/communication/presentation/pages/invite_page.dart';
@@ -145,14 +146,16 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
       final isForgotPasswordConfirm = path == '/forgot-password/confirm';
       final isOnboarding = path == '/onboarding';
       final isRegisterConfirm = path == '/register/confirm';
+      final isCompleteProfile = path == '/complete-profile';
       final isPublicAuthRoute =
           isPreAuth ||
           isLoggingIn ||
           isRegistering ||
           isForgotPassword ||
           isForgotPasswordConfirm ||
-          isOnboarding;
-          isRegisterConfirm;
+          isOnboarding ||
+          isRegisterConfirm ||
+          isCompleteProfile;
 
       if (!isLoggedIn) {
         if (!isPublicAuthRoute) {
@@ -176,6 +179,16 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
       GoRoute(
         path: '/pre-auth',
         builder: (context, state) => const PreAuthPage(),
+      ),
+      GoRoute(
+        path: '/complete-profile',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return CompleteProfilePage(
+            prefillFirstName: extra?['firstName'] as String?,
+            prefillLastName: extra?['lastName'] as String?,
+          );
+        },
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(

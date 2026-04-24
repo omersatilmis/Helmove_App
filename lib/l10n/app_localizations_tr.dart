@@ -119,6 +119,28 @@ class AppLocalizationsTr extends AppLocalizations {
   String get usernameTooShort => 'En az 3 karakter girin';
 
   @override
+  String get usernameRequired => 'Kullanıcı adı zorunludur';
+
+  @override
+  String get usernameInvalidChars =>
+      'Sadece harf, rakam, _ ve . kullanılabilir';
+
+  @override
+  String get firstNameRequired => 'Ad zorunludur';
+
+  @override
+  String get lastNameRequired => 'Soyad zorunludur';
+
+  @override
+  String get completeProfileTitle => 'Neredeyse Tamam!';
+
+  @override
+  String get completeProfileSubtitle => 'Devam etmek için profilini ayarla.';
+
+  @override
+  String get saveAndContinue => 'Kaydet ve Devam Et';
+
+  @override
   String get firstName => 'Ad';
 
   @override
