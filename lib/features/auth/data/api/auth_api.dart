@@ -55,6 +55,24 @@ class AuthApi {
   }
 
   Future<LoginResponseDto> socialSignIn(SocialSignInRequestDto request) async {
+    // Google has a dedicated endpoint that only accepts idToken (no provider field)
+    if (request.provider.toLowerCase() == 'google') {
+      try {
+        final response = await _dio.post(
+          AuthEndpoints.googleLogin,
+          data: {'idToken': request.idToken},
+        );
+        return LoginResponseDto.fromJson(response.data);
+      } on DioException catch (e) {
+        final errorMessage =
+            _parseErrorMessage(e.response?.data) ??
+            'Google giriş başarısız: ${e.response?.statusCode}';
+        throw Exception(errorMessage);
+      } catch (e) {
+        throw Exception("Beklenmedik bir hata oluştu: $e");
+      }
+    }
+
     DioException? notFoundError;
     final candidatePaths = <String>[
       AuthEndpoints.socialLogin,

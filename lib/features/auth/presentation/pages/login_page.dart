@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:helmove/core/widgets/app_button.dart';
 import 'package:helmove/core/widgets/app_input_field.dart';
+import 'package:helmove/features/auth/presentation/widgets/auth_divider_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_header_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_footer_widget.dart';
 import 'package:helmove/features/auth/presentation/widgets/auth_error_widget.dart';
@@ -16,6 +18,57 @@ class LoginPage extends StatefulWidget {
 
   @override
   State<LoginPage> createState() => _LoginPageState();
+}
+
+class _GoogleLogo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 20,
+      height: 20,
+      child: CustomPaint(painter: _GoogleLogoPainter()),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final center = rect.center;
+    final radius = size.width / 2;
+
+    // Kırmızı (sol üst)
+    final paint = Paint()..color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, -2.36, 1.57, true, paint);
+
+    // Sarı (sol alt)
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, -0.79, 1.57, true, paint);
+
+    // Yeşil (sağ alt)
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 0.79, 1.57, true, paint);
+
+    // Mavi (sağ üst)
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, 2.36, 1.57, true, paint);
+
+    // Beyaz iç daire
+    paint.color = Colors.white;
+    canvas.drawCircle(center, radius * 0.6, paint);
+
+    // Mavi sağ çentik (G şekli)
+    paint.color = const Color(0xFF4285F4);
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(center.dx, center.dy - radius * 0.25, radius, radius * 0.5),
+      Radius.zero,
+    );
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -80,6 +133,44 @@ class _LoginPageState extends State<LoginPage> {
         url: 'https://helmove.com/terms-of-use',
       ),
     );
+  }
+
+  Future<void> _handleGoogleSignIn(AuthProvider authProvider) async {
+    if (!_acceptedEula) {
+      setState(() => _showEulaWarning = true);
+      return;
+    }
+
+    try {
+      final googleSignIn = GoogleSignIn(
+      serverClientId:
+          '38184125630-qo9bffnh1ul85e5jaun0ldmppb3lm38f.apps.googleusercontent.com',
+      scopes: ['email', 'profile'],
+    );
+      final account = await googleSignIn.signIn();
+      if (account == null) return;
+
+      final googleAuth = await account.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null) throw Exception('Google ID token alınamadı');
+
+      final success = await authProvider.socialSignIn(
+        provider: 'google',
+        idToken: idToken,
+        email: account.email,
+        displayName: account.displayName,
+      );
+
+      if (success && mounted) {
+        context.go('/homepage');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
   }
 
   Future<void> _openForgotPasswordPage() async {
@@ -292,6 +383,52 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
 
                                     SizedBox(height: sectionGap),
+
+                                    const AuthDividerWidget(),
+
+                                    SizedBox(height: sectionGap),
+
+                                    // Google ile Giriş Butonu
+                                    Consumer<AuthProvider>(
+                                      builder: (context, authProvider, _) {
+                                        return SizedBox(
+                                          width: double.infinity,
+                                          height: 52,
+                                          child: OutlinedButton(
+                                            onPressed: authProvider.isLoading
+                                                ? null
+                                                : () => _handleGoogleSignIn(
+                                                    authProvider),
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(
+                                                color: theme.colorScheme
+                                                    .outlineVariant,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                _GoogleLogo(),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  l10n.continueWithGoogle,
+                                                  style: theme
+                                                      .textTheme.labelLarge
+                                                      ?.copyWith(
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
 
                                     SizedBox(height: isCompactHeight ? 10 : 16),
                                   ],

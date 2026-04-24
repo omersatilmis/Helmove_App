@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -27,106 +27,118 @@ class _FeedViewState extends State<FeedView> {
   void initState() {
     super.initState();
     _postsBloc = sl<PostsBloc>();
-    // Always trigger a fetch. PostsBloc will handle caching and background updates.
     _postsBloc.add(const GetFeedEvent(page: 1, limit: _feedPageSize));
     _scrollController.addListener(_onScroll);
-            return const Center(child: CircularProgressIndicator());
-          }
+  }
 
-          if (state.status == PostsStatus.failure && state.posts.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    color: AppColors.error,
-                      _postsBloc.add(
-                        LikePostEvent(post.id, currentIsLiked: post.isLiked),
-                      );
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.errorMessage ?? AppLocalizations.of(context)!.unknownError,
-                    style: AppTextStyles.medium,
-                  ),
-                        builder: (context) => CommentsSheet(
-                          contentId: post.id,
-                          onCommentCountDelta: (delta) {
-                            _postsBloc.add(
-                              AdjustPostCommentCountEvent(
-                                postId: post.id,
-                                delta: delta,
-                              ),
-                            );
-                          },
-                        ),
-                  ElevatedButton(
-                    onPressed: () {
-                      _postsBloc.add(
-                        const GetFeedEvent(
-                          isRefresh: true,
-                          page: 1,
-                        SnackBar(
-                          content: Text(
-                            AppLocalizations.of(context)!.reportReceived,
-                          ),
-                        ),
-                        ),
-                      );
-                    },
-                    child: Text(AppLocalizations.of(context)!.retry),
-              },
-                ],
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
+      final state = _postsBloc.state;
+      if (state.status != PostsStatus.loading && state.hasNextPage) {
+        _postsBloc.add(
+          GetFeedEvent(page: state.page + 1, limit: _feedPageSize),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<PostsBloc, PostsState>(
+      bloc: _postsBloc,
+      builder: (context, state) {
+        if (state.status == PostsStatus.loading && state.posts.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (state.status == PostsStatus.failure && state.posts.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: AppColors.error),
+                const SizedBox(height: 16),
+                Text(
+                  state.errorMessage ??
+                      AppLocalizations.of(context)!.unknownError,
+                  style: AppTextStyles.medium,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    _postsBloc.add(
+                      const GetFeedEvent(
+                        isRefresh: true,
+                        page: 1,
+                        limit: _feedPageSize,
+                      ),
+                    );
+                  },
+                  child: Text(AppLocalizations.of(context)!.retry),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (state.posts.isEmpty) {
+          return Center(
+            child: Text(
+              AppLocalizations.of(context)!.noPostsYet,
+              style: AppTextStyles.medium.copyWith(
+                color: AppColors.darkTextSecondary,
+              ),
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            _postsBloc.add(
+              const GetFeedEvent(
+                isRefresh: true,
+                page: 1,
+                limit: _feedPageSize,
               ),
             );
-          }
+          },
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: EdgeInsets.zero,
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: state.hasReachedMax
+                ? state.posts.length
+                : state.posts.length + 1,
+            itemBuilder: (context, index) {
+              if (index >= state.posts.length) {
+                return const _BottomLoader();
+              }
 
-          if (state.posts.isEmpty) {
-            return Center(
-              child: Text(
-                AppLocalizations.of(context)!.noPostsYet,
-                style: AppTextStyles.medium.copyWith(
-                  color: AppColors.darkTextSecondary,
-                ),
-              ),
-            );
-          }
+              final post = state.posts[index];
+              final isLast =
+                  state.hasReachedMax && index == state.posts.length - 1;
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              _postsBloc.add(
-                const GetFeedEvent(
-                  isRefresh: true,
-                  page: 1,
-                  limit: _feedPageSize,
-                ),
-              );
-            },
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: EdgeInsets.zero, // Clean edge-to-edge look
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: state.hasReachedMax
-                  ? state.posts.length
-                  : state.posts.length + 1,
-              itemBuilder: (context, index) {
-                if (index >= state.posts.length) {
-                  return const _BottomLoader();
-                }
-
-                final post = state.posts[index];
-                final isLast =
-                    state.hasReachedMax && index == state.posts.length - 1;
-
-                return PostCardModern(
+              return Padding(
+                padding: isLast
+                    ? const EdgeInsets.only(bottom: 80)
+                    : EdgeInsets.zero,
+                child: PostCardModern(
                   post: post,
                   currentUserId: state.currentUserId,
                   onDelete: () {
                     _postsBloc.add(DeletePostEvent(post.id));
                   },
                   onLike: () {
-                    _postsBloc.add(LikePostEvent(post.id, currentIsLiked: post.isLiked));
+                    _postsBloc.add(
+                      LikePostEvent(post.id, currentIsLiked: post.isLiked),
+                    );
                   },
                   onComment: () {
                     showModalBottomSheet(
@@ -137,7 +149,10 @@ class _FeedViewState extends State<FeedView> {
                         contentId: post.id,
                         onCommentCountDelta: (delta) {
                           _postsBloc.add(
-                            AdjustPostCommentCountEvent(postId: post.id, delta: delta),
+                            AdjustPostCommentCountEvent(
+                              postId: post.id,
+                              delta: delta,
+                            ),
                           );
                         },
                       ),
@@ -147,44 +162,19 @@ class _FeedViewState extends State<FeedView> {
                   onSave: () {},
                   onReport: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(AppLocalizations.of(context)!.reportReceived)),
+                      SnackBar(
+                        content: Text(
+                          AppLocalizations.of(context)!.reportReceived,
+                        ),
+                      ),
                     );
                   },
-                return Padding(
-                  padding: isLast
-                      ? const EdgeInsets.only(bottom: 80)
-                      : EdgeInsets.zero,
-                  child: PostCardModern(
-                    post: post,
-                    currentUserId: state.currentUserId,
-                    onDelete: () {
-                      _postsBloc.add(DeletePostEvent(post.id));
-                    },
-                    onLike: () {
-                      _postsBloc.add(LikePostEvent(post.id));
-                    },
-                    onComment: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => CommentsSheet(contentId: post.id),
-                      );
-                    },
-                    onShare: () {},
-                    onSave: () {},
-                    onReport: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(AppLocalizations.of(context)!.reportReceived)),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -205,5 +195,3 @@ class _BottomLoader extends StatelessWidget {
     );
   }
 }
-
-
