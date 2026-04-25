@@ -1,4 +1,4 @@
-package com.example.helmove
+package com.helmove.app
 
 import android.media.AudioManager
 import android.media.ToneGenerator

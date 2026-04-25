@@ -256,9 +256,9 @@ class ProfileDataDto {
       coverImageUrl: NetworkModule.resolveImageUrl(
         (json['coverImageUrl'] ?? json['CoverImageUrl'])?.toString(),
       ),
-      instagramUrl: (json['instagramUrl'] ?? json['InstagramUrl'])?.toString(),
-      youtubeUrl: (json['youtubeUrl'] ?? json['YoutubeUrl'])?.toString(),
-      twitterUrl: (json['twitterUrl'] ?? json['TwitterUrl'])?.toString(),
+      instagramUrl: (json['instagramHandle'] ?? json['instagramUrl'] ?? json['InstagramUrl'])?.toString(),
+      youtubeUrl: (json['youtubeHandle'] ?? json['youtubeUrl'] ?? json['YoutubeUrl'])?.toString(),
+      twitterUrl: (json['twitterHandle'] ?? json['twitterUrl'] ?? json['TwitterUrl'])?.toString(),
     );
   }
 }

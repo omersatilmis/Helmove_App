@@ -100,7 +100,7 @@ class _PreAuthPageState extends State<PreAuthPage> {
     final authProvider = context.read<AuthProvider>();
     final googleSignIn = GoogleSignIn(
       serverClientId:
-          '38184125630-qo9bffnh1ul85e5jaun0ldmppb3lm38f.apps.googleusercontent.com',
+          '636333998568-qj4tp1aaqkc4vjfc1bhh9ls2pmlv544q.apps.googleusercontent.com',
       scopes: const ['email', 'profile'],
     );
     final account = await googleSignIn.signIn();

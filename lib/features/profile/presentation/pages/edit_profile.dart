@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:helmove/core/utils/image_url_extensions.dart';
@@ -31,8 +33,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _ytController;
   late TextEditingController _twitterController;
 
-  bool _isChanged = false; // Kaydet butonu kontrolü
-  File? _localCoverPhoto; // Arkaplan için yerel (geçici) dosya
+  bool _isChanged = false;
+  bool _isLocating = false;
+  File? _localCoverPhoto;
 
   @override
   void initState() {
@@ -49,10 +52,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _cityController = TextEditingController(text: p.city);
     _regionController = TextEditingController(text: p.region);
 
-    // Sosyal medya (Backend DTO'da henüz yoksa boş bırakırız)
-    _instaController = TextEditingController();
-    _ytController = TextEditingController();
-    _twitterController = TextEditingController();
+    _instaController = TextEditingController(text: p.profile?.instagramUrl ?? '');
+    _ytController = TextEditingController(text: p.profile?.youtubeUrl ?? '');
+    _twitterController = TextEditingController(text: p.profile?.twitterUrl ?? '');
 
     // Değişiklik dinleyicilerini ekle
     _firstNameController.addListener(_checkChanges);
@@ -101,6 +103,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _bioController.dispose();
     _cityController.dispose();
     _regionController.dispose();
+    _instaController.dispose();
+    _ytController.dispose();
+    _twitterController.dispose();
     super.dispose();
   }
 
@@ -212,15 +217,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
-                    onPressed: () async {
-                      final success = await context.read<ProfileProvider>().updateLocation(0, 0); // Mock for now or use Geolocation
-                        if (success && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.updated)),
-                          );
-                        }
-                    },
-                    icon: const Icon(Icons.my_location_rounded, size: 18),
+                    onPressed: _isLocating ? null : () => _updateLocation(l10n),
+                    icon: _isLocating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.my_location_rounded, size: 18),
                     label: Text(l10n.update_location_now),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 45),
@@ -564,6 +571,79 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ],
       ),
     );
+  }
+
+  Future<void> _updateLocation(AppLocalizations l10n) async {
+    setState(() => _isLocating = true);
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Konum izni gerekli. Ayarlardan izin verin.'),
+            ),
+          );
+        }
+        return;
+      }
+      if (permission == LocationPermission.denied) return;
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+
+      // Reverse geocode via Nominatim
+      try {
+        final client = HttpClient();
+        client.connectionTimeout = const Duration(seconds: 8);
+        final req = await client.getUrl(Uri.parse(
+          'https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&accept-language=tr',
+        ));
+        req.headers.set('User-Agent', 'HelmoveApp/1.0');
+        final res = await req.close();
+        final body = await res.transform(const Utf8Decoder()).join();
+        client.close();
+        final json = jsonDecode(body) as Map<String, dynamic>;
+        final address = json['address'] as Map<String, dynamic>?;
+        if (address != null && mounted) {
+          final city = (address['province'] ?? address['state'] ?? address['city'] ?? '').toString().trim();
+          final region = (address['county'] ?? address['city_district'] ?? address['town'] ?? address['suburb'] ?? '').toString().trim();
+          if (city.isNotEmpty) _cityController.text = city;
+          if (region.isNotEmpty) _regionController.text = region;
+        }
+      } catch (_) {}
+
+      if (!mounted) return;
+      final success = await context
+          .read<ProfileProvider>()
+          .updateLocation(position.latitude, position.longitude);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success ? l10n.updated : 'Konum güncellenemedi'),
+            backgroundColor: success ? null : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Konum alınamadı'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLocating = false);
+    }
   }
 
   Future<void> _saveProfile() async {

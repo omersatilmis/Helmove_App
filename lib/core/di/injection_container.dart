@@ -167,11 +167,14 @@ import '../../features/notification/data/datasources/notification_remote_data_so
 import '../../features/notification/data/repositories/notification_repository_impl.dart';
 import '../../features/notification/domain/repositories/notification_repository.dart';
 import '../../features/notification/domain/usecases/get_notifications_usecase.dart';
+import '../../features/notification/domain/usecases/get_grouped_notifications_usecase.dart';
 import '../../features/notification/domain/usecases/get_unread_count_usecase.dart'
     as notif_unread;
 import '../../features/notification/domain/usecases/mark_notification_read_usecase.dart';
 import '../../features/notification/domain/usecases/mark_all_notifications_read_usecase.dart';
+import '../../features/notification/domain/usecases/mark_group_read_usecase.dart';
 import '../../features/notification/domain/usecases/delete_notification_usecase.dart';
+import '../../features/notification/domain/usecases/delete_notification_group_usecase.dart';
 import '../../features/notification/presentation/bloc/notifications_bloc.dart';
 
 // Settings Feature (data layer + use cases + bloc)
@@ -1187,6 +1190,9 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<GetNotificationsUseCase>()) {
     sl.registerLazySingleton(() => GetNotificationsUseCase(sl()));
   }
+  if (!sl.isRegistered<GetGroupedNotificationsUseCase>()) {
+    sl.registerLazySingleton(() => GetGroupedNotificationsUseCase(sl()));
+  }
   if (!sl.isRegistered<notif_unread.GetUnreadCountUseCase>()) {
     sl.registerLazySingleton(() => notif_unread.GetUnreadCountUseCase(sl()));
   }
@@ -1196,17 +1202,26 @@ void _registerFeatureSingletons() {
   if (!sl.isRegistered<MarkAllNotificationsReadUseCase>()) {
     sl.registerLazySingleton(() => MarkAllNotificationsReadUseCase(sl()));
   }
+  if (!sl.isRegistered<MarkGroupReadUseCase>()) {
+    sl.registerLazySingleton(() => MarkGroupReadUseCase(sl()));
+  }
   if (!sl.isRegistered<DeleteNotificationUseCase>()) {
     sl.registerLazySingleton(() => DeleteNotificationUseCase(sl()));
+  }
+  if (!sl.isRegistered<DeleteNotificationGroupUseCase>()) {
+    sl.registerLazySingleton(() => DeleteNotificationGroupUseCase(sl()));
   }
   if (!sl.isRegistered<NotificationsBloc>()) {
     sl.registerFactory(
       () => NotificationsBloc(
         getNotifications: sl(),
+        getGroupedNotifications: sl(),
         getUnreadCount: sl(),
         markNotificationRead: sl(),
         markAllNotificationsRead: sl(),
+        markGroupRead: sl(),
         deleteNotification: sl(),
+        deleteNotificationGroup: sl(),
         signalRService: sl(),
       ),
     );

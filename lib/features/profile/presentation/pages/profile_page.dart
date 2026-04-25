@@ -299,6 +299,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                           myId: profileProvider.currentUserId,
                                           profileProvider: profileProvider,
                                           profileInfoKey: _profileInfoKey,
+                                          city: displayedUser?.city,
+                                          region: displayedUser?.region,
+                                          instagramUrl: displayedUser?.instagramUrl,
+                                          youtubeUrl: displayedUser?.youtubeUrl,
+                                          twitterUrl: displayedUser?.twitterUrl,
                                         ),
                                       ),
                                     ),
@@ -484,6 +489,11 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
   final int? myId;
   final ProfileProvider profileProvider;
   final GlobalKey profileInfoKey;
+  final String? city;
+  final String? region;
+  final String? instagramUrl;
+  final String? youtubeUrl;
+  final String? twitterUrl;
 
   const ProfileInfoWrapperWidget({
     super.key,
@@ -504,6 +514,11 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
     this.myId,
     required this.profileProvider,
     required this.profileInfoKey,
+    this.city,
+    this.region,
+    this.instagramUrl,
+    this.youtubeUrl,
+    this.twitterUrl,
   });
 
   @override
@@ -525,6 +540,11 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
         isFollowing: isFollowing,
         isFollower: isFollower,
         key: profileInfoKey,
+        city: city,
+        region: region,
+        instagramUrl: instagramUrl,
+        youtubeUrl: youtubeUrl,
+        twitterUrl: twitterUrl,
         onFriendsTap: () => context.push('/friends'),
         onFollowersTap: () {
           final targetId = profileProvider.currentUserId;
@@ -613,6 +633,11 @@ class ProfileInfoWrapperWidget extends StatelessWidget {
                 followingCount: followingCount.toString(),
                 isFollowing: isFollowing,
                 isFollower: isFollower,
+                city: city,
+                region: region,
+                instagramUrl: instagramUrl,
+                youtubeUrl: youtubeUrl,
+                twitterUrl: twitterUrl,
                 onFriendsTap: () {
                   if (otherUserId != null) {
                     context.push('/friends/${otherUserId!}');

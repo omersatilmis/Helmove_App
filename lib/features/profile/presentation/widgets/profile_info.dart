@@ -10,6 +10,7 @@ import 'package:helmove/core/theme/app_colors.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/core/enums/user_tier.dart';
 import 'package:helmove/core/widgets/add_content_bottom_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileInfo extends StatelessWidget {
   final String firstName;
@@ -41,6 +42,12 @@ class ProfileInfo extends StatelessWidget {
   final VoidCallback? onFollowTap;
   final VoidCallback? onUnfollowTap;
 
+
+  final String? city;
+  final String? region;
+  final String? instagramUrl;
+  final String? youtubeUrl;
+  final String? twitterUrl;
 
   // 🔥 FRIENDSHIP ACTIONS
   final FriendshipStatus? friendshipStatus;
@@ -84,6 +91,11 @@ class ProfileInfo extends StatelessWidget {
     this.tier = UserTier.free,
     this.onFollowTap,
     this.onUnfollowTap,
+    this.city,
+    this.region,
+    this.instagramUrl,
+    this.youtubeUrl,
+    this.twitterUrl,
   });
 
   @override
@@ -100,6 +112,11 @@ class ProfileInfo extends StatelessWidget {
             tier: tier,
           ),
 
+          if (bio != null && bio!.isNotEmpty) _BioSection(bio: bio!),
+
+          if ((city != null && city!.isNotEmpty) || (region != null && region!.isNotEmpty))
+            _LocationSection(city: city, region: region),
+
           _StatsSection(
             friendCount: friendCount ?? "0",
             followerCount: followerCount ?? "0",
@@ -110,6 +127,15 @@ class ProfileInfo extends StatelessWidget {
             onFollowersTap: onFollowersTap,
             onFollowingTap: onFollowingTap,
           ),
+
+          if ((instagramUrl != null && instagramUrl!.isNotEmpty) ||
+              (youtubeUrl != null && youtubeUrl!.isNotEmpty) ||
+              (twitterUrl != null && twitterUrl!.isNotEmpty))
+            _SocialLinksSection(
+              instagramUrl: instagramUrl,
+              youtubeUrl: youtubeUrl,
+              twitterUrl: twitterUrl,
+            ),
 
           // 🔥 Durumu alt widget'a iletiyoruz
           _ActionButtonsSection(
@@ -221,6 +247,114 @@ class _BioSection extends StatelessWidget {
           fontSize: 14,
           color: theme.colorScheme.onSurface.withValues(alpha:0.7),
         ),
+      ),
+    );
+  }
+}
+
+class _LocationSection extends StatelessWidget {
+  final String? city;
+  final String? region;
+
+  const _LocationSection({this.city, this.region});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final parts = [if (city != null && city!.isNotEmpty) city!, if (region != null && region!.isNotEmpty) region!];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+          const SizedBox(width: 4),
+          Text(
+            parts.join(', '),
+            style: AppTextStyles.bodySmall.copyWith(
+              fontSize: 13,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SocialLinksSection extends StatelessWidget {
+  final String? instagramUrl;
+  final String? youtubeUrl;
+  final String? twitterUrl;
+
+  const _SocialLinksSection({this.instagramUrl, this.youtubeUrl, this.twitterUrl});
+
+  Future<void> _open(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (instagramUrl != null && instagramUrl!.isNotEmpty)
+            _SocialIcon(
+              icon: 'assets/icons/ic_instagram.png',
+              fallbackIcon: Icons.camera_alt_outlined,
+              color: const Color(0xFFE1306C),
+              onTap: () => _open('https://instagram.com/$instagramUrl'),
+            ),
+          if (youtubeUrl != null && youtubeUrl!.isNotEmpty) ...[
+            if (instagramUrl != null && instagramUrl!.isNotEmpty) const SizedBox(width: 16),
+            _SocialIcon(
+              icon: 'assets/icons/ic_youtube.png',
+              fallbackIcon: Icons.play_circle_outline,
+              color: const Color(0xFFFF0000),
+              onTap: () => _open('https://youtube.com/@$youtubeUrl'),
+            ),
+          ],
+          if (twitterUrl != null && twitterUrl!.isNotEmpty) ...[
+            if ((instagramUrl != null && instagramUrl!.isNotEmpty) ||
+                (youtubeUrl != null && youtubeUrl!.isNotEmpty))
+              const SizedBox(width: 16),
+            _SocialIcon(
+              icon: 'assets/icons/ic_twitter.png',
+              fallbackIcon: Icons.alternate_email,
+              color: const Color(0xFF1DA1F2),
+              onTap: () => _open('https://x.com/$twitterUrl'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SocialIcon extends StatelessWidget {
+  final String icon;
+  final IconData fallbackIcon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SocialIcon({required this.icon, required this.fallbackIcon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(fallbackIcon, color: color, size: 18),
       ),
     );
   }

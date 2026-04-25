@@ -40,8 +40,8 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDk4HBBnnMDg5Cs6xYvStRguk3Xuv7UFMQ',
-    appId: '1:129465119098:android:PLACEHOLDER', // TODO: Replace with real Android App ID
+    apiKey: 'AIzaSyDTQXu00pKUE19ZMIzoHlMsCpNWFwyLqY0',
+    appId: '1:129465119098:android:2a53e8f981b9537f0366c3',
     messagingSenderId: '129465119098',
     projectId: 'helmove',
     storageBucket: 'helmove.firebasestorage.app',
@@ -49,10 +49,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDk4HBBnnMDg5Cs6xYvStRguk3Xuv7UFMQ',
-    appId: '1:129465119098:ios:bd87ab99daafe4160366c3',
+    appId: '1:129465119098:ios:65dad8ac33ca810d0366c3',
     messagingSenderId: '129465119098',
     projectId: 'helmove',
     storageBucket: 'helmove.firebasestorage.app',
-    iosBundleId: 'com.example.helmove',
+    iosBundleId: 'com.helmove.app',
   );
 }

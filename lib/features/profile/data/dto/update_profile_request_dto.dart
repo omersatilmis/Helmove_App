@@ -44,9 +44,9 @@ class UpdateProfileRequestDto {
     if (showProfileToOthers != null) {
       json['showProfileToOthers'] = showProfileToOthers;
     }
-    if (instagramUrl != null) json['instagramUrl'] = instagramUrl;
-    if (youtubeUrl != null) json['youtubeUrl'] = youtubeUrl;
-    if (twitterUrl != null) json['twitterUrl'] = twitterUrl;
+    if (instagramUrl != null) json['instagramHandle'] = instagramUrl;
+    if (youtubeUrl != null) json['youtubeHandle'] = youtubeUrl;
+    if (twitterUrl != null) json['twitterHandle'] = twitterUrl;
     return json;
   }
 }

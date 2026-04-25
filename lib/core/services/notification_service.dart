@@ -94,12 +94,22 @@ class NotificationService {
       await _localNotifications.initialize(
         settings: initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse details) {
-          // Handle notification click when foreground
           if (details.payload != null) {
             // Logic for handling payload from local notification tap if needed
           }
         },
       );
+
+      if (!kIsWeb && Platform.isAndroid) {
+        const AndroidNotificationChannel channel = AndroidNotificationChannel(
+          'high_importance_channel',
+          'High Importance Notifications',
+          importance: Importance.max,
+        );
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(channel);
+      }
 
       // 4. Foreground Message Listener
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {

@@ -1,11 +1,13 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/notification_entity.dart';
+import '../../domain/entities/notification_group_entity.dart';
 
 enum NotificationsStatus { initial, loading, success, failure }
 
 class NotificationsState extends Equatable {
   final NotificationsStatus status;
-  final List<NotificationEntity> notifications;
+  final List<NotificationGroupEntity> groups;
+  final List<NotificationEntity> notifications; // SignalR real-time için
   final int unreadCount;
   final bool hasReachedMax;
   final int currentPage;
@@ -13,6 +15,7 @@ class NotificationsState extends Equatable {
 
   const NotificationsState({
     this.status = NotificationsStatus.initial,
+    this.groups = const [],
     this.notifications = const [],
     this.unreadCount = 0,
     this.hasReachedMax = false,
@@ -22,6 +25,7 @@ class NotificationsState extends Equatable {
 
   NotificationsState copyWith({
     NotificationsStatus? status,
+    List<NotificationGroupEntity>? groups,
     List<NotificationEntity>? notifications,
     int? unreadCount,
     bool? hasReachedMax,
@@ -30,6 +34,7 @@ class NotificationsState extends Equatable {
   }) {
     return NotificationsState(
       status: status ?? this.status,
+      groups: groups ?? this.groups,
       notifications: notifications ?? this.notifications,
       unreadCount: unreadCount ?? this.unreadCount,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
@@ -40,11 +45,12 @@ class NotificationsState extends Equatable {
 
   @override
   List<Object?> get props => [
-    status,
-    notifications,
-    unreadCount,
-    hasReachedMax,
-    currentPage,
-    errorMessage,
-  ];
+        status,
+        groups,
+        notifications,
+        unreadCount,
+        hasReachedMax,
+        currentPage,
+        errorMessage,
+      ];
 }

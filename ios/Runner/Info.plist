@@ -23,7 +23,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GIDClientID</key>
-	<string>38184125630-7affh4b860gh42v9vcrf79toov0tfc2i.apps.googleusercontent.com</string>
+	<string>636333998568-jm2gj45bitjnv2o47im1nt35bclii1ng.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -39,7 +39,7 @@
 			<string>google-sign-in</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.38184125630-7affh4b860gh42v9vcrf79toov0tfc2i</string>
+				<string>com.googleusercontent.apps.636333998568-jm2gj45bitjnv2o47im1nt35bclii1ng</string>
 			</array>
 		</dict>
 	</array>

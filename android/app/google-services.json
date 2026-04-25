@@ -7,7 +7,7 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "YOUR_ANDROID_APP_ID_HERE",
+        "mobilesdk_app_id": "1:129465119098:android:fcb38379a16ce5880366c3",
         "android_client_info": {
           "package_name": "com.example.helmove"
         }
@@ -15,7 +15,35 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDk4HBBnnMDg5Cs6xYvStRguk3Xuv7UFMQ"
+          "current_key": "AIzaSyDTQXu00pKUE19ZMIzoHlMsCpNWFwyLqY0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:129465119098:android:2a53e8f981b9537f0366c3",
+        "android_client_info": {
+          "package_name": "com.helmove.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "636333998568-pd8oke7p1glq0pi0likqu0kas82vjku3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.helmove.app",
+            "certificate_hash": "5be3c0005b58f604566f6535ab9497564b9b246f"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTQXu00pKUE19ZMIzoHlMsCpNWFwyLqY0"
         }
       ],
       "services": {

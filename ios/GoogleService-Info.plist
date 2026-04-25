@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.helmove</string>
+	<string>com.helmove.app</string>
 	<key>PROJECT_ID</key>
 	<string>helmove</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,10 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:129465119098:ios:bd87ab99daafe4160366c3</string>
+	<string>1:129465119098:ios:65dad8ac33ca810d0366c3</string>
+	<key>CLIENT_ID</key>
+	<string>636333998568-jm2gj45bitjnv2o47im1nt35bclii1ng.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.636333998568-jm2gj45bitjnv2o47im1nt35bclii1ng</string>
 </dict>
 </plist>
