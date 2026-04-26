@@ -24,7 +24,8 @@ class SubscriptionServiceImpl implements SubscriptionService {
   SubscriptionServiceImpl(this._dio);
 
   // NOT: Buradaki API Key'i kendi dashboard'undaki gerçek key ile değiştirmeyi unutma reis!
-  static const String _apiKey = 'test_IBZaChseBJTxgntkgYBvwSryfbb';
+  static const String _appleApiKey = 'appl_sloAXUFRFHUdqLauCxFmXaGFJuc';
+  static const String _googleApiKey = 'goog_CyoKcODkqVPfWuGIQhKOHECgsQU';
 
   // Dashboard'da oluşturduğumuz Entitlement ID'leri
   static const String _proEntitlementId = 'pro_features';
@@ -37,7 +38,14 @@ class SubscriptionServiceImpl implements SubscriptionService {
         if (kDebugMode) {
           await Purchases.setLogLevel(LogLevel.debug);
         }
-        final configuration = PurchasesConfiguration(_apiKey);
+        
+        late PurchasesConfiguration configuration;
+        if (Platform.isAndroid) {
+          configuration = PurchasesConfiguration(_googleApiKey);
+        } else if (Platform.isIOS) {
+          configuration = PurchasesConfiguration(_appleApiKey);
+        }
+        
         await Purchases.configure(configuration);
         debugPrint('✅ RevenueCat initialized (Helmove Edition)');
       }

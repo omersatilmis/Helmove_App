@@ -4,12 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:helmove/core/widgets/app_button.dart';
 
 class OnboardPageData {
-  final String imagePath;
+  final String lightImagePath;
+  final String darkImagePath;
   final String title;
   final String description;
 
   OnboardPageData({
-    required this.imagePath,
+    required this.lightImagePath,
+    required this.darkImagePath,
     required this.title,
     required this.description,
   });
@@ -28,19 +30,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   final List<OnboardPageData> pages = [
     OnboardPageData(
-      imagePath: 'assets/images/onboard1.png',
+      lightImagePath: 'assets/images/onboard1_light.png',
+      darkImagePath: 'assets/images/onboarding1_dark.png',
       title: 'Birlikte Sür, Her Yerde Bağlı Kal',
       description:
           'Paylaş, mesajlaş ve motorcularla bir topluluğun parçası ol.',
     ),
     OnboardPageData(
-      imagePath: 'assets/images/onboard2.png',
+      lightImagePath: 'assets/images/onboard2_light.png',
+      darkImagePath: 'assets/images/onboarding2_dark.png',
       title: 'Sürüşünü Planla',
       description:
           'Rotalar oluştur, grup sürüşleri organize et ve harita üzerinde rotanı paylaş.',
     ),
     OnboardPageData(
-      imagePath: 'assets/images/onboard3.png',
+      lightImagePath: 'assets/images/onboarding3_light.png',
+      darkImagePath: 'assets/images/onboarding3_dark.png',
       title: 'Akıllı Sürüş Deneyimi',
       description:
           'Yapay Zeka desteği ile akıllı, güvenli ve eğlenceli sürüşün tadını çıkar.',
@@ -92,6 +97,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
             },
             itemBuilder: (context, index) {
               final onboard = pages[index];
+              final isDark = theme.brightness == Brightness.dark;
+              final imagePath = isDark ? onboard.darkImagePath : onboard.lightImagePath;
+
               return Stack(
                 children: [
                   // Üst Kısım: Resim ve Gradient Maske
@@ -117,7 +125,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       },
                       blendMode: BlendMode.dstIn,
                       child: Image.asset(
-                        onboard.imagePath,
+                        imagePath,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: theme.colorScheme.surfaceContainerHighest,
