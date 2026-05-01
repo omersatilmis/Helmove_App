@@ -7,6 +7,19 @@ abstract class SubscriptionEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+class LoadOfferingsEvent extends SubscriptionEvent {
+  const LoadOfferingsEvent();
+}
+
+class CheckPremiumStatusEvent extends SubscriptionEvent {
+  const CheckPremiumStatusEvent();
+}
+
+class RestorePurchasesEvent extends SubscriptionEvent {
+  const RestorePurchasesEvent();
+}
+
+// Keep for backward compat (e.g. direct backend-side subscribe flow).
 class GetSubscriptionPlansEvent extends SubscriptionEvent {
   const GetSubscriptionPlansEvent();
 }
@@ -24,12 +37,4 @@ class SubscribeToPlanEvent extends SubscriptionEvent {
 
   @override
   List<Object?> get props => [planId, paymentProvider, transactionId];
-}
-
-class RestorePurchasesEvent extends SubscriptionEvent {
-  const RestorePurchasesEvent();
-}
-
-class CheckPremiumStatusEvent extends SubscriptionEvent {
-  const CheckPremiumStatusEvent();
 }

@@ -1,11 +1,13 @@
-import 'package:helmove/core/enums/user_tier.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
-import 'dart:io';
+import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
+import 'package:helmove/core/enums/user_tier.dart';
 
 abstract class SubscriptionService {
+  Stream<CustomerInfo> get customerInfoStream;
   Future<void> initialize();
   Future<CustomerInfo> logIn(String userId);
   Future<void> logOut();
@@ -13,41 +15,50 @@ abstract class SubscriptionService {
   Future<UserTier> getTier();
   Future<CustomerInfo> restorePurchases();
   Future<Offerings> getOfferings();
-  // Artık hangi paywall'u açacağımızı seçebiliyoruz
   Future<PaywallResult> presentPaywall({String? offeringId});
   Future<void> presentCustomerCenter();
   Future<void> syncWithBackend({UserTier? tier, DateTime? expirationDate});
+  Future<void> dispose();
 }
 
 class SubscriptionServiceImpl implements SubscriptionService {
   final Dio _dio;
   SubscriptionServiceImpl(this._dio);
 
-  // NOT: Buradaki API Key'i kendi dashboard'undaki gerçek key ile değiştirmeyi unutma reis!
-  static const String _appleApiKey = 'appl_sloAXUFRFHUdqLauCxFmXaGFJuc';
-  static const String _googleApiKey = 'goog_CyoKcODkqVPfWuGIQhKOHECgsQU';
+  // ─── Entitlement IDs (must match RevenueCat dashboard) ─────────────────────
+  static const String proEntitlementId = 'pro_features';
+  static const String plusEntitlementId = 'plus_features';
 
-  // Dashboard'da oluşturduğumuz Entitlement ID'leri
-  static const String _proEntitlementId = 'pro_features';
-  static const String _plusEntitlementId = 'plus_features';
+  // ─── API Keys — replace with your dashboard keys before release ─────────────
+  // Dashboard → Project Settings → API Keys → Public SDK key (iOS / Android)
+  static const String _iosApiKey = 'REVENUECAT_IOS_API_KEY_HERE';
+  static const String _androidApiKey = 'REVENUECAT_ANDROID_API_KEY_HERE';
+
+  // ─── CustomerInfo broadcast stream ──────────────────────────────────────────
+  final _customerInfoController = StreamController<CustomerInfo>.broadcast();
+
+  @override
+  Stream<CustomerInfo> get customerInfoStream => _customerInfoController.stream;
 
   @override
   Future<void> initialize() async {
     try {
       if (Platform.isAndroid || Platform.isIOS) {
-        if (kDebugMode) {
-          await Purchases.setLogLevel(LogLevel.debug);
-        }
-        
-        late PurchasesConfiguration configuration;
-        if (Platform.isAndroid) {
-          configuration = PurchasesConfiguration(_googleApiKey);
-        } else if (Platform.isIOS) {
-          configuration = PurchasesConfiguration(_appleApiKey);
-        }
-        
+        if (kDebugMode) await Purchases.setLogLevel(LogLevel.debug);
+
+        final apiKey = Platform.isIOS ? _iosApiKey : _androidApiKey;
+        final configuration = PurchasesConfiguration(apiKey);
         await Purchases.configure(configuration);
-        debugPrint('✅ RevenueCat initialized (Helmove Edition)');
+
+        // Push every CustomerInfo change into the broadcast stream so that
+        // any live SubscriptionBloc instance reacts automatically.
+        Purchases.addCustomerInfoUpdateListener((CustomerInfo info) {
+          if (!_customerInfoController.isClosed) {
+            _customerInfoController.add(info);
+          }
+        });
+
+        debugPrint('✅ RevenueCat initialized');
       }
     } catch (e) {
       debugPrint('❌ RevenueCat initialization failed: $e');
@@ -75,18 +86,7 @@ class SubscriptionServiceImpl implements SubscriptionService {
   Future<UserTier> getTier() async {
     try {
       final customerInfo = await Purchases.getCustomerInfo();
-
-      // Önce en üst seviye olan PRO'yu kontrol ediyoruz (Hiyerarşi önemli!)
-      if (customerInfo.entitlements.active.containsKey(_proEntitlementId)) {
-        return UserTier.pro;
-      }
-
-      // PRO yoksa PLUS var mı ona bakıyoruz
-      if (customerInfo.entitlements.active.containsKey(_plusEntitlementId)) {
-        return UserTier.plus;
-      }
-
-      return UserTier.free;
+      return _tierFromCustomerInfo(customerInfo);
     } catch (e) {
       debugPrint('Error checking user tier: $e');
       return UserTier.free;
@@ -107,15 +107,12 @@ class SubscriptionServiceImpl implements SubscriptionService {
   Future<PaywallResult> presentPaywall({String? offeringId}) async {
     try {
       if (offeringId != null) {
-        // Belirli bir offering (pro_offering veya plus_offering) istenmişse onu getir
         final offerings = await Purchases.getOfferings();
-        final specificOffering = offerings.getOffering(offeringId);
-
-        if (specificOffering != null) {
-          return await RevenueCatUI.presentPaywall(offering: specificOffering);
+        final specific = offerings.getOffering(offeringId);
+        if (specific != null) {
+          return await RevenueCatUI.presentPaywall(offering: specific);
         }
       }
-      // offeringId null ise veya bulunamadıysa varsayılan (default) paywall'u açar
       return await RevenueCatUI.presentPaywall();
     } catch (e) {
       debugPrint('Paywall presentation failed: $e');
@@ -128,7 +125,7 @@ class SubscriptionServiceImpl implements SubscriptionService {
     try {
       await RevenueCatUI.presentCustomerCenter();
     } catch (e) {
-      debugPrint('Customer Center not supported or error: $e');
+      debugPrint('Customer Center error: $e');
     }
   }
 
@@ -136,16 +133,13 @@ class SubscriptionServiceImpl implements SubscriptionService {
   Future<void> syncWithBackend({UserTier? tier, DateTime? expirationDate}) async {
     try {
       final currentTier = tier ?? await getTier();
-      
-      // Eğer expirationDate verilmemişse RevenueCat'ten en güncelini çekmeye çalışalım
+
       DateTime? finalExpirationDate = expirationDate;
       if (finalExpirationDate == null && currentTier != UserTier.free) {
         final customerInfo = await Purchases.getCustomerInfo();
-        // Aktif olan ilk entitlement'ın bitiş tarihini alalım
-        final activeEntitlement = customerInfo.entitlements.active.values.isNotEmpty 
-            ? customerInfo.entitlements.active.values.first 
+        final activeEntitlement = customerInfo.entitlements.active.values.isNotEmpty
+            ? customerInfo.entitlements.active.values.first
             : null;
-        
         if (activeEntitlement?.expirationDate != null) {
           finalExpirationDate = DateTime.parse(activeEntitlement!.expirationDate!);
         }
@@ -155,14 +149,27 @@ class SubscriptionServiceImpl implements SubscriptionService {
         'tier': currentTier.index,
         'expirationDate': finalExpirationDate?.toIso8601String(),
       });
-      
-      debugPrint('✅ Subscription state synced with backend: ${currentTier.name}');
+
+      debugPrint('✅ Subscription synced with backend: ${currentTier.name}');
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 404) {
-        debugPrint('⚠️ Subscription sync endpoint /api/subscription/sync not found (404). This is expected if not yet implemented on backend.');
+        debugPrint('⚠️ /api/subscription/sync not found (404) — implement on backend.');
       } else {
         debugPrint('❌ Subscription sync failed: $e');
       }
     }
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _customerInfoController.close();
+  }
+
+  // ─── Helpers ────────────────────────────────────────────────────────────────
+
+  static UserTier _tierFromCustomerInfo(CustomerInfo info) {
+    if (info.entitlements.active.containsKey(proEntitlementId)) return UserTier.pro;
+    if (info.entitlements.active.containsKey(plusEntitlementId)) return UserTier.plus;
+    return UserTier.free;
   }
 }

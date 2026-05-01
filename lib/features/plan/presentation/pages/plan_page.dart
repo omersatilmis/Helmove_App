@@ -10,7 +10,9 @@ import 'package:helmove/features/plan/presentation/widgets/plan_tab_selector.dar
 import 'package:helmove/core/widgets/app_frosted_button.dart';
 import 'package:helmove/core/utils/app_logger.dart';
 import 'package:helmove/core/services/subscription_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
+import 'package:helmove/core/enums/user_tier.dart';
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'dart:io';
@@ -25,7 +27,7 @@ class PlanPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => sl<SubscriptionBloc>()
-        ..add(const GetSubscriptionPlansEvent())
+        ..add(const LoadOfferingsEvent())
         ..add(const CheckPremiumStatusEvent()),
       child: const _PlanView(),
     );
@@ -66,76 +68,62 @@ class _PlanViewState extends State<_PlanView> {
     );
   }
 
-  List<PlanModel> _mapEntitiesToModels(dynamic plans, AppLocalizations l10n) {
-    // Backend verisi gelene kadar markamıza uygun yeni statik veriler
-    if (plans == null || plans.isEmpty) {
-      return [
-        PlanModel(
-          title: l10n.free,
-          price: "₺0",
-          period: "/sonsuza dek",
-          productId: "free",
-          features: [
-            l10n.map_access,
-            l10n.group_ride_participation,
-            l10n.ad_supported_experience,
-          ],
-          gradientColors: [
-            const Color(0xFF606c88),
-            const Color(0xFF3f4c6b),
-          ], // Gri tonları
-        ),
-        PlanModel(
-          title: "HELMOVE PLUS ACCESS",
-          price: "₺149.99",
-          period: "/ay",
-          productId: "plus_offering", // Offering ID ile eşleşmesi için
-          features: [
-            l10n.ad_free_experience,
-            l10n.unlimited_route_recording,
-            "Gelişmiş Sosyal Akış",
-            "Plus Rider Rozeti",
-          ],
-          gradientColors: [
-            const Color(0xFF2193b0),
-            const Color(0xFF6dd5ed),
-          ], // Mavi/Cyan
-        ),
-        PlanModel(
-          title: "HELMOVE PRO ACCESS",
-          price: "₺249.99",
-          period: "/ay",
-          productId: "pro_offering", // Offering ID ile eşleşmesi için
-          features: [
-            l10n.unlimited_communication,
-            l10n.rider_radar,
-            l10n.road_captain_tools,
-            "Premium Harita Katmanları",
-            "Detaylı Sürüş Analitiği",
-          ],
-          gradientColors: [
-            const Color(0xFFf12711),
-            const Color(0xFFf5af19),
-          ], // Turuncu/Kırmızı
-        ),
-      ];
-    }
+  // Returns the monthly price string from an offering, or a fallback.
+  String _monthlyPrice(Offerings? offerings, String offeringId, String fallback) {
+    final offering = offerings?.getOffering(offeringId);
+    if (offering == null) return fallback;
+    // Prefer monthly package; fall back to first available package.
+    final pkg = offering.monthly ?? (offering.availablePackages.isNotEmpty ? offering.availablePackages.first : null);
+    return pkg?.storeProduct.priceString ?? fallback;
+  }
 
-    // Backend'den gelen verileri map'leme (İhtiyaç olursa)
-    return (plans as List<dynamic>).map((plan) {
-      List<Color> colors = plan.code.contains('pro')
-          ? [const Color(0xFFf12711), const Color(0xFFf5af19)]
-          : [const Color(0xFF2193b0), const Color(0xFF6dd5ed)];
+  List<PlanModel> _buildPlanModels(Offerings? offerings, AppLocalizations l10n) {
+    final plusOffering = offerings?.getOffering('plus_offering');
+    final proOffering = offerings?.getOffering('pro_offering');
 
-      return PlanModel(
-        title: plan.name.toUpperCase(),
-        price: "${plan.currency}${plan.price}",
-        period: plan.durationDays >= 365 ? "/yıl" : "/ay",
-        productId: plan.code,
-        features: plan.features,
-        gradientColors: colors,
-      );
-    }).toList();
+    return [
+      PlanModel(
+        title: l10n.free,
+        price: '₺0',
+        period: '/sonsuza dek',
+        productId: 'free',
+        features: [
+          l10n.map_access,
+          l10n.group_ride_participation,
+          l10n.ad_supported_experience,
+        ],
+        gradientColors: const [Color(0xFF606c88), Color(0xFF3f4c6b)],
+      ),
+      PlanModel(
+        title: 'HELMOVE PLUS ACCESS',
+        price: _monthlyPrice(offerings, 'plus_offering', '₺149,99'),
+        period: '/ay',
+        productId: 'plus_offering',
+        rcOffering: plusOffering,
+        features: [
+          l10n.ad_free_experience,
+          l10n.unlimited_route_recording,
+          'Gelişmiş Sosyal Akış',
+          'Plus Rider Rozeti',
+        ],
+        gradientColors: const [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+      ),
+      PlanModel(
+        title: 'HELMOVE PRO ACCESS',
+        price: _monthlyPrice(offerings, 'pro_offering', '₺249,99'),
+        period: '/ay',
+        productId: 'pro_offering',
+        rcOffering: proOffering,
+        features: [
+          l10n.unlimited_communication,
+          l10n.rider_radar,
+          l10n.road_captain_tools,
+          'Premium Harita Katmanları',
+          'Detaylı Sürüş Analitiği',
+        ],
+        gradientColors: const [Color(0xFFf12711), Color(0xFFf5af19)],
+      ),
+    ];
   }
 
   @override
@@ -204,30 +192,34 @@ class _PlanViewState extends State<_PlanView> {
                 Expanded(
                   child: BlocConsumer<SubscriptionBloc, SubscriptionState>(
                     listener: (context, state) {
-                      if (state.purchaseStatus == PurchaseStatus.success) {
+                      // Restore purchase success (triggered from RestorePurchasesEvent, not paywall).
+                      if (state.purchaseStatus == PurchaseStatus.success && state.successMessage != null) {
                         context.read<AuthProvider>().refreshCurrentUser();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Helmove Dünyasına Hoş Geldin! 🎉"),
-                          ),
+                          SnackBar(content: Text(state.successMessage!)),
                         );
-                      } else if (state.purchaseStatus ==
-                          PurchaseStatus.failure) {
+                      } else if (state.purchaseStatus == PurchaseStatus.failure) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              state.errorMessage ?? "İşlem başarısız",
-                            ),
+                            content: Text(state.errorMessage ?? 'İşlem başarısız'),
+                            backgroundColor: Colors.red,
                           ),
                         );
                       }
                     },
                     builder: (context, state) {
-                      if (state.status == SubscriptionStatus.loading) {
+                      // Show spinner only on first load (offerings == null and still loading).
+                      if (state.status == SubscriptionStatus.loading && state.offerings == null) {
                         return const Center(child: CircularProgressIndicator());
                       }
 
-                      final plans = _mapEntitiesToModels(state.plans, l10n);
+                      final plans = _buildPlanModels(state.offerings, l10n);
+
+                      // Active tier: prefer the live RevenueCat tier from state,
+                      // fall back to the tier stored in AuthProvider.
+                      final activeTier = state.currentTier != UserTier.free
+                          ? state.currentTier
+                          : (context.read<AuthProvider>().currentUser?.tier ?? UserTier.free);
 
                       return Column(
                         children: [
@@ -247,23 +239,11 @@ class _PlanViewState extends State<_PlanView> {
                                 final plan = plans[index];
                                 final isSelected = _currentIndex == index;
 
-                                // Kullanıcının mevcut paketini AuthProvider üzerinden al
-                                final userTier = context.read<AuthProvider>().currentUser?.tier;
-                                bool isActive = false;
-                                if (userTier != null) {
-                                  // Eğer Pro ise ve pro kartıysa
-                                  if (userTier.name == 'pro' && plan.productId.contains('pro')) {
-                                    isActive = true;
-                                  } 
-                                  // Eğer Plus ise ve plus/club kartıysa
-                                  else if (userTier.name == 'plus' && (plan.productId.contains('plus') || plan.productId.contains('club'))) {
-                                    isActive = true;
-                                  }
-                                  // Free kontrolü
-                                  else if (userTier.name == 'free' && plan.productId == 'free') {
-                                    isActive = true;
-                                  }
-                                }
+                                final isActive = switch (activeTier) {
+                                  UserTier.pro   => plan.productId.contains('pro'),
+                                  UserTier.plus  => plan.productId.contains('plus') || plan.productId.contains('club'),
+                                  UserTier.free  => plan.productId == 'free',
+                                };
 
                                 return AnimatedScale(
                                   scale: isSelected ? 1.0 : 0.9,
@@ -273,34 +253,29 @@ class _PlanViewState extends State<_PlanView> {
                                     isSelected: isSelected,
                                     isActive: isActive,
                                     onBuyTap: () async {
-                                      // 1. Zaten premium mu?
+                                      if (plan.productId == 'free') return;
+
+                                      // Already premium → open Customer Center for management.
                                       if (state.isPremium) {
-                                        await sl<SubscriptionService>()
-                                            .presentCustomerCenter();
+                                        await sl<SubscriptionService>().presentCustomerCenter();
                                         return;
                                       }
 
-                                      // 2. Ücretsiz plan ise bir şey yapma
-                                      if (plan.productId == "free") return;
+                                      // Open the RevenueCat paywall for this specific offering.
+                                      final result = await sl<SubscriptionService>()
+                                          .presentPaywall(offeringId: plan.productId);
 
-                                      // 3. Paywall'u ilgili offering ID ile aç
-                                      final result =
-                                          await sl<SubscriptionService>()
-                                              .presentPaywall(
-                                                offeringId: plan.productId,
-                                              );
+                                      AppLogger.info('Paywall result [${plan.productId}]: $result');
 
-                                      if (result == PaywallResult.purchased ||
-                                          result == PaywallResult.restored) {
-                                        if (context.mounted) {
-                                          context.read<SubscriptionBloc>().add(
-                                            const CheckPremiumStatusEvent(),
-                                          );
-                                        }
+                                      if ((result == PaywallResult.purchased || result == PaywallResult.restored) && context.mounted) {
+                                        // CustomerInfo listener will auto-sync backend.
+                                        // Refresh AuthProvider so the badge/tier in the rest of the app updates too.
+                                        context.read<AuthProvider>().refreshCurrentUser();
+                                        context.read<SubscriptionBloc>().add(const CheckPremiumStatusEvent());
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Helmove Dünyasına Hoş Geldin! 🎉')),
+                                        );
                                       }
-                                      AppLogger.info(
-                                        "Paywall Result for ${plan.title}: $result",
-                                      );
                                     },
                                   ),
                                 );
