@@ -31,8 +31,8 @@ class SubscriptionServiceImpl implements SubscriptionService {
 
   // ─── API Keys — replace with your dashboard keys before release ─────────────
   // Dashboard → Project Settings → API Keys → Public SDK key (iOS / Android)
-  static const String _iosApiKey = 'REVENUECAT_IOS_API_KEY_HERE';
-  static const String _androidApiKey = 'REVENUECAT_ANDROID_API_KEY_HERE';
+  static const String _iosApiKey = 'appl_sloAXUFRFHUdqLauCxFmXaGFJuc';
+  static const String _androidApiKey = 'goog_CyoKcODkqVPfWuGIQhKOHECgsQU';
 
   // ─── CustomerInfo broadcast stream ──────────────────────────────────────────
   final _customerInfoController = StreamController<CustomerInfo>.broadcast();
