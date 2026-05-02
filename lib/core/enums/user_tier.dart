@@ -7,6 +7,8 @@ enum UserTier {
   final int level;
   const UserTier(this.name, this.level);
 
+  int get tierIndex => level;
+
   static UserTier fromString(String? value) {
     if (value == null) return UserTier.free;
     return UserTier.values.firstWhere(
@@ -15,10 +17,26 @@ enum UserTier {
     );
   }
 
-  /// Checks if the current tier meets or exceeds the [required] tier level.
-  bool meets(UserTier required) => level >= required.level;
+  static UserTier fromIndex(int? value) {
+    return switch (value) {
+      2 => UserTier.pro,
+      1 => UserTier.plus,
+      _ => UserTier.free,
+    };
+  }
 
-  bool get isPremium => level >= plus.level;
-  bool get isPlus => meets(UserTier.plus);
-  bool get isPro => meets(UserTier.pro);
+  static UserTier fromJson({String? tier, int? tierIndex}) {
+    if (tierIndex != null) return UserTier.fromIndex(tierIndex);
+    return UserTier.fromString(tier);
+  }
+
+  /// Checks if the current tier meets or exceeds the [required] tierIndex.
+  bool hasTierIndex(int requiredTierIndex) => tierIndex >= requiredTierIndex;
+
+  /// Checks if the current tier meets or exceeds the [required] tierIndex.
+  bool meets(UserTier required) => hasTierIndex(required.tierIndex);
+
+  bool get isPremium => hasTierIndex(1);
+  bool get isPlus => hasTierIndex(1);
+  bool get isPro => hasTierIndex(2);
 }

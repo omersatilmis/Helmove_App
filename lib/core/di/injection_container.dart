@@ -1701,7 +1701,11 @@ Future<void> initCore() async {
     // ğŸ’³ REVENUECAT (SUBSCRIPTION) SERVICE INITIALIZATION
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (!sl.isRegistered<SubscriptionService>()) {
-      final subscriptionService = SubscriptionServiceImpl(sl<Dio>());
+      final subscriptionService = SubscriptionServiceImpl(
+        sl<Dio>(),
+        sl<AuthLocalDataSource>(),
+        sl<AppSession>(),
+      );
       sl.registerLazySingleton<SubscriptionService>(() => subscriptionService);
       // Only call initialize once
       await subscriptionService.initialize();
@@ -1884,5 +1888,4 @@ Future<void> initCore() async {
 Future<void> init() async {
   await initCore();
 }
-
 

@@ -23,9 +23,21 @@ class SubscriptionRemoteDataSourceImpl implements SubscriptionRemoteDataSource {
       final response = await client.get('/api/subscription/plans');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
+        final rawData = response.data;
+        final List<dynamic> data = rawData is List
+            ? rawData
+            : rawData is Map && rawData['data'] is List
+            ? rawData['data'] as List<dynamic>
+            : rawData is Map && rawData['Data'] is List
+            ? rawData['Data'] as List<dynamic>
+            : const [];
         return data
-            .map((json) => SubscriptionPlanModel.fromJson(json))
+            .whereType<Map>()
+            .map(
+              (json) => SubscriptionPlanModel.fromJson(
+                Map<String, dynamic>.from(json),
+              ),
+            )
             .toList();
       } else {
         throw ServerException('Planlar yüklenemedi');
@@ -41,21 +53,8 @@ class SubscriptionRemoteDataSourceImpl implements SubscriptionRemoteDataSource {
     String paymentProvider,
     String transactionId,
   ) async {
-    try {
-      final response = await client.post(
-        '/api/subscription/subscribe',
-        data: {
-          'planId': planId,
-          'paymentProvider': paymentProvider,
-          'transactionId': transactionId,
-        },
-      );
-
-      if (response.statusCode != 200) {
-        throw ServerException('Abonelik işlemi başarısız');
-      }
-    } on DioException catch (e) {
-      ErrorHandler.handleApiError(e);
-    }
+    throw ServerException(
+      'Satın alma RevenueCat ve App Store üzerinden yapılmalı.',
+    );
   }
 }

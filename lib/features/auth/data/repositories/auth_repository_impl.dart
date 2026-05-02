@@ -58,18 +58,6 @@ class AuthRepositoryImpl implements AuthRepository {
       await _localDataSource.saveTier(entity.tier);
       await _localDataSource.saveRememberMe(rememberMe);
 
-      // ────────────────────────────────────────────────────────
-      // 💳 REVENUECAT LOGIN SYNC
-      // ────────────────────────────────────────────────────────
-      try {
-        if (sl.isRegistered<SubscriptionService>()) {
-          await sl<SubscriptionService>().logIn(entity.id.toString());
-          debugPrint('✅ RevenueCat user logged in: ${entity.id}');
-        }
-      } catch (e) {
-        debugPrint('❌ RevenueCat login failed: $e');
-      }
-
       return entity;
     } catch (e) {
       throw Exception(ErrorHandler.getErrorMessage(e));
@@ -116,15 +104,6 @@ class AuthRepositoryImpl implements AuthRepository {
       await _localDataSource.saveProfileImageUrl(entity.profileImageUrl);
       await _localDataSource.saveTier(entity.tier);
       await _localDataSource.saveRememberMe(rememberMe);
-
-      try {
-        if (sl.isRegistered<SubscriptionService>()) {
-          await sl<SubscriptionService>().logIn(entity.id.toString());
-          debugPrint('✅ RevenueCat user logged in: ${entity.id}');
-        }
-      } catch (e) {
-        debugPrint('❌ RevenueCat login failed: $e');
-      }
 
       return entity;
     } catch (e) {

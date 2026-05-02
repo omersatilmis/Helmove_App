@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:helmove/core/enums/user_tier.dart';
 import '../../../../core/services/subscription_service.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../../domain/usecases/get_plans_usecase.dart';
@@ -33,6 +33,7 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     on<LoadOfferingsEvent>(_onLoadOfferings);
     on<CheckPremiumStatusEvent>(_onCheckPremiumStatus);
     on<RestorePurchasesEvent>(_onRestorePurchases);
+    on<PurchasePackageEvent>(_onPurchasePackage);
     on<GetSubscriptionPlansEvent>(_onGetPlans);
     on<SubscribeToPlanEvent>(_onSubscribe);
     on<_CustomerInfoUpdatedEvent>(_onCustomerInfoUpdated);
@@ -52,7 +53,12 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
   ) async {
     try {
       final offerings = await subscriptionService.getOfferings();
-      emit(state.copyWith(offerings: offerings, status: SubscriptionStatus.success));
+      emit(
+        state.copyWith(
+          offerings: offerings,
+          status: SubscriptionStatus.success,
+        ),
+      );
     } catch (e) {
       // Non-fatal: plan page falls back to static data when offerings == null.
       emit(state.copyWith(status: SubscriptionStatus.failure));
@@ -64,19 +70,44 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) async {
     try {
-      final tier = await subscriptionService.getTier();
-      emit(state.copyWith(currentTier: tier, isPremium: tier != UserTier.free));
-    } catch (_) {}
+      final snapshot = await subscriptionService.syncWithBackend();
+      emit(
+        state.copyWith(
+          currentTier: snapshot.tier,
+          isPremium: snapshot.isPremium,
+        ),
+      );
+    } catch (_) {
+      try {
+        final snapshot = await subscriptionService.getBackendStatus();
+        emit(
+          state.copyWith(
+            currentTier: snapshot.tier,
+            isPremium: snapshot.isPremium,
+          ),
+        );
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCustomerInfoUpdated(
     _CustomerInfoUpdatedEvent event,
     Emitter<SubscriptionState> emit,
   ) async {
-    final tier = _tierFrom(event.customerInfo);
-    // Silently sync backend; don't surface errors to UI here.
-    subscriptionService.syncWithBackend(tier: tier);
-    emit(state.copyWith(currentTier: tier, isPremium: tier != UserTier.free));
+    try {
+      final snapshot = await subscriptionService.syncWithBackend(
+        customerInfo: event.customerInfo,
+      );
+      emit(
+        state.copyWith(
+          currentTier: snapshot.tier,
+          isPremium: snapshot.isPremium,
+        ),
+      );
+    } catch (_) {
+      // CustomerInfo listener is best-effort; explicit purchase/restore flows
+      // surface sync errors to the UI.
+    }
   }
 
   Future<void> _onRestorePurchases(
@@ -86,29 +117,76 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     emit(state.copyWith(purchaseStatus: PurchaseStatus.loading));
     try {
       final customerInfo = await subscriptionService.restorePurchases();
-      final tier = _tierFrom(customerInfo);
-      final hadActiveSub = tier != UserTier.free;
-
-      subscriptionService.syncWithBackend(tier: tier);
+      final snapshot = await subscriptionService.syncWithBackend(
+        customerInfo: customerInfo,
+      );
+      final hadActiveSub = snapshot.isPremium;
 
       if (hadActiveSub) {
-        emit(state.copyWith(
-          purchaseStatus: PurchaseStatus.success,
-          currentTier: tier,
-          isPremium: true,
-          successMessage: 'Abonelik başarıyla geri yüklendi! ✅',
-        ));
+        emit(
+          state.copyWith(
+            purchaseStatus: PurchaseStatus.success,
+            currentTier: snapshot.tier,
+            isPremium: true,
+            successMessage: 'Abonelik başarıyla geri yüklendi! ✅',
+          ),
+        );
       } else {
-        emit(state.copyWith(
-          purchaseStatus: PurchaseStatus.failure,
-          errorMessage: 'Geri yüklenecek aktif abonelik bulunamadı.',
-        ));
+        emit(
+          state.copyWith(
+            purchaseStatus: PurchaseStatus.failure,
+            errorMessage: 'Geri yüklenecek aktif abonelik bulunamadı.',
+          ),
+        );
       }
     } catch (e) {
-      emit(state.copyWith(
-        purchaseStatus: PurchaseStatus.failure,
-        errorMessage: 'Geri yükleme hatası: $e',
-      ));
+      emit(
+        state.copyWith(
+          purchaseStatus: PurchaseStatus.failure,
+          errorMessage: 'Geri yükleme hatası: $e',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onPurchasePackage(
+    PurchasePackageEvent event,
+    Emitter<SubscriptionState> emit,
+  ) async {
+    emit(state.copyWith(purchaseStatus: PurchaseStatus.loading));
+    try {
+      final result = await subscriptionService.purchasePackage(event.package);
+      final snapshot = await subscriptionService.syncWithBackend(
+        customerInfo: result.customerInfo,
+      );
+
+      emit(
+        state.copyWith(
+          purchaseStatus: PurchaseStatus.success,
+          currentTier: snapshot.tier,
+          isPremium: snapshot.isPremium,
+          successMessage: 'Abonelik başarıyla tamamlandı',
+        ),
+      );
+    } on PlatformException catch (e) {
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.purchaseCancelledError) {
+        emit(state.copyWith(purchaseStatus: PurchaseStatus.initial));
+        return;
+      }
+      emit(
+        state.copyWith(
+          purchaseStatus: PurchaseStatus.failure,
+          errorMessage: 'Satın alma hatası: ${e.message ?? e.code}',
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          purchaseStatus: PurchaseStatus.failure,
+          errorMessage: 'Satın alma eşitlemesi başarısız: $e',
+        ),
+      );
     }
   }
 
@@ -119,14 +197,15 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     emit(state.copyWith(status: SubscriptionStatus.loading));
     final result = await getPlans(NoParams());
     result.fold(
-      (failure) => emit(state.copyWith(
-        status: SubscriptionStatus.failure,
-        errorMessage: failure.message,
-      )),
-      (plans) => emit(state.copyWith(
-        status: SubscriptionStatus.success,
-        plans: plans,
-      )),
+      (failure) => emit(
+        state.copyWith(
+          status: SubscriptionStatus.failure,
+          errorMessage: failure.message,
+        ),
+      ),
+      (plans) => emit(
+        state.copyWith(status: SubscriptionStatus.success, plans: plans),
+      ),
     );
   }
 
@@ -135,37 +214,33 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) async {
     emit(state.copyWith(purchaseStatus: PurchaseStatus.loading));
-    final result = await subscribe(SubscribeParams(
-      planId: event.planId,
-      paymentProvider: event.paymentProvider,
-      transactionId: event.transactionId,
-    ));
+    final result = await subscribe(
+      SubscribeParams(
+        planId: event.planId,
+        paymentProvider: event.paymentProvider,
+        transactionId: event.transactionId,
+      ),
+    );
 
-    result.fold(
-      (failure) => emit(state.copyWith(
-        purchaseStatus: PurchaseStatus.failure,
-        errorMessage: failure.message,
-      )),
-      (_) {
-        subscriptionService.syncWithBackend();
-        emit(state.copyWith(
-          purchaseStatus: PurchaseStatus.success,
-          successMessage: 'Abonelik başarıyla tamamlandı',
-        ));
+    await result.fold<Future<void>>(
+      (failure) async => emit(
+        state.copyWith(
+          purchaseStatus: PurchaseStatus.failure,
+          errorMessage: failure.message,
+        ),
+      ),
+      (_) async {
+        final snapshot = await subscriptionService.syncWithBackend();
+        emit(
+          state.copyWith(
+            purchaseStatus: PurchaseStatus.success,
+            currentTier: snapshot.tier,
+            isPremium: snapshot.isPremium,
+            successMessage: 'Abonelik başarıyla tamamlandı',
+          ),
+        );
       },
     );
-  }
-
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-  static UserTier _tierFrom(CustomerInfo info) {
-    if (info.entitlements.active.containsKey(SubscriptionServiceImpl.proEntitlementId)) {
-      return UserTier.pro;
-    }
-    if (info.entitlements.active.containsKey(SubscriptionServiceImpl.plusEntitlementId)) {
-      return UserTier.plus;
-    }
-    return UserTier.free;
   }
 
   @override

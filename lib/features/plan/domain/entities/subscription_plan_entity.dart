@@ -12,6 +12,9 @@ class SubscriptionPlanEntity extends Equatable {
   final int durationDays;
   final bool isActive;
   final bool isRecommended;
+  final String? tier;
+  final int? tierIndex;
+  final String? badge;
 
   const SubscriptionPlanEntity({
     required this.id,
@@ -25,6 +28,9 @@ class SubscriptionPlanEntity extends Equatable {
     required this.durationDays,
     required this.isActive,
     required this.isRecommended,
+    this.tier,
+    this.tierIndex,
+    this.badge,
   });
 
   @override
@@ -40,5 +46,8 @@ class SubscriptionPlanEntity extends Equatable {
     durationDays,
     isActive,
     isRecommended,
+    tier,
+    tierIndex,
+    badge,
   ];
 }

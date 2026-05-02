@@ -32,7 +32,7 @@ class ProfileMapper {
       friendsCount: dto.friendsCount,
       isFollowing: dto.isFollowing,
       isFollower: dto.isFollower,
-      tier: UserTier.fromString(dto.premiumTier),
+      tier: UserTier.fromJson(tier: dto.premiumTier, tierIndex: dto.tierIndex),
       coverImageUrl: dto.coverImageUrl,
       instagramUrl: dto.instagramUrl,
       youtubeUrl: dto.youtubeUrl,

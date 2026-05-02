@@ -17,7 +17,10 @@ class AuthMapper {
       firstName: data.firstName,
       lastName: data.lastName,
       profileImageUrl: data.profileImageUrl,
-      tier: UserTier.fromString(data.premiumTier),
+      tier: UserTier.fromJson(
+        tier: data.premiumTier,
+        tierIndex: data.tierIndex,
+      ),
       isNewUser: data.isNewUser,
     );
   }

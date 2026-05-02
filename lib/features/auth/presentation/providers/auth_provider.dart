@@ -15,7 +15,7 @@ class AuthProvider extends ChangeNotifier {
   final ProfileRepository _profileRepository;
   final NotificationService _notificationService; // Dependency added
   final AppSession _appSession;
-  StreamSubscription<int?>? _appSessionUserIdSubscription;
+  StreamSubscription<AuthEntity?>? _appSessionCurrentUserSubscription;
 
   AuthProvider(
     this._authRepository,
@@ -28,13 +28,12 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = _appSession.currentUser;
     }
 
-    _appSessionUserIdSubscription = _appSession.currentUserIdStream
-        .distinct()
-        .listen((userId) {
-          if (userId == null && _currentUser != null) {
-            _currentUser = null;
-            notifyListeners();
-          }
+    _appSessionCurrentUserSubscription = _appSession.currentUserStream
+        .distinct(_isSameSessionUser)
+        .listen((user) {
+          if (_isSameSessionUser(_currentUser, user)) return;
+          _currentUser = user;
+          notifyListeners();
         });
   }
 
@@ -75,14 +74,21 @@ class AuthProvider extends ChangeNotifier {
       // RevenueCat & Notification sync calls are now non-blocking
       // to ensure the user can enter the app immediately even if these fail.
       unawaited(() async {
+        final subscriptionService = di.sl<SubscriptionService>();
         try {
-          await di.sl<SubscriptionService>().logIn(authEntity.id.toString());
-          await di.sl<SubscriptionService>().syncWithBackend();
-          
+          await subscriptionService.logIn(authEntity.id.toString());
+          await subscriptionService.syncWithBackend();
+        } catch (e) {
+          AppLogger.error("Post-login subscription sync failed: $e");
+          try {
+            await subscriptionService.getBackendStatus();
+          } catch (_) {}
+        }
+        try {
           await _notificationService.ensureInitialized();
           await _notificationService.login(authEntity.id.toString());
         } catch (e) {
-          AppLogger.error("Post-login background sync failed: $e");
+          AppLogger.error("Post-login notification sync failed: $e");
         }
       }());
 
@@ -128,14 +134,21 @@ class AuthProvider extends ChangeNotifier {
 
       // --- NON-BLOCKING POST-LOGIN SYNC ---
       unawaited(() async {
+        final subscriptionService = di.sl<SubscriptionService>();
         try {
-          await di.sl<SubscriptionService>().logIn(authEntity.id.toString());
-          await di.sl<SubscriptionService>().syncWithBackend();
-
+          await subscriptionService.logIn(authEntity.id.toString());
+          await subscriptionService.syncWithBackend();
+        } catch (e) {
+          AppLogger.error("Post-social-login subscription sync failed: $e");
+          try {
+            await subscriptionService.getBackendStatus();
+          } catch (_) {}
+        }
+        try {
           await _notificationService.ensureInitialized();
           await _notificationService.login(authEntity.id.toString());
         } catch (e) {
-          AppLogger.error("Post-social-login background sync failed: $e");
+          AppLogger.error("Post-social-login notification sync failed: $e");
         }
       }());
 
@@ -361,6 +374,7 @@ class AuthProvider extends ChangeNotifier {
             currentUser: persistedUser,
             token: persistedUser.token,
           );
+          _syncSubscriptionIdentityNonBlocking();
           // IMPORTANT: notifyListeners() skipped here because this is often called during build or navigation
         } else {
           // 2. If local storage is empty or invalid, fetch from API
@@ -399,6 +413,7 @@ class AuthProvider extends ChangeNotifier {
                 token: _currentUser!.token,
               );
 
+              _syncSubscriptionIdentityNonBlocking();
               _syncNotificationIdentityNonBlocking();
             }
           } catch (e) {
@@ -446,9 +461,40 @@ class AuthProvider extends ChangeNotifier {
     }());
   }
 
+  void _syncSubscriptionIdentityNonBlocking() {
+    final userId = _currentUser?.id;
+    if (userId == null || userId <= 0) {
+      return;
+    }
+
+    unawaited(() async {
+      final subscriptionService = di.sl<SubscriptionService>();
+      try {
+        await subscriptionService.logIn(userId.toString());
+        await subscriptionService.syncWithBackend();
+      } catch (e) {
+        AppLogger.error("Subscription identity sync failed: $e");
+        try {
+          await subscriptionService.getBackendStatus();
+        } catch (_) {}
+      }
+    }());
+  }
+
+  static bool _isSameSessionUser(AuthEntity? previous, AuthEntity? next) {
+    return previous?.id == next?.id &&
+        previous?.token == next?.token &&
+        previous?.tierIndex == next?.tierIndex &&
+        previous?.profileImageUrl == next?.profileImageUrl &&
+        previous?.username == next?.username &&
+        previous?.email == next?.email &&
+        previous?.firstName == next?.firstName &&
+        previous?.lastName == next?.lastName;
+  }
+
   @override
   void dispose() {
-    _appSessionUserIdSubscription?.cancel();
+    _appSessionCurrentUserSubscription?.cancel();
     super.dispose();
   }
 }

@@ -22,101 +22,72 @@ class PlanTabSelector extends StatelessWidget {
     final horizontalMargin = (size.width * 0.08).clamp(16.0, 40.0);
     final height = (size.height * 0.06).clamp(42.0, 54.0);
 
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+    if (plans.isEmpty) return const SizedBox.shrink();
+
+    final safeIndex = currentIndex.clamp(0, plans.length - 1).toInt();
+    final chipWidth = (size.width * 0.3).clamp(92.0, 132.0);
+
+    return SizedBox(
       height: height,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(height / 2),
-      ),
-      // LayoutBuilder: Ekran genişliğini almamızı sağlar, böylece kayma mesafesini hesaplarız.
-      child: plans.isEmpty
-          ? const SizedBox.shrink()
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                // Bir sekmenin genişliğini hesapla (Toplam Genişlik / Sekme Sayısı)
-                final double tabWidth = constraints.maxWidth / plans.length;
+      child: ListView.separated(
+        padding: EdgeInsets.symmetric(horizontal: horizontalMargin),
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: plans.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final isSelected = safeIndex == index;
+          final plan = plans[index];
 
-                // Index güvenliği
-                final safeIndex = currentIndex.clamp(0, plans.length - 1);
-
-                return Stack(
-                  children: [
-                    // 1. KATMAN: KAYAN RENKLİ KUTU (ANIMASYON BURADA)
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves
-                          .easeInOutCubic, // Yumuşak ve havalı bir geçiş eğrisi
-                      left:
-                          safeIndex *
-                          tabWidth, // Hangi sıradaysa o kadar sağa kaydır
-                      top: 0,
-                      bottom: 0,
-                      width: tabWidth,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(height / 2),
-                          // Seçili planın gradient rengini al
-                          gradient: LinearGradient(
-                            colors: plans[safeIndex].gradientColors,
+          return GestureDetector(
+            onTap: () => onTabSelected(index),
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: chipWidth,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(height / 2),
+                gradient: isSelected
+                    ? LinearGradient(colors: plan.gradientColors)
+                    : null,
+                color: isSelected
+                    ? null
+                    : theme.colorScheme.surfaceContainerHighest,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: plan.gradientColors.first.withValues(
+                            alpha: 0.3,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: plans[safeIndex].gradientColors.first
-                                  .withValues(alpha:0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
-                    ),
-
-                    // 2. KATMAN: YAZILAR VE TIKLAMA ALANLARI
-                    Row(
-                      children: List.generate(plans.length, (index) {
-                        final isSelected = currentIndex == index;
-                        final plan = plans[index];
-
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () => onTabSelected(index),
-                            behavior: HitTestBehavior
-                                .translucent, // Boşluklara tıklamayı da algıla
-                            child: Container(
-                              alignment: Alignment.center,
-                              child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 200),
-                                style: AppTextStyles.medium.copyWith(
-                                  // Seçiliyse Beyaz, değilse Gri
-                                  color: isSelected
-                                      ? Colors.white
-                                      : theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  fontSize: 12 * scale,
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    plan.title,
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ],
-                );
-              },
+                      ]
+                    : null,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  plan.title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.medium.copyWith(
+                    color: isSelected
+                        ? Colors.white
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    fontSize: 12 * scale,
+                  ),
+                ),
+              ),
             ),
+          );
+        },
+      ),
     );
   }
 }

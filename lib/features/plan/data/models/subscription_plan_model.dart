@@ -14,27 +14,76 @@ class SubscriptionPlanModel extends SubscriptionPlanEntity {
     required super.durationDays,
     required super.isActive,
     required super.isRecommended,
+    super.tier,
+    super.tierIndex,
+    super.badge,
   });
 
   factory SubscriptionPlanModel.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value, [int fallback = 0]) {
+      if (value == null) return fallback;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value.toString()) ?? fallback;
+    }
+
+    double toDouble(dynamic value) {
+      if (value == null) return 0;
+      if (value is num) return value.toDouble();
+      return double.tryParse(value.toString()) ?? 0;
+    }
+
+    bool toBool(dynamic value, {bool fallback = false}) {
+      if (value == null) return fallback;
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      final normalized = value.toString().trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1') return true;
+      if (normalized == 'false' || normalized == '0') return false;
+      return fallback;
+    }
+
+    List<String> parseFeatures(dynamic value) {
+      if (value is List) {
+        return value.map((e) => e.toString()).toList();
+      }
+      if (value is String && value.trim().isNotEmpty) {
+        try {
+          final decoded = jsonDecode(value);
+          if (decoded is List) {
+            return decoded.map((e) => e.toString()).toList();
+          }
+        } catch (_) {
+          return const [];
+        }
+      }
+      return const [];
+    }
+
     return SubscriptionPlanModel(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      code: json['code'] as String,
-      price: (json['price'] as num).toDouble(),
-      currency: json['currency'] as String,
-      description: json['description'] as String,
-      fullDescription: json['fullDescription'] as String,
-      features: json['features'] != null
-          ? (json['features'] as List<dynamic>).map((e) => e as String).toList()
-          : json['featuresJson'] != null
-              ? (jsonDecode(json['featuresJson'] as String) as List<dynamic>)
-                  .map((e) => e as String)
-                  .toList()
-              : <String>[],
-      durationDays: json['durationDays'] as int,
-      isActive: json['isActive'] as bool? ?? true,
-      isRecommended: json['isRecommended'] as bool? ?? false,
+      id: toInt(json['id'] ?? json['Id']),
+      name: (json['name'] ?? json['Name'] ?? '').toString(),
+      code: (json['code'] ?? json['Code'] ?? '').toString(),
+      price: toDouble(json['price'] ?? json['Price']),
+      currency: (json['currency'] ?? json['Currency'] ?? '').toString(),
+      description: (json['description'] ?? json['Description'] ?? '')
+          .toString(),
+      fullDescription:
+          (json['fullDescription'] ?? json['FullDescription'] ?? '').toString(),
+      features: parseFeatures(
+        json['features'] ??
+            json['Features'] ??
+            json['featuresJson'] ??
+            json['FeaturesJson'],
+      ),
+      durationDays: toInt(json['durationDays'] ?? json['DurationDays']),
+      isActive: toBool(json['isActive'] ?? json['IsActive'], fallback: true),
+      isRecommended: toBool(json['isRecommended'] ?? json['IsRecommended']),
+      tier: (json['tier'] ?? json['Tier'])?.toString(),
+      tierIndex: toInt(json['tierIndex'] ?? json['TierIndex'], -1) < 0
+          ? null
+          : toInt(json['tierIndex'] ?? json['TierIndex']),
+      badge: (json['badge'] ?? json['Badge'])?.toString(),
     );
   }
 
@@ -51,6 +100,9 @@ class SubscriptionPlanModel extends SubscriptionPlanEntity {
       'durationDays': durationDays,
       'isActive': isActive,
       'isRecommended': isRecommended,
+      'tier': tier,
+      'tierIndex': tierIndex,
+      'badge': badge,
     };
   }
 }

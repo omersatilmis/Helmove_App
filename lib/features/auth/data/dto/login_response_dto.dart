@@ -37,6 +37,7 @@ class LoginDataDto {
   final String? lastName;
   final String? profileImageUrl;
   final String? premiumTier;
+  final int? tierIndex;
   final bool isNewUser;
 
   LoginDataDto({
@@ -52,6 +53,7 @@ class LoginDataDto {
     this.lastName,
     this.profileImageUrl,
     this.premiumTier,
+    this.tierIndex,
     this.isNewUser = false,
   });
 
@@ -61,7 +63,6 @@ class LoginDataDto {
       if (value is int) return value;
       return int.tryParse(value.toString());
     }
-
 
     DateTime? toDateTime(dynamic value) {
       if (value == null) return null;
@@ -94,11 +95,14 @@ class LoginDataDto {
       firstName: json['firstName'] ?? json['FirstName'],
       lastName: json['lastName'] ?? json['LastName'],
       profileImageUrl: json['profileImageUrl'] ?? json['ProfileImageUrl'],
-      premiumTier:
-          (json['premiumTier'] ?? json['PremiumTier'] ?? json['PremiumTier'])
-              ?.toString(),
+      premiumTier: (json['premiumTier'] ?? json['PremiumTier'] ?? json['tier'])
+          ?.toString(),
+      tierIndex: toInt(json['tierIndex'] ?? json['TierIndex']),
       isNewUser:
-          json['isNewUser'] ?? json['IsNewUser'] ?? json['is_new_user'] ?? false,
+          json['isNewUser'] ??
+          json['IsNewUser'] ??
+          json['is_new_user'] ??
+          false,
     );
   }
 }

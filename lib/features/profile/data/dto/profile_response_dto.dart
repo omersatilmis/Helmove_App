@@ -1,4 +1,4 @@
-﻿import 'package:helmove/core/network/network_module.dart';
+import 'package:helmove/core/network/network_module.dart';
 import 'motorcycle_dto.dart';
 
 /// Profile API response DTO
@@ -25,8 +25,10 @@ class ProfileResponseDto {
       data: dataNode is Map<String, dynamic>
           ? ProfileDataDto.fromJson(dataNode)
           : (dataNode is Map
-              ? ProfileDataDto.fromJson(Map<String, dynamic>.from(dataNode))
-              : (looksLikeProfilePayload ? ProfileDataDto.fromJson(json) : null)),
+                ? ProfileDataDto.fromJson(Map<String, dynamic>.from(dataNode))
+                : (looksLikeProfilePayload
+                      ? ProfileDataDto.fromJson(json)
+                      : null)),
     );
   }
 }
@@ -59,6 +61,7 @@ class ProfileDataDto {
   final bool isFollowing;
   final bool isFollower;
   final String? premiumTier;
+  final int? tierIndex;
   final List<MotorcycleDto> motorcycles;
 
   ProfileDataDto({
@@ -85,6 +88,7 @@ class ProfileDataDto {
     this.isFollowing = false,
     this.isFollower = false,
     this.premiumTier,
+    this.tierIndex,
     this.coverImageUrl,
     this.instagramUrl,
     this.youtubeUrl,
@@ -166,16 +170,14 @@ class ProfileDataDto {
 
       return items
           .whereType<Map>()
-          .map(
-            (e) => MotorcycleDto.fromJson(
-              Map<String, dynamic>.from(e),
-            ),
-          )
+          .map((e) => MotorcycleDto.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     }
 
     return ProfileDataDto(
-      id: toInt(json['userId'] ?? json['UserId'] ?? json['id'] ?? json['Id']) ?? 0,
+      id:
+          toInt(json['userId'] ?? json['UserId'] ?? json['id'] ?? json['Id']) ??
+          0,
       username: (json['username'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
       firstName: json['firstName']?.toString(),
@@ -196,7 +198,8 @@ class ProfileDataDto {
           ? DateTime.tryParse(json['lastSeen'].toString())
           : null,
       isOnline: json['isOnline'] ?? false,
-      followersCount: toInt(
+      followersCount:
+          toInt(
             pickValue([
               'followersCount',
               'FollowersCount',
@@ -210,7 +213,8 @@ class ProfileDataDto {
             ]),
           ) ??
           0,
-      followingCount: toInt(
+      followingCount:
+          toInt(
             pickValue([
               'followingCount',
               'FollowingCount',
@@ -226,13 +230,9 @@ class ProfileDataDto {
           ) ??
           0,
       friendsCount: toInt(json['friendsCount'] ?? json['FriendsCount']) ?? 0,
-      motorcycles: parseMotorcycles(
-        pickValue([
-          'motorcycles',
-          'Motorcycles',
-        ]),
-      ),
-      isFollowing: toBool(
+      motorcycles: parseMotorcycles(pickValue(['motorcycles', 'Motorcycles'])),
+      isFollowing:
+          toBool(
             pickValue([
               'isFollowing',
               'IsFollowing',
@@ -243,22 +243,28 @@ class ProfileDataDto {
             ]),
           ) ??
           false,
-      isFollower: toBool(
-            pickValue([
-              'isFollower',
-              'IsFollower',
-              'followsMe',
-              'FollowsMe',
-            ]),
+      isFollower:
+          toBool(
+            pickValue(['isFollower', 'IsFollower', 'followsMe', 'FollowsMe']),
           ) ??
           false,
-      premiumTier: (json['premiumTier'] ?? json['PremiumTier'])?.toString(),
+      premiumTier: (json['premiumTier'] ?? json['PremiumTier'] ?? json['tier'])
+          ?.toString(),
+      tierIndex: toInt(pickValue(['tierIndex', 'TierIndex'])),
       coverImageUrl: NetworkModule.resolveImageUrl(
         (json['coverImageUrl'] ?? json['CoverImageUrl'])?.toString(),
       ),
-      instagramUrl: (json['instagramHandle'] ?? json['instagramUrl'] ?? json['InstagramUrl'])?.toString(),
-      youtubeUrl: (json['youtubeHandle'] ?? json['youtubeUrl'] ?? json['YoutubeUrl'])?.toString(),
-      twitterUrl: (json['twitterHandle'] ?? json['twitterUrl'] ?? json['TwitterUrl'])?.toString(),
+      instagramUrl:
+          (json['instagramHandle'] ??
+                  json['instagramUrl'] ??
+                  json['InstagramUrl'])
+              ?.toString(),
+      youtubeUrl:
+          (json['youtubeHandle'] ?? json['youtubeUrl'] ?? json['YoutubeUrl'])
+              ?.toString(),
+      twitterUrl:
+          (json['twitterHandle'] ?? json['twitterUrl'] ?? json['TwitterUrl'])
+              ?.toString(),
     );
   }
 }

@@ -4,30 +4,122 @@ import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
+import 'package:helmove/core/constants/subscription_products.dart';
 import 'package:helmove/core/enums/user_tier.dart';
+import 'package:helmove/core/services/app_session.dart';
+import 'package:helmove/features/auth/data/datasources/auth_local_data_source.dart';
+
+class SubscriptionStatusSnapshot {
+  final UserTier tier;
+  final int tierIndex;
+  final bool isPremium;
+  final List<String> activeProductIds;
+  final Map<String, dynamic>? subscription;
+
+  const SubscriptionStatusSnapshot({
+    required this.tier,
+    required this.tierIndex,
+    required this.isPremium,
+    this.activeProductIds = const [],
+    this.subscription,
+  });
+
+  factory SubscriptionStatusSnapshot.free() {
+    return const SubscriptionStatusSnapshot(
+      tier: UserTier.free,
+      tierIndex: 0,
+      isPremium: false,
+    );
+  }
+
+  factory SubscriptionStatusSnapshot.fromJson(Map<String, dynamic> json) {
+    int? toInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value.toString());
+    }
+
+    bool? toBool(dynamic value) {
+      if (value == null) return null;
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      final normalized = value.toString().trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1') return true;
+      if (normalized == 'false' || normalized == '0') return false;
+      return null;
+    }
+
+    List<String> toStringList(dynamic value) {
+      if (value is List) {
+        return value.map((e) => e.toString()).toList();
+      }
+      return const [];
+    }
+
+    final rawTier =
+        (json['tier'] ??
+                json['Tier'] ??
+                json['premiumTier'] ??
+                json['PremiumTier'])
+            ?.toString();
+    final parsedIndex = toInt(json['tierIndex'] ?? json['TierIndex']);
+    final parsedTier = UserTier.fromJson(tier: rawTier, tierIndex: parsedIndex);
+    final resolvedIndex = parsedIndex ?? parsedTier.tierIndex;
+
+    return SubscriptionStatusSnapshot(
+      tier: parsedTier,
+      tierIndex: resolvedIndex,
+      isPremium:
+          toBool(json['isPremium'] ?? json['IsPremium']) ?? resolvedIndex > 0,
+      activeProductIds: toStringList(
+        json['activeProductIds'] ??
+            json['ActiveProductIds'] ??
+            json['activeSubscriptions'] ??
+            json['ActiveSubscriptions'],
+      ),
+      subscription: json['subscription'] is Map
+          ? Map<String, dynamic>.from(json['subscription'] as Map)
+          : json['Subscription'] is Map
+          ? Map<String, dynamic>.from(json['Subscription'] as Map)
+          : null,
+    );
+  }
+}
 
 abstract class SubscriptionService {
   Stream<CustomerInfo> get customerInfoStream;
   Future<void> initialize();
+  Future<CustomerInfo> getCustomerInfo();
   Future<CustomerInfo> logIn(String userId);
   Future<void> logOut();
   Future<bool> isPremium();
   Future<UserTier> getTier();
   Future<CustomerInfo> restorePurchases();
   Future<Offerings> getOfferings();
-  Future<PaywallResult> presentPaywall({String? offeringId});
+  Future<PurchaseResult> purchasePackage(Package package);
   Future<void> presentCustomerCenter();
-  Future<void> syncWithBackend({UserTier? tier, DateTime? expirationDate});
+  Future<SubscriptionStatusSnapshot> getBackendStatus();
+  Future<SubscriptionStatusSnapshot> syncWithBackend({
+    CustomerInfo? customerInfo,
+  });
   Future<void> dispose();
 }
 
 class SubscriptionServiceImpl implements SubscriptionService {
   final Dio _dio;
-  SubscriptionServiceImpl(this._dio);
+  final AuthLocalDataSource _authLocalDataSource;
+  final AppSession _appSession;
+
+  SubscriptionServiceImpl(
+    this._dio,
+    this._authLocalDataSource,
+    this._appSession,
+  );
 
   // ─── Entitlement IDs (must match RevenueCat dashboard) ─────────────────────
-  static const String proEntitlementId = 'pro_features';
-  static const String plusEntitlementId = 'plus_features';
+  static const String proEntitlementId = 'pro';
+  static const String plusEntitlementId = 'plus';
 
   // ─── API Keys — replace with your dashboard keys before release ─────────────
   // Dashboard → Project Settings → API Keys → Public SDK key (iOS / Android)
@@ -36,6 +128,8 @@ class SubscriptionServiceImpl implements SubscriptionService {
 
   // ─── CustomerInfo broadcast stream ──────────────────────────────────────────
   final _customerInfoController = StreamController<CustomerInfo>.broadcast();
+  bool _isConfigured = false;
+  SubscriptionStatusSnapshot _lastStatus = SubscriptionStatusSnapshot.free();
 
   @override
   Stream<CustomerInfo> get customerInfoStream => _customerInfoController.stream;
@@ -43,12 +137,14 @@ class SubscriptionServiceImpl implements SubscriptionService {
   @override
   Future<void> initialize() async {
     try {
-      if (Platform.isAndroid || Platform.isIOS) {
+      if (_isConfigured) return;
+      if (_isStorePlatform) {
         if (kDebugMode) await Purchases.setLogLevel(LogLevel.debug);
 
         final apiKey = Platform.isIOS ? _iosApiKey : _androidApiKey;
         final configuration = PurchasesConfiguration(apiKey);
         await Purchases.configure(configuration);
+        _isConfigured = true;
 
         // Push every CustomerInfo change into the broadcast stream so that
         // any live SubscriptionBloc instance reacts automatically.
@@ -66,63 +162,80 @@ class SubscriptionServiceImpl implements SubscriptionService {
   }
 
   @override
+  Future<CustomerInfo> getCustomerInfo() async {
+    await _ensureStoreConfigured();
+    return Purchases.getCustomerInfo();
+  }
+
+  @override
   Future<CustomerInfo> logIn(String userId) async {
+    await _ensureStoreConfigured();
+    if (userId.trim().isEmpty) {
+      throw ArgumentError('RevenueCat appUserID must be the backend user id.');
+    }
     final result = await Purchases.logIn(userId);
     return result.customerInfo;
   }
 
   @override
   Future<void> logOut() async {
-    await Purchases.logOut();
+    try {
+      if (_isStorePlatform) {
+        await initialize();
+        await Purchases.logOut();
+      }
+    } catch (e) {
+      debugPrint('RevenueCat logout ignored: $e');
+    } finally {
+      await _cacheStatus(SubscriptionStatusSnapshot.free());
+    }
   }
 
   @override
   Future<bool> isPremium() async {
     final tier = await getTier();
-    return tier != UserTier.free;
+    return tier.isPremium;
   }
 
   @override
   Future<UserTier> getTier() async {
     try {
-      final customerInfo = await Purchases.getCustomerInfo();
-      return _tierFromCustomerInfo(customerInfo);
+      final snapshot = await syncWithBackend();
+      return snapshot.tier;
     } catch (e) {
-      debugPrint('Error checking user tier: $e');
-      return UserTier.free;
+      try {
+        final snapshot = await getBackendStatus();
+        return snapshot.tier;
+      } catch (_) {
+        debugPrint('Error checking user tier: $e');
+        return _lastStatus.tier;
+      }
     }
   }
 
   @override
   Future<CustomerInfo> restorePurchases() async {
+    await _ensureStoreConfigured();
     return await Purchases.restorePurchases();
   }
 
   @override
   Future<Offerings> getOfferings() async {
+    await _ensureStoreConfigured();
     return await Purchases.getOfferings();
   }
 
   @override
-  Future<PaywallResult> presentPaywall({String? offeringId}) async {
-    try {
-      if (offeringId != null) {
-        final offerings = await Purchases.getOfferings();
-        final specific = offerings.getOffering(offeringId);
-        if (specific != null) {
-          return await RevenueCatUI.presentPaywall(offering: specific);
-        }
-      }
-      return await RevenueCatUI.presentPaywall();
-    } catch (e) {
-      debugPrint('Paywall presentation failed: $e');
-      return PaywallResult.error;
-    }
+  Future<PurchaseResult> purchasePackage(Package package) async {
+    await _ensureStoreConfigured();
+    return Purchases.purchase(PurchaseParams.package(package));
   }
 
   @override
   Future<void> presentCustomerCenter() async {
     try {
+      if (!_isStorePlatform) return;
+      await _ensureStoreConfigured();
       await RevenueCatUI.presentCustomerCenter();
     } catch (e) {
       debugPrint('Customer Center error: $e');
@@ -130,33 +243,56 @@ class SubscriptionServiceImpl implements SubscriptionService {
   }
 
   @override
-  Future<void> syncWithBackend({UserTier? tier, DateTime? expirationDate}) async {
+  Future<SubscriptionStatusSnapshot> getBackendStatus() async {
     try {
-      final currentTier = tier ?? await getTier();
-
-      DateTime? finalExpirationDate = expirationDate;
-      if (finalExpirationDate == null && currentTier != UserTier.free) {
-        final customerInfo = await Purchases.getCustomerInfo();
-        final activeEntitlement = customerInfo.entitlements.active.values.isNotEmpty
-            ? customerInfo.entitlements.active.values.first
-            : null;
-        if (activeEntitlement?.expirationDate != null) {
-          finalExpirationDate = DateTime.parse(activeEntitlement!.expirationDate!);
-        }
-      }
-
-      await _dio.post('/api/subscription/sync', data: {
-        'tier': currentTier.index,
-        'expirationDate': finalExpirationDate?.toIso8601String(),
-      });
-
-      debugPrint('✅ Subscription synced with backend: ${currentTier.name}');
+      final response = await _dio.get('/api/subscription/status');
+      final snapshot = SubscriptionStatusSnapshot.fromJson(
+        _extractResponseMap(response.data),
+      );
+      await _cacheStatus(snapshot);
+      return snapshot;
     } catch (e) {
-      if (e is DioException && e.response?.statusCode == 404) {
-        debugPrint('⚠️ /api/subscription/sync not found (404) — implement on backend.');
-      } else {
-        debugPrint('❌ Subscription sync failed: $e');
-      }
+      debugPrint('❌ Subscription status failed: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<SubscriptionStatusSnapshot> syncWithBackend({
+    CustomerInfo? customerInfo,
+  }) async {
+    try {
+      final info = customerInfo ?? await getCustomerInfo();
+      final activeProductIds =
+          info.activeSubscriptions
+              .where(SubscriptionProducts.isKnownProductId)
+              .toList()
+            ..sort((a, b) {
+              return SubscriptionProducts.sortIndex(
+                a,
+              ).compareTo(SubscriptionProducts.sortIndex(b));
+            });
+
+      final payload = {
+        'activeProductIds': activeProductIds,
+        'activeEntitlements': _activeEntitlementIds(info, activeProductIds),
+        'originalAppUserId': await _currentRevenueCatAppUserId(info),
+      };
+
+      final response = await _dio.post('/api/subscription/sync', data: payload);
+      final snapshot = SubscriptionStatusSnapshot.fromJson(
+        _extractResponseMap(response.data),
+      );
+      await _cacheStatus(snapshot);
+
+      debugPrint(
+        '✅ Subscription synced with backend: '
+        '${snapshot.tier.name} (${snapshot.tierIndex})',
+      );
+      return snapshot;
+    } catch (e) {
+      debugPrint('❌ Subscription sync failed: $e');
+      rethrow;
     }
   }
 
@@ -167,9 +303,79 @@ class SubscriptionServiceImpl implements SubscriptionService {
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
-  static UserTier _tierFromCustomerInfo(CustomerInfo info) {
-    if (info.entitlements.active.containsKey(proEntitlementId)) return UserTier.pro;
-    if (info.entitlements.active.containsKey(plusEntitlementId)) return UserTier.plus;
-    return UserTier.free;
+  static bool get _isStorePlatform => Platform.isAndroid || Platform.isIOS;
+
+  Future<void> _ensureStoreConfigured() async {
+    if (!_isStorePlatform) {
+      throw UnsupportedError(
+        'RevenueCat purchases are only available on iOS and Android.',
+      );
+    }
+    await initialize();
+    if (!_isConfigured) {
+      throw StateError('RevenueCat is not configured.');
+    }
+  }
+
+  static Map<String, dynamic> _extractResponseMap(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final nested = data['data'] ?? data['Data'];
+      if (nested is Map<String, dynamic>) return nested;
+      if (nested is Map) return Map<String, dynamic>.from(nested);
+      return data;
+    }
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return const {};
+  }
+
+  Future<String> _currentRevenueCatAppUserId(CustomerInfo info) async {
+    try {
+      final appUserId = await Purchases.appUserID;
+      if (appUserId.trim().isNotEmpty &&
+          !appUserId.startsWith(r'$RCAnonymousID:')) {
+        return appUserId;
+      }
+    } catch (_) {}
+
+    final sessionUserId = _appSession.currentUserId;
+    if (sessionUserId != null && sessionUserId > 0) {
+      return sessionUserId.toString();
+    }
+
+    return info.originalAppUserId;
+  }
+
+  static List<String> _activeEntitlementIds(
+    CustomerInfo info,
+    List<String> activeProductIds,
+  ) {
+    final entitlements = SubscriptionProducts.entitlementsForProducts(
+      activeProductIds,
+    ).toSet();
+
+    for (final key in info.entitlements.active.keys) {
+      final normalized = key.trim().toLowerCase();
+      if (normalized == proEntitlementId) {
+        entitlements.add(proEntitlementId);
+      } else if (normalized == plusEntitlementId) {
+        entitlements.add(plusEntitlementId);
+      }
+    }
+
+    return entitlements.toList()..sort();
+  }
+
+  Future<void> _cacheStatus(SubscriptionStatusSnapshot snapshot) async {
+    _lastStatus = snapshot;
+    await _authLocalDataSource.saveTier(snapshot.tier);
+
+    final currentUser = _appSession.currentUser;
+    if (currentUser != null && currentUser.tier != snapshot.tier) {
+      _appSession.updateSession(
+        currentUserId: currentUser.id,
+        currentUser: currentUser.copyWith(tier: snapshot.tier),
+        token: currentUser.token,
+      );
+    }
   }
 }

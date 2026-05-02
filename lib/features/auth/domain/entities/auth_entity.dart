@@ -24,6 +24,33 @@ class AuthEntity {
   });
 
   bool get isPremium => tier.isPremium;
+  int get tierIndex => tier.tierIndex;
+  bool get canUsePlus => tierIndex >= 1;
+  bool get canUsePro => tierIndex >= 2;
+
+  AuthEntity copyWith({
+    int? id,
+    String? username,
+    String? email,
+    String? token,
+    String? firstName,
+    String? lastName,
+    String? profileImageUrl,
+    UserTier? tier,
+    bool? isNewUser,
+  }) {
+    return AuthEntity(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      token: token ?? this.token,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      tier: tier ?? this.tier,
+      isNewUser: isNewUser ?? this.isNewUser,
+    );
+  }
 
   // 🔥 SENIOR DOKUNUŞU: Helper Getter
   // UI'da "Ali Veli" yazdırmak için her seferinde string birleştirmekle uğraşma.

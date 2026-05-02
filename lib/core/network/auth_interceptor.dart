@@ -17,7 +17,7 @@ class AuthInterceptor extends Interceptor {
   final CommunicationBaselineTracker _baselineTracker =
       CommunicationBaselineTracker.instance;
 
-  Future<void>? _refreshInFlight;
+  Future<bool>? _refreshInFlight;
 
   AuthInterceptor(
     this._dio,
@@ -91,10 +91,10 @@ class AuthInterceptor extends Interceptor {
       if (isUnauthorized &&
           !alreadyRetried &&
           !_isAuthRequest(requestOptions.path)) {
-        await _refreshTokens();
+        final refreshed = await _refreshTokens();
 
         final newAccessToken = await _localDataSource.getToken();
-        if (newAccessToken != null && newAccessToken.isNotEmpty) {
+        if (refreshed && newAccessToken != null && newAccessToken.isNotEmpty) {
           retryResponse = await _retryWithToken(requestOptions, newAccessToken);
           isResolved = true;
         }
@@ -151,16 +151,17 @@ class AuthInterceptor extends Interceptor {
         p.contains('api/auth/revoke-token');
   }
 
-  Future<void> _refreshTokens() async {
+  Future<bool> _refreshTokens() async {
     if (_refreshInFlight != null) return _refreshInFlight!;
 
-    final completer = Completer<void>();
+    final completer = Completer<bool>();
     _refreshInFlight = completer.future;
 
     try {
       final refreshToken = await _localDataSource.getRefreshToken();
       if (refreshToken == null || refreshToken.trim().isEmpty) {
-        throw StateError('Missing refresh token');
+        completer.complete(false);
+        return false;
       }
 
       final response = await _refreshDio.post(
@@ -191,10 +192,13 @@ class AuthInterceptor extends Interceptor {
         } catch (_) {}
       }
 
-      completer.complete();
+      completer.complete(true);
+      return true;
     } catch (e) {
-      completer.completeError(e);
-      rethrow;
+      if (!completer.isCompleted) {
+        completer.complete(false);
+      }
+      return false;
     } finally {
       _refreshInFlight = null;
     }

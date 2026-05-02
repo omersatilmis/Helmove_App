@@ -16,6 +16,9 @@ enum AppFeature {
   final UserTier minTier;
   const AppFeature(this.minTier);
 
+  /// Checks if the given [tierIndex] has access to this feature.
+  bool isAvailableForTierIndex(int tierIndex) => tierIndex >= minTier.tierIndex;
+
   /// Checks if the given [tier] has access to this feature.
-  bool isAvailableFor(UserTier tier) => tier.meets(minTier);
+  bool isAvailableFor(UserTier tier) => isAvailableForTierIndex(tier.tierIndex);
 }

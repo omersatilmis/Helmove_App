@@ -108,15 +108,22 @@ void main() async {
             );
 
             // 💳 Sync RevenueCat Session
-            try {
-              if (sl.isRegistered<SubscriptionService>()) {
-                await sl<SubscriptionService>().logIn(
-                  persistedUser.id.toString(),
-                );
-                debugPrint('✅ RevenueCat session synced: ${persistedUser.id}');
-              }
-            } catch (e) {
-              debugPrint('❌ RevenueCat session sync failed: $e');
+            if (sl.isRegistered<SubscriptionService>()) {
+              unawaited(() async {
+                try {
+                  final subscriptionService = sl<SubscriptionService>();
+                  await subscriptionService.logIn(persistedUser.id.toString());
+                  await subscriptionService.syncWithBackend();
+                  debugPrint(
+                    '✅ RevenueCat session synced: ${persistedUser.id}',
+                  );
+                } catch (e) {
+                  debugPrint('❌ RevenueCat session sync failed: $e');
+                  try {
+                    await sl<SubscriptionService>().getBackendStatus();
+                  } catch (_) {}
+                }
+              }());
             }
           } else {
             sl<AppSession>().updateToken(bootstrappedToken);
@@ -230,6 +237,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         }
       } catch (_) {}
 
+      _syncSubscriptionOnResume();
       _notifyPresenceForeground();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
@@ -238,6 +246,27 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     // Sesli iletişim: engine'e lifecycle bildir + Android'de foreground service garantile
     _notifyIntercomLifecycle(state);
+  }
+
+  void _syncSubscriptionOnResume() {
+    try {
+      if (!sl.isRegistered<SubscriptionService>()) return;
+      final userId = sl<AppSession>().currentUserId;
+      if (userId == null || userId <= 0) return;
+
+      unawaited(() async {
+        try {
+          final subscriptionService = sl<SubscriptionService>();
+          await subscriptionService.logIn(userId.toString());
+          await subscriptionService.syncWithBackend();
+        } catch (e) {
+          debugPrint('❌ Subscription resume sync failed: $e');
+          try {
+            await sl<SubscriptionService>().getBackendStatus();
+          } catch (_) {}
+        }
+      }());
+    } catch (_) {}
   }
 
   void _notifyIntercomLifecycle(AppLifecycleState state) {

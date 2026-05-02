@@ -251,8 +251,8 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                       routes: widget.routes,
                       selectedIndex: widget.selectedIndex,
                       onSelected: (index) => context.read<MapBloc>().add(
-                            MapRouteSelectionChanged(index),
-                          ),
+                        MapRouteSelectionChanged(index),
+                      ),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -276,7 +276,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
               ),
             );
           },
-            child: snapIndex >= 1
+          child: snapIndex >= 1
               ? Column(
                   key: const ValueKey('route_details_section'),
                   children: [
@@ -284,7 +284,12 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                       _buildBusinessSection(colorScheme, l10n),
                       const SizedBox(height: 8),
                     ],
-                    _buildStepsSection(colorScheme, steps, canExpandSteps, l10n),
+                    _buildStepsSection(
+                      colorScheme,
+                      steps,
+                      canExpandSteps,
+                      l10n,
+                    ),
                     const SizedBox(height: 8),
                     _buildActionButtons(colorScheme),
                   ],
@@ -305,9 +310,8 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
           flex: 1,
           child: AppFrostedTextButton(
             text: l10n.map_add_stop,
-            onPressed: () => context.read<MapBloc>().add(
-                  MapAddStopViewToggled(true),
-                ),
+            onPressed: () =>
+                context.read<MapBloc>().add(MapAddStopViewToggled(true)),
             backgroundColor: isDark
                 ? Colors.white.withValues(alpha: 0.1)
                 : Colors.black.withValues(alpha: 0.05),
@@ -337,9 +341,10 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
             flex: 1,
             child: FeatureGuard(
               feature: AppFeature.routeSharing,
-              tier: context.watch<AuthProvider>().currentUser?.tier ??
+              tier:
+                  context.watch<AuthProvider>().currentUser?.tier ??
                   UserTier.free,
-              onLocked: () => context.push('/plan'),
+              onLocked: () => context.push('/plans'),
               child: AppFrostedTextButton(
                 text: l10n.map_send_to_group,
                 onPressed: () {},
@@ -426,8 +431,8 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
         final title = step.instruction?.trim().isNotEmpty == true
             ? step.instruction!
             : (step.name?.trim().isNotEmpty == true
-                ? step.name!
-                : l10n.map_step_number(index + 1));
+                  ? step.name!
+                  : l10n.map_step_number(index + 1));
 
         return InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -755,26 +760,36 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                 ),
               ),
               BlocBuilder<MapBloc, MapState>(
-                buildWhen: (p, c) => p.routeNeedsUpdate != c.routeNeedsUpdate || p.isRouting != c.isRouting,
+                buildWhen: (p, c) =>
+                    p.routeNeedsUpdate != c.routeNeedsUpdate ||
+                    p.isRouting != c.isRouting,
                 builder: (context, state) {
-                  final bool isEnabled = state.routeNeedsUpdate && !state.isRouting;
+                  final bool isEnabled =
+                      state.routeNeedsUpdate && !state.isRouting;
                   final String buttonText = state.isRouting
                       ? l10n.map_route_refreshing
                       : l10n.map_route_refresh;
-                  
+
                   return InkWell(
-                    onTap: isEnabled ? () {
-                      context.read<MapBloc>().add(MapRouteRequested());
-                    } : null,
+                    onTap: isEnabled
+                        ? () {
+                            context.read<MapBloc>().add(MapRouteRequested());
+                          }
+                        : null,
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       child: Text(
                         buttonText,
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color: isEnabled 
-                              ? Colors.orangeAccent 
-                              : colorScheme.onSurfaceVariant.withValues(alpha: 0.38),
+                          color: isEnabled
+                              ? Colors.orangeAccent
+                              : colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.38,
+                                ),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -785,7 +800,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           if (allPoints.isNotEmpty)
             ReorderableListView.builder(
               shrinkWrap: true,
@@ -795,13 +810,17 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                 return AnimatedBuilder(
                   animation: animation,
                   builder: (context, child) {
-                    final double animValue = Curves.easeInOut.transform(animation.value);
+                    final double animValue = Curves.easeInOut.transform(
+                      animation.value,
+                    );
                     final double elevation = animValue * 4;
                     return Material(
                       elevation: elevation,
-                      color: elevation > 0 
-                        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.8)
-                        : Colors.transparent,
+                      color: elevation > 0
+                          ? colorScheme.surfaceContainerHighest.withValues(
+                              alpha: 0.8,
+                            )
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
                       child: child,
                     );
@@ -818,7 +837,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                 final point = allPoints[index];
                 final bool isFirst = index == 0;
                 final bool isLast = index == allPoints.length - 1;
-                
+
                 return Column(
                   key: ValueKey('point_${point.label}_$index'),
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -833,11 +852,13 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                             child: Icon(
                               Icons.drag_handle_rounded,
                               size: 20,
-                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                              color: colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.4,
+                              ),
                             ),
                           ),
                         ),
-                        
+
                         // 2. Point Icon & Label
                         Expanded(
                           child: Row(
@@ -845,13 +866,18 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                               Column(
                                 children: [
                                   Icon(
-                                    isFirst 
-                                      ? Icons.radio_button_checked 
-                                      : (isLast ? Icons.location_on : Icons.trip_origin_rounded),
+                                    isFirst
+                                        ? Icons.radio_button_checked
+                                        : (isLast
+                                              ? Icons.location_on
+                                              : Icons.trip_origin_rounded),
                                     size: isLast ? 18 : 16,
-                                    color: isLast 
-                                      ? colorScheme.primary 
-                                      : (isFirst ? colorScheme.onSurfaceVariant : colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                                    color: isLast
+                                        ? colorScheme.primary
+                                        : (isFirst
+                                              ? colorScheme.onSurfaceVariant
+                                              : colorScheme.onSurfaceVariant
+                                                    .withValues(alpha: 0.7)),
                                   ),
                                 ],
                               ),
@@ -861,7 +887,9 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                                   point.label,
                                   style: AppTextStyles.bodyMedium.copyWith(
                                     color: colorScheme.onSurface,
-                                    fontWeight: isFirst || isLast ? FontWeight.w600 : FontWeight.w400,
+                                    fontWeight: isFirst || isLast
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
                                     fontSize: isFirst || isLast ? 14 : 13,
                                   ),
                                   maxLines: 1,
@@ -873,16 +901,20 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
                         ),
                       ],
                     ),
-                    
+
                     // Vertical Divider alignment (between icons)
                     if (!isLast)
                       Padding(
-                        padding: const EdgeInsets.only(left: 39), // Handle(32) + IconCenter(16/2=8) - LineCenter(2/2=1) = 39
+                        padding: const EdgeInsets.only(
+                          left: 39,
+                        ), // Handle(32) + IconCenter(16/2=8) - LineCenter(2/2=1) = 39
                         child: Container(
                           width: 2,
                           height: 20,
                           decoration: BoxDecoration(
-                            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.3,
+                            ),
                             borderRadius: BorderRadius.circular(1),
                           ),
                         ),
@@ -1130,18 +1162,9 @@ class _PoiTabItem {
 
 List<_PoiTabItem> _buildPoiTabs(AppLocalizations l10n) {
   return [
-    _PoiTabItem(
-      label: l10n.map_poi_gas,
-      icon: Icons.local_gas_station_rounded,
-    ),
-    _PoiTabItem(
-      label: l10n.map_poi_rest,
-      icon: Icons.local_cafe_rounded,
-    ),
-    _PoiTabItem(
-      label: l10n.map_poi_service,
-      icon: Icons.build_rounded,
-    ),
+    _PoiTabItem(label: l10n.map_poi_gas, icon: Icons.local_gas_station_rounded),
+    _PoiTabItem(label: l10n.map_poi_rest, icon: Icons.local_cafe_rounded),
+    _PoiTabItem(label: l10n.map_poi_service, icon: Icons.build_rounded),
     _PoiTabItem(
       label: l10n.map_poi_equipment,
       icon: Icons.sports_motorsports_rounded,
