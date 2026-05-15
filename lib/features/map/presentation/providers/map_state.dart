@@ -59,6 +59,8 @@ class MapState {
   final bool isGeocoding;
   final bool isSelectingStopFromMap;
   final String? error;
+  final bool isNavigating;
+  final double? currentSpeedKmh;
 
   const MapState({
     this.status = MapStatus.initial,
@@ -87,6 +89,8 @@ class MapState {
     this.isGeocoding = false,
     this.isSelectingStopFromMap = false,
     this.error,
+    this.isNavigating = false,
+    this.currentSpeedKmh,
   });
 
   MapState copyWith({
@@ -120,6 +124,9 @@ class MapState {
     bool? isGeocoding,
     bool? isSelectingStopFromMap,
     String? error,
+    bool? isNavigating,
+    double? currentSpeedKmh,
+    bool clearCurrentSpeedKmh = false,
   }) {
     return MapState(
       status: status ?? this.status,
@@ -150,6 +157,8 @@ class MapState {
       isGeocoding: isGeocoding ?? this.isGeocoding,
       isSelectingStopFromMap: isSelectingStopFromMap ?? this.isSelectingStopFromMap,
       error: error,
+      isNavigating: isNavigating ?? this.isNavigating,
+      currentSpeedKmh: clearCurrentSpeedKmh ? null : (currentSpeedKmh ?? this.currentSpeedKmh),
     );
   }
 }

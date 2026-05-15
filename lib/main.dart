@@ -20,6 +20,7 @@ import 'package:helmove/core/localization/language_provider.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
+import 'package:helmove/features/ride_history/presentation/providers/ride_history_provider.dart';
 
 import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/auth/domain/repositories/auth_repository.dart';
@@ -337,6 +338,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: _themeProvider),
         ChangeNotifierProvider.value(value: _languageProvider),
         ChangeNotifierProvider.value(value: sl<ProfileProvider>()),
+        ChangeNotifierProvider.value(value: sl<RideHistoryProvider>()),
       ],
       child: MaterialApp.router(
         title: 'Helmove',

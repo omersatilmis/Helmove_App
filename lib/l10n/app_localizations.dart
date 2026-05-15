@@ -3230,6 +3230,12 @@ abstract class AppLocalizations {
   /// **'Start'**
   String get map_start_navigation;
 
+  /// No description provided for @map_stop_navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get map_stop_navigation;
+
   /// No description provided for @map_no_steps_found.
   ///
   /// In en, this message translates to:

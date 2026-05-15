@@ -25,13 +25,21 @@ class AccountSection extends StatelessWidget {
           },
         ),
 
-        // 🔥 Sürücülere Özel: Garajım
         SettingsTile(
-          icon: Icons.two_wheeler_rounded, // Motor ikonu
+          icon: Icons.two_wheeler_rounded,
           title: l10n.myGarage,
           subtitle: l10n.addManageBikes,
           onTap: () {
             context.push('/my-garage');
+          },
+        ),
+
+        SettingsTile(
+          icon: Icons.route_rounded,
+          title: 'Geçmiş Rotalarım',
+          subtitle: 'Kaydettiğin sürüşleri gör',
+          onTap: () {
+            context.push('/ride-history');
           },
         ),
 

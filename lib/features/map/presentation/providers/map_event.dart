@@ -156,3 +156,9 @@ class MapToggleStopSelectionMode extends MapEvent {
   final bool isSelecting;
   MapToggleStopSelectionMode(this.isSelecting);
 }
+
+class MapAutoFillStartFromGps extends MapEvent {}
+
+class MapStartNavigationPressed extends MapEvent {}
+
+class MapStopNavigationPressed extends MapEvent {}

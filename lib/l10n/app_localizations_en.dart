@@ -1661,6 +1661,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get map_start_navigation => 'Start';
 
   @override
+  String get map_stop_navigation => 'Stop';
+
+  @override
   String get map_no_steps_found => 'No step information found.';
 
   @override

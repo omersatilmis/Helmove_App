@@ -2,7 +2,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/enums/user_tier.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/utils/tier_limits.dart';
+import '../../../../core/widgets/tier_upsell_sheet.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../voice_session/domain/entities/voice_session_entity.dart';
 import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
@@ -150,9 +155,26 @@ class ActiveSessionCard extends StatelessWidget {
           role: targetRole,
           viewerRole: viewerRole,
           onMicPressed: isMe
-              ? () => context.read<VoiceSessionBloc>().add(
-                  const ToggleMicrophoneEvent(),
-                )
+              ? () {
+                  final tier =
+                      context.read<AuthProvider>().currentUser?.tier ??
+                      UserTier.free;
+                  if (!TierLimits.canUseVoiceIntercom(tier)) {
+                    TierUpsellSheet.show(
+                      context,
+                      requiredTier: UserTier.pro,
+                      featureTitle: 'Sesli interkom Pro özelliği',
+                      featureDescription:
+                          'Grup içinde canlı sesli iletişim için Pro üyeliğe geçmen gerekiyor. '
+                          'Free ve Plus üyeler grubu görüntüleyebilir, ama mikrofon Pro\'ya özel.',
+                      icon: Icons.mic_none_rounded,
+                    );
+                    return;
+                  }
+                  context.read<VoiceSessionBloc>().add(
+                    const ToggleMicrophoneEvent(),
+                  );
+                }
               : null,
           onKickUser: null,
           onMuteUser: null,

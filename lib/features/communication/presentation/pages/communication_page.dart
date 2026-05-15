@@ -7,12 +7,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helmove/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../core/config/app_feature_flags.dart';
 import '../../../../core/di/injection_container.dart' as di;
+import '../../../../core/enums/user_tier.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/utils/tier_limits.dart';
 import '../../../../core/widgets/app_background.dart';
 import '../../../../core/widgets/app_frosted_button.dart';
+import '../../../../core/widgets/tier_upsell_sheet.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../group_ride/data/api/group_ride_api.dart';
 import '../../../group_ride/presentation/bloc/group_ride_bloc.dart';
 import '../../../group_ride/presentation/bloc/group_ride_event.dart';
@@ -201,6 +206,20 @@ class _CommunicationPageState extends State<CommunicationPage> {
 
   void _startSosCountdown() {
     if (_isSendingSos || _sosCountdownValue > 0) return;
+
+    final tier =
+        context.read<AuthProvider>().currentUser?.tier ?? UserTier.free;
+    if (!TierLimits.canSendSos(tier)) {
+      TierUpsellSheet.show(
+        context,
+        requiredTier: UserTier.plus,
+        featureTitle: 'SOS özelliği Plus üyelere özel',
+        featureDescription:
+            'Acil durum SOS bildirimi göndermek için Plus üyeliğe geçmen gerekiyor.',
+        icon: Icons.sos_rounded,
+      );
+      return;
+    }
 
     final l10n = AppLocalizations.of(context);
     final rideId = _resolveActiveRideId();
@@ -488,6 +507,25 @@ class _CommunicationPageState extends State<CommunicationPage> {
                                         backgroundColor: colorScheme.error,
                                         behavior: SnackBarBehavior.floating,
                                       ),
+                                    );
+                                    return;
+                                  }
+
+                                  final tier = context
+                                          .read<AuthProvider>()
+                                          .currentUser
+                                          ?.tier ??
+                                      UserTier.free;
+                                  if (!tier.isPlus) {
+                                    await TierUpsellSheet.show(
+                                      context,
+                                      requiredTier: UserTier.plus,
+                                      featureTitle:
+                                          'Grup sürüşü oluşturma Plus özelliği',
+                                      featureDescription:
+                                          'Free üyeler grup sürüşlerine katılabilir. '
+                                          'Yeni grup oluşturmak için Plus üyeliğe geç.',
+                                      icon: Icons.group_add_rounded,
                                     );
                                     return;
                                   }

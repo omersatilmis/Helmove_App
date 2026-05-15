@@ -644,6 +644,7 @@
     "map_add_stop": "Durak Ekle",
     "map_send_to_group": "Gruba Gönder",
     "map_start_navigation": "Başlat",
+    "map_stop_navigation": "Durdur",
     "map_no_steps_found": "Adım bilgisi bulunamadı.",
     "map_step_number": "Adım {index}",
     "map_filter_nearby": "Yakında",

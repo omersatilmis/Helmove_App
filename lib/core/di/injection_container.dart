@@ -284,6 +284,14 @@ import 'package:helmove/features/profile/presentation/providers/profile_provider
 import '../../core/theme/theme_provider.dart';
 import '../../core/localization/language_provider.dart';
 
+// Ride History Feature
+import '../../features/ride_history/data/api/rides_api.dart';
+import '../../features/ride_history/data/repositories/ride_repository_impl.dart';
+import '../../features/ride_history/data/services/ride_recording_service_impl.dart';
+import '../../features/ride_history/domain/repositories/ride_repository.dart';
+import '../../features/ride_history/domain/services/ride_recording_service.dart';
+import '../../features/ride_history/presentation/providers/ride_history_provider.dart';
+
 final sl = GetIt.instance;
 bool _coreInitialized = false;
 Completer<void>? _coreInitCompleter;
@@ -579,6 +587,24 @@ void _registerCoreFeatureSingletons() {
     );
   }
 
+  // Ride History Feature
+  if (!sl.isRegistered<RidesApi>()) {
+    sl.registerLazySingleton(() => RidesApi(sl()));
+  }
+  if (!sl.isRegistered<RideRepository>()) {
+    sl.registerLazySingleton<RideRepository>(
+      () => RideRepositoryImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<RideRecordingService>()) {
+    sl.registerLazySingleton<RideRecordingService>(
+      () => RideRecordingServiceImpl(),
+    );
+  }
+  if (!sl.isRegistered<RideHistoryProvider>()) {
+    sl.registerLazySingleton(() => RideHistoryProvider(sl()));
+  }
+
   // Messages core path (only unread count path for startup badge fallback)
   if (!sl.isRegistered<MessageRemoteDataSource>()) {
     sl.registerLazySingleton<MessageRemoteDataSource>(
@@ -761,6 +787,8 @@ void _registerCoreFeatureSingletons() {
         searchSuggestions: sl(),
         getRoute: sl(),
         reverseGeocode: sl(),
+        recordingService: sl(),
+        rideRepository: sl(),
       ),
     );
   }
@@ -1694,7 +1722,7 @@ Future<void> initCore() async {
       );
     }
 
-    sl.registerLazySingleton(() => NotificationService(sl(), sl()));
+    sl.registerLazySingleton(() => NotificationService(sl(), sl(), sl()));
     _logInitProfile('Core service registrations', stopwatch);
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

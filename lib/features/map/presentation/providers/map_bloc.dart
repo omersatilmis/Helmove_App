@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart' as geo;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../domain/entities/location_entity.dart';
 import '../../domain/entities/route_entity.dart';
@@ -8,6 +12,9 @@ import '../../domain/usecases/search_location_usecase.dart';
 import '../../domain/usecases/search_location_suggestions_usecase.dart';
 import '../../domain/usecases/reverse_geocode_usecase.dart';
 import '../../data/errors/mapbox_exception.dart';
+import '../../../ride_history/domain/entities/ride_entity.dart';
+import '../../../ride_history/domain/repositories/ride_repository.dart';
+import '../../../ride_history/domain/services/ride_recording_service.dart';
 import 'map_event.dart';
 import 'map_state.dart';
 
@@ -27,16 +34,26 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   final SearchLocationSuggestionsUseCase _searchSuggestions;
   final GetRouteUseCase _getRoute;
   final ReverseGeocodeUseCase _reverseGeocode;
+  final RideRecordingService _recordingService;
+  final RideRepository _rideRepository;
+
+  StreamSubscription<RidePoint>? _gpsSub;
+
+  Stream<RidePoint> get recordingStream => _recordingService.pointStream;
 
   MapBloc({
     required SearchLocationUseCase searchLocation,
     required SearchLocationSuggestionsUseCase searchSuggestions,
     required GetRouteUseCase getRoute,
     required ReverseGeocodeUseCase reverseGeocode,
+    required RideRecordingService recordingService,
+    required RideRepository rideRepository,
   }) : _searchLocation = searchLocation,
        _searchSuggestions = searchSuggestions,
        _getRoute = getRoute,
        _reverseGeocode = reverseGeocode,
+       _recordingService = recordingService,
+       _rideRepository = rideRepository,
        super(const MapState()) {
     on<MapSearchLocationRequested>(_onSearchLocationRequested);
     on<MapSearchQueryChanged>(
@@ -61,6 +78,15 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapToggleStopSelectionMode>(_onToggleStopSelectionMode);
     on<MapAddStopRequested>(_onAddStopRequested);
     on<MapStopsReordered>(_onStopsReordered);
+    on<MapAutoFillStartFromGps>(_onAutoFillStartFromGps);
+    on<MapStartNavigationPressed>(_onStartNavigation);
+    on<MapStopNavigationPressed>(_onStopNavigation);
+  }
+
+  @override
+  Future<void> close() async {
+    await _gpsSub?.cancel();
+    await super.close();
   }
 
   EventTransformer<MapSearchQueryChanged> _debounceSearch() {
@@ -219,6 +245,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           clearSelectedPoiIndex: true,
         ),
       );
+    }
+
+    // If we now have both endpoints, auto-fetch the route
+    if (!event.isStop && state.startPoint != null && state.endPoint != null) {
+      add(MapRouteRequested());
     }
   }
 
@@ -748,6 +779,83 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         return _errorInvalidResponseKey;
       case MapboxErrorType.unknown:
         return _errorUnknownKey;
+    }
+  }
+
+  Future<void> _onAutoFillStartFromGps(
+    MapAutoFillStartFromGps event,
+    Emitter<MapState> emit,
+  ) async {
+    if (state.startPoint != null) return;
+
+    try {
+      final serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) { return; }
+
+      final permission = await geo.Geolocator.checkPermission();
+      if (permission == geo.LocationPermission.denied ||
+          permission == geo.LocationPermission.deniedForever) { return; }
+
+      final position = await geo.Geolocator.getCurrentPosition(
+        locationSettings: const geo.LocationSettings(
+          accuracy: geo.LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      final point = Point(
+        coordinates: Position(position.longitude, position.latitude),
+      );
+
+      LocationEntity? location;
+      try {
+        location = await _reverseGeocode(point);
+      } catch (_) {}
+
+      location ??= LocationEntity(
+        point: point,
+        label:
+            '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}',
+      );
+
+      if (!isClosed && state.startPoint == null) {
+        emit(state.copyWith(startPoint: location, status: MapStatus.success));
+      }
+    } catch (_) {
+      // GPS auto-fill is best-effort; silently ignore
+    }
+  }
+
+  Future<void> _onStartNavigation(
+    MapStartNavigationPressed event,
+    Emitter<MapState> emit,
+  ) async {
+    if (state.isNavigating) return;
+    emit(state.copyWith(isNavigating: true));
+    try {
+      await _recordingService.start();
+    } catch (e) {
+      debugPrint('RideRecordingService.start error: $e');
+    }
+  }
+
+  Future<void> _onStopNavigation(
+    MapStopNavigationPressed event,
+    Emitter<MapState> emit,
+  ) async {
+    if (!state.isNavigating) return;
+    emit(state.copyWith(isNavigating: false, clearCurrentSpeedKmh: true));
+    try {
+      final ride = await _recordingService.stop();
+      if (ride != null && !isClosed) {
+        try {
+          await _rideRepository.createRide(ride);
+        } catch (e) {
+          debugPrint('Failed to save ride: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('RideRecordingService.stop error: $e');
     }
   }
 }

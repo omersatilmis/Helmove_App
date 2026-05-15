@@ -644,6 +644,7 @@
     "map_add_stop": "Add Stop",
     "map_send_to_group": "Send to Group",
     "map_start_navigation": "Start",
+    "map_stop_navigation": "Stop",
     "map_no_steps_found": "No step information found.",
     "map_step_number": "Step {index}",
     "map_filter_nearby": "Nearby",

@@ -20,6 +20,21 @@ import flutter_callkit_incoming
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
+  // Required when FirebaseAppDelegateProxyEnabled = false
+  override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Foundation.Data
+  ) {
+    Messaging.messaging().apnsToken = deviceToken
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    print("[FCM] Failed to register for remote notifications: \(error)")
+  }
+
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     let dataDict: [String: String] = ["token": fcmToken ?? ""]
     NotificationCenter.default.post(

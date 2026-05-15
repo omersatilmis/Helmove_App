@@ -10,6 +10,7 @@ import '../../domain/entities/location_entity.dart';
 import '../../domain/entities/route_entity.dart';
 import '../../domain/entities/route_step_entity.dart';
 import '../../../../core/utils/format_utils.dart';
+import '../pages/map_destination_search_page.dart';
 import '../providers/map_bloc.dart';
 import '../providers/map_event.dart';
 import 'alternate_route_card.dart';
@@ -111,6 +112,124 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
     );
   }
 
+  void _openOriginSearch(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<MapBloc>(),
+          child: const MapDestinationSearchPage(isStart: true),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRouteHeader(BuildContext context, ColorScheme colorScheme) {
+    final start = widget.startPoint;
+    final end = widget.endPoint;
+    if (end == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final lineColor = colorScheme.outlineVariant;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Icon column with vertical connector line
+            SizedBox(
+              width: 28,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 2),
+                  Icon(
+                    Icons.circle_outlined,
+                    size: 14,
+                    color: colorScheme.primary,
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Container(
+                        width: 2,
+                        color: lineColor,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.flag_outlined,
+                    size: 14,
+                    color: colorScheme.error,
+                  ),
+                  const SizedBox(height: 2),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            // Labels column
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Origin row (tappable)
+                  InkWell(
+                    onTap: () => _openOriginSearch(context),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 6,
+                        horizontal: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              start?.label ?? 'Mevcut Konumunuz',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Icon(
+                            Icons.edit_outlined,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Divider(height: 1, color: lineColor),
+                  // Destination row
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 4,
+                    ),
+                    child: Text(
+                      end.label,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.routes.isEmpty ||
@@ -133,6 +252,9 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // --- 0. NEREDEN / NEREYE BAŞLIĞI ---
+        _buildRouteHeader(context, colorScheme),
+
         // --- 1. EN ÜST SAĞ: YUVARLAK İKON BUTONLARI ---
         // Her zaman görünür (Min, Mid, Max)
         Row(
@@ -303,9 +425,11 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
   Widget _buildActionButtons(ColorScheme colorScheme) {
     final isDark = colorScheme.brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
+    final isNavigating = context.watch<MapBloc>().state.isNavigating;
 
     return Row(
       children: [
+        if (!isNavigating)
         Expanded(
           flex: 1,
           child: AppFrostedTextButton(
@@ -374,20 +498,25 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
         ] else
           const SizedBox(width: 8),
         Expanded(
-          flex: 1,
+          flex: isNavigating ? 2 : 1,
           child: AppFrostedTextButton(
-            text: l10n.map_start_navigation,
-            onPressed: () {},
-            backgroundColor: colorScheme.primary,
+            text: isNavigating ? l10n.map_stop_navigation : l10n.map_start_navigation,
+            onPressed: () {
+              if (isNavigating) {
+                context.read<MapBloc>().add(MapStopNavigationPressed());
+              } else {
+                context.read<MapBloc>().add(MapStartNavigationPressed());
+              }
+            },
+            backgroundColor: isNavigating
+                ? colorScheme.error
+                : colorScheme.primary,
             textColor: colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            //height: 48,
-            //fontSize: 12,
-            // borderRadius: 12,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                l10n.map_start_navigation,
+                isNavigating ? l10n.map_stop_navigation : l10n.map_start_navigation,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodySmall.copyWith(

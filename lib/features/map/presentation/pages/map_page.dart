@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -15,6 +16,11 @@ import '../providers/map_event.dart';
 import '../widgets/map_search_bar.dart';
 import '../widgets/map_bottom_sheet.dart';
 import '../widgets/route_poi_panel.dart';
+import '../widgets/navigation_overlay.dart';
+import '../../../ride_history/domain/entities/ride_entity.dart';
+import '../../../ride_history/domain/repositories/ride_repository.dart';
+import '../../../ride_history/domain/services/ride_recording_service.dart';
+import '../../../../core/di/injection_container.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -63,6 +69,13 @@ class _MapPageState extends State<MapPage> {
   String? _lastPoiSignature;
   StreamSubscription<Uri>? _deepLinkSub;
 
+  // Navigation / ride recording
+  PolylineAnnotationManager? _trailLineManager;
+  PolylineAnnotation? _trailAnnotation;
+  StreamSubscription<RidePoint>? _recordingSub;
+  final List<Point> _trailPoints = [];
+  double? _currentSpeedKmh;
+
   // Default Center: Istanbul / Turkey (longitude, latitude)
   final Point _defaultCenter = Point(coordinates: Position(28.9784, 41.0082));
 
@@ -78,6 +91,7 @@ class _MapPageState extends State<MapPage> {
     _initTileStore();
     _initStylePack();
     _attachDeepLinkListener();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkRideRecovery());
   }
 
   void _attachDeepLinkListener() {
@@ -115,6 +129,7 @@ class _MapPageState extends State<MapPage> {
     _poiScanTimer?.cancel();
     _isLoadingLocation.dispose();
     _deepLinkSub?.cancel();
+    _recordingSub?.cancel();
     super.dispose();
   }
 
@@ -239,6 +254,7 @@ class _MapPageState extends State<MapPage> {
   void _onMapLoaded(MapLoadedEventData _) {
     _mapboxMap?.setPrefetchZoomDelta(_prefetchNormalDelta);
     unawaited(_disable3dBuildings());
+    unawaited(_setupMotorcyclePuck());
   }
 
   void _onCameraChanged(CameraChangedEventData event) {
@@ -326,6 +342,10 @@ class _MapPageState extends State<MapPage> {
         .createPolylineAnnotationManager();
     await _stepLineManager?.setLineCap(LineCap.ROUND);
     await _stepLineManager?.setLineJoin(LineJoin.ROUND);
+    _trailLineManager = await mapboxMap.annotations
+        .createPolylineAnnotationManager();
+    await _trailLineManager?.setLineCap(LineCap.ROUND);
+    await _trailLineManager?.setLineJoin(LineJoin.ROUND);
     _poiMarkerManager = await mapboxMap.annotations
         .createCircleAnnotationManager();
   }
@@ -637,6 +657,10 @@ class _MapPageState extends State<MapPage> {
     _routeLines = created.whereType<PolylineAnnotation>().toList();
   }
 
+  static const _routeSelectedColor = Color(0xFF00B4FF);
+  static const _routeUnselectedColor = Color(0xFF556677);
+  static const _routeCasingColor = Color(0xFF003366);
+
   List<PolylineAnnotationOptions> _buildRoutePolylineOptions(
     RouteEntity route, {
     required int routeIndex,
@@ -648,25 +672,36 @@ class _MapPageState extends State<MapPage> {
           route,
           routeIndex: routeIndex,
           isSelected: false,
-          color: const Color(0xFF7A7A7A),
+          color: _routeUnselectedColor,
         ),
       ];
     }
+
+    // Casing (dark outline below the main route for contrast)
+    final casingOpt = PolylineAnnotationOptions(
+      geometry: route.geometry,
+      lineColor: _routeCasingColor.toARGB32(),
+      lineWidth: 10.0,
+      lineOpacity: 0.55,
+      lineSortKey: 0,
+      customData: <String, Object>{'routeIndex': routeIndex},
+    );
 
     final congestion = route.congestion;
     final coords = route.geometry.coordinates;
     if (congestion == null || congestion.isEmpty || coords.length < 2) {
       return [
+        casingOpt,
         _simpleRouteLine(
           route,
           routeIndex: routeIndex,
           isSelected: true,
-          color: const Color(0xFF2E7DFF),
+          color: _routeSelectedColor,
         ),
       ];
     }
 
-    final segments = <PolylineAnnotationOptions>[];
+    final segments = <PolylineAnnotationOptions>[casingOpt];
     final points = <Point>[];
     String current = _congestionForIndex(0, congestion);
     points.add(Point(coordinates: coords[0]));
@@ -1126,6 +1161,248 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  // ── Motorcycle puck ─────────────────────────────────────────────────────────
+
+  Future<void> _setupMotorcyclePuck() async {
+    final mapboxMap = _mapboxMap;
+    if (mapboxMap == null) return;
+    try {
+      const size = 60.0;
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder, const Rect.fromLTWH(0, 0, size, size));
+      final textPainter = TextPainter(textDirection: ui.TextDirection.ltr)
+        ..text = TextSpan(
+          text: String.fromCharCode(Icons.two_wheeler.codePoint),
+          style: TextStyle(
+            inherit: false,
+            color: const Color(0xFF1565C0),
+            fontSize: size * 0.85,
+            fontFamily: Icons.two_wheeler.fontFamily,
+          ),
+        )
+        ..layout();
+      textPainter.paint(
+        canvas,
+        Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2),
+      );
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(size.toInt(), size.toInt());
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (byteData == null) return;
+      final puckBytes = byteData.buffer.asUint8List();
+
+      await mapboxMap.location.updateSettings(
+        LocationComponentSettings(
+          enabled: true,
+          pulsingEnabled: false,
+          showAccuracyRing: false,
+          locationPuck: LocationPuck(
+            locationPuck2D: LocationPuck2D(
+              topImage: puckBytes,
+              bearingImage: puckBytes,
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Motorcycle puck error: $e');
+    }
+  }
+
+  // ── Navigation / Recording ──────────────────────────────────────────────────
+
+  void _startRecordingSubscription(MapBloc bloc) {
+    if (_recordingSub != null) return;
+    _trailPoints.clear();
+    _recordingSub = bloc.recordingStream.listen((point) {
+      if (!mounted) return;
+      final mapPoint = Point(
+        coordinates: Position(point.longitude, point.latitude),
+      );
+      _trailPoints.add(mapPoint);
+      _updateTrailPolyline();
+      _followCamera(mapPoint);
+      _tryAdvanceStep(bloc, mapPoint);
+      setState(() {
+        _currentSpeedKmh = point.speedKmh;
+      });
+    });
+  }
+
+  void _tryAdvanceStep(MapBloc bloc, Point userPoint) {
+    final state = bloc.state;
+    if (!state.isNavigating || state.routeOptions.isEmpty) return;
+    final route = state.routeOptions[state.selectedRouteIndex];
+    final stepIdx = state.selectedStepIndex ?? 0;
+    if (stepIdx >= route.steps.length - 1) return;
+
+    final currentStep = route.steps[stepIdx];
+    final maneuver = currentStep.maneuverLocation;
+    if (maneuver == null) return;
+
+    final dist = _haversinePoints(userPoint, maneuver);
+    if (dist < 40) {
+      bloc.add(MapRouteStepSelected(stepIdx + 1));
+    }
+  }
+
+  double _haversinePoints(Point a, Point b) {
+    const r = 6371000.0;
+    final lat1 = (a.coordinates.lat ?? 0) * math.pi / 180;
+    final lat2 = (b.coordinates.lat ?? 0) * math.pi / 180;
+    final dLat = ((b.coordinates.lat ?? 0) - (a.coordinates.lat ?? 0)) * math.pi / 180;
+    final dLon = ((b.coordinates.lng ?? 0) - (a.coordinates.lng ?? 0)) * math.pi / 180;
+    final sinDLat = math.sin(dLat / 2);
+    final sinDLon = math.sin(dLon / 2);
+    final h = sinDLat * sinDLat + math.cos(lat1) * math.cos(lat2) * sinDLon * sinDLon;
+    return 2 * r * math.asin(math.sqrt(h));
+  }
+
+  double? _computeBearing() {
+    if (_trailPoints.length < 2) return null;
+    final prev = _trailPoints[_trailPoints.length - 2].coordinates;
+    final curr = _trailPoints.last.coordinates;
+    final dLon = ((curr.lng ?? 0) - (prev.lng ?? 0)) * math.pi / 180;
+    final lat1 = (prev.lat ?? 0) * math.pi / 180;
+    final lat2 = (curr.lat ?? 0) * math.pi / 180;
+    final y = math.sin(dLon) * math.cos(lat2);
+    final x = math.cos(lat1) * math.sin(lat2) -
+        math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
+    final bearing = math.atan2(y, x) * 180 / math.pi;
+    return (bearing + 360) % 360;
+  }
+
+  void _stopRecordingSubscription() {
+    _recordingSub?.cancel();
+    _recordingSub = null;
+    _trailPoints.clear();
+    _clearTrailPolyline();
+    if (mounted) setState(() { _currentSpeedKmh = null; });
+  }
+
+  Future<void> _followCamera(Point center) async {
+    final mapboxMap = _mapboxMap;
+    if (mapboxMap == null) return;
+    try {
+      final bearing = _computeBearing();
+      await mapboxMap.flyTo(
+        CameraOptions(
+          center: center,
+          zoom: 17.0,
+          pitch: 60.0,
+          bearing: bearing,
+        ),
+        MapAnimationOptions(duration: 800, startDelay: 0),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _updateTrailPolyline() async {
+    final manager = _trailLineManager;
+    if (manager == null || _trailPoints.length < 2) return;
+    try {
+      if (_trailAnnotation != null) {
+        await manager.delete(_trailAnnotation!);
+        _trailAnnotation = null;
+      }
+      _trailAnnotation = await manager.create(
+        PolylineAnnotationOptions(
+          geometry: LineString.fromPoints(points: List.from(_trailPoints)),
+          lineColor: const Color(0xFFFF6B35).toARGB32(),
+          lineWidth: 4.0,
+          lineOpacity: 0.9,
+          lineSortKey: 5,
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _clearTrailPolyline() async {
+    try {
+      await _trailLineManager?.deleteAll();
+      _trailAnnotation = null;
+    } catch (_) {}
+  }
+
+  Widget _buildSpeedBadge(ThemeData theme) {
+    final speed = _currentSpeedKmh;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            speed != null ? speed.toStringAsFixed(0) : '0',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.bold,
+              height: 1.0,
+            ),
+          ),
+          Text(
+            'km/h',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _checkRideRecovery() async {
+    if (!mounted) return;
+    final service = sl<RideRecordingService>();
+    final recovered = await service.recoverIfNeeded();
+    if (!mounted || recovered == null) return;
+
+    final save = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tamamlanmamış Sürüş'),
+        content: Text(
+          '${recovered.distanceFormatted} mesafeli tamamlanmamış bir sürüş kaydı bulundu. Kaydetmek ister misiniz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Yoksay'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (save == true) {
+      try {
+        final repo = sl<RideRepository>();
+        await repo.createRide(recovered);
+        await service.discardRecovery();
+        _showSnackBar('Sürüş kaydedildi.');
+      } catch (_) {
+        _showSnackBar('Sürüş kaydedilemedi.');
+      }
+    } else {
+      await service.discardRecovery();
+    }
+  }
+
   String _resolveMapErrorMessage(String key, AppLocalizations l10n) {
     switch (key) {
       case 'map_error_search_failed':
@@ -1164,7 +1441,7 @@ class _MapPageState extends State<MapPage> {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: BlocListener<MapBloc, MapState>(
+      body: BlocConsumer<MapBloc, MapState>(
         listenWhen: (previous, current) =>
             previous.status != current.status ||
             previous.startPoint != current.startPoint ||
@@ -1173,7 +1450,8 @@ class _MapPageState extends State<MapPage> {
             previous.selectedRouteIndex != current.selectedRouteIndex ||
             previous.selectedStepIndex != current.selectedStepIndex ||
             previous.routePois != current.routePois ||
-            previous.selectedPoiIndex != current.selectedPoiIndex,
+            previous.selectedPoiIndex != current.selectedPoiIndex ||
+            previous.isNavigating != current.isNavigating,
         listener: (context, state) {
           if (state.status == MapStatus.error && state.error != null) {
             final l10n = AppLocalizations.of(context)!;
@@ -1190,7 +1468,7 @@ class _MapPageState extends State<MapPage> {
 
             if (routeChanged) {
               _lastActiveRouteKey = activeRouteKey;
-              _fitCameraToRoute(activeRoute);
+              if (!state.isNavigating) _fitCameraToRoute(activeRoute);
               _scheduleRouteCache(activeRoute);
               _scheduleRoutePoiScan(activeRoute);
             }
@@ -1216,72 +1494,112 @@ class _MapPageState extends State<MapPage> {
               state.selectedPoiIndex! < state.routePois.length) {
             _focusOnPoi(state.routePois[state.selectedPoiIndex!]);
           }
+
+          if (state.isNavigating) {
+            _startRecordingSubscription(context.read<MapBloc>());
+          } else {
+            _stopRecordingSubscription();
+          }
         },
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: MapWidget(
-                key: const ValueKey('mapWidget'),
-                styleUri: _styleUri,
-                androidHostingMode: AndroidPlatformViewHostingMode.TLHC_VD,
-                cameraOptions:
-                    _lastCamera ??
-                    CameraOptions(center: _defaultCenter, zoom: 12.0),
-                onMapCreated: _onMapCreated,
-                onMapLoadedListener: _onMapLoaded,
-                onCameraChangeListener: _onCameraChanged,
-                onMapIdleListener: _onMapIdle,
-                onTapListener: _onMapTap,
-                onLongTapListener: _onMapLongTap,
-              ),
-            ),
-
-            Positioned(
-              right: _fabRightPadding,
-              top: topSafe + 12 + 46 + 8 + 46 + 16,
-              child: _buildMapControls(theme),
-            ),
-
-            Positioned(
-              left: 16,
-              right: 16,
-              top: 0,
-              child: SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 12),
-                  child: MapSearchBar(),
+        buildWhen: (previous, current) =>
+            previous.isNavigating != current.isNavigating,
+        builder: (context, state) {
+          final isNavigating = state.isNavigating;
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: MapWidget(
+                  key: const ValueKey('mapWidget'),
+                  styleUri: _styleUri,
+                  androidHostingMode: AndroidPlatformViewHostingMode.TLHC_VD,
+                  cameraOptions:
+                      _lastCamera ??
+                      CameraOptions(center: _defaultCenter, zoom: 12.0),
+                  onMapCreated: _onMapCreated,
+                  onMapLoadedListener: _onMapLoaded,
+                  onCameraChangeListener: _onCameraChanged,
+                  onMapIdleListener: _onMapIdle,
+                  onTapListener: _onMapTap,
+                  onLongTapListener: _onMapLongTap,
                 ),
               ),
-            ),
 
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: MediaQuery.removeViewInsets(
-                context: context,
-                removeBottom: true,
-                child: RoutePoiPanel(
-                  bottomBarHeight: _getBottomBarHeight(context),
+              if (!isNavigating)
+                Positioned(
+                  right: _fabRightPadding,
+                  top: topSafe + 12 + 52 + 16,
+                  child: _buildMapControls(theme),
+                ),
+
+              if (!isNavigating)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: 0,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: MapSearchBar(),
+                    ),
+                  ),
+                ),
+
+              if (!isNavigating)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: MediaQuery.removeViewInsets(
+                    context: context,
+                    removeBottom: true,
+                    child: RoutePoiPanel(
+                      bottomBarHeight: _getBottomBarHeight(context),
+                    ),
+                  ),
+                ),
+
+              if (_currentSpeedKmh != null && !isNavigating)
+                Positioned(
+                  right: _fabRightPadding + 4,
+                  bottom: _getBottomBarHeight(context) + 160,
+                  child: _buildSpeedBadge(theme),
+                ),
+
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: MediaQuery.removeViewInsets(
+                  context: context,
+                  removeBottom: true,
+                  child: MapBottomSheet(
+                    forceCollapsed: isNavigating,
+                    bottomBarHeight: _getBottomBarHeight(context),
+                  ),
                 ),
               ),
-            ),
 
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: MediaQuery.removeViewInsets(
-                context: context,
-                removeBottom: true,
-                child: MapBottomSheet(
-                  forceCollapsed: false,
-                  bottomBarHeight: _getBottomBarHeight(context),
+              if (isNavigating)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: const NavigationTopHud(),
                 ),
-              ),
-            ),
-          ],
-        ),
+
+              if (isNavigating)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: NavigationBottomHud(
+                    currentSpeedKmh: _currentSpeedKmh,
+                    bottomBarHeight: _getBottomBarHeight(context),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

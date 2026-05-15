@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -37,15 +38,17 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   final CallKitIncomingService _callKitIncomingService;
   final SosAlertListenerService _sosAlertListenerService;
+  final Dio _dio;
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  
+
   bool _isInitialized = false;
   Future<void>? _initializeFuture;
 
   NotificationService(
     this._callKitIncomingService,
     this._sosAlertListenerService,
+    this._dio,
   );
 
   Future<void> ensureInitialized() async {
@@ -156,7 +159,15 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
     );
-    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
     await _localNotifications.show(
       id: message.hashCode,
@@ -169,10 +180,16 @@ class NotificationService {
 
   Future<void> login(String userId) async {
     try {
-      String? token = await _safeGetFcmToken();
+      final token = await _safeGetFcmToken();
       if (token != null) {
-        AppLogger.info('NotificationService: login - syncing FCM token for user $userId');
+        await _registerTokenOnBackend(token);
       }
+
+      // Refresh token listener — token may rotate after login
+      _fcm.onTokenRefresh.listen((newToken) async {
+        AppLogger.info('NotificationService: FCM token refreshed');
+        await _registerTokenOnBackend(newToken);
+      });
 
       final voipToken = await _callKitIncomingService.getVoipToken();
       if (voipToken != null) {
@@ -180,6 +197,18 @@ class NotificationService {
       }
     } catch (e, st) {
       AppLogger.error('NotificationService: login error', e, st);
+    }
+  }
+
+  Future<void> _registerTokenOnBackend(String token) async {
+    try {
+      await _dio.post(
+        '/api/Profile/fcm-token',
+        data: {'token': token},
+      );
+      AppLogger.info('NotificationService: FCM token registered on backend');
+    } catch (e) {
+      AppLogger.warning('NotificationService: failed to register FCM token: $e');
     }
   }
 

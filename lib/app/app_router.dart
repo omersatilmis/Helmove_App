@@ -43,6 +43,9 @@ import 'package:helmove/features/communities/presentation/pages/communities_page
 import 'package:helmove/features/settings/presentation/pages/settings_page.dart';
 import 'package:helmove/features/help/presentation/pages/help_page.dart';
 import 'package:helmove/features/settings/presentation/pages/my_garage_page.dart';
+import 'package:helmove/features/ride_history/presentation/pages/ride_history_page.dart';
+import 'package:helmove/features/ride_history/presentation/pages/ride_detail_page.dart';
+import 'package:helmove/features/ride_history/domain/entities/ride_entity.dart';
 import 'package:helmove/features/settings/presentation/pages/support/feedback_page.dart';
 import 'package:helmove/features/settings/presentation/pages/support/copyright_page.dart';
 import 'package:helmove/features/settings/presentation/pages/support/privacy_policy_page.dart';
@@ -282,6 +285,17 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
       GoRoute(
         path: '/my-garage',
         builder: (context, state) => const MyGaragePage(),
+      ),
+      GoRoute(
+        path: '/ride-history',
+        builder: (context, state) => const RideHistoryPage(),
+      ),
+      GoRoute(
+        path: '/ride-history/:id',
+        builder: (context, state) {
+          final ride = state.extra as RideEntity;
+          return RideDetailPage(ride: ride);
+        },
       ),
       GoRoute(path: '/help', builder: (context, state) => const HelpPage()),
       GoRoute(

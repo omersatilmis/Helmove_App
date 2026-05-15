@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:helmove/core/enums/user_tier.dart';
 import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/utils/tier_limits.dart';
 import 'package:helmove/core/widgets/app_frosted_button.dart';
+import 'package:helmove/core/widgets/tier_upsell_sheet.dart';
+import 'package:helmove/features/auth/presentation/providers/auth_provider.dart';
 import 'package:helmove/features/profile/domain/entities/motorcycle_entity.dart';
 import 'package:helmove/features/profile/presentation/providers/profile_provider.dart';
 import 'package:helmove/features/profile/presentation/widgets/tabs/about/bike_card_widget.dart';
@@ -27,6 +31,24 @@ class _MyGaragePageState extends State<MyGaragePage> {
   }
 
   void _addNewBike() {
+    final tier = context.read<AuthProvider>().currentUser?.tier ?? UserTier.free;
+    final count = context.read<ProfileProvider>().motorcycles.length;
+
+    if (!TierLimits.canAddMotorcycle(tier, count)) {
+      final limit = TierLimits.motorcycleLimit(tier);
+      final nextTier = tier.isPro ? UserTier.pro : UserTier.plus;
+      TierUpsellSheet.show(
+        context,
+        requiredTier: nextTier,
+        featureTitle: 'Motosiklet limiti doldu',
+        featureDescription:
+            'Mevcut planınla en fazla $limit motosiklet ekleyebilirsin. '
+            'Daha fazlası için ${nextTier == UserTier.plus ? 'Plus' : 'Pro'} paketine geç.',
+        icon: Icons.motorcycle,
+      );
+      return;
+    }
+
     setState(() {
       _isAddingNew = true;
     });

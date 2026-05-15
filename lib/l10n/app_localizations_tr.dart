@@ -1658,6 +1658,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get map_start_navigation => 'Başlat';
 
   @override
+  String get map_stop_navigation => 'Durdur';
+
+  @override
   String get map_no_steps_found => 'Adım bilgisi bulunamadı.';
 
   @override
