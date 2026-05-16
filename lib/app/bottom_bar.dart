@@ -7,6 +7,7 @@ import 'package:helmove/core/di/injection_container.dart';
 import 'package:helmove/core/services/callkit_incoming_service.dart';
 import 'package:helmove/core/services/permissions_service.dart';
 import 'package:helmove/core/theme/text_styles.dart';
+import 'package:helmove/core/utils/navigation_mode_notifier.dart';
 import 'package:helmove/core/widgets/add_content_bottom_sheet.dart';
 import 'package:helmove/features/drawer/app_drawer.dart';
 import 'package:helmove/features/voice_session/presentation/bloc/voice_session_bloc.dart';
@@ -107,13 +108,15 @@ class BottomBarWrapper extends StatelessWidget {
       currentIndex++;
     }
 
-    return Scaffold(
+    return ValueListenableBuilder<bool>(
+      valueListenable: navigationModeNotifier,
+      builder: (context, isNavigating, _) => Scaffold(
       key: mainScaffoldKey,
       resizeToAvoidBottomInset: false,
       extendBody: true,
       drawer: const AppDrawer(),
       body: navigationShell,
-      bottomNavigationBar: NavigationBarTheme(
+      bottomNavigationBar: (isNavigating && navigationShell.currentIndex == 2) ? null : NavigationBarTheme(
         data: NavigationBarThemeData(
           indicatorColor: Colors.transparent,
           overlayColor: WidgetStateProperty.all(Colors.transparent),
@@ -253,6 +256,7 @@ class BottomBarWrapper extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

@@ -35,7 +35,7 @@ class RideRecordingServiceImpl implements RideRecordingService {
     if (isRecording) return;
     _points.clear();
     _lastPoint = null;
-    _startedAt = DateTime.now();
+    _startedAt = DateTime.now().toUtc();
 
     final dir = await getApplicationSupportDirectory();
     _bufferFile = File('${dir.path}/$_bufferFileName');
@@ -74,10 +74,14 @@ class RideRecordingServiceImpl implements RideRecordingService {
   void _onPosition(Position pos) {
     if (pos.accuracy > _minAccuracyMeters) return;
 
+    // Cached/buffered GPS position from before start() was called — discard.
+    final ts = pos.timestamp.toUtc();
+    if (_startedAt != null && ts.isBefore(_startedAt!)) return;
+
     final point = RidePoint(
       latitude: pos.latitude,
       longitude: pos.longitude,
-      timestamp: pos.timestamp,
+      timestamp: ts,
       speedKmh: pos.speed < 0 ? null : pos.speed * 3.6,
     );
 
@@ -175,9 +179,9 @@ class RideRecordingServiceImpl implements RideRecordingService {
   }
 
   RideEntity _buildEntity() {
-    final start = _startedAt ?? _points.first.timestamp;
-    final end = _points.last.timestamp;
-    final durationSec = end.difference(start).inSeconds;
+    final start = (_startedAt ?? _points.first.timestamp).toUtc();
+    final end = _points.last.timestamp.toUtc();
+    final durationSec = end.difference(start).inSeconds.clamp(0, 999999);
 
     double totalKm = 0;
     double totalSpeed = 0;

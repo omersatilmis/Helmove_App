@@ -17,6 +17,7 @@ import '../../../ride_history/domain/repositories/ride_repository.dart';
 import '../../../ride_history/domain/services/ride_recording_service.dart';
 import 'map_event.dart';
 import 'map_state.dart';
+import '../../../../core/utils/navigation_mode_notifier.dart';
 
 export 'map_state.dart';
 
@@ -81,6 +82,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<MapAutoFillStartFromGps>(_onAutoFillStartFromGps);
     on<MapStartNavigationPressed>(_onStartNavigation);
     on<MapStopNavigationPressed>(_onStopNavigation);
+    on<MapRideSaveAcknowledged>((_, emit) => emit(state.copyWith(clearRideSaved: true)));
   }
 
   @override
@@ -309,6 +311,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         ),
       );
       return;
+    }
+
+    // Destination card'ı hemen kapat — rota yüklenirken eski menü görünmesin.
+    if (state.selectedLocation != null) {
+      emit(state.copyWith(selectedLocation: null));
     }
 
     await _maybeRequestRoutes(emit);
@@ -692,6 +699,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           clearSelectedStepIndex: true,
           routePois: const [],
           clearSelectedPoiIndex: true,
+          selectedLocation: null,
         ),
       );
     }
@@ -831,6 +839,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     Emitter<MapState> emit,
   ) async {
     if (state.isNavigating) return;
+    navigationModeNotifier.value = true;
     emit(state.copyWith(isNavigating: true));
     try {
       await _recordingService.start();
@@ -844,14 +853,17 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     Emitter<MapState> emit,
   ) async {
     if (!state.isNavigating) return;
+    navigationModeNotifier.value = false;
     emit(state.copyWith(isNavigating: false, clearCurrentSpeedKmh: true));
     try {
       final ride = await _recordingService.stop();
       if (ride != null && !isClosed) {
         try {
           await _rideRepository.createRide(ride);
+          if (!isClosed) emit(state.copyWith(rideSaved: true));
         } catch (e) {
           debugPrint('Failed to save ride: $e');
+          if (!isClosed) emit(state.copyWith(rideSaved: false));
         }
       }
     } catch (e) {

@@ -61,6 +61,7 @@ class MapState {
   final String? error;
   final bool isNavigating;
   final double? currentSpeedKmh;
+  final bool? rideSaved;
 
   const MapState({
     this.status = MapStatus.initial,
@@ -91,6 +92,7 @@ class MapState {
     this.error,
     this.isNavigating = false,
     this.currentSpeedKmh,
+    this.rideSaved,
   });
 
   MapState copyWith({
@@ -127,6 +129,8 @@ class MapState {
     bool? isNavigating,
     double? currentSpeedKmh,
     bool clearCurrentSpeedKmh = false,
+    bool? rideSaved,
+    bool clearRideSaved = false,
   }) {
     return MapState(
       status: status ?? this.status,
@@ -159,6 +163,7 @@ class MapState {
       error: error,
       isNavigating: isNavigating ?? this.isNavigating,
       currentSpeedKmh: clearCurrentSpeedKmh ? null : (currentSpeedKmh ?? this.currentSpeedKmh),
+      rideSaved: clearRideSaved ? null : (rideSaved ?? this.rideSaved),
     );
   }
 }

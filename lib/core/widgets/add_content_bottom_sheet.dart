@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:helmove/core/theme/text_styles.dart';
 import 'package:helmove/l10n/app_localizations.dart';
+import 'package:helmove/core/utils/app_logger.dart';
 
 class AddContentBottomSheet {
   static void show(BuildContext context) {
@@ -230,6 +232,38 @@ class AddContentBottomSheet {
       // Bottom sheet kapanış animasyonunun tamamlanmasını bekle.
       await Future<void>.delayed(const Duration(milliseconds: 120));
 
+      // Android: READ_MEDIA_IMAGES (API 33+) or READ_EXTERNAL_STORAGE (older).
+      // iOS: Permission.photos. image_picker handles its own prompts internally
+      // but an explicit check catches denied states before we even open the picker.
+      if (Platform.isAndroid) {
+        var status = await Permission.photos.request();
+        if (!status.isGranted) {
+          // On Android < 13 Permission.photos maps to READ_MEDIA_IMAGES which
+          // doesn't exist, so the OS returns denied — fall back to storage.
+          status = await Permission.storage.request();
+        }
+        if (!status.isGranted) {
+          AppLogger.warning('Gallery permission denied: $status');
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(l10n.image_upload_error)),
+            );
+          }
+          return;
+        }
+      } else if (Platform.isIOS) {
+        final status = await Permission.photos.request();
+        if (!status.isGranted && !status.isLimited) {
+          AppLogger.warning('iOS photos permission denied: $status');
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(l10n.image_upload_error)),
+            );
+          }
+          return;
+        }
+      }
+
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
@@ -241,8 +275,11 @@ class AddContentBottomSheet {
         return;
       }
 
+      AppLogger.info('Gallery picked: path=${image.path} name=${image.name}');
+
       final file = await _resolvePickedImageFile(image);
       if (file == null) {
+        AppLogger.warning('_resolvePickedImageFile returned null for path=${image.path}');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(l10n.image_upload_error)),
@@ -251,8 +288,11 @@ class AddContentBottomSheet {
         return;
       }
 
+      AppLogger.info('Resolved gallery image: ${file.path} (${await file.length()} bytes)');
+      if (!context.mounted) return;
       await router.push('/prepare_media', extra: file);
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.error('Gallery pick failed', e, st);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -265,76 +305,40 @@ class AddContentBottomSheet {
   }
 
   static Future<File?> _resolvePickedImageFile(XFile image) async {
+    final ext = _safeExtension(image.name.isNotEmpty ? image.name : image.path);
+
+    // Primary: saveTo — handles content:// URIs correctly on all Android versions.
     try {
       final tempDir = await getTemporaryDirectory();
-      final extension = _safeExtension(image.name.isNotEmpty ? image.name : image.path);
-      final tempFile = File(
-        '${tempDir.path}/picked_${DateTime.now().millisecondsSinceEpoch}$extension',
-      );
-
-      // image_picker'dan gelen content:// kaynaklarında saveTo daha güvenilir.
+      final tempFile = File('${tempDir.path}/picked_${DateTime.now().millisecondsSinceEpoch}$ext');
       await image.saveTo(tempFile.path);
-      if (await tempFile.exists()) {
-        final length = await tempFile.length();
-        if (length > 0) {
-          return tempFile;
-        }
-      }
-    } catch (_) {
-      // Fallback: saveTo başarısız olursa byte kopyalama ile devam et.
-      try {
-        final bytes = await image.readAsBytes();
-        if (bytes.isNotEmpty) {
-          final tempDir = await getTemporaryDirectory();
-          final extension = _safeExtension(
-            image.name.isNotEmpty ? image.name : image.path,
-          );
-          final tempFile = File(
-            '${tempDir.path}/picked_${DateTime.now().millisecondsSinceEpoch}$extension',
-          );
-          await tempFile.writeAsBytes(bytes, flush: true);
-          if (await tempFile.exists() && await tempFile.length() > 0) {
-            return tempFile;
-          }
-        }
-      } catch (_) {}
-
-      // Son fallback: bazı cihazlarda doğrudan path geçerli olabiliyor.
-      try {
-        final directFile = File(image.path);
-        if (await directFile.exists() && await directFile.length() > 0) {
-          return directFile;
-        }
-      } catch (_) {}
-
-      return null;
+      final length = await tempFile.exists() ? await tempFile.length() : 0;
+      if (length > 0) return tempFile;
+      AppLogger.warning('saveTo produced 0-byte file for ${image.path}');
+    } catch (e) {
+      AppLogger.warning('saveTo failed for ${image.path}: $e');
     }
 
-    // saveTo ile dosya üretilemediyse fallback'ı dene.
-    try {
-      final directFile = File(image.path);
-      if (await directFile.exists() && await directFile.length() > 0) {
-        return directFile;
-      }
-    } catch (_) {}
-
+    // Fallback: readAsBytes — works with content:// URIs and cloud photos.
     try {
       final bytes = await image.readAsBytes();
       if (bytes.isNotEmpty) {
         final tempDir = await getTemporaryDirectory();
-        final extension = _safeExtension(
-          image.name.isNotEmpty ? image.name : image.path,
-        );
-        final tempFile = File(
-          '${tempDir.path}/picked_${DateTime.now().millisecondsSinceEpoch}$extension',
-        );
+        final tempFile = File('${tempDir.path}/picked_${DateTime.now().millisecondsSinceEpoch}$ext');
         await tempFile.writeAsBytes(bytes, flush: true);
-        if (await tempFile.exists() && await tempFile.length() > 0) {
-          return tempFile;
-        }
+        if (await tempFile.length() > 0) return tempFile;
       }
-    } catch (_) {
-      return null;
+      AppLogger.warning('readAsBytes returned empty for ${image.path}');
+    } catch (e) {
+      AppLogger.warning('readAsBytes failed for ${image.path}: $e');
+    }
+
+    // Last resort: direct file path (works only when image_picker gave a real path).
+    try {
+      final direct = File(image.path);
+      if (await direct.exists() && await direct.length() > 0) return direct;
+    } catch (e) {
+      AppLogger.warning('Direct File access failed for ${image.path}: $e');
     }
 
     return null;

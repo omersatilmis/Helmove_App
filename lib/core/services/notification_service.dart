@@ -146,6 +146,13 @@ class NotificationService {
         AppLogger.info('FCM Token: $token');
       }
 
+      // 8. Token refresh listener — APNs can become ready after initialize(),
+      //    so we listen here (not only in login()) to catch that window.
+      _fcm.onTokenRefresh.listen((newToken) async {
+        AppLogger.info('NotificationService: FCM token refreshed (initialize listener)');
+        await _registerTokenOnBackend(newToken);
+      });
+
     } catch (e, st) {
       _isInitialized = false;
       AppLogger.error('NotificationService: initialize error', e, st);

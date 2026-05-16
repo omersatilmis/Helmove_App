@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
 import '../providers/map_bloc.dart';
@@ -201,47 +202,57 @@ class NavigationBottomHud extends StatelessWidget {
                     ),
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Speed
-                    _InfoPill(
-                      top: speed.toStringAsFixed(0),
-                      bottom: 'km/s',
-                      icon: Icons.speed,
-                    ),
-                    const SizedBox(width: 16),
-                    // Remaining distance
-                    _InfoPill(
-                      top: remainingKm >= 1
-                          ? remainingKm.toStringAsFixed(1)
-                          : (remainingKm * 1000).toInt().toString(),
-                      bottom: remainingKm >= 1 ? 'km' : 'm',
-                      icon: Icons.route,
-                    ),
-                    const SizedBox(width: 16),
-                    // ETA
-                    _InfoPill(
-                      top: etaStr,
-                      bottom: 'tahmini',
-                      icon: Icons.schedule,
-                    ),
-                    const Spacer(),
-                    // Stop button
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          context.read<MapBloc>().add(MapStopNavigationPressed()),
-                      icon: const Icon(Icons.stop_circle_outlined, size: 20),
-                      label: Text(l10n.map_stop_navigation),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD32F2F),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                    // Üst satır: bilgi pilleri tam genişlikte eşit dağılım
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _InfoPill(
+                          top: speed.toStringAsFixed(0),
+                          bottom: 'km/s',
+                          icon: Icons.speed,
                         ),
-                      ),
+                        _InfoPill(
+                          top: remainingKm >= 1
+                              ? remainingKm.toStringAsFixed(1)
+                              : (remainingKm * 1000).toInt().toString(),
+                          bottom: remainingKm >= 1 ? 'km' : 'm',
+                          icon: Icons.route,
+                        ),
+                        _InfoPill(
+                          top: etaStr,
+                          bottom: 'tahmini',
+                          icon: Icons.schedule,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Alt satır: butonlar sağa yaslanmış
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        _MenuButton(),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          onPressed: () => context
+                              .read<MapBloc>()
+                              .add(MapStopNavigationPressed()),
+                          icon: const Icon(Icons.stop_circle_outlined, size: 20),
+                          label: Text(l10n.map_stop_navigation),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD32F2F),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -293,6 +304,154 @@ class _InfoPill extends StatelessWidget {
   }
 }
 
+// ─── Menü butonu ────────────────────────────────────────────────────────────
+class _MenuButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showNavMenu(context),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
+  void _showNavMenu(BuildContext context) {
+    final router = GoRouter.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _NavMenuSheet(router: router),
+    );
+  }
+}
+
+class _NavMenuSheet extends StatelessWidget {
+  final GoRouter router;
+  const _NavMenuSheet({required this.router});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface.withValues(alpha: 0.92),
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            MediaQuery.paddingOf(context).bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _NavTile(
+                icon: Icons.home_outlined,
+                label: l10n.home,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  router.go('/homepage');
+                },
+              ),
+              const SizedBox(height: 8),
+              _NavTile(
+                icon: Icons.explore_outlined,
+                label: l10n.bottomNavDiscover,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  router.go('/discover');
+                },
+              ),
+              const SizedBox(height: 8),
+              _NavTile(
+                icon: Icons.headset_mic_outlined,
+                label: l10n.bottomNavCommunication,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  router.go('/communication');
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _NavTile({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: theme.colorScheme.primary),
+            const SizedBox(width: 14),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const Spacer(),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Manevra ikonu ──────────────────────────────────────────────────────────
 class _ManeuverIcon extends StatelessWidget {
   final String? type;
   final String? modifier;

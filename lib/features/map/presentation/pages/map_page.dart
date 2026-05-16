@@ -1451,8 +1451,16 @@ class _MapPageState extends State<MapPage> {
             previous.selectedStepIndex != current.selectedStepIndex ||
             previous.routePois != current.routePois ||
             previous.selectedPoiIndex != current.selectedPoiIndex ||
-            previous.isNavigating != current.isNavigating,
+            previous.isNavigating != current.isNavigating ||
+            previous.rideSaved != current.rideSaved,
         listener: (context, state) {
+          if (state.rideSaved != null) {
+            _showSnackBar(
+              state.rideSaved! ? 'Sürüş kaydedildi.' : 'Sürüş kaydedilemedi.',
+            );
+            context.read<MapBloc>().add(MapRideSaveAcknowledged());
+          }
+
           if (state.status == MapStatus.error && state.error != null) {
             final l10n = AppLocalizations.of(context)!;
             _showSnackBar(_resolveMapErrorMessage(state.error!, l10n));
@@ -1565,19 +1573,19 @@ class _MapPageState extends State<MapPage> {
                   child: _buildSpeedBadge(theme),
                 ),
 
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: MediaQuery.removeViewInsets(
-                  context: context,
-                  removeBottom: true,
-                  child: MapBottomSheet(
-                    forceCollapsed: isNavigating,
-                    bottomBarHeight: _getBottomBarHeight(context),
+              if (!isNavigating)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: MediaQuery.removeViewInsets(
+                    context: context,
+                    removeBottom: true,
+                    child: MapBottomSheet(
+                      bottomBarHeight: _getBottomBarHeight(context),
+                    ),
                   ),
                 ),
-              ),
 
               if (isNavigating)
                 Positioned(

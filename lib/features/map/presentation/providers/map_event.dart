@@ -162,3 +162,5 @@ class MapAutoFillStartFromGps extends MapEvent {}
 class MapStartNavigationPressed extends MapEvent {}
 
 class MapStopNavigationPressed extends MapEvent {}
+
+class MapRideSaveAcknowledged extends MapEvent {}

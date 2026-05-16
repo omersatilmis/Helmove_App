@@ -273,21 +273,28 @@ class SubscriptionServiceImpl implements SubscriptionService {
               ).compareTo(SubscriptionProducts.sortIndex(b));
             });
 
+      final activeEntitlements = _activeEntitlementIds(info, activeProductIds);
+
+      // En yüksek tierli entitlement'ın bitiş tarihini bul
+      final expiresAt = _resolveExpiresAt(info, activeEntitlements);
+
       final payload = {
         'activeProductIds': activeProductIds,
-        'activeEntitlements': _activeEntitlementIds(info, activeProductIds),
+        'activeEntitlements': activeEntitlements,
         'originalAppUserId': await _currentRevenueCatAppUserId(info),
+        if (expiresAt != null) 'expiresAt': expiresAt.toUtc().toIso8601String(),
       };
 
       final response = await _dio.post('/api/subscription/sync', data: payload);
+      debugPrint('📦 Sync raw response [${response.statusCode}]: ${response.data}');
       final snapshot = SubscriptionStatusSnapshot.fromJson(
         _extractResponseMap(response.data),
       );
       await _cacheStatus(snapshot);
 
       debugPrint(
-        '✅ Subscription synced with backend: '
-        '${snapshot.tier.name} (${snapshot.tierIndex})',
+        '✅ Subscription synced — parsed tier: '
+        '${snapshot.tier.name} (index=${snapshot.tierIndex}, isPremium=${snapshot.isPremium})',
       );
       return snapshot;
     } catch (e) {
@@ -343,6 +350,21 @@ class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     return info.originalAppUserId;
+  }
+
+  static DateTime? _resolveExpiresAt(
+    CustomerInfo info,
+    List<String> activeEntitlements,
+  ) {
+    // Pro > Plus önceliği — en yüksek tierli entitlement'ın bitiş tarihi
+    final priority = [proEntitlementId, plusEntitlementId];
+    for (final id in priority) {
+      if (activeEntitlements.contains(id)) {
+        final expiryStr = info.entitlements.active[id]?.expirationDate;
+        if (expiryStr != null) return DateTime.tryParse(expiryStr);
+      }
+    }
+    return null;
   }
 
   static List<String> _activeEntitlementIds(
