@@ -3,13 +3,24 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:geolocator/geolocator.dart';
+import 'package:geolocator/geolocator.dart'
+    hide LocationSettings, Position;
+import 'package:geolocator/geolocator.dart' as geo show LocationSettings;
+import 'package:geolocator/geolocator.dart' as geo_pos show Position;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart'
+    show Point, Position;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../map/domain/usecases/reverse_geocode_usecase.dart';
 import '../../domain/entities/ride_entity.dart';
 import '../../domain/services/ride_recording_service.dart';
 
 class RideRecordingServiceImpl implements RideRecordingService {
+  final ReverseGeocodeUseCase? _reverseGeocode;
+
+  RideRecordingServiceImpl({ReverseGeocodeUseCase? reverseGeocode})
+      : _reverseGeocode = reverseGeocode;
+
   static const _bufferFileName = 'ride_buffer.json';
   static const _minAccuracyMeters = 50.0;
   static const _minDistanceMeters = 3.0;
@@ -17,7 +28,7 @@ class RideRecordingServiceImpl implements RideRecordingService {
   static const _flushEveryNPoints = 20;
 
   final _pointController = StreamController<RidePoint>.broadcast();
-  StreamSubscription<Position>? _positionSub;
+  StreamSubscription<geo_pos.Position>? _positionSub;
   Timer? _flushTimer;
   final List<RidePoint> _points = [];
   DateTime? _startedAt;
@@ -41,7 +52,7 @@ class RideRecordingServiceImpl implements RideRecordingService {
     _bufferFile = File('${dir.path}/$_bufferFileName');
     await _flushBuffer();
 
-    final LocationSettings settings;
+    final geo.LocationSettings settings;
     if (Platform.isAndroid) {
       settings = AndroidSettings(
         accuracy: LocationAccuracy.high,
@@ -71,7 +82,7 @@ class RideRecordingServiceImpl implements RideRecordingService {
     );
   }
 
-  void _onPosition(Position pos) {
+  void _onPosition(geo_pos.Position pos) {
     if (pos.accuracy > _minAccuracyMeters) return;
 
     // Cached/buffered GPS position from before start() was called — discard.
@@ -112,7 +123,11 @@ class RideRecordingServiceImpl implements RideRecordingService {
       return null;
     }
 
+    final firstPoint = _points.first;
+    final lastPoint = _points.last;
     final ride = _buildEntity();
+    final enriched = await _enrichWithCities(ride, firstPoint, lastPoint);
+
     try {
       await _bufferFile?.delete();
     } catch (_) {}
@@ -120,7 +135,46 @@ class RideRecordingServiceImpl implements RideRecordingService {
     _points.clear();
     _startedAt = null;
     _lastPoint = null;
-    return ride;
+    return enriched;
+  }
+
+  Future<RideEntity> _enrichWithCities(
+    RideEntity ride,
+    RidePoint first,
+    RidePoint last,
+  ) async {
+    final geocode = _reverseGeocode;
+    if (geocode == null) return ride;
+
+    Future<String?> lookup(RidePoint p) async {
+      try {
+        final loc = await geocode(
+          Point(coordinates: Position(p.longitude, p.latitude)),
+          types: ['place', 'locality', 'district'],
+        );
+        return loc?.label.isNotEmpty == true ? loc!.label : loc?.placeName;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final startCity = await lookup(first);
+    final endCity = first == last ? startCity : await lookup(last);
+
+    return RideEntity(
+      id: ride.id,
+      title: ride.title,
+      startedAt: ride.startedAt,
+      endedAt: ride.endedAt,
+      distanceKm: ride.distanceKm,
+      durationSeconds: ride.durationSeconds,
+      avgSpeedKmh: ride.avgSpeedKmh,
+      maxSpeedKmh: ride.maxSpeedKmh,
+      startCity: startCity ?? ride.startCity,
+      endCity: endCity ?? ride.endCity,
+      points: ride.points,
+      polyline: ride.polyline,
+    );
   }
 
   @override
@@ -199,10 +253,6 @@ class RideRecordingServiceImpl implements RideRecordingService {
       }
     }
 
-    final startCity = _points.isNotEmpty
-        ? '${_points.first.latitude.toStringAsFixed(3)}, ${_points.first.longitude.toStringAsFixed(3)}'
-        : null;
-
     return RideEntity(
       title:
           'Sürüş ${_formatDate(start)}',
@@ -213,7 +263,6 @@ class RideRecordingServiceImpl implements RideRecordingService {
       avgSpeedKmh:
           speedCount > 0 ? double.parse((totalSpeed / speedCount).toStringAsFixed(1)) : null,
       maxSpeedKmh: maxSpeed > 0 ? double.parse(maxSpeed.toStringAsFixed(1)) : null,
-      startCity: startCity,
       points: List.unmodifiable(_points),
     );
   }

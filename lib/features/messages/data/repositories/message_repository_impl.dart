@@ -14,6 +14,8 @@ class MessageRepositoryImpl implements MessageRepository {
     required String content,
     int? type,
     String? attachmentUrl,
+    int? attachmentDurationSeconds,
+    List<int>? attachmentWaveform,
     LocationData? locationData,
   }) async {
     return await remoteDataSource.sendMessage(
@@ -21,6 +23,8 @@ class MessageRepositoryImpl implements MessageRepository {
       content: content,
       type: type,
       attachmentUrl: attachmentUrl,
+      attachmentDurationSeconds: attachmentDurationSeconds,
+      attachmentWaveform: attachmentWaveform,
       locationData: locationData,
     );
   }

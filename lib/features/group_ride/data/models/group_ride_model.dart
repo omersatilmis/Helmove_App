@@ -23,6 +23,10 @@ class GroupRideModel extends GroupRideEntity {
     super.requirements,
     required super.isPrivate,
     super.sessionId,
+    super.routeGeometry,
+    super.routeProfile,
+    super.routeDistanceMeters,
+    super.routeDurationSeconds,
   });
 
   factory GroupRideModel.fromJson(Map<String, dynamic> json) {
@@ -52,6 +56,10 @@ class GroupRideModel extends GroupRideEntity {
       requirements: json['requirements'] as String?,
       isPrivate: json['isPrivate'] as bool? ?? false,
       sessionId: json['sessionId'] as int?,
+      routeGeometry: json['routeGeometry'] as String?,
+      routeProfile: json['routeProfile'] as String?,
+      routeDistanceMeters: (json['routeDistanceMeters'] as num?)?.toDouble(),
+      routeDurationSeconds: json['routeDurationSeconds'] as int?,
     );
   }
 
@@ -78,6 +86,10 @@ class GroupRideModel extends GroupRideEntity {
       'isPrivate': isPrivate,
       'requirements': requirements,
       'sessionId': sessionId,
+      'routeGeometry': routeGeometry,
+      'routeProfile': routeProfile,
+      'routeDistanceMeters': routeDistanceMeters,
+      'routeDurationSeconds': routeDurationSeconds,
     };
   }
 }

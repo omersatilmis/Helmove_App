@@ -12,5 +12,8 @@ abstract class MapRepository {
     int limit = 6,
   });
   Future<LocationEntity?> reverseGeocode(Point point, {List<String>? types});
-  Future<List<RouteEntity>> getRoutes(List<Point> waypoints);
+  Future<List<RouteEntity>> getRoutes(
+    List<Point> waypoints, {
+    bool excludeToll = false,
+  });
 }

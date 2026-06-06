@@ -11,6 +11,8 @@ class MessageModel extends Message {
     required super.sentAt,
     super.readAt,
     super.attachmentUrl,
+    super.attachmentDurationSeconds,
+    super.attachmentWaveform,
     LocationDataModel? super.locationData,
     required super.isEdited,
     super.editedAt,
@@ -22,6 +24,15 @@ class MessageModel extends Message {
   });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
+    final rawWaveform = json['attachmentWaveform'];
+    List<int>? waveform;
+    if (rawWaveform is List) {
+      waveform = rawWaveform
+          .whereType<num>()
+          .map((e) => e.toInt())
+          .toList(growable: false);
+    }
+
     return MessageModel(
       id: json['id'] ?? 0,
       senderId: json['senderId'] ?? 0,
@@ -32,6 +43,9 @@ class MessageModel extends Message {
       sentAt: DateTime.parse(json['sentAt']),
       readAt: json['readAt'] != null ? DateTime.parse(json['readAt']) : null,
       attachmentUrl: json['attachmentUrl'],
+      attachmentDurationSeconds:
+          (json['attachmentDurationSeconds'] as num?)?.toInt(),
+      attachmentWaveform: waveform,
       locationData: json['locationData'] != null
           ? LocationDataModel.fromJson(json['locationData'])
           : null,
@@ -58,6 +72,8 @@ class MessageModel extends Message {
       'sentAt': sentAt.toIso8601String(),
       'readAt': readAt?.toIso8601String(),
       'attachmentUrl': attachmentUrl,
+      'attachmentDurationSeconds': attachmentDurationSeconds,
+      'attachmentWaveform': attachmentWaveform,
       'locationData': (locationData as LocationDataModel?)?.toJson(),
       'isEdited': isEdited,
       'editedAt': editedAt?.toIso8601String(),

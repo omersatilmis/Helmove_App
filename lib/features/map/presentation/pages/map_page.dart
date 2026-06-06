@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/core/services/deep_link_store.dart';
@@ -21,6 +23,10 @@ import '../../../ride_history/domain/entities/ride_entity.dart';
 import '../../../ride_history/domain/repositories/ride_repository.dart';
 import '../../../ride_history/domain/services/ride_recording_service.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/utils/polyline_codec.dart';
+import '../../../group_ride/presentation/live_ride/live_ride_controller.dart';
+import '../../../group_ride/presentation/live_ride/rider_marker_factory.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -30,7 +36,11 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
-  static const String _styleUri = 'mapbox://styles/mapbox/navigation-night-v1';
+  // Motosiklet navigasyonu için optimize Mapbox stilleri: yüksek kontrast,
+  // az POI. Gündüz = day, gece = night.
+  static const String _dayStyleUri = 'mapbox://styles/mapbox/navigation-day-v1';
+  static const String _nightStyleUri =
+      'mapbox://styles/mapbox/navigation-night-v1';
   static const int _diskQuotaBytes = 200 * 1024 * 1024;
   static const int _prefetchLowResDelta = 2;
   static const int _prefetchNormalDelta = 0;
@@ -59,11 +69,12 @@ class _MapPageState extends State<MapPage> {
   CircleAnnotation? _startMarker;
   CircleAnnotation? _endMarker;
   PolylineAnnotationManager? _routeLineManager;
-  List<PolylineAnnotation> _routeLines = [];
   PolylineAnnotationManager? _stepLineManager;
   List<PolylineAnnotation> _stepLines = [];
   CircleAnnotationManager? _poiMarkerManager;
   List<CircleAnnotation> _poiMarkers = [];
+  // Async render race guard — en son rota render çağrısı kazanır.
+  int _routeRenderGen = 0;
   Timer? _poiScanTimer;
   bool _poiScanInFlight = false;
   String? _lastPoiSignature;
@@ -76,8 +87,51 @@ class _MapPageState extends State<MapPage> {
   final List<Point> _trailPoints = [];
   double? _currentSpeedKmh;
 
+  // Live ride (grup canlı konum + ortak rota)
+  late final LiveRideController _liveRide = sl<LiveRideController>();
+  PointAnnotationManager? _riderAvatarManager;
+  PointAnnotationManager? _riderArrowManager;
+  PolylineAnnotationManager? _sharedRouteManager;
+  final Map<int, PointAnnotation> _riderAvatarAnn = {};
+  final Map<int, PointAnnotation> _riderArrowAnn = {};
+  PolylineAnnotation? _sharedRouteAnn;
+  String? _lastSharedRouteGeometry;
+  Uint8List? _arrowBitmapMember;
+  Uint8List? _arrowBitmapOrganizer;
+  bool _liveRenderInFlight = false;
+  bool _liveRenderQueued = false;
+  // Avatar/ok bitmap'leri dpr 3'te üretilir; harita üzerinde logical boyut.
+  static const double _riderIconSize = 1 / 3.0;
+  static const double _riderArrowOrbit = 30.0; // px, avatar çevresi
+
   // Default Center: Istanbul / Turkey (longitude, latitude)
   final Point _defaultCenter = Point(coordinates: Position(28.9784, 41.0082));
+  bool _didInitialGpsCenter = false;
+  bool _initialCameraReady = false;
+  CameraOptions? _initialCamera;
+
+  // Tema-bağımlı harita stili (gündüz/gece). App temasını takip eder.
+  late final ThemeProvider _themeProvider = sl<ThemeProvider>();
+  late final String _initialStyleUri;
+  String? _currentStyleUri;
+  bool _styleInitialized = false;
+
+  static const _prefsLastLat = 'map.last_camera.lat';
+  static const _prefsLastLng = 'map.last_camera.lng';
+  static const _prefsLastZoom = 'map.last_camera.zoom';
+
+  bool _isDarkMode() {
+    final mode = _themeProvider.themeMode;
+    if (mode == ThemeMode.dark) return true;
+    if (mode == ThemeMode.light) return false;
+    // system: platform brightness
+    final brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    return brightness == Brightness.dark;
+  }
+
+  String _resolveStyleUri() =>
+      _isDarkMode() ? _nightStyleUri : _dayStyleUri;
 
   @override
   void initState() {
@@ -88,10 +142,90 @@ class _MapPageState extends State<MapPage> {
     }
     MapboxOptions.setAccessToken(token);
     MapboxMapsOptions.setTileStoreUsageMode(TileStoreUsageMode.READ_AND_UPDATE);
+    _currentStyleUri = _resolveStyleUri();
+    _initialStyleUri = _currentStyleUri!;
+    _themeProvider.addListener(_onThemeChanged);
     _initTileStore();
     _initStylePack();
     _attachDeepLinkListener();
+    unawaited(_resolveInitialCamera());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkRideRecovery());
+    _liveRide.addListener(_onLiveRideChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // system temasında cihaz gündüz/gece değişince MediaQuery güncellenir.
+    _maybeUpdateMapStyle();
+  }
+
+  void _onThemeChanged() => _maybeUpdateMapStyle();
+
+  void _maybeUpdateMapStyle() {
+    if (!mounted) return;
+    final resolved = _resolveStyleUri();
+    if (resolved != _currentStyleUri) {
+      _currentStyleUri = resolved;
+      // MapWidget.styleUri reactive değil — stili manuel reload et.
+      unawaited(_mapboxMap?.loadStyleURI(resolved) ?? Future.value());
+      setState(() {}); // FAB ikonu (gündüz/gece) güncellensin
+    }
+  }
+
+  Future<void> _resolveInitialCamera() async {
+    CameraOptions? camera;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lat = prefs.getDouble(_prefsLastLat);
+      final lng = prefs.getDouble(_prefsLastLng);
+      final zoom = prefs.getDouble(_prefsLastZoom);
+      if (lat != null && lng != null) {
+        camera = CameraOptions(
+          center: Point(coordinates: Position(lng, lat)),
+          zoom: zoom ?? 15.0,
+        );
+      }
+    } catch (_) {}
+
+    if (camera == null) {
+      try {
+        final last = await geo.Geolocator.getLastKnownPosition();
+        if (last != null) {
+          camera = CameraOptions(
+            center: Point(
+              coordinates: Position(last.longitude, last.latitude),
+            ),
+            zoom: 15.0,
+          );
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _initialCamera =
+          camera ?? CameraOptions(center: _defaultCenter, zoom: 12.0);
+      _initialCameraReady = true;
+      // If we restored a real position, skip the post-load GPS jump.
+      if (camera != null) _didInitialGpsCenter = true;
+    });
+  }
+
+  Future<void> _persistLastCamera(CameraState state) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(
+        _prefsLastLat,
+        state.center.coordinates.lat.toDouble(),
+      );
+      await prefs.setDouble(
+        _prefsLastLng,
+        state.center.coordinates.lng.toDouble(),
+      );
+      await prefs.setDouble(_prefsLastZoom, state.zoom);
+    } catch (_) {}
   }
 
   void _attachDeepLinkListener() {
@@ -111,25 +245,28 @@ class _MapPageState extends State<MapPage> {
 
   Future<void> _initStylePack() async {
     _offlineManager = await OfflineManager.create();
+    final styleUri = _currentStyleUri ?? _resolveStyleUri();
     try {
-      await _offlineManager?.stylePack(_styleUri);
+      await _offlineManager?.stylePack(styleUri);
     } catch (_) {
       final options = StylePackLoadOptions(
         glyphsRasterizationMode:
             GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY,
         acceptExpired: true,
       );
-      await _offlineManager?.loadStylePack(_styleUri, options, null);
+      await _offlineManager?.loadStylePack(styleUri, options, null);
     }
   }
 
   @override
   void dispose() {
+    _themeProvider.removeListener(_onThemeChanged);
     _cacheTimer?.cancel();
     _poiScanTimer?.cancel();
     _isLoadingLocation.dispose();
     _deepLinkSub?.cancel();
     _recordingSub?.cancel();
+    _liveRide.removeListener(_onLiveRideChanged);
     super.dispose();
   }
 
@@ -255,6 +392,244 @@ class _MapPageState extends State<MapPage> {
     _mapboxMap?.setPrefetchZoomDelta(_prefetchNormalDelta);
     unawaited(_disable3dBuildings());
     unawaited(_setupMotorcyclePuck());
+    if (!_didInitialGpsCenter) {
+      _didInitialGpsCenter = true;
+      unawaited(_centerOnCurrentLocationSilently());
+    }
+  }
+
+  // Stil her yüklendiğinde tetiklenir. İlk yüklemeyi onMapCreated/onMapLoaded
+  // hallediyor; sonraki yüklemeler (gündüz/gece geçişi) annotation manager'ları
+  // ve puck'ı sıfırlar — bu yüzden yeniden kurup mevcut rotayı tekrar çiziyoruz.
+  Future<void> _onStyleLoaded(StyleLoadedEventData _) async {
+    if (!_styleInitialized) {
+      _styleInitialized = true;
+      return;
+    }
+    await _initAnnotationManagers();
+    await _disable3dBuildings();
+    await _setupMotorcyclePuck();
+    _renderCurrentState();
+  }
+
+  void _renderCurrentState() {
+    if (!mounted) return;
+    final state = context.read<MapBloc>().state;
+    _updateMarkers(state.startPoint?.point, state.endPoint?.point);
+    _renderRoutes(state.routeOptions, state.selectedRouteIndex);
+    if (state.routeOptions.isNotEmpty) {
+      _renderStepHighlight(
+        state.routeOptions[state.selectedRouteIndex],
+        state.selectedStepIndex,
+      );
+    }
+    _updatePoiMarkers(state.routePois, selectedIndex: state.selectedPoiIndex);
+    _scheduleLiveRideRender();
+  }
+
+  // ── Live ride (grup canlı konum + ortak rota) ─────────────────────────────
+
+  void _onLiveRideChanged() {
+    if (!mounted) return;
+    _scheduleLiveRideRender();
+    setState(() {}); // overlay (sürücü sayısı, paylaşım toggle) tazelensin
+  }
+
+  /// Eşzamanlı render'ları serileştirir: bir render sürerken gelen istekler
+  /// tek bir kuyruğa düşer (annotation manager'larda yarış olmasın).
+  void _scheduleLiveRideRender() {
+    if (_liveRenderInFlight) {
+      _liveRenderQueued = true;
+      return;
+    }
+    _liveRenderInFlight = true;
+    unawaited(() async {
+      try {
+        await _renderLiveRide();
+      } finally {
+        _liveRenderInFlight = false;
+        if (_liveRenderQueued) {
+          _liveRenderQueued = false;
+          _scheduleLiveRideRender();
+        }
+      }
+    }());
+  }
+
+  Future<void> _renderLiveRide() async {
+    await _renderSharedRoute();
+    await _renderRiders();
+  }
+
+  Future<void> _renderSharedRoute() async {
+    final manager = _sharedRouteManager;
+    if (manager == null) return;
+
+    final route = _liveRide.sharedRoute;
+    final geometry = route?.geometry;
+    final hasRoute = _liveRide.isActive && geometry != null && geometry.isNotEmpty;
+
+    if (!hasRoute) {
+      if (_sharedRouteAnn != null || _lastSharedRouteGeometry != null) {
+        await manager.deleteAll();
+        _sharedRouteAnn = null;
+        _lastSharedRouteGeometry = null;
+      }
+      return;
+    }
+
+    if (geometry == _lastSharedRouteGeometry && _sharedRouteAnn != null) {
+      return; // değişmedi
+    }
+
+    final points = PolylineCodec.decode(geometry);
+    await manager.deleteAll();
+    _sharedRouteAnn = null;
+    if (points.length < 2) {
+      _lastSharedRouteGeometry = null;
+      return;
+    }
+
+    // Ortak rota rengi: kendi rota çizgimizden farklı (mor), gece/gündüz görünür.
+    _sharedRouteAnn = await manager.create(
+      PolylineAnnotationOptions(
+        geometry: LineString(coordinates: points.map((p) => p.coordinates).toList()),
+        lineColor: const Color(0xFF7C4DFF).value,
+        lineWidth: 6.0,
+        lineOpacity: 0.9,
+      ),
+    );
+    _lastSharedRouteGeometry = geometry;
+  }
+
+  Future<void> _renderRiders() async {
+    final avatarManager = _riderAvatarManager;
+    final arrowManager = _riderArrowManager;
+    if (avatarManager == null || arrowManager == null) return;
+
+    if (!_liveRide.isActive) {
+      if (_riderAvatarAnn.isNotEmpty || _riderArrowAnn.isNotEmpty) {
+        await avatarManager.deleteAll();
+        await arrowManager.deleteAll();
+        _riderAvatarAnn.clear();
+        _riderArrowAnn.clear();
+      }
+      return;
+    }
+
+    final riders = _liveRide.riders;
+    final activeIds = riders.map((r) => r.userId).toSet();
+
+    // Ayrılan sürücülerin marker'larını sil.
+    final removed = _riderAvatarAnn.keys
+        .where((id) => !activeIds.contains(id))
+        .toList();
+    for (final id in removed) {
+      final avatar = _riderAvatarAnn.remove(id);
+      if (avatar != null) await avatarManager.delete(avatar);
+      final arrow = _riderArrowAnn.remove(id);
+      if (arrow != null) await arrowManager.delete(arrow);
+    }
+
+    for (final rider in riders) {
+      final point = Point(coordinates: Position(rider.lng, rider.lat));
+      final headingDeg = rider.heading ?? 0.0;
+      final offset = _arrowOffsetFor(headingDeg);
+
+      final existingAvatar = _riderAvatarAnn[rider.userId];
+      if (existingAvatar != null) {
+        existingAvatar.geometry = point;
+        await avatarManager.update(existingAvatar);
+        final existingArrow = _riderArrowAnn[rider.userId];
+        if (existingArrow != null) {
+          existingArrow.geometry = point;
+          existingArrow.iconRotate = headingDeg;
+          existingArrow.iconOffset = offset;
+          await arrowManager.update(existingArrow);
+        }
+        continue;
+      }
+
+      // Yeni sürücü — avatar + ok oluştur.
+      final ringColor = rider.isOrganizer
+          ? const Color(0xFFFFB300)
+          : const Color(0xFF2962FF);
+      final avatarBytes = await RiderMarkerFactory.buildAvatar(
+        userId: rider.userId,
+        photoUrl: rider.profilePictureUrl,
+        displayName: rider.displayName,
+        ringColor: ringColor,
+      );
+      if (!mounted || !_liveRide.isActive) return;
+
+      final arrowBytes = await _arrowBitmapFor(rider.isOrganizer);
+      if (!mounted || !_liveRide.isActive) return;
+
+      final arrow = await arrowManager.create(
+        PointAnnotationOptions(
+          geometry: point,
+          image: arrowBytes,
+          iconSize: _riderIconSize,
+          iconRotate: headingDeg,
+          iconOffset: offset,
+        ),
+      );
+      _riderArrowAnn[rider.userId] = arrow;
+
+      final avatar = await avatarManager.create(
+        PointAnnotationOptions(
+          geometry: point,
+          image: avatarBytes,
+          iconSize: _riderIconSize,
+          textField: rider.displayName,
+          textOffset: [0.0, 1.6],
+          textSize: 12.0,
+          textColor: Colors.white.value,
+          textHaloColor: Colors.black.value,
+          textHaloWidth: 1.4,
+          textAnchor: TextAnchor.TOP,
+        ),
+      );
+      _riderAvatarAnn[rider.userId] = avatar;
+    }
+  }
+
+  /// Heading yönünde avatar çevresine ok yerleştirmek için piksel offset.
+  /// Heading 0 = kuzey (yukarı). iconOffset y ekseni aşağı pozitif.
+  List<double> _arrowOffsetFor(double headingDeg) {
+    final rad = headingDeg * math.pi / 180.0;
+    final x = _riderArrowOrbit * math.sin(rad);
+    final y = -_riderArrowOrbit * math.cos(rad);
+    return [x, y];
+  }
+
+  Future<Uint8List> _arrowBitmapFor(bool isOrganizer) async {
+    if (isOrganizer) {
+      return _arrowBitmapOrganizer ??=
+          await RiderMarkerFactory.buildArrow(color: const Color(0xFFFFB300));
+    }
+    return _arrowBitmapMember ??=
+        await RiderMarkerFactory.buildArrow(color: const Color(0xFF2962FF));
+  }
+
+  Future<void> _centerOnCurrentLocationSilently() async {
+    try {
+      if (!await geo.Geolocator.isLocationServiceEnabled()) return;
+      var permission = await geo.Geolocator.checkPermission();
+      if (permission == geo.LocationPermission.denied) {
+        permission = await geo.Geolocator.requestPermission();
+      }
+      if (permission == geo.LocationPermission.denied ||
+          permission == geo.LocationPermission.deniedForever) {
+        return;
+      }
+      final position = await geo.Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      final center = Point(
+        coordinates: Position(position.longitude, position.latitude),
+      );
+      await _mapboxMap?.setCamera(CameraOptions(center: center, zoom: 15.0));
+    } catch (_) {}
   }
 
   void _onCameraChanged(CameraChangedEventData event) {
@@ -306,6 +681,7 @@ class _MapPageState extends State<MapPage> {
       pitch: cameraState.pitch,
       padding: cameraState.padding,
     );
+    unawaited(_persistLastCamera(cameraState));
   }
 
   void _updateCompassRotation(double bearing) {
@@ -346,8 +722,29 @@ class _MapPageState extends State<MapPage> {
         .createPolylineAnnotationManager();
     await _trailLineManager?.setLineCap(LineCap.ROUND);
     await _trailLineManager?.setLineJoin(LineJoin.ROUND);
+    // Ortak rota (grup) — kendi rota çizgimizin üstünde, ayrı renk.
+    _sharedRouteManager = await mapboxMap.annotations
+        .createPolylineAnnotationManager();
+    await _sharedRouteManager?.setLineCap(LineCap.ROUND);
+    await _sharedRouteManager?.setLineJoin(LineJoin.ROUND);
     _poiMarkerManager = await mapboxMap.annotations
         .createCircleAnnotationManager();
+    // Diğer sürücüler: önce oklar (alt katman), sonra avatarlar (üst katman).
+    _riderArrowManager = await mapboxMap.annotations
+        .createPointAnnotationManager();
+    // Ok, harita ile hizalı dönsün (harita döndüğünde yön doğru kalsın).
+    await _riderArrowManager?.setIconRotationAlignment(
+      IconRotationAlignment.MAP,
+    );
+    _riderAvatarManager = await mapboxMap.annotations
+        .createPointAnnotationManager();
+    // Stil reload sonrası eski annotation referansları geçersiz — sıfırla.
+    _riderAvatarAnn.clear();
+    _riderArrowAnn.clear();
+    _sharedRouteAnn = null;
+    _lastSharedRouteGeometry = null;
+    // Harita zaten aktif bir grup sürüşüyle açıldıysa canlı katmanı çiz.
+    if (_liveRide.isActive) _scheduleLiveRideRender();
   }
 
   Future<void> _onMapTap(MapContentGestureContext gestureContext) async {
@@ -587,7 +984,9 @@ class _MapPageState extends State<MapPage> {
       _endMarker = null;
     }
 
-    if (start != null) {
+    // Başlangıç marker'ı sadece hedef de seçiliyken göster — clear sonrası
+    // korunan startPoint'in tek başına yeşil nokta bırakmasını önler.
+    if (start != null && end != null) {
       try {
         _startMarker = await manager.create(
           CircleAnnotationOptions(
@@ -627,17 +1026,17 @@ class _MapPageState extends State<MapPage> {
     final manager = _routeLineManager;
     if (manager == null) return;
 
+    // Race guard: clear + yeni rota hızlı ardışık gelince, geç biten eski
+    // render'ın eski rotayı geri çizmesini engelle. En son çağrı kazanır.
+    final gen = ++_routeRenderGen;
+
     try {
-      if (_routeLines.isNotEmpty) {
-        await manager.deleteAll();
-      }
+      await manager.deleteAll();
     } catch (e) {
       debugPrint("Error clearing route lines: $e");
-    } finally {
-      _routeLines = [];
     }
 
-    if (routes.isEmpty) return;
+    if (gen != _routeRenderGen || routes.isEmpty) return;
 
     final options = <PolylineAnnotationOptions>[];
     for (var i = 0; i < routes.length; i++) {
@@ -653,13 +1052,24 @@ class _MapPageState extends State<MapPage> {
       );
     }
 
-    final created = await manager.createMulti(options);
-    _routeLines = created.whereType<PolylineAnnotation>().toList();
+    await manager.createMulti(options);
+    // Bu render tamamlanırken yeni bir render başladıysa, çizdiklerimizi geri al.
+    if (gen != _routeRenderGen) {
+      try {
+        await manager.deleteAll();
+      } catch (_) {}
+    }
   }
 
   static const _routeSelectedColor = Color(0xFF00B4FF);
-  static const _routeUnselectedColor = Color(0xFF556677);
-  static const _routeCasingColor = Color(0xFF003366);
+  // Alternatif (seçili olmayan) rota tema-bağımlı: gecede açık gri-mavi
+  // (koyu harita üzerinde görünür), gündüzde koyu gri.
+  Color get _routeUnselectedColor =>
+      _isDarkMode() ? const Color(0xFFAAB8CC) : const Color(0xFF556677);
+  // Casing (rota kenarlığı) tema-bağımlı: gündüzde beyaz, gecede koyu —
+  // böylece rota çizgisi haritanın yeşil/açık yollarından her zaman ayrışır.
+  Color get _routeCasingColor =>
+      _isDarkMode() ? const Color(0xFF002B55) : Colors.white;
 
   List<PolylineAnnotationOptions> _buildRoutePolylineOptions(
     RouteEntity route, {
@@ -677,12 +1087,13 @@ class _MapPageState extends State<MapPage> {
       ];
     }
 
-    // Casing (dark outline below the main route for contrast)
+    // Casing (rota altındaki kenarlık) — kontrast için. Tema-bağımlı renk,
+    // tam opak ve geniş ki rota her zemin üzerinde net ayrışsın.
     final casingOpt = PolylineAnnotationOptions(
       geometry: route.geometry,
       lineColor: _routeCasingColor.toARGB32(),
-      lineWidth: 10.0,
-      lineOpacity: 0.55,
+      lineWidth: 11.0,
+      lineOpacity: 0.95,
       lineSortKey: 0,
       customData: <String, Object>{'routeIndex': routeIndex},
     );
@@ -1020,7 +1431,7 @@ class _MapPageState extends State<MapPage> {
         geometry: geometry.toJson().cast<String?, Object?>(),
         descriptorsOptions: [
           TilesetDescriptorOptions(
-            styleURI: _styleUri,
+            styleURI: _currentStyleUri ?? _resolveStyleUri(),
             minZoom: minZoom,
             maxZoom: maxZoom,
             pixelRatio: 1.0,
@@ -1196,6 +1607,9 @@ class _MapPageState extends State<MapPage> {
           enabled: true,
           pulsingEnabled: false,
           showAccuracyRing: false,
+          // Cihaz pusulası ile motor ikonu telefonun baktığı yöne döner.
+          puckBearingEnabled: true,
+          puckBearing: PuckBearing.HEADING,
           locationPuck: LocationPuck(
             locationPuck2D: LocationPuck2D(
               topImage: puckBytes,
@@ -1214,6 +1628,9 @@ class _MapPageState extends State<MapPage> {
   void _startRecordingSubscription(MapBloc bloc) {
     if (_recordingSub != null) return;
     _trailPoints.clear();
+    // Navigasyon başlar başlamaz haritayı kullanıcının konumuna kilitle —
+    // ilk GPS noktası gelene kadar beklemeden hemen yakınlaş + eğ.
+    unawaited(_lockCameraToCurrentLocation());
     _recordingSub = bloc.recordingStream.listen((point) {
       if (!mounted) return;
       final mapPoint = Point(
@@ -1278,6 +1695,27 @@ class _MapPageState extends State<MapPage> {
     _trailPoints.clear();
     _clearTrailPolyline();
     if (mounted) setState(() { _currentSpeedKmh = null; });
+  }
+
+  Future<void> _lockCameraToCurrentLocation() async {
+    final mapboxMap = _mapboxMap;
+    if (mapboxMap == null) return;
+    try {
+      final pos = await geo.Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      final center = Point(
+        coordinates: Position(pos.longitude, pos.latitude),
+      );
+      await mapboxMap.flyTo(
+        CameraOptions(
+          center: center,
+          zoom: 17.0,
+          pitch: 60.0,
+          bearing: pos.heading >= 0 ? pos.heading : null,
+        ),
+        MapAnimationOptions(duration: 1000, startDelay: 0),
+      );
+    } catch (_) {}
   }
 
   Future<void> _followCamera(Point center) async {
@@ -1516,20 +1954,27 @@ class _MapPageState extends State<MapPage> {
           return Stack(
             children: [
               Positioned.fill(
-                child: MapWidget(
-                  key: const ValueKey('mapWidget'),
-                  styleUri: _styleUri,
-                  androidHostingMode: AndroidPlatformViewHostingMode.TLHC_VD,
-                  cameraOptions:
-                      _lastCamera ??
-                      CameraOptions(center: _defaultCenter, zoom: 12.0),
-                  onMapCreated: _onMapCreated,
-                  onMapLoadedListener: _onMapLoaded,
-                  onCameraChangeListener: _onCameraChanged,
-                  onMapIdleListener: _onMapIdle,
-                  onTapListener: _onMapTap,
-                  onLongTapListener: _onMapLongTap,
-                ),
+                child: _initialCameraReady
+                    ? MapWidget(
+                        key: const ValueKey('mapWidget'),
+                        styleUri: _initialStyleUri,
+                        androidHostingMode:
+                            AndroidPlatformViewHostingMode.TLHC_VD,
+                        cameraOptions: _lastCamera ?? _initialCamera!,
+                        onMapCreated: _onMapCreated,
+                        onMapLoadedListener: _onMapLoaded,
+                        onStyleLoadedListener: _onStyleLoaded,
+                        onCameraChangeListener: _onCameraChanged,
+                        onMapIdleListener: _onMapIdle,
+                        onTapListener: _onMapTap,
+                        onLongTapListener: _onMapLongTap,
+                      )
+                    : Container(
+                        color: const Color(0xFF1A1A1A),
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
               ),
 
               if (!isNavigating)
@@ -1566,6 +2011,13 @@ class _MapPageState extends State<MapPage> {
                   ),
                 ),
 
+              if (!isNavigating && _liveRide.isActive)
+                Positioned(
+                  left: 16,
+                  top: topSafe + 12 + 52 + 16,
+                  child: _buildLiveRidePanel(theme, context),
+                ),
+
               if (_currentSpeedKmh != null && !isNavigating)
                 Positioned(
                   right: _fabRightPadding + 4,
@@ -1595,6 +2047,22 @@ class _MapPageState extends State<MapPage> {
                   child: const NavigationTopHud(),
                 ),
 
+              // Discord tarzı "kim konuşuyor" — manevra kartının altında.
+              if (isNavigating)
+                Positioned(
+                  top: MediaQuery.viewPaddingOf(context).top + 100,
+                  left: 16,
+                  right: 16,
+                  child: const NavigationSpeakingIndicator(),
+                ),
+
+              if (isNavigating)
+                Positioned(
+                  right: _fabRightPadding,
+                  bottom: MediaQuery.paddingOf(context).bottom + 150,
+                  child: _buildRecenterButton(theme),
+                ),
+
               if (isNavigating)
                 Positioned(
                   left: 0,
@@ -1602,7 +2070,6 @@ class _MapPageState extends State<MapPage> {
                   bottom: 0,
                   child: NavigationBottomHud(
                     currentSpeedKmh: _currentSpeedKmh,
-                    bottomBarHeight: _getBottomBarHeight(context),
                   ),
                 ),
             ],
@@ -1610,6 +2077,92 @@ class _MapPageState extends State<MapPage> {
         },
       ),
     );
+  }
+
+  Widget _buildLiveRidePanel(ThemeData theme, BuildContext context) {
+    final cs = theme.colorScheme;
+    final riderCount = _liveRide.riders.length;
+    final sharing = _liveRide.isSharingLocation;
+    final showPublish = _liveRide.isOrganizer;
+
+    return Material(
+      color: cs.surface.withValues(alpha: 0.92),
+      elevation: 6,
+      borderRadius: BorderRadius.circular(24),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.groups_rounded, size: 20, color: cs.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$riderCount',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Konum paylaşımı toggle (opt-out)
+            IconButton(
+              tooltip: sharing ? 'Konum paylaşımı açık' : 'Konum paylaşımı kapalı',
+              onPressed: () => _liveRide.setSharing(!sharing),
+              icon: Icon(
+                sharing
+                    ? Icons.location_on_rounded
+                    : Icons.location_off_rounded,
+                color: sharing ? cs.primary : cs.error,
+              ),
+            ),
+            if (showPublish)
+              Padding(
+                padding: const EdgeInsets.only(left: 2, right: 4),
+                child: TextButton.icon(
+                  onPressed: () => _publishRouteToGroup(context),
+                  icon: const Icon(Icons.alt_route_rounded, size: 18),
+                  label: const Text('Rotayı Paylaş'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _publishRouteToGroup(BuildContext context) async {
+    final mapState = context.read<MapBloc>().state;
+    if (mapState.routeOptions.isEmpty) {
+      _showSnackBar('Önce bir rota oluşturun.');
+      return;
+    }
+    final route = mapState.routeOptions[mapState.selectedRouteIndex];
+    final points = route.geometry.coordinates
+        .map((p) => Point(coordinates: p))
+        .toList();
+    if (points.length < 2) {
+      _showSnackBar('Rota geçersiz.');
+      return;
+    }
+    final encoded = PolylineCodec.encode(points);
+    final ok = await _liveRide.publishRoute(
+      geometry: encoded,
+      profile: 'driving',
+      distanceMeters: route.distanceMeters,
+      durationSeconds: route.durationSeconds.round(),
+    );
+    if (!mounted) return;
+    _showSnackBar(ok ? 'Rota gruba gönderildi.' : 'Rota gönderilemedi.');
   }
 
   Widget _buildMapControls(ThemeData theme) {
@@ -1676,7 +2229,63 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
         ),
+        const SizedBox(height: _fabSpacing),
+        FloatingActionButton(
+          heroTag: 'mapDayNightFab',
+          mini: true,
+          elevation: 6,
+          backgroundColor: theme.colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          onPressed: _toggleDayNight,
+          child: Icon(
+            _isDarkMode()
+                ? Icons.light_mode_rounded
+                : Icons.dark_mode_rounded,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildRecenterButton(ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: theme.colorScheme.surface,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => unawaited(_lockCameraToCurrentLocation()),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Icon(
+              Icons.my_location_rounded,
+              color: theme.colorScheme.primary,
+              size: 32,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _toggleDayNight() {
+    // Harita + tüm app teması tek kaynaktan (ThemeProvider) yönetilir, böylece
+    // her zaman ya tamamen gündüz ya tamamen gece olur.
+    _themeProvider.setThemeMode(
+      _isDarkMode() ? ThemeMode.light : ThemeMode.dark,
     );
   }
 

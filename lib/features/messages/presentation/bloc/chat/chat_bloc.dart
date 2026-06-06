@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/message_model.dart';
 import '../../../domain/usecases/delete_message_usecase.dart';
@@ -9,6 +10,7 @@ import '../../../domain/usecases/mark_conversation_as_read_usecase.dart';
 import 'chat_event.dart';
 import 'chat_state.dart';
 import '../../../../../core/services/message_signalr_service.dart';
+import '../../../../media/data/api/media_api.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final GetConversationMessagesUseCase getMessages;
@@ -17,6 +19,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final DeleteMessageUseCase deleteMessage;
   final MarkConversationAsReadUseCase markConversationAsRead;
   final MessageSignalRService messageSignalRService;
+  final MediaApi mediaApi;
 
   Timer? _typingTimer;
   StreamSubscription<List<int>>? _messagesReadSubscription;
@@ -31,9 +34,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     required this.deleteMessage,
     required this.markConversationAsRead,
     required this.messageSignalRService,
+    required this.mediaApi,
   }) : super(ChatInitial()) {
     on<LoadMessages>(_onLoadMessages);
     on<SendMessageEvent>(_onSendMessage);
+    on<SendImageAttachmentEvent>(_onSendImageAttachment);
+    on<SendVoiceMessageEvent>(_onSendVoiceMessage);
     on<EditMessageEvent>(_onEditMessage);
     on<DeleteMessageEvent>(_onDeleteMessage);
     on<MarkAsRead>(_onMarkAsRead);
@@ -163,6 +169,75 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       } catch (e) {
         emit(_mapChatError(e));
       }
+    }
+  }
+
+  Future<void> _onSendImageAttachment(
+    SendImageAttachmentEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! ChatLoaded) return;
+
+    emit(currentState.copyWith(isSending: true));
+    try {
+      final url = await mediaApi.uploadImage(File(event.filePath));
+      final caption = event.caption?.trim() ?? '';
+      final newMessage = await sendMessage(
+        receiverId: event.receiverId,
+        content: caption.isEmpty ? '📷 Fotoğraf' : caption,
+        type: 1,
+        attachmentUrl: url,
+      );
+      final latestState = state;
+      if (latestState is ChatLoaded) {
+        final updatedMessages = List.of(latestState.messages)
+          ..insert(0, newMessage);
+        emit(latestState.copyWith(messages: updatedMessages, isSending: false));
+      }
+    } catch (e) {
+      final latestState = state;
+      if (latestState is ChatLoaded) {
+        emit(latestState.copyWith(isSending: false));
+      }
+      emit(_mapChatError(e));
+    }
+  }
+
+  Future<void> _onSendVoiceMessage(
+    SendVoiceMessageEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! ChatLoaded) return;
+
+    emit(currentState.copyWith(isSending: true));
+    try {
+      final url = await mediaApi.uploadAudio(File(event.filePath));
+      final newMessage = await sendMessage(
+        receiverId: event.receiverId,
+        content: '🎤 Sesli mesaj',
+        type: 2,
+        attachmentUrl: url,
+        attachmentDurationSeconds: event.durationSeconds,
+      );
+      // Local file cleanup after successful upload
+      try {
+        await File(event.filePath).delete();
+      } catch (_) {}
+
+      final latestState = state;
+      if (latestState is ChatLoaded) {
+        final updatedMessages = List.of(latestState.messages)
+          ..insert(0, newMessage);
+        emit(latestState.copyWith(messages: updatedMessages, isSending: false));
+      }
+    } catch (e) {
+      final latestState = state;
+      if (latestState is ChatLoaded) {
+        emit(latestState.copyWith(isSending: false));
+      }
+      emit(_mapChatError(e));
     }
   }
 

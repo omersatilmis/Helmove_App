@@ -34,6 +34,9 @@ class MapRepositoryImpl implements MapRepository {
       remoteDataSource.reverseGeocode(point, types: types);
 
   @override
-  Future<List<RouteEntity>> getRoutes(List<Point> waypoints) =>
-      remoteDataSource.getRoutes(waypoints);
+  Future<List<RouteEntity>> getRoutes(
+    List<Point> waypoints, {
+    bool excludeToll = false,
+  }) =>
+      remoteDataSource.getRoutes(waypoints, excludeToll: excludeToll);
 }

@@ -68,35 +68,24 @@ class MapBottomSheet extends StatelessWidget {
                         endPoint: state.endPoint,
                       )));
 
+        // Key sadece içerik TİPİ değişince değişsin — böylece rota index'i
+        // değiştiğinde (aynı route ekranı) sheet baştan slide-in yapmaz,
+        // sadece içeriği güncellenir.
         final key = state.isSelectingStopFromMap
             ? const ValueKey('selecting_stop')
             : (state.isAddStopVisible
                 ? const ValueKey('add_stop')
                 : (hasRoute
-                    ? ValueKey(
-                        'route_${state.selectedRouteIndex}_${state.routeOptions.length}',
-                      )
-                    : ValueKey(location!.point.toString())));
+                    ? const ValueKey('route')
+                    : const ValueKey('destination')));
 
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 320),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          transitionBuilder: (Widget child, Animation<double> animation) {
-            final offsetAnimation = Tween<Offset>(
-              begin: const Offset(0.0, 1.2),
-              end: Offset.zero,
-            ).animate(animation);
-            return SlideTransition(position: offsetAnimation, child: child);
-          },
-          child: _ExpandableSheet(
-            key: key,
-            content: content,
-            forceCollapsed: forceCollapsed ||
-                (state.isSelectingStopFromMap && location == null),
-            bottomBarHeight: bottomBarHeight,
-            isExpandable: hasRoute,
-          ),
+        return _ExpandableSheet(
+          key: key,
+          content: content,
+          forceCollapsed: forceCollapsed ||
+              (state.isSelectingStopFromMap && location == null),
+          bottomBarHeight: bottomBarHeight,
+          isExpandable: hasRoute,
         );
       },
     );
@@ -143,12 +132,17 @@ class _ExpandableSheet extends StatefulWidget {
   State<_ExpandableSheet> createState() => _ExpandableSheetState();
 }
 
-class _ExpandableSheetState extends State<_ExpandableSheet> {
-  int _snapIndex = 1; // 0: low, 1: mid, 2: full
+class _ExpandableSheetState extends State<_ExpandableSheet>
+    with SingleTickerProviderStateMixin {
+  int _snapIndex = 1; // 0: collapsed, 1: expanded (full)
   double? _activeHeight;
   bool _isDragging = false;
-  final Map<int, double> _measuredHeights = {};
   final GlobalKey _contentKey = GlobalKey();
+
+  late final AnimationController _slideCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 340),
+  );
 
   @override
   void initState() {
@@ -156,6 +150,13 @@ class _ExpandableSheetState extends State<_ExpandableSheet> {
     if (widget.forceCollapsed || !widget.isExpandable) {
       _snapIndex = 0;
     }
+    _slideCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _slideCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -178,19 +179,33 @@ class _ExpandableSheetState extends State<_ExpandableSheet> {
     }
   }
 
+  // İki snap: 0 = collapsed (küçük peek), 1 = expanded (full).
+  double _collapsedHeight(double maxHeight, double bottomAdjustment) =>
+      maxHeight * 0.26 + bottomAdjustment;
+  double _expandedHeight(double maxHeight, double bottomAdjustment) =>
+      maxHeight + bottomAdjustment;
+
   void _toggleExpand() {
     setState(() {
-      _snapIndex = (_snapIndex + 1) % 3;
+      _snapIndex = _snapIndex == 0 ? 1 : 0;
       _activeHeight = null;
     });
   }
 
   void _handleDragStart(DragStartDetails details) {
+    // Gerçek içerik kutusunu ölç (dış wrapper'ı değil) — aksi halde drag
+    // başında sheet bir anda büyüyüp/küçülüp zıplıyordu.
+    final box = _contentKey.currentContext?.findRenderObject() as RenderBox?;
+    final topSafe = MediaQuery.viewPaddingOf(context).top;
+    final bottomAdjustment = widget.bottomBarHeight ?? 0;
+    final maxHeight =
+        MediaQuery.sizeOf(context).height - topSafe - 8 - bottomAdjustment;
+    final fallback = _snapIndex == 1
+        ? _expandedHeight(maxHeight, bottomAdjustment)
+        : _collapsedHeight(maxHeight, bottomAdjustment);
     setState(() {
       _isDragging = true;
-      // Capture current height before starting drag
-      final box = context.findRenderObject() as RenderBox?;
-      _activeHeight = box?.size.height ?? 100;
+      _activeHeight = (box != null && box.hasSize) ? box.size.height : fallback;
     });
   }
 
@@ -204,81 +219,59 @@ class _ExpandableSheetState extends State<_ExpandableSheet> {
     final velocity = details.primaryVelocity ?? 0;
     final topSafe = MediaQuery.viewPaddingOf(context).top;
     final bottomAdjustment = widget.bottomBarHeight ?? 0;
-    final maxHeight = MediaQuery.sizeOf(context).height - topSafe - 8;
+    final maxHeight =
+        MediaQuery.sizeOf(context).height - topSafe - 8 - bottomAdjustment;
 
-    // Default fallbacks if not yet measured
-    final lowH = _measuredHeights[0] ?? (maxHeight * 0.23 + bottomAdjustment);
-    final midH = _measuredHeights[1] ?? (maxHeight * 0.5 + bottomAdjustment);
-    final fullH = maxHeight + bottomAdjustment;
+    final collapsedH = _collapsedHeight(maxHeight, bottomAdjustment);
+    final expandedH = _expandedHeight(maxHeight, bottomAdjustment);
+    final currentH = _activeHeight ?? collapsedH;
 
-    final currentH = _activeHeight ?? lowH;
-    int targetIndex = _snapIndex;
-
-    if (velocity < -500) {
-      targetIndex = (_snapIndex + 1).clamp(0, 2);
-    } else if (velocity > 500) {
-      targetIndex = (_snapIndex - 1).clamp(0, 2);
+    int targetIndex;
+    if (velocity < -400) {
+      targetIndex = 1; // yukarı fling → aç
+    } else if (velocity > 400) {
+      targetIndex = 0; // aşağı fling → kapat
     } else {
-      // Snap to nearest
-      final d0 = (currentH - lowH).abs();
-      final d1 = (currentH - midH).abs();
-      final d2 = (currentH - fullH).abs();
-
-      if (d0 <= d1 && d0 <= d2) {
-        targetIndex = 0;
-      } else if (d1 <= d0 && d1 <= d2) {
-        targetIndex = 1;
-      } else {
-        targetIndex = 2;
-      }
+      // En yakına snap — ortada durma yok, sadece iki uç.
+      targetIndex =
+          (currentH - collapsedH).abs() <= (currentH - expandedH).abs() ? 0 : 1;
     }
 
     setState(() {
       _snapIndex = targetIndex;
       _isDragging = false;
-      _activeHeight = null; // Snap back to content-driven or max height
-    });
-  }
-
-  void _recordHeight() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _isDragging) return;
-      final box = _contentKey.currentContext?.findRenderObject() as RenderBox?;
-      if (box != null && box.hasSize) {
-        final h = box.size.height;
-        if (_measuredHeights[_snapIndex] != h) {
-          _measuredHeights[_snapIndex] = h;
-        }
-      }
+      _activeHeight = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    _recordHeight();
     final theme = Theme.of(context);
     final topSafe = MediaQuery.viewPaddingOf(context).top;
     final bottomAdjustment = widget.bottomBarHeight ?? 0;
     final maxHeight =
         MediaQuery.sizeOf(context).height - topSafe - 8 - bottomAdjustment;
 
-    final double? targetHeightInner = _snapIndex == 2
-      ? maxHeight
-      : (_snapIndex == 1
-          ? (_measuredHeights[1] ?? (maxHeight * 0.5))
-          : null);
+    final bool expanded = _snapIndex == 1;
 
-    final double? baseTargetHeight = widget.forceCollapsed
-        ? null
-        : (targetHeightInner != null
-              ? targetHeightInner + bottomAdjustment
-              : null);
+    // Destination (isExpandable=false): content-driven (null).
+    // Route: iki snap — collapsed (sabit peek) / expanded (full).
+    final double? baseTargetHeight;
+    if (!widget.isExpandable) {
+      baseTargetHeight = null;
+    } else if (widget.forceCollapsed) {
+      baseTargetHeight = _collapsedHeight(maxHeight, bottomAdjustment);
+    } else {
+      baseTargetHeight = expanded
+          ? _expandedHeight(maxHeight, bottomAdjustment)
+          : _collapsedHeight(maxHeight, bottomAdjustment);
+    }
 
     final displayHeight = _isDragging ? _activeHeight : baseTargetHeight;
 
     final contentPadding = EdgeInsets.fromLTRB(16, 4, 16, bottomAdjustment);
 
-    return AnimatedContainer(
+    final sheet = AnimatedContainer(
       duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
       width: double.infinity,
@@ -326,9 +319,13 @@ class _ExpandableSheetState extends State<_ExpandableSheet> {
                 ),
               ),
               Flexible(
-                fit: _snapIndex == 2 ? FlexFit.tight : FlexFit.loose,
+                // Expanded route sheet maxHeight'i doldurur ve scroll eder;
+                // collapsed/destination doğal boyutta, scroll kapalı.
+                fit: (widget.isExpandable && expanded)
+                    ? FlexFit.tight
+                    : FlexFit.loose,
                 child: SingleChildScrollView(
-                  physics: _snapIndex >= 1
+                  physics: (widget.isExpandable && expanded)
                       ? const BouncingScrollPhysics()
                       : const NeverScrollableScrollPhysics(),
                   padding: contentPadding,
@@ -339,6 +336,21 @@ class _ExpandableSheetState extends State<_ExpandableSheet> {
           ),
         ),
       ),
+    );
+
+    // Slide-in: boyuttan bağımsız (paint-time FractionalTranslation), layout'u
+    // etkilemez → height değişimiyle çakışmaz. child param olarak verildiği
+    // için alt tree slide boyunca rebuild olmaz.
+    return AnimatedBuilder(
+      animation: _slideCtrl,
+      builder: (context, child) {
+        final t = Curves.easeOutCubic.transform(_slideCtrl.value);
+        return FractionalTranslation(
+          translation: Offset(0, 1 - t),
+          child: child,
+        );
+      },
+      child: sheet,
     );
   }
 }

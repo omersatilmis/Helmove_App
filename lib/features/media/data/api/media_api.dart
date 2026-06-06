@@ -41,4 +41,29 @@ class MediaApi {
       throw Exception('Resim yüklenemedi: $e');
     }
   }
+
+  // /api/Media/upload-audio endpointine yükleme yapar (sesli mesaj için)
+  Future<String> uploadAudio(File file) async {
+    try {
+      final fileName = file.path.split('/').last;
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(file.path, filename: fileName),
+      });
+
+      final response = await _dio.post(
+        '/api/Media/upload-audio',
+        data: formData,
+      );
+
+      if (response.data is Map<String, dynamic>) {
+        if (response.data['data'] != null) {
+          return response.data['data'].toString();
+        }
+        return response.data['url'] ?? response.data.toString();
+      }
+      return response.data.toString();
+    } catch (e) {
+      throw Exception('Ses dosyası yüklenemedi: $e');
+    }
+  }
 }

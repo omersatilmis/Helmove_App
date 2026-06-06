@@ -15,7 +15,10 @@ abstract class MapRemoteDataSource {
     int limit = 6,
   });
   Future<LocationModel?> reverseGeocode(Point point, {List<String>? types});
-  Future<List<RouteModel>> getRoutes(List<Point> waypoints);
+  Future<List<RouteModel>> getRoutes(
+    List<Point> waypoints, {
+    bool excludeToll = false,
+  });
 }
 
 class MapRemoteDataSourceImpl implements MapRemoteDataSource {
@@ -176,23 +179,27 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   }
 
   @override
-  Future<List<RouteModel>> getRoutes(List<Point> waypoints) async {
+  Future<List<RouteModel>> getRoutes(
+    List<Point> waypoints, {
+    bool excludeToll = false,
+  }) async {
     _ensureToken();
     try {
       if (waypoints.length < 2) return const [];
-      
+
       final coords = waypoints
           .map((p) => '${p.coordinates.lng},${p.coordinates.lat}')
           .join(';');
       final response = await dio.get(
         '/directions/v5/mapbox/driving-traffic/$coords',
         queryParameters: {
-          'alternatives': 'true',
+          'alternatives': 'false',
           'geometries': 'geojson',
           'overview': 'full',
           'steps': 'true',
           'annotations': 'congestion,duration',
           'language': MapboxConfig.language,
+          if (excludeToll) 'exclude': 'toll',
         },
       );
       

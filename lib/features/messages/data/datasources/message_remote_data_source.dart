@@ -10,6 +10,8 @@ abstract class MessageRemoteDataSource {
     required String content,
     int? type,
     String? attachmentUrl,
+    int? attachmentDurationSeconds,
+    List<int>? attachmentWaveform,
     LocationData? locationData,
   });
 
@@ -47,6 +49,8 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     required String content,
     int? type,
     String? attachmentUrl,
+    int? attachmentDurationSeconds,
+    List<int>? attachmentWaveform,
     LocationData? locationData,
   }) async {
     final body = {
@@ -54,6 +58,8 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       'content': content,
       'type': type ?? 0,
       'attachmentUrl': attachmentUrl,
+      'attachmentDurationSeconds': attachmentDurationSeconds,
+      'attachmentWaveform': attachmentWaveform,
       'locationData': locationData != null
           ? {
               'latitude': locationData.latitude,

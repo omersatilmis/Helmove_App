@@ -97,9 +97,10 @@ class BottomBarWrapper extends StatelessWidget {
     final double addIconSize = 48.0 * scale;
     final double fontSize = 11.0 * scale;
 
-    // Barın yüksekliği: Temel 65px + Cihazın alt boşluğu (Home çizgisi)
+    // Barın yüksekliği: Label gizli olduğu için kompakt (sadece ikonlar)
+    // + Cihazın alt boşluğu (Home çizgisi)
     final double navBarHeight =
-        (65.0 * scale) + (bottomPadding > 0 ? bottomPadding : 15.0);
+        (20.0 * scale) + (bottomPadding > 0 ? bottomPadding : 15.0);
 
     // Shell indices: 0(Home), 1(Discover), 2(Map), 3(Communication)
     // UI indices:    0(Home), 1(Discover), 2(AddPost), 3(Map), 4(Communication)
@@ -143,7 +144,7 @@ class BottomBarWrapper extends StatelessWidget {
               elevation: 0,
               backgroundColor: theme.colorScheme.surface.withAlpha(180),
               selectedIndex: currentIndex,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
               onDestinationSelected: (index) async {
                 if (index == 2) {
                   AddContentBottomSheet.show(context);

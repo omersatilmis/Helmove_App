@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:helmove/core/utils/image_url_extensions.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:helmove/l10n/app_localizations.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -14,6 +16,8 @@ import '../../../../core/di/injection_container.dart';
 import '../bloc/chat/chat_bloc.dart';
 import '../bloc/chat/chat_event.dart';
 import '../bloc/chat/chat_state.dart';
+import '../widgets/voice_recorder.dart';
+import '../widgets/voice_player.dart';
 import 'call_page.dart';
 
 import '../../../../features/follow/presentation/bloc/action/follow_action_bloc.dart';
@@ -104,6 +108,11 @@ class _ChatViewState extends State<ChatView> {
   final ValueNotifier<bool> _isTypingNotifier = ValueNotifier<bool>(false);
   int? _editingMessageId; // Mesaj düzenleme için ID
 
+  final VoiceRecorderController _recorder = VoiceRecorderController();
+  bool _isRecording = false;
+  bool _isHoldRecording = false;
+  DateTime? _recordStartedAt;
+
   String _presenceLabel({required bool isOnline, DateTime? lastSeen}) {
     if (isOnline) {
       return 'çevrimiçi';
@@ -142,7 +151,146 @@ class _ChatViewState extends State<ChatView> {
     _controller.dispose();
     _scrollController.dispose();
     _isTypingNotifier.dispose();
+    _recorder.dispose();
     super.dispose();
+  }
+
+  Future<void> _startRecording({required bool isHold}) async {
+    if (_isRecording) return;
+    HapticFeedback.mediumImpact();
+    final path = await _recorder.start();
+    if (path == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mikrofon izni gerekli.')),
+      );
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _isRecording = true;
+      _isHoldRecording = isHold;
+      _recordStartedAt = DateTime.now();
+    });
+  }
+
+  Future<void> _stopAndSend() async {
+    if (!_isRecording) return;
+    final result = await _recorder.stop();
+    if (!mounted) return;
+    setState(() {
+      _isRecording = false;
+      _isHoldRecording = false;
+      _recordStartedAt = null;
+    });
+    if (result == null) return;
+    if (result.durationSeconds < 1) {
+      try {
+        await File(result.filePath).delete();
+      } catch (_) {}
+      return;
+    }
+    if (!mounted) return;
+    context.read<ChatBloc>().add(
+      SendVoiceMessageEvent(
+        receiverId: widget.otherUserId,
+        filePath: result.filePath,
+        durationSeconds: result.durationSeconds,
+      ),
+    );
+  }
+
+  Future<void> _cancelRecording() async {
+    if (!_isRecording) return;
+    final result = await _recorder.stop();
+    if (result != null) {
+      try {
+        await File(result.filePath).delete();
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() {
+      _isRecording = false;
+      _isHoldRecording = false;
+      _recordStartedAt = null;
+    });
+  }
+
+  Future<void> _pickAndSendAttachment(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1920,
+      );
+      if (picked == null || !mounted) return;
+
+      HapticFeedback.lightImpact();
+      context.read<ChatBloc>().add(
+        SendImageAttachmentEvent(
+          receiverId: widget.otherUserId,
+          filePath: picked.path,
+          caption: _controller.text.trim().isEmpty
+              ? null
+              : _controller.text.trim(),
+        ),
+      );
+      _controller.clear();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Resim seçilemedi: $e')),
+      );
+    }
+  }
+
+  void _openAttachmentMenu() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : AppColors.lightBackground,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Galeriden Seç'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _pickAndSendAttachment(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Kamera'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _pickAndSendAttachment(ImageSource.camera);
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _sendMessage() {
@@ -309,12 +457,19 @@ class _ChatViewState extends State<ChatView> {
                               isRead: message.isRead,
                               isFirstInGroup: isFirstInGroup,
                               isLastInGroup: isLastInGroup,
-                              onEdit: () {
-                                setState(() {
-                                  _editingMessageId = message.id;
-                                  _controller.text = message.content;
-                                });
-                              },
+                              attachmentUrl: message.attachmentUrl,
+                              messageType: message.type,
+                              attachmentDurationSeconds:
+                                  message.attachmentDurationSeconds,
+                              onEdit: (message.attachmentUrl == null &&
+                                      message.type == 0)
+                                  ? () {
+                                      setState(() {
+                                        _editingMessageId = message.id;
+                                        _controller.text = message.content;
+                                      });
+                                    }
+                                  : null,
                               onDelete: () {
                                 context.read<ChatBloc>().add(DeleteMessageEvent(message.id));
                               },
@@ -549,104 +704,129 @@ class _ChatViewState extends State<ChatView> {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+        child: _isRecording
+            ? RecordingHud(
+                startedAt: _recordStartedAt ?? DateTime.now(),
+                onCancel: _cancelRecording,
+                onSend: _stopAndSend,
+                onMaxReached: _stopAndSend,
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (_editingMessageId != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                        border: Border(left: BorderSide(color: colorScheme.primary, width: 3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_rounded, size: 14, color: colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "Mesajı Düzenle",
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_editingMessageId != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                              border: Border(left: BorderSide(color: colorScheme.primary, width: 3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_rounded, size: 14, color: colorScheme.primary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    "Mesajı Düzenle",
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close_rounded, size: 16),
+                                  onPressed: () {
+                                    setState(() {
+                                      _editingMessageId = null;
+                                      _controller.clear();
+                                    });
+                                  },
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 16),
-                            onPressed: () {
-                              setState(() {
-                                _editingMessageId = null;
-                                _controller.clear();
-                              });
-                            },
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                        AppInputField(
+                          controller: _controller,
+                          hint: _editingMessageId != null ? 'Mesajı düzenle...' : 'Mesaj yaz...',
+                          maxLines: 5,
+                          minLines: 1,
+                          radius: 24,
+                          showFocusBorder: false,
+                          textInputAction: TextInputAction.newline,
+                          prefixWidget: IconButton(
+                            icon: Icon(
+                              Icons.add_circle_outline_rounded,
+                              color: colorScheme.primary,
+                              size: 24,
+                            ),
+                            onPressed: _openAttachmentMenu,
                           ),
-                        ],
-                      ),
+                          suffixWidget: null,
+                        ),
+                      ],
                     ),
-                  AppInputField(
-                    controller: _controller,
-                    hint: _editingMessageId != null ? 'Mesajı düzenle...' : 'Mesaj yaz...',
-                    maxLines: 5,
-                    minLines: 1,
-                    radius: 24,
-                    showFocusBorder: false,
-                    textInputAction: TextInputAction.newline,
-                    prefixWidget: IconButton(
-                      icon: Icon(
-                        Icons.add_circle_outline_rounded,
-                        color: colorScheme.primary,
-                        size: 24,
-                      ),
-                      onPressed: () {},
-                    ),
-                    suffixWidget: null,
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _sendMessage,
-              child: Container(
-                height: 48,
-                width: 48,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: colorScheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: ValueListenableBuilder<bool>(
+                  const SizedBox(width: 8),
+                  ValueListenableBuilder<bool>(
                     valueListenable: _isTypingNotifier,
                     builder: (context, isTyping, child) {
-                      return Icon(
-                        (isTyping || _editingMessageId != null)
-                            ? Icons.send_rounded
-                            : Icons.mic_rounded,
-                        color: colorScheme.onPrimary,
-                        size: 24,
+                      final isSendMode = isTyping || _editingMessageId != null;
+                      final iconData = isSendMode
+                          ? Icons.send_rounded
+                          : Icons.mic_rounded;
+                      final button = Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            iconData,
+                            color: colorScheme.onPrimary,
+                            size: 24,
+                          ),
+                        ),
+                      );
+
+                      if (isSendMode) {
+                        return GestureDetector(
+                          onTap: _sendMessage,
+                          child: button,
+                        );
+                      }
+                      // Mic mode: tap = preview-mode (toggle), longPress = quick hold
+                      return GestureDetector(
+                        onTap: () => _startRecording(isHold: false),
+                        onLongPressStart: (_) =>
+                            _startRecording(isHold: true),
+                        onLongPressEnd: (_) {
+                          if (_isRecording && _isHoldRecording) {
+                            _stopAndSend();
+                          }
+                        },
+                        child: button,
                       );
                     },
                   ),
-                ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -668,6 +848,9 @@ class _MessageBubble extends StatelessWidget {
   final bool isLastInGroup;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final String? attachmentUrl;
+  final int messageType;
+  final int? attachmentDurationSeconds;
 
   const _MessageBubble({
     required this.text,
@@ -678,6 +861,9 @@ class _MessageBubble extends StatelessWidget {
     required this.isLastInGroup,
     this.onEdit,
     this.onDelete,
+    this.attachmentUrl,
+    this.messageType = 0,
+    this.attachmentDurationSeconds,
   });
 
 
@@ -790,13 +976,62 @@ class _MessageBubble extends StatelessWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12, right: 10),
-                    child: Text(
-                      text,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: textColor,
-                        fontSize: 16,
-                        height: 1.2,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (attachmentUrl != null && messageType == 1)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: CachedNetworkImage(
+                              imageUrl:
+                                  attachmentUrl!.toAbsoluteImageUrl(),
+                              fit: BoxFit.cover,
+                              width: 240,
+                              placeholder: (_, url) => Container(
+                                width: 240,
+                                height: 180,
+                                color: Colors.black26,
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                              errorWidget: (_, url, err) => Container(
+                                width: 240,
+                                height: 180,
+                                color: Colors.black26,
+                                child: const Icon(
+                                  Icons.broken_image_outlined,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (attachmentUrl != null && messageType == 2)
+                          VoicePlayer(
+                            url: attachmentUrl!,
+                            durationSeconds: attachmentDurationSeconds,
+                            foreground: textColor,
+                            background: bubbleColor,
+                          ),
+                        if (text.isNotEmpty &&
+                            messageType != 2 &&
+                            !(messageType == 1 && text == '📷 Fotoğraf'))
+                          Padding(
+                            padding: EdgeInsets.only(
+                              top: attachmentUrl != null ? 6 : 0,
+                            ),
+                            child: Text(
+                              text,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: textColor,
+                                fontSize: 16,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   Positioned(

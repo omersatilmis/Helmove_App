@@ -7,6 +7,9 @@ import 'package:helmove/l10n/app_localizations.dart';
 
 import '../providers/map_bloc.dart';
 import '../providers/map_event.dart';
+import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
+import '../../../voice_session/presentation/bloc/voice_session_state.dart';
+import '../../../voice_session/domain/entities/voice_session_participant_entity.dart';
 
 class NavigationTopHud extends StatelessWidget {
   const NavigationTopHud({super.key});
@@ -141,14 +144,234 @@ class NavigationTopHud extends StatelessWidget {
   }
 }
 
+/// Navigasyon sırasında o an konuşan kişi(leri) gösterir (Discord tarzı).
+/// Kaynak: VoiceSessionBloc.activeSpeakers (LiveKit ses seviyesi) — backend
+/// değişikliği gerekmez.
+class NavigationSpeakingIndicator extends StatelessWidget {
+  const NavigationSpeakingIndicator({super.key});
+
+  static const Color _speakGreen = Color(0xFF3BA55D);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<VoiceSessionBloc, VoiceSessionState>(
+      buildWhen: (p, c) =>
+          p.activeSpeakers != c.activeSpeakers ||
+          p.session != c.session ||
+          p.currentUserId != c.currentUserId,
+      builder: (context, state) {
+        final session = state.session;
+        if (session == null || state.activeSpeakers.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final speakingIds = state.activeSpeakers.toSet();
+        final speakers = session.participants
+            .where((p) => speakingIds.contains(p.userId.toString()))
+            .toList();
+        if (speakers.isEmpty) return const SizedBox.shrink();
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A2E).withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: _speakGreen.withValues(alpha: 0.55),
+                    width: 1.2,
+                  ),
+                ),
+                padding: const EdgeInsets.fromLTRB(10, 6, 16, 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const _PulsingDot(color: _speakGreen),
+                    const SizedBox(width: 8),
+                    _AvatarStack(
+                      speakers: speakers.take(3).toList(),
+                      ringColor: _speakGreen,
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        _label(speakers, state.currentUserId),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static String _displayName(VoiceSessionParticipantEntity p, int? me) {
+    if (me != null && p.userId == me) return 'Sen';
+    final full = [p.firstName, p.lastName]
+        .where((s) => s != null && s.trim().isNotEmpty)
+        .map((s) => s!.trim())
+        .join(' ');
+    if (full.isNotEmpty) return full;
+    if (p.username != null && p.username!.trim().isNotEmpty) {
+      return p.username!.trim();
+    }
+    return 'Sürücü';
+  }
+
+  static String _label(List<VoiceSessionParticipantEntity> speakers, int? me) {
+    if (speakers.length == 1) {
+      final n = _displayName(speakers.first, me);
+      return n == 'Sen' ? 'Konuşuyorsun' : '$n konuşuyor';
+    }
+    final first = _displayName(speakers.first, me);
+    return '$first +${speakers.length - 1} konuşuyor';
+  }
+}
+
+class _AvatarStack extends StatelessWidget {
+  final List<VoiceSessionParticipantEntity> speakers;
+  final Color ringColor;
+  const _AvatarStack({required this.speakers, required this.ringColor});
+
+  @override
+  Widget build(BuildContext context) {
+    const double size = 26;
+    const double overlap = 16;
+    final width = size + (speakers.length - 1) * overlap;
+    return SizedBox(
+      width: width,
+      height: size,
+      child: Stack(
+        children: [
+          for (int i = 0; i < speakers.length; i++)
+            Positioned(
+              left: i * overlap,
+              child: _avatar(speakers[i], size),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatar(VoiceSessionParticipantEntity p, double size) {
+    final hasImg = p.profileImage != null && p.profileImage!.trim().isNotEmpty;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFF2A2A40),
+        border: Border.all(color: ringColor, width: 2),
+      ),
+      child: ClipOval(
+        child: hasImg
+            ? Image.network(
+                p.profileImage!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _initials(p),
+              )
+            : _initials(p),
+      ),
+    );
+  }
+
+  Widget _initials(VoiceSessionParticipantEntity p) {
+    final source = (p.firstName?.trim().isNotEmpty ?? false)
+        ? p.firstName!.trim()
+        : (p.username?.trim().isNotEmpty ?? false)
+        ? p.username!.trim()
+        : '?';
+    return Center(
+      child: Text(
+        source.substring(0, 1).toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+  const _PulsingDot({required this.color});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = _controller.value;
+        return SizedBox(
+          width: 16,
+          height: 16,
+          child: Center(
+            child: Container(
+              width: 9 + t * 3,
+              height: 9 + t * 3,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color,
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: 0.5 * (1 - t)),
+                    blurRadius: 6 + t * 6,
+                    spreadRadius: t * 2,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class NavigationBottomHud extends StatelessWidget {
   final double? currentSpeedKmh;
-  final double bottomBarHeight;
 
   const NavigationBottomHud({
     super.key,
     this.currentSpeedKmh,
-    required this.bottomBarHeight,
   });
 
   @override
@@ -185,10 +408,11 @@ class NavigationBottomHud extends StatelessWidget {
             '${eta.hour.toString().padLeft(2, '0')}:${eta.minute.toString().padLeft(2, '0')}';
 
         final speed = currentSpeedKmh ?? 0;
+        // Bottom bar navigasyonda gizli — HUD ekranın en altına yapışsın,
+        // sadece home indicator (safe area) kadar iç boşluk bırak.
+        final bottomSafe = MediaQuery.paddingOf(context).bottom;
 
-        return Padding(
-          padding: EdgeInsets.only(bottom: bottomBarHeight),
-          child: ClipRRect(
+        return ClipRRect(
             borderRadius:
                 const BorderRadius.vertical(top: Radius.circular(24)),
             child: BackdropFilter(
@@ -202,7 +426,7 @@ class NavigationBottomHud extends StatelessWidget {
                     ),
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottomSafe),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -258,8 +482,7 @@ class NavigationBottomHud extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-        );
+          );
       },
     );
   }

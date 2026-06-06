@@ -7,7 +7,10 @@ class GetRouteUseCase {
 
   GetRouteUseCase(this.repository);
 
-  Future<List<RouteEntity>> call(List<Point> waypoints) async {
-    return repository.getRoutes(waypoints);
+  Future<List<RouteEntity>> call(
+    List<Point> waypoints, {
+    bool excludeToll = false,
+  }) async {
+    return repository.getRoutes(waypoints, excludeToll: excludeToll);
   }
 }

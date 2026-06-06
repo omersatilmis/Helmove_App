@@ -29,9 +29,6 @@ class AlternateRouteCards extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final shortestIndex = _shortestIndex(routes);
-    final fastestIndex = _fastestIndex(routes);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -65,19 +62,12 @@ class AlternateRouteCards extends StatelessWidget {
             itemBuilder: (context, index) {
               final route = routes[index];
               final isSelected = index == selectedIndex;
-              final badgeText = _badgeLabel(
-                index,
-                shortestIndex,
-                fastestIndex,
-                l10n,
-              );
-              final badgeIcon = _badgeIcon(index, shortestIndex, fastestIndex);
-              final badgeColor = _badgeColor(
-                index,
-                shortestIndex,
-                fastestIndex,
-                colorScheme,
-              );
+              final isFree = route.category == RouteCategory.free;
+              final badgeText = isFree ? 'Ücretsiz Yollar' : 'En Hızlı';
+              final badgeIcon =
+                  isFree ? Icons.money_off_rounded : Icons.bolt_rounded;
+              final badgeColor =
+                  isFree ? const Color(0xFF2E7D32) : colorScheme.primary;
 
               return Material(
                 color: Colors.transparent,
@@ -129,6 +119,16 @@ class AlternateRouteCards extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            // Paralı yol göstergesi (sadece En Hızlı'da toll varsa)
+                            if (route.hasToll)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 2),
+                                child: Icon(
+                                  Icons.attach_money_rounded,
+                                  size: 16,
+                                  color: const Color(0xFFF9A825),
+                                ),
+                              ),
                             if (isSelected)
                               Icon(
                                 Icons.check_circle_rounded,
@@ -168,72 +168,5 @@ class AlternateRouteCards extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  int _shortestIndex(List<RouteEntity> routes) {
-    var bestIndex = 0;
-    var bestValue = routes.first.distanceMeters;
-    for (var i = 1; i < routes.length; i++) {
-      final value = routes[i].distanceMeters;
-      if (value < bestValue) {
-        bestValue = value;
-        bestIndex = i;
-      }
-    }
-    return bestIndex;
-  }
-
-  int _fastestIndex(List<RouteEntity> routes) {
-    var bestIndex = 0;
-    var bestValue = routes.first.durationSeconds;
-    for (var i = 1; i < routes.length; i++) {
-      final value = routes[i].durationSeconds;
-      if (value < bestValue) {
-        bestValue = value;
-        bestIndex = i;
-      }
-    }
-    return bestIndex;
-  }
-
-  String _badgeLabel(
-    int index,
-    int shortestIndex,
-    int fastestIndex,
-    AppLocalizations l10n,
-  ) {
-    if (index == shortestIndex && index == fastestIndex) {
-      return l10n.map_route_badge_short_fast;
-    }
-    if (index == shortestIndex) return l10n.map_route_badge_shortest;
-    if (index == fastestIndex) return l10n.map_route_badge_fastest;
-    return l10n.map_route_badge_alternative;
-  }
-
-  IconData _badgeIcon(int index, int shortestIndex, int fastestIndex) {
-    if (index == shortestIndex && index == fastestIndex) {
-      return Icons.offline_bolt_rounded;
-    }
-    if (index == shortestIndex) {
-      return Icons.straighten_rounded;
-    }
-    if (index == fastestIndex) return Icons.bolt_rounded;
-    return Icons.alt_route_rounded;
-  }
-
-  Color _badgeColor(
-    int index,
-    int shortestIndex,
-    int fastestIndex,
-    ColorScheme colorScheme,
-  ) {
-    if (index == shortestIndex && index == fastestIndex) {
-      return colorScheme.primary;
-    }
-    if (index == shortestIndex) {
-      return colorScheme.tertiary;
-    }
-    if (index == fastestIndex) return colorScheme.primary;
-    return colorScheme.onSurfaceVariant;
   }
 }

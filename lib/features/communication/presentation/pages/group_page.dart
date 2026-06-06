@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart' as di;
+import '../../../group_ride/presentation/live_ride/live_ride_controller.dart';
 import 'package:helmove/core/widgets/app_background.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 
@@ -317,6 +318,9 @@ class _GroupPageState extends State<GroupPage>
     if (!mounted || _didNavigateAway) return;
     _didNavigateAway = true;
 
+    // Gruptan çıkış / sürüş bitti → canlı katmanı kapat.
+    di.sl<LiveRideController>().stop();
+
     final trimmedMessage = message?.trim();
     if (trimmedMessage != null && trimmedMessage.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -468,6 +472,11 @@ class _GroupPageState extends State<GroupPage>
                   _isResolvingRideId = false;
                   _isLoadingRide = false;
                 });
+                // Canlı konum + ortak rota katmanını aktif et.
+                di.sl<LiveRideController>().start(
+                  state.ride.id,
+                  organizerId: state.ride.adminId,
+                );
               } else if (state is GroupRideDeleted) {
                 final rideId = _effectiveRideId;
                 if (state.rideId == null || state.rideId == rideId) {
@@ -565,6 +574,22 @@ class _GroupPageState extends State<GroupPage>
                                   onPromote: _promoteUser,
                                   onDemote: _demoteUser,
                                 ),
+                                if (_effectiveRideId > 0) ...[
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton.icon(
+                                      onPressed: () => context.go('/map'),
+                                      icon: const Icon(Icons.map_rounded),
+                                      label: const Text('Haritada Göster'),
+                                      style: FilledButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),

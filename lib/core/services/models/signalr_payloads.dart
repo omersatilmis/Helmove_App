@@ -493,3 +493,244 @@ class UserMuteStatePayload {
     );
   }
 }
+
+// ============================================================
+// LIVE RIDE — Canlı konum paylaşımı + ortak rota payload'ları
+// ============================================================
+
+/// `ReceiveRideLocationUpdate` event'i için. SignalRService bunu
+/// `{ 'userId': <string>, lat, lng, heading, speedKmh, timestamp }` map'i olarak
+/// yayınlar (arguments[0]=userId, arguments[1]=konum objesi birleştirilmiş).
+class RideLocationUpdatePayload {
+  final int userId;
+  final double lat;
+  final double lng;
+  final double? heading;
+  final double? speedKmh;
+  final DateTime? timestamp;
+
+  const RideLocationUpdatePayload({
+    required this.userId,
+    required this.lat,
+    required this.lng,
+    this.heading,
+    this.speedKmh,
+    this.timestamp,
+  });
+
+  static RideLocationUpdatePayload? tryParse(Map<String, dynamic> map) {
+    final userId = _readInt(map, const ['userId', 'UserId']);
+    final lat = _readDouble(map, const ['lat', 'Lat', 'latitude', 'Latitude']);
+    final lng = _readDouble(map, const [
+      'lng',
+      'Lng',
+      'longitude',
+      'Longitude',
+    ]);
+    if (userId == null || lat == null || lng == null) return null;
+    return RideLocationUpdatePayload(
+      userId: userId,
+      lat: lat,
+      lng: lng,
+      heading: _readDouble(map, const ['heading', 'Heading', 'bearing']),
+      speedKmh: _readDouble(map, const ['speedKmh', 'SpeedKmh', 'speed']),
+      timestamp: _readDateTime(map, const ['timestamp', 'Timestamp']),
+    );
+  }
+}
+
+/// Snapshot içinde ve `RideRouteUpdated` event'inde gelen rota bilgisi.
+class RideRoutePayload {
+  final String? geometry;
+  final String? profile;
+  final double? distanceMeters;
+  final int? durationSeconds;
+
+  const RideRoutePayload({
+    this.geometry,
+    this.profile,
+    this.distanceMeters,
+    this.durationSeconds,
+  });
+
+  bool get hasGeometry => geometry != null && geometry!.isNotEmpty;
+
+  factory RideRoutePayload.fromMap(Map<String, dynamic> map) {
+    return RideRoutePayload(
+      geometry: _readString(map, const ['geometry', 'Geometry']),
+      profile: _readString(map, const ['profile', 'Profile']),
+      distanceMeters: _readDouble(map, const [
+        'distanceMeters',
+        'DistanceMeters',
+      ]),
+      durationSeconds: _readInt(map, const [
+        'durationSeconds',
+        'DurationSeconds',
+      ]),
+    );
+  }
+}
+
+/// Snapshot içindeki katılımcı (son konum + profil). Opt-out üyede lat/lng null.
+class RideParticipantPayload {
+  final int userId;
+  final String? fullName;
+  final String? username;
+  final String? profilePictureUrl;
+  final bool shareLocation;
+  final double? lat;
+  final double? lng;
+  final double? heading;
+  final double? speedKmh;
+  final DateTime? lastLocationAt;
+  final bool isOrganizer;
+
+  const RideParticipantPayload({
+    required this.userId,
+    this.fullName,
+    this.username,
+    this.profilePictureUrl,
+    this.shareLocation = true,
+    this.lat,
+    this.lng,
+    this.heading,
+    this.speedKmh,
+    this.lastLocationAt,
+    this.isOrganizer = false,
+  });
+
+  static RideParticipantPayload? tryParse(Map<String, dynamic> map) {
+    final userId = _readInt(map, const ['userId', 'UserId']);
+    if (userId == null) return null;
+    return RideParticipantPayload(
+      userId: userId,
+      fullName: _readString(map, const ['fullName', 'FullName']),
+      username: _readString(map, const ['username', 'Username']),
+      profilePictureUrl: _readString(map, const [
+        'profilePictureUrl',
+        'ProfilePictureUrl',
+      ]),
+      shareLocation:
+          _readBool(map, const ['shareLocation', 'ShareLocation']) ?? true,
+      lat: _readDouble(map, const ['lat', 'Lat', 'lastLat', 'LastLat']),
+      lng: _readDouble(map, const ['lng', 'Lng', 'lastLng', 'LastLng']),
+      heading: _readDouble(map, const ['heading', 'Heading', 'lastHeading']),
+      speedKmh: _readDouble(map, const ['speedKmh', 'SpeedKmh', 'lastSpeedKmh']),
+      lastLocationAt: _readDateTime(map, const [
+        'lastLocationAt',
+        'LastLocationAt',
+      ]),
+      isOrganizer: _readBool(map, const ['isOrganizer', 'IsOrganizer']) ?? false,
+    );
+  }
+}
+
+/// `RideJoinSnapshot` event'i: katılan kişiye gönderilen ilk durum.
+class RideJoinSnapshotPayload {
+  final int rideId;
+  final RideRoutePayload? route;
+  final List<RideParticipantPayload> participants;
+
+  const RideJoinSnapshotPayload({
+    required this.rideId,
+    this.route,
+    this.participants = const [],
+  });
+
+  static RideJoinSnapshotPayload? tryParse(Map<String, dynamic> map) {
+    final rideId = _readCanonicalInt(
+      map,
+      canonicalKeys: const ['rideId', 'RideId'],
+      legacyKeys: const ['id', 'Id'],
+    );
+    if (rideId == null) return null;
+
+    RideRoutePayload? route;
+    final rawRoute = map['route'] ?? map['Route'];
+    final routeMap = _asStringMap(rawRoute);
+    if (routeMap != null) {
+      route = RideRoutePayload.fromMap(routeMap);
+    }
+
+    final participants = <RideParticipantPayload>[];
+    final rawParticipants = map['participants'] ?? map['Participants'];
+    if (rawParticipants is List) {
+      for (final item in rawParticipants) {
+        final m = _asStringMap(item);
+        if (m == null) continue;
+        final p = RideParticipantPayload.tryParse(m);
+        if (p != null) participants.add(p);
+      }
+    }
+
+    return RideJoinSnapshotPayload(
+      rideId: rideId,
+      route: route,
+      participants: participants,
+    );
+  }
+}
+
+/// `RideParticipantJoined` / `RideParticipantLeft` /
+/// `RideParticipantLocationStopped` event'leri için ortak payload.
+class RideParticipantEventPayload {
+  final int rideId;
+  final int userId;
+  final String? fullName;
+  final String? username;
+  final String? profilePictureUrl;
+
+  const RideParticipantEventPayload({
+    required this.rideId,
+    required this.userId,
+    this.fullName,
+    this.username,
+    this.profilePictureUrl,
+  });
+
+  static RideParticipantEventPayload? tryParse(Map<String, dynamic> map) {
+    final userId = _readInt(map, const ['userId', 'UserId']);
+    if (userId == null) return null;
+    final rideId =
+        _readCanonicalInt(
+          map,
+          canonicalKeys: const ['rideId', 'RideId'],
+          legacyKeys: const ['id', 'Id'],
+        ) ??
+        0;
+    return RideParticipantEventPayload(
+      rideId: rideId,
+      userId: userId,
+      fullName: _readString(map, const ['fullName', 'FullName']),
+      username: _readString(map, const ['username', 'Username']),
+      profilePictureUrl: _readString(map, const [
+        'profilePictureUrl',
+        'ProfilePictureUrl',
+      ]),
+    );
+  }
+}
+
+bool? _readBool(Map<String, dynamic> data, List<String> keys) {
+  for (final key in keys) {
+    final value = data[key];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final lower = value.toLowerCase().trim();
+      if (lower == 'true' || lower == '1') return true;
+      if (lower == 'false' || lower == '0') return false;
+    }
+  }
+  return null;
+}
+
+/// SignalR'dan gelen iç içe map'ler `Map<Object?, Object?>` olabilir; güvenli
+/// şekilde `Map<String, dynamic>`e çevirir.
+Map<String, dynamic>? _asStringMap(dynamic value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) {
+    return value.map((k, v) => MapEntry(k.toString(), v));
+  }
+  return null;
+}

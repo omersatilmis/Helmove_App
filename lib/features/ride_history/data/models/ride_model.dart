@@ -13,6 +13,7 @@ class RideModel extends RideEntity {
     super.startCity,
     super.endCity,
     super.points,
+    super.polyline,
   });
 
   factory RideModel.fromJson(Map<String, dynamic> json) {
@@ -30,15 +31,26 @@ class RideModel extends RideEntity {
       maxSpeedKmh: (json['maxSpeedKmh'] as num?)?.toDouble(),
       startCity: json['startCity'] as String?,
       endCity: json['endCity'] as String?,
-      points: rawPoints.map((p) {
-        final map = p as Map<String, dynamic>;
-        return RidePoint(
-          latitude: (map['lat'] as num).toDouble(),
-          longitude: (map['lng'] as num).toDouble(),
-          timestamp: DateTime.parse(map['ts'] as String),
-          speedKmh: (map['spd'] as num?)?.toDouble(),
-        );
-      }).toList(),
+      polyline: json['polyline'] as String?,
+      points: rawPoints
+          .map((p) {
+            final map = p as Map<String, dynamic>;
+            // Backend bazen PascalCase ("Lat"/"Lng"/"Ts"/"Spd"),
+            // bazen lowercase ("lat"/"lng"/"ts"/"spd") dönebiliyor — ikisini de
+            // kabul et ve null/eksik kayıtları sessizce atla.
+            final lat = (map['lat'] ?? map['Lat']) as num?;
+            final lng = (map['lng'] ?? map['Lng']) as num?;
+            final ts = (map['ts'] ?? map['Ts']) as String?;
+            if (lat == null || lng == null || ts == null) return null;
+            return RidePoint(
+              latitude: lat.toDouble(),
+              longitude: lng.toDouble(),
+              timestamp: DateTime.parse(ts),
+              speedKmh: ((map['spd'] ?? map['Spd']) as num?)?.toDouble(),
+            );
+          })
+          .whereType<RidePoint>()
+          .toList(),
     );
   }
 
@@ -53,6 +65,7 @@ class RideModel extends RideEntity {
     if (maxSpeedKmh != null) 'maxSpeedKmh': maxSpeedKmh,
     if (startCity != null) 'startCity': startCity,
     if (endCity != null) 'endCity': endCity,
+    if (polyline != null) 'polyline': polyline,
     'points': points.map((p) => {
       'lat': p.latitude,
       'lng': p.longitude,

@@ -32,6 +32,36 @@ class SendMessageEvent extends ChatEvent {
   List<Object> get props => [receiverId, content];
 }
 
+class SendImageAttachmentEvent extends ChatEvent {
+  final int receiverId;
+  final String filePath;
+  final String? caption;
+
+  const SendImageAttachmentEvent({
+    required this.receiverId,
+    required this.filePath,
+    this.caption,
+  });
+
+  @override
+  List<Object> get props => [receiverId, filePath, caption ?? ''];
+}
+
+class SendVoiceMessageEvent extends ChatEvent {
+  final int receiverId;
+  final String filePath;
+  final int durationSeconds;
+
+  const SendVoiceMessageEvent({
+    required this.receiverId,
+    required this.filePath,
+    required this.durationSeconds,
+  });
+
+  @override
+  List<Object> get props => [receiverId, filePath, durationSeconds];
+}
+
 class EditMessageEvent extends ChatEvent {
   final int messageId;
   final String newContent;

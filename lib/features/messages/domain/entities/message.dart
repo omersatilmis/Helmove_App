@@ -10,6 +10,8 @@ class Message extends Equatable {
   final DateTime sentAt;
   final DateTime? readAt;
   final String? attachmentUrl;
+  final int? attachmentDurationSeconds;
+  final List<int>? attachmentWaveform;
   final LocationData? locationData;
   final bool isEdited;
   final DateTime? editedAt;
@@ -29,6 +31,8 @@ class Message extends Equatable {
     required this.sentAt,
     this.readAt,
     this.attachmentUrl,
+    this.attachmentDurationSeconds,
+    this.attachmentWaveform,
     this.locationData,
     required this.isEdited,
     this.editedAt,
@@ -49,6 +53,8 @@ class Message extends Equatable {
     DateTime? sentAt,
     DateTime? readAt,
     String? attachmentUrl,
+    int? attachmentDurationSeconds,
+    List<int>? attachmentWaveform,
     LocationData? locationData,
     bool? isEdited,
     DateTime? editedAt,
@@ -68,6 +74,9 @@ class Message extends Equatable {
       sentAt: sentAt ?? this.sentAt,
       readAt: readAt ?? this.readAt,
       attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      attachmentDurationSeconds:
+          attachmentDurationSeconds ?? this.attachmentDurationSeconds,
+      attachmentWaveform: attachmentWaveform ?? this.attachmentWaveform,
       locationData: locationData ?? this.locationData,
       isEdited: isEdited ?? this.isEdited,
       editedAt: editedAt ?? this.editedAt,
@@ -90,6 +99,8 @@ class Message extends Equatable {
     sentAt,
     readAt,
     attachmentUrl,
+    attachmentDurationSeconds,
+    attachmentWaveform,
     locationData,
     isEdited,
     editedAt,

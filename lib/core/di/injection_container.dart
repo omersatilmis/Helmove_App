@@ -152,6 +152,7 @@ import '../../features/group_ride/domain/usecases/get_group_ride_by_id_usecase.d
 import '../../features/group_ride/domain/usecases/update_group_ride_usecase.dart';
 import '../../features/group_ride/domain/usecases/delete_group_ride_usecase.dart';
 import '../../features/group_ride/presentation/bloc/group_ride_bloc.dart';
+import '../../features/group_ride/presentation/live_ride/live_ride_controller.dart';
 import '../../features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
 
 // Call Feature
@@ -598,7 +599,11 @@ void _registerCoreFeatureSingletons() {
   }
   if (!sl.isRegistered<RideRecordingService>()) {
     sl.registerLazySingleton<RideRecordingService>(
-      () => RideRecordingServiceImpl(),
+      () => RideRecordingServiceImpl(
+        reverseGeocode: sl.isRegistered<ReverseGeocodeUseCase>()
+            ? sl<ReverseGeocodeUseCase>()
+            : null,
+      ),
     );
   }
   if (!sl.isRegistered<RideHistoryProvider>()) {
@@ -1467,6 +1472,7 @@ void _registerFeatureSingletons() {
         deleteMessage: sl(),
         markConversationAsRead: sl(),
         messageSignalRService: sl(),
+        mediaApi: sl(),
       ),
     );
   }
@@ -1816,6 +1822,15 @@ Future<void> initCore() async {
     if (!sl.isRegistered<GroupRideRepository>()) {
       sl.registerLazySingleton<GroupRideRepository>(
         () => GroupRideRepositoryImpl(sl()),
+      );
+    }
+    if (!sl.isRegistered<LiveRideController>()) {
+      sl.registerLazySingleton<LiveRideController>(
+        () => LiveRideController(
+          sl<SignalRService>(),
+          sl<AuthLocalDataSource>(),
+          sl<GroupRideRepository>(),
+        ),
       );
     }
     if (!sl.isRegistered<CreateGroupRideUseCase>()) {

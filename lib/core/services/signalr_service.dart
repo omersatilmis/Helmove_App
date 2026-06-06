@@ -23,6 +23,12 @@ class SignalRService {
   Completer<void>? _initCompleter;
   bool _startupConnectionAllowed = false;
 
+  /// Otomatik reconnect retry'leri tükendikten sonra (onclose) manuel olarak
+  /// yeniden bağlanmayı sürdürmek için. stop()/logout'ta true yapılır ki
+  /// kasıtlı kapatmada gereksiz reconnect denenmesin.
+  bool _intentionalStop = false;
+  Timer? _manualReconnectTimer;
+
   SignalRService(this.authLocalDataSource, this._dio);
 
   void enableStartupConnection() {
@@ -46,6 +52,30 @@ class SignalRService {
   final _rideLocationUpdateController =
       StreamController<Map<String, dynamic>>.broadcast();
   final _sosAlertController = StreamController<SosAlertPayload>.broadcast();
+
+  // ── Live Ride (canlı konum + ortak rota) ──────────────────────────────────
+  final _rideJoinSnapshotController =
+      StreamController<RideJoinSnapshotPayload>.broadcast();
+  final _rideRouteUpdatedController =
+      StreamController<RideRoutePayload>.broadcast();
+  final _rideParticipantJoinedController =
+      StreamController<RideParticipantEventPayload>.broadcast();
+  final _rideParticipantLeftController =
+      StreamController<RideParticipantEventPayload>.broadcast();
+  final _rideParticipantLocationStoppedController =
+      StreamController<RideParticipantEventPayload>.broadcast();
+
+  Stream<RideJoinSnapshotPayload> get rideJoinSnapshotStream =>
+      _rideJoinSnapshotController.stream;
+  Stream<RideRoutePayload> get rideRouteUpdatedStream =>
+      _rideRouteUpdatedController.stream;
+  Stream<RideParticipantEventPayload> get rideParticipantJoinedStream =>
+      _rideParticipantJoinedController.stream;
+  Stream<RideParticipantEventPayload> get rideParticipantLeftStream =>
+      _rideParticipantLeftController.stream;
+  Stream<RideParticipantEventPayload>
+  get rideParticipantLocationStoppedStream =>
+      _rideParticipantLocationStoppedController.stream;
 
   // Connection State Stream — BehaviorSubject so new subscribers always get the latest state
   final _connectionStateController = BehaviorSubject<HubConnectionState>.seeded(
@@ -172,6 +202,31 @@ class SignalRService {
     }).toList();
   }
 
+  /// onclose sonrası (auto-reconnect retry'leri tükendi) manuel olarak,
+  /// bağlanana kadar belirli aralıklarla yeniden dener.
+  void _scheduleManualReconnect() {
+    if (_intentionalStop || !_startupConnectionAllowed) return;
+    if (_hubConnection == null) return;
+    _manualReconnectTimer?.cancel();
+    _manualReconnectTimer = Timer(const Duration(seconds: 5), () async {
+      if (_intentionalStop || _hubConnection == null) return;
+      if (_hubConnection!.state == HubConnectionState.Connected) return;
+      try {
+        _connectionStateController.add(HubConnectionState.Reconnecting);
+        await start();
+        if (_hubConnection?.state == HubConnectionState.Connected) {
+          AppLogger.info("SignalR: Manual reconnect succeeded");
+          _connectionStateController.add(HubConnectionState.Connected);
+        } else {
+          _scheduleManualReconnect();
+        }
+      } catch (e) {
+        AppLogger.warning("SignalR: Manual reconnect failed, retrying... $e");
+        _scheduleManualReconnect();
+      }
+    });
+  }
+
   Future<void> init() async {
     if (!_startupConnectionAllowed) {
       AppLogger.info(
@@ -191,6 +246,8 @@ class SignalRService {
     }
 
     _initCompleter = Completer<void>();
+    _intentionalStop = false;
+    _manualReconnectTimer?.cancel();
     // Notify listeners that we are trying to connect
     _connectionStateController.add(HubConnectionState.Connecting);
 
@@ -237,6 +294,7 @@ class SignalRService {
       _hubConnection!.onreconnected(({connectionId}) {
         _trackSignalREvent('SignalR.Reconnected');
         AppLogger.info("SignalR: Reconnected! connectionId=$connectionId");
+        _manualReconnectTimer?.cancel();
         _connectionStateController.add(HubConnectionState.Connected);
       });
 
@@ -246,6 +304,9 @@ class SignalRService {
         _joinedVoiceSessionIds.clear();
         _activeSessionId = null;
         _connectionStateController.add(HubConnectionState.Disconnected);
+        // Otomatik reconnect retry'leri tükendi. Kasıtlı kapatma değilse
+        // manuel olarak yeniden bağlanmayı sürdür.
+        _scheduleManualReconnect();
       });
 
       await start();
@@ -320,6 +381,70 @@ class SignalRService {
           _rideLocationUpdateController.add({'userId': userId, 'data': data});
         }
       }
+    });
+
+    _hubConnection!.on("RideJoinSnapshot", (arguments) {
+      _trackSignalREvent('RideJoinSnapshot');
+      if (arguments == null || arguments.isEmpty || arguments[0] is! Map) {
+        return;
+      }
+      final map = Map<String, dynamic>.from(arguments[0] as Map);
+      final payload = RideJoinSnapshotPayload.tryParse(map);
+      if (payload == null) return;
+      AppLogger.info(
+        "SignalR: RideJoinSnapshot -> Ride:${payload.rideId} "
+        "participants:${payload.participants.length} route:${payload.route?.hasGeometry ?? false}",
+      );
+      _rideJoinSnapshotController.add(payload);
+    });
+
+    _hubConnection!.on("RideRouteUpdated", (arguments) {
+      _trackSignalREvent('RideRouteUpdated');
+      if (arguments == null || arguments.isEmpty || arguments[0] is! Map) {
+        return;
+      }
+      final map = Map<String, dynamic>.from(arguments[0] as Map);
+      final payload = RideRoutePayload.fromMap(map);
+      AppLogger.info(
+        "SignalR: RideRouteUpdated -> hasGeometry:${payload.hasGeometry}",
+      );
+      _rideRouteUpdatedController.add(payload);
+    });
+
+    _hubConnection!.on("RideParticipantJoined", (arguments) {
+      _trackSignalREvent('RideParticipantJoined');
+      if (arguments == null || arguments.isEmpty || arguments[0] is! Map) {
+        return;
+      }
+      final payload = RideParticipantEventPayload.tryParse(
+        Map<String, dynamic>.from(arguments[0] as Map),
+      );
+      if (payload == null) return;
+      _rideParticipantJoinedController.add(payload);
+    });
+
+    _hubConnection!.on("RideParticipantLeft", (arguments) {
+      _trackSignalREvent('RideParticipantLeft');
+      if (arguments == null || arguments.isEmpty || arguments[0] is! Map) {
+        return;
+      }
+      final payload = RideParticipantEventPayload.tryParse(
+        Map<String, dynamic>.from(arguments[0] as Map),
+      );
+      if (payload == null) return;
+      _rideParticipantLeftController.add(payload);
+    });
+
+    _hubConnection!.on("RideParticipantLocationStopped", (arguments) {
+      _trackSignalREvent('RideParticipantLocationStopped');
+      if (arguments == null || arguments.isEmpty || arguments[0] is! Map) {
+        return;
+      }
+      final payload = RideParticipantEventPayload.tryParse(
+        Map<String, dynamic>.from(arguments[0] as Map),
+      );
+      if (payload == null) return;
+      _rideParticipantLocationStoppedController.add(payload);
     });
 
     _hubConnection!.on("RideTerminated", (arguments) {
@@ -1551,6 +1676,8 @@ class SignalRService {
   }
 
   Future<void> stop() async {
+    _intentionalStop = true;
+    _manualReconnectTimer?.cancel();
     if (_hubConnection != null) {
       await _hubConnection!.stop();
       _hubConnection = null;
@@ -1624,6 +1751,47 @@ class SignalRService {
       AppLogger.info("Left Ride Group: $rideId");
     } catch (e) {
       AppLogger.error("Error leaving ride group", e);
+    }
+  }
+
+  // ── Live Ride actions ─────────────────────────────────────────────────────
+
+  /// Kendi konumunu gruba yayınlar. Backend `ReceiveRideLocationUpdate` olarak
+  /// gruptaki diğerlerine iletir. Yüksek frekanslı çağrılır — sessiz başarısızlık.
+  Future<void> updateRideLocation(
+    String rideId,
+    double lat,
+    double lng, {
+    double? heading,
+    double? speedKmh,
+  }) async {
+    if (!isConnected) return;
+    try {
+      // invoke args List<Object> (null eleman kabul etmez). Backend imzası
+      // (rideId, lat, lng, heading?, speedKmh?) — eksik konumlar null'a düşer.
+      final args = <Object>[rideId, lat, lng];
+      if (heading != null || speedKmh != null) {
+        args.add(heading ?? 0.0);
+        args.add(speedKmh ?? 0.0);
+      }
+      await _hubConnection!.invoke("UpdateRideLocation", args: args);
+    } catch (e) {
+      // Konum güncellemesi kayıpsa bir sonraki tick'te düzelir; log spam yok.
+    }
+  }
+
+  /// Konum paylaşımını açar/kapatır (opt-out). Kapatınca backend diğerlerine
+  /// `RideParticipantLocationStopped` yayar.
+  Future<void> setRideLocationSharing(String rideId, bool share) async {
+    if (!isConnected) return;
+    try {
+      await _hubConnection!.invoke(
+        "SetRideLocationSharing",
+        args: [rideId, share],
+      );
+      AppLogger.info("SetRideLocationSharing -> ride:$rideId share:$share");
+    } catch (e) {
+      AppLogger.error("Error setting ride location sharing", e);
     }
   }
 

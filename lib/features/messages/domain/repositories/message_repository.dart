@@ -7,6 +7,8 @@ abstract class MessageRepository {
     required String content,
     int? type,
     String? attachmentUrl,
+    int? attachmentDurationSeconds,
+    List<int>? attachmentWaveform,
     LocationData? locationData,
   });
 

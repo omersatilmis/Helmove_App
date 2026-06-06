@@ -22,6 +22,15 @@ class GroupRideEntity {
   final String? requirements;
   final bool isPrivate;
 
+  // ── Ortak rota (organizatörün rotası tüm üyelere yayılır) ─────────────────
+  /// Encoded polyline (polyline6). Bkz. core/utils/polyline_codec.dart.
+  final String? routeGeometry;
+  final String? routeProfile;
+  final double? routeDistanceMeters;
+  final int? routeDurationSeconds;
+
+  final int? sessionId;
+
   GroupRideEntity({
     required this.id,
     required this.title,
@@ -44,7 +53,44 @@ class GroupRideEntity {
     this.requirements,
     required this.isPrivate,
     this.sessionId,
+    this.routeGeometry,
+    this.routeProfile,
+    this.routeDistanceMeters,
+    this.routeDurationSeconds,
   });
 
-  final int? sessionId;
+  GroupRideEntity copyWith({
+    String? routeGeometry,
+    String? routeProfile,
+    double? routeDistanceMeters,
+    int? routeDurationSeconds,
+  }) {
+    return GroupRideEntity(
+      id: id,
+      title: title,
+      description: description,
+      adminId: adminId,
+      startDateTime: startDateTime,
+      endDateTime: endDateTime,
+      startLocation: startLocation,
+      startLatitude: startLatitude,
+      startLongitude: startLongitude,
+      endLocation: endLocation,
+      endLatitude: endLatitude,
+      endLongitude: endLongitude,
+      maxParticipants: maxParticipants,
+      estimatedDistanceKm: estimatedDistanceKm,
+      estimatedDurationMinutes: estimatedDurationMinutes,
+      status: status,
+      difficulty: difficulty,
+      ridingStyle: ridingStyle,
+      requirements: requirements,
+      isPrivate: isPrivate,
+      sessionId: sessionId,
+      routeGeometry: routeGeometry ?? this.routeGeometry,
+      routeProfile: routeProfile ?? this.routeProfile,
+      routeDistanceMeters: routeDistanceMeters ?? this.routeDistanceMeters,
+      routeDurationSeconds: routeDurationSeconds ?? this.routeDurationSeconds,
+    );
+  }
 }

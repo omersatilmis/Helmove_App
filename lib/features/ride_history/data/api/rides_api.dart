@@ -39,10 +39,7 @@ class RidesApi {
   Future<RideModel> createRide(Map<String, dynamic> body) async {
     try {
       final response = await _dio.post('/api/rides', data: body);
-      // Backend only returns {"id": N}; merge with sent body to build full entity.
-      final responseData = response.data as Map<String, dynamic>? ?? {};
-      final merged = Map<String, dynamic>.from(body)..addAll(responseData);
-      return RideModel.fromJson(merged);
+      return RideModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw Exception('Rota kaydedilemedi: ${e.response?.statusCode}');
     }

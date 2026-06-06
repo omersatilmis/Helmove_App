@@ -10,6 +10,7 @@ class RideEntity {
   final String? startCity;
   final String? endCity;
   final List<RidePoint> points;
+  final String? polyline;
 
   const RideEntity({
     this.id,
@@ -23,6 +24,7 @@ class RideEntity {
     this.startCity,
     this.endCity,
     this.points = const [],
+    this.polyline,
   });
 
   Duration get duration => Duration(seconds: durationSeconds);

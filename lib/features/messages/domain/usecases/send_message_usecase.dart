@@ -11,6 +11,8 @@ class SendMessageUseCase {
     required String content,
     int? type,
     String? attachmentUrl,
+    int? attachmentDurationSeconds,
+    List<int>? attachmentWaveform,
     LocationData? locationData,
   }) async {
     return await repository.sendMessage(
@@ -18,6 +20,8 @@ class SendMessageUseCase {
       content: content,
       type: type,
       attachmentUrl: attachmentUrl,
+      attachmentDurationSeconds: attachmentDurationSeconds,
+      attachmentWaveform: attachmentWaveform,
       locationData: locationData,
     );
   }

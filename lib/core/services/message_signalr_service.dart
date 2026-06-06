@@ -11,6 +11,10 @@ class MessageSignalRService {
   String? _resolvedBaseUrl;
   final AuthLocalDataSource authLocalDataSource;
 
+  // Auto-reconnect retry'leri tükendikten sonra manuel reconnect için.
+  bool _intentionalStop = false;
+  Timer? _manualReconnectTimer;
+
   MessageSignalRService(this.authLocalDataSource);
 
   // Callbacks
@@ -99,20 +103,40 @@ class MessageSignalRService {
 
       _hubConnection!.onreconnected(({connectionId}) {
         AppLogger.info("Message SignalR: Reconnected. id=$connectionId");
+        _manualReconnectTimer?.cancel();
         _connectionStateController.add(HubConnectionState.Connected);
       });
 
       _hubConnection!.onclose(({error}) {
         AppLogger.warning("Message SignalR: Connection closed. $error");
         _connectionStateController.add(HubConnectionState.Disconnected);
+        _scheduleManualReconnect();
       });
 
       _registerEventHandlers();
 
+      _intentionalStop = false;
+      _manualReconnectTimer?.cancel();
       await start();
     } catch (e) {
       AppLogger.error("Message SignalR Init Error", e);
     }
+  }
+
+  /// onclose sonrası bağlanana kadar belirli aralıklarla yeniden dener.
+  void _scheduleManualReconnect() {
+    if (_intentionalStop || _hubConnection == null) return;
+    _manualReconnectTimer?.cancel();
+    _manualReconnectTimer = Timer(const Duration(seconds: 5), () async {
+      if (_intentionalStop || _hubConnection == null) return;
+      if (_hubConnection!.state == HubConnectionState.Connected) return;
+      await start();
+      if (_hubConnection?.state != HubConnectionState.Connected) {
+        _scheduleManualReconnect();
+      } else {
+        AppLogger.info("Message SignalR: Manual reconnect succeeded");
+      }
+    });
   }
 
   void _registerEventHandlers() {
@@ -225,6 +249,8 @@ class MessageSignalRService {
   }
 
   Future<void> stop() async {
+    _intentionalStop = true;
+    _manualReconnectTimer?.cancel();
     if (_hubConnection != null) {
       await _hubConnection!.stop();
       _hubConnection = null;
@@ -270,6 +296,8 @@ class MessageSignalRService {
   }
 
   void dispose() {
+    _intentionalStop = true;
+    _manualReconnectTimer?.cancel();
     _directMessageController.close();
     _messagesReadController.close();
     _messagesReadPayloadController.close();

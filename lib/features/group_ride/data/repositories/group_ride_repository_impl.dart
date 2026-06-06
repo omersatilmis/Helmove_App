@@ -90,6 +90,10 @@ class GroupRideRepositoryImpl implements GroupRideRepository {
       requirements: ride.requirements,
       isPrivate: ride.isPrivate,
       sessionId: ride.sessionId,
+      routeGeometry: ride.routeGeometry,
+      routeProfile: ride.routeProfile,
+      routeDistanceMeters: ride.routeDistanceMeters,
+      routeDurationSeconds: ride.routeDurationSeconds,
     );
   }
 }

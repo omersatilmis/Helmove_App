@@ -523,7 +523,12 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     MapClearRoutingRequested event,
     Emitter<MapState> emit,
   ) {
-    emit(MapState(mapCenter: state.mapCenter));
+    // startPoint (GPS başlangıcı) korunur — sadece hedef + rota temizlenir.
+    // Aksi halde yeni hedef seçilince rota için iki nokta olmaz ve yol çizilmez.
+    emit(MapState(
+      mapCenter: state.mapCenter,
+      startPoint: state.startPoint,
+    ));
   }
 
   void _onToggleStopSelectionMode(
@@ -626,6 +631,41 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     return coordRegex.hasMatch(trimmed);
   }
 
+  /// En hızlı ve ücretsiz rotaları karşılaştırıp iki seçenek üretir.
+  /// - En hızlı ile ücretsiz aynıysa → tek seçenek (paralı yol yok).
+  /// - Farklıysa → [En Hızlı (paralı), Ücretsiz] iki seçenek.
+  List<RouteEntity> _buildRouteOptions(
+    List<RouteEntity> fastestList,
+    List<RouteEntity> freeList,
+  ) {
+    final fastest = fastestList.isNotEmpty ? fastestList.first : null;
+    final free = freeList.isNotEmpty ? freeList.first : null;
+
+    if (fastest == null) {
+      return free == null
+          ? const []
+          : [free.copyWith(category: RouteCategory.free, hasToll: false)];
+    }
+
+    // Ücretsiz rota yoksa ya da en hızlıyla aynıysa → en hızlı paralı yol içermiyor.
+    final sameAsFree = free != null && _routesEquivalent(fastest, free);
+    if (free == null || sameAsFree) {
+      return [fastest.copyWith(category: RouteCategory.fastest, hasToll: false)];
+    }
+
+    // Farklılar → en hızlı paralı yol kullanıyor demektir.
+    return [
+      fastest.copyWith(category: RouteCategory.fastest, hasToll: true),
+      free.copyWith(category: RouteCategory.free, hasToll: false),
+    ];
+  }
+
+  bool _routesEquivalent(RouteEntity a, RouteEntity b) {
+    final distClose = (a.distanceMeters - b.distanceMeters).abs() < 50;
+    final durClose = (a.durationSeconds - b.durationSeconds).abs() < 10;
+    return distClose && durClose;
+  }
+
   Future<void> _maybeRequestRoutes(Emitter<MapState> emit) async {
     final start = state.startPoint;
     final end = state.endPoint;
@@ -639,7 +679,12 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         ...state.stops.map((s) => s.point),
         state.endPoint!.point,
       ];
-      routes = await _getRoute(waypoints);
+      // İki seçenek: en hızlı (paralı yol olabilir) + tamamen ücretsiz (toll hariç).
+      final results = await Future.wait([
+        _getRoute(waypoints),
+        _getRoute(waypoints, excludeToll: true),
+      ]);
+      routes = _buildRouteOptions(results[0], results[1]);
     } on MapboxException catch (e, st) {
       _logMapboxError(e, st);
       emit(
