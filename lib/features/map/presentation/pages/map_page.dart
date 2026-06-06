@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
@@ -984,23 +985,8 @@ class _MapPageState extends State<MapPage> {
       _endMarker = null;
     }
 
-    // Başlangıç marker'ı sadece hedef de seçiliyken göster — clear sonrası
-    // korunan startPoint'in tek başına yeşil nokta bırakmasını önler.
-    if (start != null && end != null) {
-      try {
-        _startMarker = await manager.create(
-          CircleAnnotationOptions(
-            geometry: start,
-            circleColor: Colors.green.toARGB32(),
-            circleRadius: 6,
-            circleStrokeColor: Colors.white.toARGB32(),
-            circleStrokeWidth: 2,
-          ),
-        );
-      } catch (e) {
-        debugPrint("Error creating start marker: $e");
-      }
-    }
+    // Başlangıç (yeşil) marker'ı çizilmiyor — kullanıcının konumu zaten motor
+    // puck'ı ile gösteriliyor; başlangıç noktasında ayrıca nokta gerekmez.
 
     if (end != null) {
       try {
@@ -1574,11 +1560,58 @@ class _MapPageState extends State<MapPage> {
 
   // ── Motorcycle puck ─────────────────────────────────────────────────────────
 
+  /// Kullanıcının konum puck'ı için motor görseli. Asset varsa onu (tasarım
+  /// görseli) kullanır; yoksa Material `two_wheeler` glyph'ine düşer.
+  /// Görsel yukarı (kuzey) bakmalı — Mapbox heading'e göre döndürür.
+  static const String _motorPuckAsset = 'assets/icons/ic_motor_puck.png';
+
   Future<void> _setupMotorcyclePuck() async {
     final mapboxMap = _mapboxMap;
     if (mapboxMap == null) return;
     try {
-      const size = 60.0;
+      final puckBytes = await _loadPuckBytes();
+      if (puckBytes == null) return;
+      // Şeffaf topImage → Mapbox'ın varsayılan mavi noktasını gizler.
+      final transparent = await _transparentPng();
+
+      await mapboxMap.location.updateSettings(
+        LocationComponentSettings(
+          enabled: true,
+          pulsingEnabled: false,
+          showAccuracyRing: false,
+          // Cihaz pusulası ile motor ikonu telefonun baktığı yöne döner.
+          puckBearingEnabled: true,
+          puckBearing: PuckBearing.HEADING,
+          locationPuck: LocationPuck(
+            locationPuck2D: LocationPuck2D(
+              // bearingImage → heading'e göre döner; topImage şeffaf → mavi nokta yok.
+              bearingImage: puckBytes,
+              topImage: transparent,
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Motorcycle puck error: $e');
+    }
+  }
+
+  // Puck görselinin en uzun kenarı bu piksele küçültülür (kaynak ne olursa olsun
+  // orantılı kalır). Çok büyük/küçük gelirse bu değeri değiştir.
+  static const int _puckTargetPx = 120;
+
+  Future<Uint8List?> _loadPuckBytes() async {
+    // 1) Asset (varsa) — tasarım motor görseli (PNG, şeffaf, yukarı bakan).
+    try {
+      final data = await rootBundle.load(_motorPuckAsset);
+      final raw = data.buffer.asUint8List();
+      return await _resizePng(raw, _puckTargetPx);
+    } catch (_) {
+      // Asset henüz eklenmemiş — glyph fallback'e düş.
+    }
+    // 2) Fallback: Material two_wheeler glyph'ini PNG bitmap'e çiz.
+    try {
+      const size = 72.0;
       final recorder = ui.PictureRecorder();
       final canvas = ui.Canvas(recorder, const Rect.fromLTWH(0, 0, size, size));
       final textPainter = TextPainter(textDirection: ui.TextDirection.ltr)
@@ -1598,29 +1631,55 @@ class _MapPageState extends State<MapPage> {
       );
       final picture = recorder.endRecording();
       final image = await picture.toImage(size.toInt(), size.toInt());
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-      if (byteData == null) return;
-      final puckBytes = byteData.buffer.asUint8List();
-
-      await mapboxMap.location.updateSettings(
-        LocationComponentSettings(
-          enabled: true,
-          pulsingEnabled: false,
-          showAccuracyRing: false,
-          // Cihaz pusulası ile motor ikonu telefonun baktığı yöne döner.
-          puckBearingEnabled: true,
-          puckBearing: PuckBearing.HEADING,
-          locationPuck: LocationPuck(
-            locationPuck2D: LocationPuck2D(
-              topImage: puckBytes,
-              bearingImage: puckBytes,
-            ),
-          ),
-        ),
-      );
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      return byteData?.buffer.asUint8List();
     } catch (e) {
-      debugPrint('Motorcycle puck error: $e');
+      debugPrint('Puck glyph fallback error: $e');
+      return null;
     }
+  }
+
+  /// Tamamen şeffaf küçük PNG — varsayılan puck noktasını gizlemek için.
+  Future<Uint8List> _transparentPng() async {
+    final recorder = ui.PictureRecorder();
+    ui.Canvas(recorder, const Rect.fromLTWH(0, 0, 4, 4));
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(4, 4);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return byteData!.buffer.asUint8List();
+  }
+
+  /// PNG byte'larını en uzun kenar [maxSide] olacak şekilde orantılı küçültür.
+  Future<Uint8List> _resizePng(Uint8List src, int maxSide) async {
+    final codec = await ui.instantiateImageCodec(src);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    final w = image.width;
+    final h = image.height;
+    final longest = w > h ? w : h;
+    if (longest <= maxSide) {
+      image.dispose();
+      return src; // zaten yeterince küçük
+    }
+    final scale = maxSide / longest;
+    final targetW = (w * scale).round();
+    final targetH = (h * scale).round();
+    image.dispose();
+
+    final scaledCodec = await ui.instantiateImageCodec(
+      src,
+      targetWidth: targetW,
+      targetHeight: targetH,
+    );
+    final scaledFrame = await scaledCodec.getNextFrame();
+    final scaledImage = scaledFrame.image;
+    final byteData = await scaledImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    scaledImage.dispose();
+    return byteData?.buffer.asUint8List() ?? src;
   }
 
   // ── Navigation / Recording ──────────────────────────────────────────────────
