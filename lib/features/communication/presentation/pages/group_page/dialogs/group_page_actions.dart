@@ -55,7 +55,7 @@ class GroupPageActions {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.muteUserTitle),
-        content: Text(l10n.kickUserConfirmation(userName)), // Note: Using kick confirmation for generic user action if mute confirmation is same or add new key
+        content: Text(l10n.muteUserConfirmation(userName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

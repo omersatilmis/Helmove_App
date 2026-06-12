@@ -239,7 +239,9 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
       if (event is VoiceSessionRefreshRealtimeEvent) {
         _signalRDebounceTimer?.cancel();
-        _signalRDebounceTimer = Timer(const Duration(seconds: 2), () {
+        // 600ms: burst'leri coalesce etmeye yetiyor; 2sn katılımcı listesi
+        // güncellemelerini gözle görülür şekilde geciktiriyordu.
+        _signalRDebounceTimer = Timer(const Duration(milliseconds: 600), () {
           if (isClosed) return;
           // Smart Refresh Priority: reason'a göre aksiyon al
           final reason = event.reason ?? 'unknown';
@@ -1098,9 +1100,23 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
         if (isSuccess) {
           await result.fold((_) async {}, (session) async {
-            final activeParticipants = session.participants.where((p) {
-              return p.status != 'Left' && p.status != 'Rejected';
-            }).toList();
+            // Backend participant yanıtı mute alanı içermiyor; SignalR ile
+            // gelen isRemoteMuted state'i her refresh'te sıfırlanmasın diye
+            // önceki in-memory state ile merge ediyoruz.
+            final previousParticipants =
+                state.session?.participants ??
+                const <VoiceSessionParticipantEntity>[];
+
+            final activeParticipants = session.participants
+                .where((p) => p.status != 'Left' && p.status != 'Rejected')
+                .map((p) {
+                  if (p.isRemoteMuted) return p;
+                  final wasMuted = previousParticipants.any(
+                    (prev) => prev.userId == p.userId && prev.isRemoteMuted,
+                  );
+                  return wasMuted ? p.copyWith(isRemoteMuted: true) : p;
+                })
+                .toList();
 
             final updatedSession = session.copyWith(
               participants: activeParticipants,
@@ -1123,13 +1139,16 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
             final currentUserId =
                 state.currentUserId ?? await _ensureCurrentUserId(emit);
             if (currentUserId != null) {
+              // 'Invited' bilinçli olarak hariç: daveti kabul etmemiş kişi
+              // transport kararına (activeCount) dahil edilirse engine offline
+              // kullanıcıya P2P kurmaya çalışıyor ve davetli tarafta kabul
+              // etmeden ses bağlantısı tetikleniyordu.
               final intercomParticipants = activeParticipants
                   .where(
                     (p) =>
                         p.status == 'Joined' ||
                         p.status == 'Accepted' ||
-                        p.status == 'Disconnected' ||
-                        p.status == 'Invited',
+                        p.status == 'Disconnected',
                   )
                   .map(
                     (p) => IntercomParticipant(
@@ -1148,18 +1167,34 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
                   .map((participant) => participant.userId)
                   .toList();
 
+              // [GUARD] Lokal kullanıcı aktif katılımcı değilse (örn. sadece
+              // Invited — davet önizlemesi details fetch'i tetikliyor) ses
+              // bağlantısı kurulmaz, CallKit başlatılmaz. Aksi halde davetli
+              // daveti kabul etmeden sese bağlanıyordu. Kabul edince gelen
+              // ilk details refresh attach'i normal şekilde yapar.
+              final localIsActive = intercomParticipants.any((p) => p.isLocal);
+
               // Only call attachSession on the first successful attempt
               // to prevent the re-initialization loop during retries.
-              if (attempt == 0) {
-                await intercomEngine.attachSession(
-                  IntercomSessionContext(
-                    sessionId: session.id,
-                    roomName: session.roomName,
-                    adminId: session.adminId, // Using adminId here!
-                    localUserId: currentUserId,
-                    activeParticipantUserIds: activeIds,
-                    participants: intercomParticipants,
-                  ),
+              //
+              // [PERF] attachSession LiveKit/P2P bağlantısını bekletiyor ve
+              // saniyeler sürebiliyor. Bu handler asyncExpand ile
+              // serileştirildiği için await edilirse sonraki katılımcı
+              // refresh'leri (UserJoined, manuel refresh vb.) bağlantı
+              // kurulana kadar kuyrukta bekliyordu — arka planda çalıştır.
+              if (attempt == 0 && localIsActive) {
+                final attachContext = IntercomSessionContext(
+                  sessionId: session.id,
+                  roomName: session.roomName,
+                  adminId: session.adminId, // Using adminId here!
+                  localUserId: currentUserId,
+                  activeParticipantUserIds: activeIds,
+                  participants: intercomParticipants,
+                );
+                unawaited(
+                  intercomEngine.attachSession(attachContext).catchError((e) {
+                    debugPrint('VoiceSessionBloc: attachSession failed: $e');
+                  }),
                 );
               }
 
@@ -1167,20 +1202,24 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
               // implicitly creates a voice session server-side. They
               // never go through Create/JoinVoiceSessionEvent, so
               // CallKit was never started. Start it here if missing.
-              if (_activeCallKitId == null) {
-                try {
-                  final uuid = callKitIncomingService.generateCallKitId();
-                  _activeCallKitId = uuid;
-                  await callKitIncomingService.startOutboundCall(
-                    uuid: uuid,
-                    handle: "Grup Sürüşü",
-                    nameCaller: session.title,
-                  );
-                  await Future.delayed(const Duration(milliseconds: 500));
-                  await callKitIncomingService.markConnected(uuid);
-                } catch (e) {
-                  // Ignore CallKit initialization errors to avoid crashing details fetch
-                }
+              // [PERF] attachSession ile aynı sebepten arka planda çalışır;
+              // _activeCallKitId çift başlatmayı önlemek için senkron set edilir.
+              if (_activeCallKitId == null && localIsActive) {
+                final uuid = callKitIncomingService.generateCallKitId();
+                _activeCallKitId = uuid;
+                unawaited(() async {
+                  try {
+                    await callKitIncomingService.startOutboundCall(
+                      uuid: uuid,
+                      handle: "Grup Sürüşü",
+                      nameCaller: session.title,
+                    );
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    await callKitIncomingService.markConnected(uuid);
+                  } catch (e) {
+                    // Ignore CallKit initialization errors to avoid crashing details fetch
+                  }
+                }());
               }
             }
           });
@@ -1318,8 +1357,12 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     Emitter<VoiceSessionState> emit,
   ) async {
     try {
-      // Singleton Session Guard: Aktif bir oturumdayken yeni davet kabul edilemez
-      if (state.session != null) {
+      // Singleton Session Guard: Aktif bir oturumdayken FARKLI bir oturumun
+      // daveti kabul edilemez. Aynı session'ı kabul etmek serbest — davetli
+      // group page'i açtığında details fetch state.session'ı doldurduğu için
+      // id karşılaştırması yapılmazsa sayfadaki kabul butonu her zaman
+      // "zaten sürüştesin" hatasına takılırdı.
+      if (state.session != null && state.session!.id != event.sessionId) {
         emit(
           state.copyWith(
             status: VoiceSessionStatus.error,

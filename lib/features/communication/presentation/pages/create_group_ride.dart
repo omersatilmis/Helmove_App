@@ -28,7 +28,9 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   // Durum değişkenleri
   String selectedPrivacy = 'Public';
   String selectedDifficulty = 'Beginner';
-  String selectedRidingStyle = 'Chill'; // Changed to English/Key
+  // Canonical backend değerleri: 'Sakin' | 'Tour' | 'Viraj' | 'Sehir'
+  // (group_settings.dart ile aynı sözleşme)
+  String selectedRidingStyle = 'Sakin';
 
   // Katılımcı Seçenekleri (Map)
   Map<String, int> get participantOptions {
@@ -252,11 +254,11 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
                                       const SizedBox(height: 8),
                                       _buildAccordionSelector(
                                         context: context,
-                                        title: selectedRidingStyle == 'Chill'
+                                        title: selectedRidingStyle == 'Sakin'
                                             ? l10n.chill
                                             : selectedRidingStyle == 'Tour'
                                                 ? l10n.tour
-                                                : selectedRidingStyle == 'Fast'
+                                                : selectedRidingStyle == 'Viraj'
                                                     ? l10n.fast
                                                     : l10n.city,
                                         options: [

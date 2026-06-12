@@ -99,6 +99,24 @@ class WebRTCService {
   Timer? _statsTimer;
   int _lowQualityCount = 0;
 
+  // [STABILIZE] Anlık metrik dalgalanmaları quality flapping'e yol açıyordu
+  // (ultra↔high↔balanced). Metrikler EMA ile yumuşatılır; quality yükselişi
+  // ancak ardışık kararlı ölçümlerden sonra yayınlanır (düşüş hemen).
+  double? _emaLossPercent;
+  double? _emaJitterMs;
+  double? _emaRttMs;
+  String _lastEmittedQuality = 'BALANCED';
+  String? _pendingUpgradeQuality;
+  int _pendingUpgradeCount = 0;
+  static const double _metricsEmaAlpha = 0.35;
+  static const int _upgradeStabilityTicks = 4; // 4 x 2sn = 8sn kararlılık
+  static const Map<String, int> _qualityRank = {
+    'LOW': 0,
+    'BALANCED': 1,
+    'HIGH': 2,
+    'ULTRA': 3,
+  };
+
   // ============================================================
   // GETTERS
   // ============================================================
@@ -942,6 +960,12 @@ class WebRTCService {
     _prevBytesSent = 0;
     _prevPacketsSent = 0;
     _hasOutboundBaseline = false;
+    _emaLossPercent = null;
+    _emaJitterMs = null;
+    _emaRttMs = null;
+    _lastEmittedQuality = 'BALANCED';
+    _pendingUpgradeQuality = null;
+    _pendingUpgradeCount = 0;
     _statsTimer?.cancel();
     _statsTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       final pc = _peerConnection;
@@ -1020,10 +1044,14 @@ class WebRTCService {
           }
         }
 
+        _emaLossPercent = _ema(_emaLossPercent, packetLossPercent ?? 0);
+        _emaJitterMs = _ema(_emaJitterMs, jitterMs ?? 0);
+        _emaRttMs = _ema(_emaRttMs, rttMs ?? 0);
+
         final metrics = WebRtcNetworkMetrics(
-          packetLossPercent: packetLossPercent ?? 0,
-          jitterMs: jitterMs ?? 0,
-          rttMs: rttMs ?? 0,
+          packetLossPercent: _emaLossPercent!,
+          jitterMs: _emaJitterMs!,
+          rttMs: _emaRttMs!,
         );
         _networkMetricsController.add(metrics);
         if (!_hasOutboundBaseline) {
@@ -1055,30 +1083,67 @@ class WebRTCService {
         }
 
         // 4 seviyeli quality: ULTRA / HIGH / BALANCED / LOW
-        final loss = packetLossPercent ?? 0;
-        final jit = jitterMs ?? 0;
-        final rtt = rttMs ?? 0;
+        // EMA'lı metrikler üzerinden sınıflandır.
+        final loss = _emaLossPercent ?? 0;
+        final jit = _emaJitterMs ?? 0;
+        final rtt = _emaRttMs ?? 0;
 
+        String candidate;
         if (loss >= 8.0 || jit >= 45.0 || rtt >= 260.0) {
           _lowQualityCount++;
-          if (_lowQualityCount >= 2) {
-            _connectionQualityController.add('LOW');
-          } else {
-            _connectionQualityController.add('BALANCED');
-          }
+          candidate = _lowQualityCount >= 2 ? 'LOW' : 'BALANCED';
         } else {
           _lowQualityCount = 0;
           if (loss < 0.8 && jit < 10.0 && rtt < 80.0) {
-            _connectionQualityController.add('ULTRA');
+            candidate = 'ULTRA';
           } else if (loss < 2.0 && jit < 22.0 && rtt < 140.0) {
-            _connectionQualityController.add('HIGH');
+            candidate = 'HIGH';
           } else {
-            _connectionQualityController.add('BALANCED');
+            candidate = 'BALANCED';
           }
         }
+        _emitStableQuality(candidate);
       } catch (e) {
         // Stats error ignored
       }
     });
+  }
+
+  double _ema(double? prev, double next) =>
+      prev == null ? next : prev + _metricsEmaAlpha * (next - prev);
+
+  /// Quality düşüşünü hemen, yükselişini ise [_upgradeStabilityTicks] ardışık
+  /// kararlı ölçümden sonra yayınlar — threshold etrafındaki flapping'i keser.
+  void _emitStableQuality(String candidate) {
+    if (candidate == _lastEmittedQuality) {
+      _pendingUpgradeQuality = null;
+      _pendingUpgradeCount = 0;
+      return;
+    }
+
+    final currentRank = _qualityRank[_lastEmittedQuality] ?? 1;
+    final candidateRank = _qualityRank[candidate] ?? 1;
+
+    if (candidateRank < currentRank) {
+      _lastEmittedQuality = candidate;
+      _pendingUpgradeQuality = null;
+      _pendingUpgradeCount = 0;
+      _connectionQualityController.add(candidate);
+      return;
+    }
+
+    if (_pendingUpgradeQuality == candidate) {
+      _pendingUpgradeCount++;
+    } else {
+      _pendingUpgradeQuality = candidate;
+      _pendingUpgradeCount = 1;
+    }
+
+    if (_pendingUpgradeCount >= _upgradeStabilityTicks) {
+      _lastEmittedQuality = candidate;
+      _pendingUpgradeQuality = null;
+      _pendingUpgradeCount = 0;
+      _connectionQualityController.add(candidate);
+    }
   }
 }

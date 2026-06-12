@@ -107,7 +107,8 @@ class _GroupPageState extends State<GroupPage>
 
   void _loadSessionDetails() {
     if (!mounted) return;
-    final sessionId = _sessionDetails?.id ?? widget.data.sessionId;
+    final sessionId =
+        _sessionDetails?.id ?? widget.data.sessionId ?? _rideDetails?.sessionId;
     if (sessionId == null || sessionId <= 0) {
       setState(() => _isLoadingSession = false);
       // Valid case: there may be no session yet, just a ride.
@@ -117,6 +118,19 @@ class _GroupPageState extends State<GroupPage>
     setState(() => _isLoadingSession = true);
     final voiceBloc = context.read<VoiceSessionBloc>();
     if (voiceBloc.isClosed) return;
+
+    // Bloc bu session'ın detayını zaten tutuyorsa hemen göster. State
+    // Equatable olduğu için fetch aynı veriyi getirirse emit bastırılır,
+    // BlocListener hiç tetiklenmez ve spinner sonsuza kadar takılı kalırdı.
+    final currentState = voiceBloc.state;
+    if (currentState.session?.id == sessionId &&
+        currentState.status == VoiceSessionStatus.detailsLoaded) {
+      setState(() {
+        _sessionDetails = currentState.session;
+        _isLoadingSession = false;
+      });
+    }
+
     voiceBloc.add(
       GetVoiceSessionDetailsEvent(sessionId, force: true, immediate: true),
     );
@@ -182,8 +196,10 @@ class _GroupPageState extends State<GroupPage>
   }
 
   int? _validatedSessionId({bool showMessage = false}) {
-    // _sessionDetails varsa önce onu kullan, fallback olarak widget.data
-    final sessionId = _sessionDetails?.id ?? widget.data.sessionId;
+    // _sessionDetails varsa önce onu kullan, fallback olarak widget.data,
+    // son çare ride detayındaki sessionId (push notification rideId-only rotası)
+    final sessionId =
+        _sessionDetails?.id ?? widget.data.sessionId ?? _rideDetails?.sessionId;
     final isValid = sessionId != null && sessionId > 0;
     if (!isValid && showMessage) {
       final l10n = AppLocalizations.of(context);
@@ -237,6 +253,23 @@ class _GroupPageState extends State<GroupPage>
   }
 
   // --- UI ACTIONS ---
+  void _acceptInvite() {
+    final sessionId = _validatedSessionId(showMessage: true);
+    if (sessionId == null) return;
+    context.read<VoiceSessionBloc>().add(
+      AcceptVoiceSessionInviteEvent(sessionId),
+    );
+  }
+
+  void _rejectInvite() {
+    final sessionId = _validatedSessionId(showMessage: true);
+    if (sessionId == null) return;
+    context.read<VoiceSessionBloc>().add(
+      RejectVoiceSessionInviteEvent(sessionId),
+    );
+    _exitGroupPage(message: 'Davet reddedildi');
+  }
+
   void _kickUser(int targetUserId, String userName) {
     final sessionId = _validatedSessionId(showMessage: true);
     if (sessionId == null) return;
@@ -345,6 +378,64 @@ class _GroupPageState extends State<GroupPage>
     });
   }
 
+  Widget _buildInviteBanner(ColorScheme colorScheme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.mail_rounded,
+                color: colorScheme.onPrimaryContainer,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Bu grup sürüşüne davet edildin',
+                  style: TextStyle(
+                    color: colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _acceptInvite,
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Kabul Et'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _rejectInvite,
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Reddet'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colorScheme.error,
+                    side: BorderSide(color: colorScheme.error),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -357,6 +448,19 @@ class _GroupPageState extends State<GroupPage>
       (bloc) => bloc.state.currentUserId,
     );
     final showSettingsButton = _canAccessSettings(currentUserId);
+
+    // Lokal kullanıcı bu session'a sadece davetliyse kabul/reddet banner'ı
+    // göster. Bloc state'inden okunur: kabulde optimistic update
+    // ('Invited'→'Accepted') banner'ı beklemeden gizler.
+    final isLocalUserInvited = context.select<VoiceSessionBloc, bool>((bloc) {
+      final session = bloc.state.session;
+      final uid = bloc.state.currentUserId;
+      if (session == null || uid == null) return false;
+      final me = session.participants
+          .where((p) => p.userId == uid)
+          .firstOrNull;
+      return me?.status == 'Invited';
+    });
 
 
     final isHydrated = _effectiveRideId > 0 && _rideDetails != null;
@@ -472,6 +576,14 @@ class _GroupPageState extends State<GroupPage>
                   _isResolvingRideId = false;
                   _isLoadingRide = false;
                 });
+                // Push notification rotası sadece rideId taşıyor; session
+                // detayı ride üzerinden çözülünce yükle (davet banner'ı ve
+                // katılımcı listesi için gerekli).
+                if (_sessionDetails == null &&
+                    (state.ride.sessionId ?? 0) > 0 &&
+                    !_isLoadingSession) {
+                  _loadSessionDetails();
+                }
                 // Canlı konum + ortak rota katmanını aktif et.
                 di.sl<LiveRideController>().start(
                   state.ride.id,
@@ -553,6 +665,10 @@ class _GroupPageState extends State<GroupPage>
                                   rtcStatus: _rtcStatus,
                                   onBack: _handleBack,
                                 ),
+                                if (isLocalUserInvited) ...[
+                                  _buildInviteBanner(colorScheme),
+                                  const SizedBox(height: 16),
+                                ],
                                 GroupParticipantsSection(
                                   data: widget.data,
                                   sessionDetails: _sessionDetails,

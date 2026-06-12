@@ -12,9 +12,15 @@ import '../../features/intercom/domain/intercom_models.dart';
 class AdaptiveBitrateController {
   static const String _prefKey = 'audio_quality_key';
   static const int _defaultCeiling = AudioBitrate.medium; // medium
-  static const int _poorFloor = AudioBitrate.low; // minimum survival bitrate
+  // Düşüş tabanı 24 kbps: Opus için sesli iletişimde yeterli; 16k'ya inip
+  // tavana geri zıplama (16k↔32k flapping) yerine kararlı bir alt seviye.
+  static const int _degradedFloor = 24000;
   static const int _warningFloor = AudioBitrate.medium;
-  static const Duration _hysteresisDuration = Duration(seconds: 3);
+  static const Duration _hysteresisDuration = Duration(seconds: 15);
+
+  /// Kullanıcı tavanı 24k'dan düşükse (low=16k seçiliyse) tavan geçerli olur.
+  int get _poorFloor =>
+      _degradedFloor > _ceilingBitrate ? _ceilingBitrate : _degradedFloor;
 
   // Network metric thresholds (tuned for voice comm).
   static const double _criticalPacketLossPercent = 12.0;
@@ -40,7 +46,7 @@ class AdaptiveBitrateController {
   int _qualityCap = _defaultCeiling;
   int _metricsCap = _defaultCeiling;
 
-  /// Hysteresis timer — poor→good geçişinde 3 saniye bekler.
+  /// Hysteresis timer — poor→good geçişinde [_hysteresisDuration] bekler.
   Timer? _hysteresisTimer;
 
   /// Bitrate değişikliklerini dinleyenler için stream.
@@ -75,7 +81,7 @@ class AdaptiveBitrateController {
     _metricsCap = _metricsCap.clamp(_poorFloor, _ceilingBitrate);
     AppLogger.info('AdaptiveBitrate: Ceiling updated -> $bitrate bps');
 
-    _recomputeAndApply(immediate: false, reason: 'ceiling_update');
+    _recomputeAndApply(reason: 'ceiling_update');
   }
 
   /// SharedPreferences key'i üzerinden ceiling'i güncelle.
@@ -99,24 +105,24 @@ class AdaptiveBitrateController {
     switch (quality) {
       case IntercomConnectionQuality.ultra:
         _qualityCap = _ceilingBitrate;
-        _recomputeAndApply(immediate: false, reason: 'quality_ultra');
+        _recomputeAndApply(reason: 'quality_ultra');
         break;
 
       case IntercomConnectionQuality.high:
         _qualityCap = AudioBitrate.high.clamp(_poorFloor, _ceilingBitrate);
-        _recomputeAndApply(immediate: false, reason: 'quality_high');
+        _recomputeAndApply(reason: 'quality_high');
         break;
 
       case IntercomConnectionQuality.balanced:
         _qualityCap = AudioBitrate.medium.clamp(_poorFloor, _ceilingBitrate);
-        _recomputeAndApply(immediate: true, reason: 'quality_balanced');
+        _recomputeAndApply(reason: 'quality_balanced');
         break;
 
       case IntercomConnectionQuality.low:
       case IntercomConnectionQuality.lost:
         // Sinyal kötü — HEMEN düşür (gecikme yok)
         _qualityCap = _poorFloor;
-        _recomputeAndApply(immediate: true, reason: 'quality_degraded');
+        _recomputeAndApply(reason: 'quality_degraded');
         break;
 
       case IntercomConnectionQuality.unknown:
@@ -147,42 +153,50 @@ class AdaptiveBitrateController {
 
     if (isCritical) {
       _metricsCap = _poorFloor;
-      _recomputeAndApply(immediate: true, reason: 'metrics_critical');
+      _recomputeAndApply(reason: 'metrics_critical');
       return;
     }
 
     if (isWarning) {
       _metricsCap = _warningFloor.clamp(_poorFloor, _ceilingBitrate);
-      _recomputeAndApply(immediate: true, reason: 'metrics_warning');
+      _recomputeAndApply(reason: 'metrics_warning');
       return;
     }
 
     _metricsCap = _ceilingBitrate;
-    _recomputeAndApply(immediate: false, reason: 'metrics_recovered');
+    _recomputeAndApply(reason: 'metrics_recovered');
   }
 
-  /// Poor → Good/Excellent geçişinde 3 saniye bekleyip yükseltir.
+  /// Poor → Good/Excellent geçişinde [_hysteresisDuration] bekleyip yükseltir.
   /// Bu sayede sinyal kısa süreli dalgalanmalarda gereksiz zıplama olmaz.
-  void _scheduleUpgrade(int targetBitrate) {
+  void _scheduleUpgrade() {
     _hysteresisTimer?.cancel();
     _hysteresisTimer = Timer(_hysteresisDuration, () {
-      // 3 saniye sonra hâlâ iyileşme yönünde mi?
+      // Süre dolunca hâlâ iyileşme yönünde mi?
       final stillRecovering =
           _lastQuality != IntercomConnectionQuality.low &&
           _lastQuality != IntercomConnectionQuality.lost;
-      if (stillRecovering) {
-        _applyBitrate(targetBitrate);
-        AppLogger.info(
-          'AdaptiveBitrate: Hysteresis passed -> upgrading to $targetBitrate bps',
-        );
-      }
+      if (!stillRecovering) return;
+
+      // Timer beklerken caps değişmiş olabilir — güncel hedefi uygula.
+      final target = _currentTarget();
+      _applyBitrate(target);
+      AppLogger.info(
+        'AdaptiveBitrate: Hysteresis passed -> upgrading to $target bps',
+      );
     });
   }
 
-  void _recomputeAndApply({required bool immediate, required String reason}) {
-    final target = (_qualityCap < _metricsCap ? _qualityCap : _metricsCap)
-        .clamp(_poorFloor, _ceilingBitrate);
+  int _currentTarget() =>
+      (_qualityCap < _metricsCap ? _qualityCap : _metricsCap).clamp(
+        _poorFloor,
+        _ceilingBitrate,
+      );
 
+  void _recomputeAndApply({required String reason}) {
+    final target = _currentTarget();
+
+    // Düşüş (veya aynı seviye) her zaman anında uygulanır.
     if (target <= _effectiveBitrate) {
       _hysteresisTimer?.cancel();
       _hysteresisTimer = null;
@@ -190,17 +204,16 @@ class AdaptiveBitrateController {
       return;
     }
 
-    if (immediate) {
-      _hysteresisTimer?.cancel();
-      _hysteresisTimer = null;
-      _applyBitrate(target);
-      return;
-    }
+    // Yükseliş hiçbir zaman anında uygulanmaz, her zaman hysteresis bekler.
+    // Aktif bir timer varsa yeniden kurma — aksi halde her 2 saniyede gelen
+    // metrics_recovered olayı timer'ı sürekli sıfırlayıp yükselişi açlığa
+    // (starvation) sokuyordu.
+    if (_hysteresisTimer?.isActive ?? false) return;
 
     AppLogger.info(
       'AdaptiveBitrate: Recovery pending ($reason) -> schedule $target bps',
     );
-    _scheduleUpgrade(target);
+    _scheduleUpgrade();
   }
 
   /// Efektif bitrate'i güncelle ve stream'e yayınla.

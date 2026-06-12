@@ -14,6 +14,7 @@ class VoiceSessionParticipantModel extends VoiceSessionParticipantEntity {
     super.phoneBatteryLevel,
     super.intercomBatteryLevel,
     super.signalStrength,
+    super.isRemoteMuted,
   });
 
   factory VoiceSessionParticipantModel.fromJson(Map<String, dynamic> json) {
@@ -67,6 +68,12 @@ class VoiceSessionParticipantModel extends VoiceSessionParticipantEntity {
       phoneBatteryLevel: json['phoneBatteryLevel'],
       intercomBatteryLevel: json['intercomBatteryLevel'],
       signalStrength: json['signalStrength'],
+      // Backend bu alanı henüz döndürmüyorsa false kalır; bloc tarafında
+      // önceki in-memory mute state ile merge edilir.
+      isRemoteMuted:
+          json['isRemoteMuted'] == true ||
+          json['isMuted'] == true ||
+          json['isMutedByAdmin'] == true,
     );
   }
 
