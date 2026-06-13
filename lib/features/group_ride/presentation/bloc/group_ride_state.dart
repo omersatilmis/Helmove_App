@@ -99,3 +99,14 @@ class GroupRideAdminChanged extends GroupRideState {
   @override
   List<Object?> get props => [message];
 }
+
+/// Yaşam döngüsü (status) aksiyonu başarılı oldu — geçici geri bildirim state'i.
+/// UI bunu yeşil snackbar olarak gösterir; ardından gelen ride reload
+/// (GroupRideSuccess) güncel durumu yansıtır.
+class GroupRideStatusChanged extends GroupRideState {
+  final int rideId;
+  final String message;
+  const GroupRideStatusChanged(this.rideId, this.message);
+  @override
+  List<Object?> get props => [rideId, message];
+}

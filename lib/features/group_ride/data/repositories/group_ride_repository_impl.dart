@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/group_ride_entity.dart';
+import '../../domain/entities/group_ride_summary.dart';
 import '../../domain/repositories/group_ride_repository.dart';
 import '../datasources/group_ride_remote_data_source.dart';
 import '../dto/create_group_ride_request_dto.dart';
@@ -61,6 +62,54 @@ class GroupRideRepositoryImpl implements GroupRideRepository {
   Future<Either<Failure, bool>> deleteGroupRide(int rideId) async {
     try {
       final result = await remoteDataSource.deleteGroupRide(rideId);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<GroupRideSummary>>> searchGroupRides({
+    String? title,
+    String? location,
+    String? difficulty,
+    String? ridingStyle,
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final result = await remoteDataSource.searchGroupRides(
+        title: title,
+        location: location,
+        difficulty: difficulty,
+        ridingStyle: ridingStyle,
+        status: status,
+        startDate: startDate,
+        endDate: endDate,
+        page: page,
+        pageSize: pageSize,
+      );
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<GroupRideSummary>>> getNearbyGroupRides({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 50,
+  }) async {
+    try {
+      final result = await remoteDataSource.getNearbyGroupRides(
+        latitude: latitude,
+        longitude: longitude,
+        radiusKm: radiusKm,
+      );
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

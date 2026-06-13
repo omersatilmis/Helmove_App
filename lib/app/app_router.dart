@@ -29,6 +29,8 @@ import 'package:helmove/features/map/presentation/pages/map_page.dart';
 import 'package:helmove/features/map/presentation/providers/map_bloc.dart';
 import 'package:helmove/features/communication/presentation/pages/communication_page.dart';
 import 'package:helmove/features/communication/presentation/pages/create_group_ride.dart';
+import 'package:helmove/features/communication/presentation/pages/discover_rides_page.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/discover_rides/discover_rides_bloc.dart';
 import 'package:helmove/features/communication/presentation/pages/group_page.dart';
 import 'package:helmove/features/communication/presentation/pages/group_settings.dart';
 import 'package:helmove/features/media/presentation/pages/prepare_media_page.dart';
@@ -47,9 +49,6 @@ import 'package:helmove/features/ride_history/presentation/pages/ride_history_pa
 import 'package:helmove/features/ride_history/presentation/pages/ride_detail_page.dart';
 import 'package:helmove/features/ride_history/domain/entities/ride_entity.dart';
 import 'package:helmove/features/settings/presentation/pages/support/feedback_page.dart';
-import 'package:helmove/features/settings/presentation/pages/support/copyright_page.dart';
-import 'package:helmove/features/settings/presentation/pages/support/privacy_policy_page.dart';
-import 'package:helmove/features/settings/presentation/pages/support/about_app_page.dart';
 import 'package:helmove/core/presentation/pages/web_view_page.dart';
 import 'package:helmove/features/settings/presentation/pages/blocked_users_page.dart';
 import 'package:helmove/features/settings/presentation/pages/security_page.dart';
@@ -316,18 +315,6 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
         builder: (context, state) => const FeedbackPage(),
       ),
       GoRoute(
-        path: '/copyright',
-        builder: (context, state) => const CopyrightPage(),
-      ),
-      GoRoute(
-        path: '/privacy-policy',
-        builder: (context, state) => const PrivacyPolicyPage(),
-      ),
-      GoRoute(
-        path: '/about',
-        builder: (context, state) => const AboutAppPage(),
-      ),
-      GoRoute(
         path: '/blocked-users',
         builder: (context, state) => const BlockedUsersPage(),
       ),
@@ -484,6 +471,14 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
                   GoRoute(
                     path: 'create-group-ride',
                     builder: (context, state) => const CreateGroupRide(),
+                  ),
+                  // Grup turlarını keşfet (search + nearby)
+                  GoRoute(
+                    path: 'discover',
+                    builder: (context, state) => BlocProvider(
+                      create: (_) => sl<DiscoverRidesBloc>(),
+                      child: const DiscoverRidesPage(),
+                    ),
                   ),
                   // GroupPage'i buraya 'child' (alt rota) olarak ekle
                   GoRoute(

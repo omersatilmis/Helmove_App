@@ -47,12 +47,20 @@ class _SupportSectionState extends State<SupportSection> {
         SettingsTile(
           icon: Icons.copyright_rounded,
           title: AppLocalizations.of(context)!.copyright,
-          onTap: () => context.push('/copyright'),
+          onTap: () => _openWebsite(
+            context,
+            'https://helmove.com/terms-of-use',
+            AppLocalizations.of(context)!.copyright,
+          ),
         ),
         SettingsTile(
           icon: Icons.privacy_tip_outlined,
           title: AppLocalizations.of(context)!.privacyPolicy,
-          onTap: () => context.push('/privacy-policy'),
+          onTap: () => _openWebsite(
+            context,
+            'https://helmove.com/privacy-policy',
+            AppLocalizations.of(context)!.privacyPolicy,
+          ),
         ),
         SettingsTile(
           icon: Icons.info_outline_rounded,
@@ -60,7 +68,11 @@ class _SupportSectionState extends State<SupportSection> {
           subtitle: _version.isNotEmpty
               ? AppLocalizations.of(context)!.version(_version, _appReleaseStage)
               : AppLocalizations.of(context)!.loading,
-          onTap: () => context.push('/about'),
+          onTap: () => _openWebsite(
+            context,
+            'https://helmove.com',
+            AppLocalizations.of(context)!.about,
+          ),
         ),
 
         // Çıkış Butonu
@@ -73,6 +85,10 @@ class _SupportSectionState extends State<SupportSection> {
         ),
       ],
     );
+  }
+
+  void _openWebsite(BuildContext context, String url, String title) {
+    context.push('/webview', extra: {'url': url, 'title': title});
   }
 
   void _showLogoutDialog(BuildContext context) {

@@ -14,6 +14,10 @@ class GroupHeaderSection extends StatelessWidget {
   final VoiceSessionEntity? sessionDetails;
   final bool isLoadingRide;
   final RtcConnectionStatus rtcStatus;
+
+  /// [ODA MODELİ] Kullanıcı ses kanalında mı? Intercom durum banner'ı yalnızca
+  /// sesteyken gösterilir; oda modunda (sese bağlı değilken) gizlenir.
+  final bool isInVoice;
   final VoidCallback onBack;
 
   const GroupHeaderSection({
@@ -23,6 +27,7 @@ class GroupHeaderSection extends StatelessWidget {
     required this.sessionDetails,
     required this.isLoadingRide,
     required this.rtcStatus,
+    required this.isInVoice,
     required this.onBack,
   });
 
@@ -73,8 +78,10 @@ class GroupHeaderSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 24),
-        _buildIntercomBanner(context),
+        if (isInVoice) ...[
+          const SizedBox(height: 24),
+          _buildIntercomBanner(context),
+        ],
         const SizedBox(height: 30),
       ],
     );

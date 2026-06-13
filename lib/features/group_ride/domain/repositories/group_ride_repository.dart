@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/group_ride_entity.dart';
+import '../entities/group_ride_summary.dart';
 import '../../data/dto/create_group_ride_request_dto.dart';
 
 abstract class GroupRideRepository {
@@ -14,4 +15,24 @@ abstract class GroupRideRepository {
     GroupRideEntity ride,
   );
   Future<Either<Failure, bool>> deleteGroupRide(int rideId);
+
+  /// Keşfet araması (çoklu kriter).
+  Future<Either<Failure, List<GroupRideSummary>>> searchGroupRides({
+    String? title,
+    String? location,
+    String? difficulty,
+    String? ridingStyle,
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    int page,
+    int pageSize,
+  });
+
+  /// Yakındaki turlar (distanceKm dolu döner).
+  Future<Either<Failure, List<GroupRideSummary>>> getNearbyGroupRides({
+    required double latitude,
+    required double longitude,
+    double radiusKm,
+  });
 }

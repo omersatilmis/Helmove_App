@@ -118,3 +118,42 @@ class InitializeGroupRideEvent extends GroupRideEvent {
   @override
   List<Object?> get props => [rideId, sessionId];
 }
+
+// ── Yaşam döngüsü (status) event'leri — yalnızca organizatör tetikler ──────
+
+/// Turu başlat: Planning/Active/Postponed → InProgress.
+class StartGroupRideEvent extends GroupRideEvent {
+  final int rideId;
+  const StartGroupRideEvent(this.rideId);
+
+  @override
+  List<Object?> get props => [rideId];
+}
+
+/// Turu bitir: InProgress → Completed.
+class CompleteGroupRideEvent extends GroupRideEvent {
+  final int rideId;
+  const CompleteGroupRideEvent(this.rideId);
+
+  @override
+  List<Object?> get props => [rideId];
+}
+
+/// Turu iptal et → Cancelled.
+class CancelGroupRideEvent extends GroupRideEvent {
+  final int rideId;
+  const CancelGroupRideEvent(this.rideId);
+
+  @override
+  List<Object?> get props => [rideId];
+}
+
+/// Turu ertele → Postponed (yeni tarih ile).
+class PostponeGroupRideEvent extends GroupRideEvent {
+  final int rideId;
+  final DateTime newDateTime;
+  const PostponeGroupRideEvent(this.rideId, this.newDateTime);
+
+  @override
+  List<Object?> get props => [rideId, newDateTime];
+}

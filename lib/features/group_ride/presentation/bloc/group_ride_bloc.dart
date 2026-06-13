@@ -7,6 +7,10 @@ import '../../domain/usecases/get_active_group_rides_usecase.dart';
 import '../../domain/usecases/update_group_ride_usecase.dart';
 import '../../domain/usecases/get_group_ride_by_id_usecase.dart';
 import '../../domain/entities/group_ride_entity.dart';
+import 'package:helmove/features/status_management/domain/usecases/start_ride_usecase.dart';
+import 'package:helmove/features/status_management/domain/usecases/complete_ride_usecase.dart';
+import 'package:helmove/features/status_management/domain/usecases/cancel_ride_usecase.dart';
+import 'package:helmove/features/status_management/domain/usecases/postpone_ride_usecase.dart';
 import 'package:helmove/features/voice_session/domain/usecases/get_voice_session_details_usecase.dart';
 import 'package:helmove/features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
 import 'package:helmove/core/services/communication_realtime_bus.dart';
@@ -28,6 +32,11 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
   final GetGroupRideByIdUseCase? getGroupRideByIdUseCase;
   final UpdateGroupRideUseCase updateGroupRideUseCase;
   final GetVoiceSessionDetailsUseCase getVoiceSessionDetailsUseCase;
+  // Yaşam döngüsü (status) usecase'leri.
+  final StartRideUseCase startRideUseCase;
+  final CompleteRideUseCase completeRideUseCase;
+  final CancelRideUseCase cancelRideUseCase;
+  final PostponeRideUseCase postponeRideUseCase;
 
   StreamSubscription? _realtimeSubscription;
   StreamSubscription? _refreshSubscription;
@@ -138,6 +147,10 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     this.getGroupRideByIdUseCase,
     required this.updateGroupRideUseCase,
     required this.getVoiceSessionDetailsUseCase,
+    required this.startRideUseCase,
+    required this.completeRideUseCase,
+    required this.cancelRideUseCase,
+    required this.postponeRideUseCase,
   }) : super(GroupRideInitial()) {
     on<InitializeGroupRideEvent>(_onInitializeGroupRide);
     on<CreateGroupRideEvent>(_onCreateGroupRide);
@@ -157,6 +170,10 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     on<GroupRideUpdatedReceived>(_onGroupRideUpdatedReceived);
     on<GroupRideNotFoundDetected>(_onGroupRideNotFoundDetected);
     on<ClearGroupDataEvent>(_onClearGroupData);
+    on<StartGroupRideEvent>(_onStartGroupRide);
+    on<CompleteGroupRideEvent>(_onCompleteGroupRide);
+    on<CancelGroupRideEvent>(_onCancelGroupRide);
+    on<PostponeGroupRideEvent>(_onPostponeGroupRide);
 
     _realtimeSubscription = realtimeBus.events.listen((event) {
       if (isClosed) return;
@@ -651,5 +668,67 @@ class GroupRideBloc extends Bloc<GroupRideEvent, GroupRideState> {
     _rideSessionCache.clear();
     _rideNotFoundUntil.clear();
     emit(GroupRideInitial());
+  }
+
+  // ── Yaşam döngüsü (status) handler'ları ───────────────────────────────────
+  // Usecase'ler Future<void> döner ve hata fırlatır. Başarıda durumu tazelemek
+  // için ride detayı yeniden yüklenir (LoadGroupRideDetailsEvent), böylece
+  // GroupRideSuccess ile güncel status UI'a yansır. Geçici GroupRideStatusChanged
+  // state'i UI'da yeşil snackbar olarak gösterilir.
+
+  String _statusActionError(Object error) {
+    return error.toString().replaceFirst('Exception: ', '');
+  }
+
+  Future<void> _onStartGroupRide(
+    StartGroupRideEvent event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    try {
+      await startRideUseCase.execute(event.rideId);
+      emit(GroupRideStatusChanged(event.rideId, 'Tur başlatıldı'));
+      add(LoadGroupRideDetailsEvent(event.rideId, force: true));
+    } catch (e) {
+      emit(GroupRideFailure(_statusActionError(e)));
+    }
+  }
+
+  Future<void> _onCompleteGroupRide(
+    CompleteGroupRideEvent event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    try {
+      await completeRideUseCase.execute(event.rideId);
+      emit(GroupRideStatusChanged(event.rideId, 'Tur tamamlandı'));
+      add(LoadGroupRideDetailsEvent(event.rideId, force: true));
+    } catch (e) {
+      emit(GroupRideFailure(_statusActionError(e)));
+    }
+  }
+
+  Future<void> _onCancelGroupRide(
+    CancelGroupRideEvent event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    try {
+      await cancelRideUseCase.execute(event.rideId);
+      emit(GroupRideStatusChanged(event.rideId, 'Tur iptal edildi'));
+      add(LoadGroupRideDetailsEvent(event.rideId, force: true));
+    } catch (e) {
+      emit(GroupRideFailure(_statusActionError(e)));
+    }
+  }
+
+  Future<void> _onPostponeGroupRide(
+    PostponeGroupRideEvent event,
+    Emitter<GroupRideState> emit,
+  ) async {
+    try {
+      await postponeRideUseCase.execute(event.rideId, event.newDateTime);
+      emit(GroupRideStatusChanged(event.rideId, 'Tur ertelendi'));
+      add(LoadGroupRideDetailsEvent(event.rideId, force: true));
+    } catch (e) {
+      emit(GroupRideFailure(_statusActionError(e)));
+    }
   }
 }

@@ -160,8 +160,11 @@ class _BlockedUserTile extends StatelessWidget {
               radius: 28,
               backgroundColor: theme.colorScheme.surfaceContainerLow,
               backgroundImage: user.profilePictureUrl != null && user.profilePictureUrl!.isNotEmpty
-                  ? CachedNetworkImageProvider(user.profilePictureUrl!.toAbsoluteImageUrl()) as ImageProvider
-                  : const AssetImage('assets/images/default_avatar.png'),
+                  ? CachedNetworkImageProvider(user.profilePictureUrl!.toAbsoluteImageUrl())
+                  : null,
+              child: (user.profilePictureUrl == null || user.profilePictureUrl!.isEmpty)
+                  ? Icon(Icons.person, color: theme.colorScheme.onSurfaceVariant)
+                  : null,
             ),
           ),
           const SizedBox(width: 16),

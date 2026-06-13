@@ -133,6 +133,7 @@ import '../../features/voice_session/domain/usecases/promote_participant_usecase
 import '../../features/voice_session/domain/usecases/demote_participant_usecase.dart';
 import '../../features/voice_session/domain/usecases/kick_participant_usecase.dart';
 // Status Management Feature
+import '../../features/status_management/data/api/status_api.dart';
 import '../../features/status_management/data/datasources/status_remote_data_source.dart';
 import '../../features/status_management/data/repositories/status_repository_impl.dart';
 import '../../features/status_management/domain/repositories/status_repository.dart';
@@ -151,6 +152,9 @@ import '../../features/group_ride/domain/usecases/get_active_group_rides_usecase
 import '../../features/group_ride/domain/usecases/get_group_ride_by_id_usecase.dart';
 import '../../features/group_ride/domain/usecases/update_group_ride_usecase.dart';
 import '../../features/group_ride/domain/usecases/delete_group_ride_usecase.dart';
+import '../../features/group_ride/domain/usecases/search_group_rides_usecase.dart';
+import '../../features/group_ride/domain/usecases/get_nearby_group_rides_usecase.dart';
+import '../../features/group_ride/presentation/bloc/discover_rides/discover_rides_bloc.dart';
 import '../../features/group_ride/presentation/bloc/group_ride_bloc.dart';
 import '../../features/group_ride/presentation/live_ride/live_ride_controller.dart';
 import '../../features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
@@ -550,6 +554,35 @@ void _registerCoreFeatureSingletons() {
     sl.registerLazySingleton<AttendanceRepository>(
       () => AttendanceRepositoryImpl(sl()),
     );
+  }
+
+  // Status Management Feature (Core dependency for GroupRideBloc — lifecycle)
+  // GroupRideBloc açılışta (router) oluşturulduğu için status zinciri de core'da
+  // kayıtlı olmalı; aksi halde deferred kayıt geç kalıp 'not registered' atıyor.
+  if (!sl.isRegistered<StatusApi>()) {
+    sl.registerLazySingleton(() => StatusApi(sl()));
+  }
+  if (!sl.isRegistered<StatusRemoteDataSource>()) {
+    sl.registerLazySingleton<StatusRemoteDataSource>(
+      () => StatusRemoteDataSourceImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<StatusRepository>()) {
+    sl.registerLazySingleton<StatusRepository>(
+      () => StatusRepositoryImpl(sl()),
+    );
+  }
+  if (!sl.isRegistered<StartRideUseCase>()) {
+    sl.registerFactory(() => StartRideUseCase(sl()));
+  }
+  if (!sl.isRegistered<CompleteRideUseCase>()) {
+    sl.registerFactory(() => CompleteRideUseCase(sl()));
+  }
+  if (!sl.isRegistered<CancelRideUseCase>()) {
+    sl.registerFactory(() => CancelRideUseCase(sl()));
+  }
+  if (!sl.isRegistered<PostponeRideUseCase>()) {
+    sl.registerFactory(() => PostponeRideUseCase(sl()));
   }
 
 
@@ -1525,29 +1558,8 @@ void _registerDeferredRuntimeSingletons() {
   if (!sl.isRegistered<CallListenerService>()) {
     sl.registerLazySingleton(() => CallListenerService());
   }
-  // Status Management Feature
-  if (!sl.isRegistered<StatusRemoteDataSource>()) {
-    sl.registerLazySingleton<StatusRemoteDataSource>(
-      () => StatusRemoteDataSourceImpl(sl()),
-    );
-  }
-  if (!sl.isRegistered<StatusRepository>()) {
-    sl.registerLazySingleton<StatusRepository>(
-      () => StatusRepositoryImpl(sl()),
-    );
-  }
-  if (!sl.isRegistered<StartRideUseCase>()) {
-    sl.registerFactory(() => StartRideUseCase(sl()));
-  }
-  if (!sl.isRegistered<CompleteRideUseCase>()) {
-    sl.registerFactory(() => CompleteRideUseCase(sl()));
-  }
-  if (!sl.isRegistered<CancelRideUseCase>()) {
-    sl.registerFactory(() => CancelRideUseCase(sl()));
-  }
-  if (!sl.isRegistered<PostponeRideUseCase>()) {
-    sl.registerFactory(() => PostponeRideUseCase(sl()));
-  }
+  // Status Management Feature: GroupRideBloc'un core bağımlılığı olduğu için
+  // artık _registerCoreFeatureSingletons() içinde kayıtlı (açılış yolu).
 
   // Call Feature
   if (!sl.isRegistered<CallRemoteDataSource>()) {
@@ -1848,6 +1860,20 @@ Future<void> initCore() async {
     if (!sl.isRegistered<DeleteGroupRideUseCase>()) {
       sl.registerFactory(() => DeleteGroupRideUseCase(sl()));
     }
+    if (!sl.isRegistered<SearchGroupRidesUseCase>()) {
+      sl.registerFactory(() => SearchGroupRidesUseCase(sl()));
+    }
+    if (!sl.isRegistered<GetNearbyGroupRidesUseCase>()) {
+      sl.registerFactory(() => GetNearbyGroupRidesUseCase(sl()));
+    }
+    if (!sl.isRegistered<DiscoverRidesBloc>()) {
+      sl.registerFactory(
+        () => DiscoverRidesBloc(
+          searchGroupRides: sl(),
+          getNearbyGroupRides: sl(),
+        ),
+      );
+    }
     if (!sl.isRegistered<LeaveGroupRideUseCase>()) {
       sl.registerFactory(() => LeaveGroupRideUseCase(sl()));
     }
@@ -1864,6 +1890,10 @@ Future<void> initCore() async {
           updateGroupRideUseCase: sl(),
           getGroupRideByIdUseCase: sl(),
           getVoiceSessionDetailsUseCase: sl(),
+          startRideUseCase: sl(),
+          completeRideUseCase: sl(),
+          cancelRideUseCase: sl(),
+          postponeRideUseCase: sl(),
         ),
       );
     }

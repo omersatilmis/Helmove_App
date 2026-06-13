@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:helmove/core/utils/friendship_error_mapper.dart';
+import 'package:helmove/core/utils/image_url_extensions.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
@@ -214,6 +215,11 @@ class _UserSearchTile extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
+    // user `dynamic` olduğu için profilePictureUrl'i statik String? tipine
+    // alıyoruz; aksi halde toAbsoluteImageUrl() extension'ı dynamic receiver'da
+    // çözülemeyip NoSuchMethodError fırlatıyor.
+    final String? profilePictureUrl = user.profilePictureUrl as String?;
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
@@ -227,10 +233,10 @@ class _UserSearchTile extends StatelessWidget {
         child: CircleAvatar(
           radius: 26,
           backgroundColor: cs.surfaceContainerLow,
-          backgroundImage: user.profilePictureUrl != null && user.profilePictureUrl!.isNotEmpty
-              ? CachedNetworkImageProvider(user.profilePictureUrl!.toAbsoluteImageUrl())
+          backgroundImage: profilePictureUrl != null && profilePictureUrl.isNotEmpty
+              ? CachedNetworkImageProvider(profilePictureUrl.toAbsoluteImageUrl())
               : null,
-          child: user.profilePictureUrl == null || user.profilePictureUrl!.isEmpty
+          child: profilePictureUrl == null || profilePictureUrl.isEmpty
               ? Icon(Icons.person_rounded, color: cs.onSurfaceVariant)
               : null,
         ),

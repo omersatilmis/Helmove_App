@@ -18,6 +18,10 @@ class GroupParticipantsSection extends StatelessWidget {
   final Set<String> activeSpeakers;
   final Map<int, IntercomConnectionQuality> participantQualities;
   final bool isCurrentUserMicOn;
+
+  /// [ODA MODELİ] Kullanıcı ses kanalında mı? Mikrofon toggle'ı yalnızca
+  /// sesteyken (kendi kartında) gösterilir.
+  final bool isInVoice;
   final VoidCallback onToggleMic;
   final VoidCallback? onRefresh;
   final VoidCallback onInvite;
@@ -38,6 +42,7 @@ class GroupParticipantsSection extends StatelessWidget {
     required this.activeSpeakers,
     this.participantQualities = const {},
     required this.isCurrentUserMicOn,
+    required this.isInVoice,
     required this.onToggleMic,
     required this.onRefresh,
     required this.onInvite,
@@ -149,19 +154,12 @@ class GroupParticipantsSection extends StatelessWidget {
             participant.status == 'Joined' || participant.status == 'Accepted';
         final isMe = participant.userId == currentUserId;
         final role = participant.role;
-        final quality =
-            participantQualities[participant.userId] ??
-            IntercomConnectionQuality.unknown;
 
         return RiderCard(
           key: ValueKey(participant.userId),
           firstName: participant.firstName ?? '',
           lastName: participant.lastName ?? '',
           profileImageUrl: participant.profileImage,
-          phoneBatteryLevel: participant.phoneBatteryLevel,
-          intercomBatteryLevel: participant.intercomBatteryLevel,
-          signalStrength: participant.signalStrength,
-          connectionQuality: quality,
           isMicOn: isMe ? isCurrentUserMicOn : false,
           isSpeaking: activeSpeakers.contains(participant.userId.toString()),
           isConnected: isConnected,
@@ -169,7 +167,7 @@ class GroupParticipantsSection extends StatelessWidget {
           isRemoteMuted: participant.isRemoteMuted,
           role: role,
           viewerRole: viewerRole,
-          onMicPressed: isMe ? onToggleMic : null,
+          onMicPressed: (isMe && isInVoice) ? onToggleMic : null,
           onKickUser:
               ((viewerRole == GroupRole.admin ||
                       viewerRole == GroupRole.captain) &&

@@ -5,9 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:helmove/core/config/app_feature_flags.dart';
 import 'package:helmove/l10n/app_localizations.dart';
 import 'package:helmove/core/services/audio_orchestrator_service.dart';
-import 'package:helmove/features/intercom/domain/intercom_engine.dart';
 import 'package:helmove/features/settings/data/models/audio_settings_model.dart';
-import 'package:helmove/features/settings/data/models/network_settings_model.dart';
 import 'package:helmove/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:helmove/features/settings/presentation/bloc/settings_event.dart';
 import 'package:helmove/features/settings/presentation/bloc/settings_state.dart';
@@ -26,11 +24,9 @@ class AppSettingsSection extends StatefulWidget {
 class _AppSettingsSectionState extends State<AppSettingsSection> {
   bool _noiseCancellation = false;
   bool _voiceNavigation = true;
-  bool _wifiOnly = true;
 
   String _distanceUnit = "";
   String _tempUnit = "";
-  String _audioQuality = "";
   String _mapType = "";
   bool _trafficEnabled = false;
 
@@ -40,13 +36,6 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
 
   bool _settingsLoaded = false;
 
-  Map<String, String> _getQualityOptions(AppLocalizations l10n) => {
-    'low': l10n.lowQuality,
-    'medium': l10n.mediumQuality,
-    'high': l10n.highQuality,
-    'ultra': l10n.ultraQuality,
-  };
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -55,16 +44,11 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
       if (_distanceUnit.isEmpty) _distanceUnit = l10n.kilometer;
       if (_tempUnit.isEmpty) _tempUnit = l10n.celsius;
       if (_mapType.isEmpty) _mapType = l10n.normal;
-      if (_audioQuality.isEmpty) {
-        final qualityOptions = _getQualityOptions(l10n);
-        _audioQuality = qualityOptions['medium'] ?? '';
-      }
     }
     if (!_settingsLoaded) {
       _settingsLoaded = true;
       _loadSavedSettings();
       context.read<SettingsBloc>().add(const LoadAudioSettingsEvent());
-      context.read<SettingsBloc>().add(const LoadNetworkSettingsEvent());
     }
   }
 
@@ -74,23 +58,14 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
       if (l10n == null) return;
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
-      final qualityOptions = _getQualityOptions(l10n);
 
-      final savedQualityKey = prefs.getString('audio_quality_key');
       final savedMusicMode = prefs.getString('audio_mixing_mode');
       final savedWiredMic = prefs.getBool('prefer_wired_mic');
       final savedNoise = prefs.getBool('audio_noise_suppression');
       final savedVoiceNav = prefs.getBool('voice_navigation_enabled');
-      final savedWifiOnly = prefs.getBool('wifi_only_download');
 
       if (mounted) {
         setState(() {
-          if (savedQualityKey != null) {
-            _audioQuality =
-                qualityOptions[savedQualityKey] ?? qualityOptions['medium']!;
-          } else if (_audioQuality.isEmpty) {
-            _audioQuality = qualityOptions['medium']!;
-          }
           if (savedMusicMode != null) {
             _musicMode = AudioMixingMode.values.firstWhere(
               (e) => e.name == savedMusicMode,
@@ -100,7 +75,6 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
           if (savedWiredMic != null) _preferWiredMic = savedWiredMic;
           if (savedNoise != null) _noiseCancellation = savedNoise;
           if (savedVoiceNav != null) _voiceNavigation = savedVoiceNav;
-          if (savedWifiOnly != null) _wifiOnly = savedWifiOnly;
         });
       }
     } catch (_) {}
@@ -118,33 +92,11 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
     });
   }
 
-  void _applyNetworkSettingsFromBloc(NetworkSettingsModel settings) {
-    if (!mounted) return;
-    setState(() {
-      _wifiOnly = settings.wifiOnlyDownload;
-    });
-  }
-
-  String _getKeyFromLabel(String label, AppLocalizations l10n) {
-    final qualityOptions = _getQualityOptions(l10n);
-    return qualityOptions.entries
-        .firstWhere(
-          (e) => e.value == label,
-          orElse: () => const MapEntry('medium', ''),
-        )
-        .key;
-  }
-
   Future<void> _updateMusicMode(AudioMixingMode mode) async {
     setState(() => _musicMode = mode);
     if (GetIt.I.isRegistered<AudioOrchestratorService>()) {
       await GetIt.I<AudioOrchestratorService>().setAudioMixingMode(mode);
     }
-  }
-
-  Future<void> _refreshIntercomAudioSettings() async {
-    if (!GetIt.I.isRegistered<IntercomEngine>()) return;
-    await GetIt.I<IntercomEngine>().onAudioSettingsChanged();
   }
 
   void _onNoiseChanged(bool val) {
@@ -165,30 +117,17 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
     );
   }
 
-  void _onWifiOnlyChanged(bool val) {
-    setState(() => _wifiOnly = val);
-    context.read<SettingsBloc>().add(
-      UpdateNetworkEvent(NetworkSettingsModel(wifiOnlyDownload: val)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
     if (l10n == null) return const SizedBox.shrink();
-    final qualityOptions = _getQualityOptions(l10n);
 
     return BlocListener<SettingsBloc, SettingsState>(
-      listenWhen: (prev, curr) =>
-          curr.audioSettings != prev.audioSettings ||
-          curr.networkSettings != prev.networkSettings,
+      listenWhen: (prev, curr) => curr.audioSettings != prev.audioSettings,
       listener: (context, state) {
         if (state.audioSettings != null) {
           _applyAudioSettingsFromBloc(state.audioSettings!);
-        }
-        if (state.networkSettings != null) {
-          _applyNetworkSettingsFromBloc(state.networkSettings!);
         }
       },
       child: Column(
@@ -268,75 +207,7 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
             title: l10n.audioMedia,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.audioQuality,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    InkWell(
-                      onTap: () => showSettingsBottomSheet(
-                        context,
-                        l10n.audioQuality,
-                        qualityOptions.values.toList(),
-                        (val) async {
-                          setState(() => _audioQuality = val);
-                          final qualityKey = _getKeyFromLabel(val, l10n);
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.setString('audio_quality_key', qualityKey);
-                          await _refreshIntercomAudioSettings();
-                        },
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest.withValues(
-                            alpha: 0.3,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: colorScheme.outlineVariant),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _audioQuality,
-                                style: TextStyle(
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 14,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Divider(height: 24, indent: 16, endIndent: 16),
-
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -405,12 +276,6 @@ class _AppSettingsSectionState extends State<AppSettingsSection> {
             icon: Icons.sensors_rounded,
             title: l10n.connectionSettings,
             children: [
-              SettingsSwitchTile(
-                title: l10n.wifiOnlyDownloads,
-                subtitle: l10n.mapUpdatesFor,
-                value: _wifiOnly,
-                onChanged: _onWifiOnlyChanged,
-              ),
               ListTile(
                 dense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),

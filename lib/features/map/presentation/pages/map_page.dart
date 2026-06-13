@@ -67,8 +67,6 @@ class _MapPageState extends State<MapPage> {
   String? _lastActiveRouteKey;
 
   CircleAnnotationManager? _markerManager;
-  CircleAnnotation? _startMarker;
-  CircleAnnotation? _endMarker;
   PolylineAnnotationManager? _routeLineManager;
   PolylineAnnotationManager? _stepLineManager;
   List<PolylineAnnotation> _stepLines = [];
@@ -76,6 +74,7 @@ class _MapPageState extends State<MapPage> {
   List<CircleAnnotation> _poiMarkers = [];
   // Async render race guard — en son rota render çağrısı kazanır.
   int _routeRenderGen = 0;
+  int _markerRenderGen = 0;
   Timer? _poiScanTimer;
   bool _poiScanInFlight = false;
   String? _lastPoiSignature;
@@ -965,32 +964,28 @@ class _MapPageState extends State<MapPage> {
     final manager = _markerManager;
     if (manager == null) return;
 
+    // Race guard: ardışık çağrılar üst üste bindiğinde (yeni rota seçimi
+    // birden fazla state emit ediyor) geç biten eski çağrının marker'ı geri
+    // bırakmasını engelle — en son çağrı kazanır (bkz. _renderRoutes).
+    final gen = ++_markerRenderGen;
+
+    // Tekil delete yerine deleteAll: yarış anında referansı kaybolan eski
+    // bitiş noktaları da temizlensin (bu manager yalnızca bitiş marker'ını
+    // tutuyor).
     try {
-      if (_startMarker != null) {
-        await manager.delete(_startMarker!);
-      }
+      await manager.deleteAll();
     } catch (e) {
-      debugPrint("Error deleting start marker: $e");
-    } finally {
-      _startMarker = null;
+      debugPrint("Error deleting markers: $e");
     }
 
-    try {
-      if (_endMarker != null) {
-        await manager.delete(_endMarker!);
-      }
-    } catch (e) {
-      debugPrint("Error deleting end marker: $e");
-    } finally {
-      _endMarker = null;
-    }
+    if (gen != _markerRenderGen) return; // daha yeni bir çağrı devraldı
 
     // Başlangıç (yeşil) marker'ı çizilmiyor — kullanıcının konumu zaten motor
     // puck'ı ile gösteriliyor; başlangıç noktasında ayrıca nokta gerekmez.
 
     if (end != null) {
       try {
-        _endMarker = await manager.create(
+        final created = await manager.create(
           CircleAnnotationOptions(
             geometry: end,
             circleColor: Colors.redAccent.toARGB32(),
@@ -999,6 +994,12 @@ class _MapPageState extends State<MapPage> {
             circleStrokeWidth: 2,
           ),
         );
+        if (gen != _markerRenderGen) {
+          // Biz create beklerken yeni çağrı geldi — bu marker artık bayat.
+          try {
+            await manager.delete(created);
+          } catch (_) {}
+        }
       } catch (e) {
         debugPrint("Error creating end marker: $e");
       }

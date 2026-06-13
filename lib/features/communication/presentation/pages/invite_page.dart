@@ -365,6 +365,29 @@ class _InviteViewState extends State<_InviteView> {
                                         widget.args.groupData != null) {
                                       // ... (Log omitted for brevity)
                                       // ... (CreateGroupRideRequestDto building omitted)
+                                      // [Veri kalitesi] Gerçek başlangıç tarihi
+                                      // + koordinatı create formundan gelir
+                                      // (yoksa eski fallback: now / 0,0).
+                                      final gd = widget.args.groupData!;
+                                      final startDt =
+                                          DateTime.tryParse(
+                                            gd['startDateTime']?.toString() ??
+                                                '',
+                                          ) ??
+                                          DateTime.now();
+                                      final startLat =
+                                          (gd['startLatitude'] as num?)
+                                              ?.toDouble() ??
+                                          0.0;
+                                      final startLng =
+                                          (gd['startLongitude'] as num?)
+                                              ?.toDouble() ??
+                                          0.0;
+                                      final startLoc =
+                                          (gd['startLocation']?.toString() ?? '')
+                                              .isNotEmpty
+                                          ? gd['startLocation'].toString()
+                                          : l10n.currentLocation;
                                       final request = CreateGroupRideRequestDto(
                                         title:
                                             widget
@@ -390,13 +413,13 @@ class _InviteViewState extends State<_InviteView> {
                                         privacy:
                                             widget.args.groupData!["privacy"] ??
                                             "Public",
-                                        startDateTime: DateTime.now(),
-                                        endDateTime: DateTime.now().add(
+                                        startDateTime: startDt,
+                                        endDateTime: startDt.add(
                                           const Duration(hours: 4),
                                         ),
-                                        startLocation: l10n.currentLocation,
-                                        startLatitude: 0,
-                                        startLongitude: 0,
+                                        startLocation: startLoc,
+                                        startLatitude: startLat,
+                                        startLongitude: startLng,
                                         endLocation:
                                             widget
                                                 .args
@@ -485,7 +508,7 @@ class _InviteViewState extends State<_InviteView> {
                       (rider.profilePictureUrl != null &&
                           rider.profilePictureUrl!.isNotEmpty)
                       ? CachedNetworkImageProvider(rider.profilePictureUrl!.toAbsoluteImageUrl())
-                      : const AssetImage('assets/images/default_avatar.png'),
+                      : null,
                   child:
                       (rider.profilePictureUrl == null ||
                           rider.profilePictureUrl!.isEmpty)

@@ -227,6 +227,15 @@ class DisconnectFromLiveKitEvent extends VoiceSessionEvent {
   const DisconnectFromLiveKitEvent();
 }
 
+/// [ODA MODELİ] Kullanıcı bilinçli olarak ses kanalına katılır.
+///
+/// Grup sürüşü bir "oda" gibidir; odaya girmek sese bağlanmak demek değildir.
+/// Bu event tetiklenince mevcut session detayından intercom oturumu kurulur,
+/// mikrofon KAPALI (mute) başlar ve CallKit başlatılır.
+class JoinVoiceChannelEvent extends VoiceSessionEvent {
+  const JoinVoiceChannelEvent();
+}
+
 /// Toggle microphone.
 class ToggleMicrophoneEvent extends VoiceSessionEvent {
   const ToggleMicrophoneEvent();

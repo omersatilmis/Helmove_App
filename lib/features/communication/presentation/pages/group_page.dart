@@ -12,7 +12,9 @@ import 'package:helmove/l10n/app_localizations.dart';
 import 'group_page/dialogs/group_page_actions.dart';
 import 'group_page/sections/group_footer_section.dart';
 import 'group_page/sections/group_header_section.dart';
+import 'group_page/sections/group_lifecycle_section.dart';
 import 'group_page/sections/group_participants_section.dart';
+import 'group_page/sections/voice_control_bar.dart';
 import '../../../../core/services/connectivity_watcher_service.dart';
 
 // --- BACKEND BLOC & ENTITY İMPORTLARI ---
@@ -56,6 +58,8 @@ class _GroupPageState extends State<GroupPage>
   // --- RTC & LIVEKIT STATE (Bloc'tan aynalanan) ---
   RtcConnectionStatus _rtcStatus = RtcConnectionStatus.disconnected;
   bool _isMicOn = true;
+  // [ODA MODELİ] Kullanıcı ses kanalına katıldı mı (bloc'tan aynalanır).
+  bool _isInVoiceChannel = false;
   Set<String> _activeSpeakers = {};
   Map<int, IntercomConnectionQuality> _participantQualities = {};
   StreamSubscription<ConnectionStatus>? _connectivityWatcherSub;
@@ -131,8 +135,15 @@ class _GroupPageState extends State<GroupPage>
       });
     }
 
+    // [ODA MODELİ] Oda detayını çek ama sese OTOMATİK bağlanma. skipIntercomAttach
+    // niyet beyanı; bloc ayrıca _hasJoinedVoice ile attach'i kapalı tutar.
     voiceBloc.add(
-      GetVoiceSessionDetailsEvent(sessionId, force: true, immediate: true),
+      GetVoiceSessionDetailsEvent(
+        sessionId,
+        force: true,
+        immediate: true,
+        skipIntercomAttach: true,
+      ),
     );
   }
 
@@ -232,6 +243,16 @@ class _GroupPageState extends State<GroupPage>
 
   void _handleToggleMic() {
     context.read<VoiceSessionBloc>().add(const ToggleMicrophoneEvent());
+  }
+
+  /// [ODA MODELİ] Kullanıcı bilinçli olarak ses kanalına katılır.
+  void _handleJoinVoice() {
+    context.read<VoiceSessionBloc>().add(const JoinVoiceChannelEvent());
+  }
+
+  /// [ODA MODELİ] Sesten ayrıl ama odada kal.
+  void _handleLeaveVoice() {
+    context.read<VoiceSessionBloc>().add(const DisconnectFromLiveKitEvent());
   }
 
   bool _canAccessSettings(int? currentUserId) {
@@ -483,6 +504,7 @@ class _GroupPageState extends State<GroupPage>
                   previous.rtcStatus != current.rtcStatus ||
                   previous.isLiveKitConnected != current.isLiveKitConnected ||
                   previous.isMicOn != current.isMicOn ||
+                  previous.isInVoiceChannel != current.isInVoiceChannel ||
                   previous.activeSpeakers != current.activeSpeakers ||
                   previous.liveKitError != current.liveKitError;
             },
@@ -544,6 +566,7 @@ class _GroupPageState extends State<GroupPage>
               setState(() {
                 _rtcStatus = state.rtcStatus;
                 _isMicOn = state.isMicOn;
+                _isInVoiceChannel = state.isInVoiceChannel;
                 _activeSpeakers = state.activeSpeakers.toSet();
                 _participantQualities = state.participantQualities;
               });
@@ -622,6 +645,15 @@ class _GroupPageState extends State<GroupPage>
                   setState(() => _isLoadingRide = false);
                   _exitGroupPage(message: l10n.leftGroup);
                 }
+              } else if (state is GroupRideStatusChanged) {
+                if (!_didNavigateAway) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               } else if (state is GroupRideFailure) {
                 setState(() {
                   _isResolvingRideId = false;
@@ -663,7 +695,12 @@ class _GroupPageState extends State<GroupPage>
                                   sessionDetails: _sessionDetails,
                                   isLoadingRide: _isLoadingRide,
                                   rtcStatus: _rtcStatus,
+                                  isInVoice: _isInVoiceChannel,
                                   onBack: _handleBack,
+                                ),
+                                GroupLifecycleSection(
+                                  rideDetails: _rideDetails,
+                                  currentUserId: currentUserId,
                                 ),
                                 if (isLocalUserInvited) ...[
                                   _buildInviteBanner(colorScheme),
@@ -678,6 +715,7 @@ class _GroupPageState extends State<GroupPage>
                                   activeSpeakers: _activeSpeakers,
                                   participantQualities: _participantQualities,
                                   isCurrentUserMicOn: _isMicOn,
+                                  isInVoice: _isInVoiceChannel,
                                   onToggleMic: _handleToggleMic,
                                   onRefresh: _isRefreshDisabled
                                       ? null
@@ -732,6 +770,16 @@ class _GroupPageState extends State<GroupPage>
                           ),
                       ],
                     ),
+                  ),
+                  // [ODA MODELİ] Ses kontrol barı — her zaman erişilebilir.
+                  VoiceControlBar(
+                    isInVoiceChannel: _isInVoiceChannel,
+                    isMicOn: _isMicOn,
+                    rtcStatus: _rtcStatus,
+                    activeSpeakerCount: _activeSpeakers.length,
+                    onJoinVoice: _handleJoinVoice,
+                    onLeaveVoice: _handleLeaveVoice,
+                    onToggleMic: _handleToggleMic,
                   ),
                   GroupFooterSection(
                     colorScheme: colorScheme,

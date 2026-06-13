@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../intercom/domain/intercom_models.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../attendance_management/domain/entities/group_role.dart';
@@ -9,10 +8,6 @@ class RiderCard extends StatelessWidget {
   final String firstName;
   final String lastName;
   final String? profileImageUrl;
-  final int? phoneBatteryLevel;
-  final int? intercomBatteryLevel;
-  final int? signalStrength;
-  final IntercomConnectionQuality connectionQuality;
 
   // Durumlar
   final bool isMicOn;
@@ -40,10 +35,6 @@ class RiderCard extends StatelessWidget {
     required this.firstName,
     required this.lastName,
     this.profileImageUrl,
-    this.phoneBatteryLevel,
-    this.intercomBatteryLevel,
-    this.signalStrength,
-    this.connectionQuality = IntercomConnectionQuality.unknown,
     this.isMicOn = false,
     this.isSpeaking = false,
     this.isFriend = false,
@@ -130,32 +121,6 @@ class RiderCard extends StatelessWidget {
                         ],
                       ),
 
-                      const SizedBox(height: 4),
-
-                      // İstatistikler (Eski MinimalInfo stili ile)
-                      Row(
-                        children: [
-                          _buildConnectionQualityIndicator(theme, l10n),
-                          const SizedBox(width: 10),
-                          _buildMinimalInfo(
-                            Icons.battery_std,
-                            phoneBatteryLevel != null
-                                ? "$phoneBatteryLevel%"
-                                : "--%",
-                            colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                            theme,
-                          ),
-                          if (intercomBatteryLevel != null) ...[
-                            const SizedBox(width: 10),
-                            _buildMinimalInfo(
-                              Icons.headset_mic,
-                              "$intercomBatteryLevel%",
-                              colorScheme.primary.withValues(alpha: 0.8),
-                              theme,
-                            ),
-                          ],
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -164,8 +129,9 @@ class RiderCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // --- MİKROFON BUTONU (SADECE KENDİ KARTIMIZ) ---
-                    if (isMe) ...[
+                    // --- MİKROFON BUTONU (SADECE KENDİ KARTIMIZ, SESTEYKEN) ---
+                    // onMicPressed null ise (sese katılmamışsa) gizlenir.
+                    if (isMe && onMicPressed != null) ...[
                       _buildActionButton(
                         icon: isRemoteMuted
                             ? Icons.mic_off
@@ -290,102 +256,6 @@ class RiderCard extends StatelessWidget {
     return Tooltip(
       message: role == GroupRole.admin ? l10n.adminRole : l10n.captainRole,
       child: Icon(icon, size: 18, color: color),
-    );
-  }
-
-  Widget _buildConnectionQualityIndicator(ThemeData theme, AppLocalizations l10n) {
-    final colorScheme = theme.colorScheme;
-    int bars;
-    Color color;
-    String label;
-
-    switch (connectionQuality) {
-      case IntercomConnectionQuality.ultra:
-        bars = 4;
-        color = Colors.greenAccent;
-        label = l10n.ultra;
-        break;
-      case IntercomConnectionQuality.high:
-        bars = 3;
-        color = Colors.greenAccent.withValues(alpha: 0.7);
-        label = l10n.high;
-        break;
-      case IntercomConnectionQuality.balanced:
-        bars = 2;
-        color = Colors.orangeAccent;
-        label = l10n.balanced;
-        break;
-      case IntercomConnectionQuality.low:
-        bars = 1;
-        color = Colors.deepOrangeAccent;
-        label = l10n.low;
-        break;
-      case IntercomConnectionQuality.lost:
-        bars = 1;
-        color = colorScheme.error;
-        label = l10n.lost;
-        break;
-      default:
-        bars = 0;
-        color = colorScheme.onSurfaceVariant.withValues(alpha: 0.4);
-        label = l10n.unknown;
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          height: 14,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: List.generate(4, (index) {
-              final isActive = index < bars;
-              return Container(
-                width: 3,
-                height: 4.0 + (index * 3),
-                margin: const EdgeInsets.only(right: 1.5),
-                decoration: BoxDecoration(
-                  color: isActive ? color : color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              );
-            }),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Minimal Info (Eski Tasarımın Aynısı)
-  Widget _buildMinimalInfo(
-    IconData icon,
-    String text,
-    Color color,
-    ThemeData theme,
-  ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 

@@ -13,6 +13,132 @@ import 'package:helmove/l10n/app_localizations.dart';
 class GroupPageActions {
   const GroupPageActions._();
 
+  // ── Yaşam döngüsü (status) aksiyonları — yalnızca organizatör ─────────────
+
+  /// Turu başlat (Planning/Active/Postponed → InProgress) — onaylı.
+  static void startRide({required BuildContext context, required int rideId}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    _showConfirmDialog(
+      context: context,
+      title: 'Turu Başlat',
+      content:
+          'Tur başlatılsın mı? Tüm katılımcılar sürüşün başladığını görecek.',
+      confirmLabel: 'Başlat',
+      confirmColor: colorScheme.primary,
+      onConfirm: () => context.read<GroupRideBloc>().add(
+        StartGroupRideEvent(rideId),
+      ),
+    );
+  }
+
+  /// Turu bitir (InProgress → Completed) — onaylı.
+  static void completeRide({
+    required BuildContext context,
+    required int rideId,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    _showConfirmDialog(
+      context: context,
+      title: 'Turu Bitir',
+      content: 'Tur tamamlandı olarak işaretlensin mi? Bu işlem geri alınamaz.',
+      confirmLabel: 'Bitir',
+      confirmColor: colorScheme.primary,
+      onConfirm: () => context.read<GroupRideBloc>().add(
+        CompleteGroupRideEvent(rideId),
+      ),
+    );
+  }
+
+  /// Turu iptal et → Cancelled — yıkıcı (kırmızı) onaylı.
+  static void cancelRide({required BuildContext context, required int rideId}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    _showConfirmDialog(
+      context: context,
+      title: 'Turu İptal Et',
+      content:
+          'Tur iptal edilsin mi? Tüm katılımcılar bilgilendirilecek. Bu işlem geri alınamaz.',
+      confirmLabel: 'İptal Et',
+      confirmColor: colorScheme.error,
+      onConfirm: () => context.read<GroupRideBloc>().add(
+        CancelGroupRideEvent(rideId),
+      ),
+    );
+  }
+
+  /// Turu ertele → Postponed. Tarih + saat seçtirir.
+  static Future<void> postponeRide({
+    required BuildContext context,
+    required int rideId,
+  }) async {
+    final now = DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(days: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (pickedDate == null || !context.mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(now),
+    );
+    if (pickedTime == null || !context.mounted) return;
+
+    final newDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    context.read<GroupRideBloc>().add(
+      PostponeGroupRideEvent(rideId, newDateTime),
+    );
+  }
+
+  static void _showConfirmDialog({
+    required BuildContext context,
+    required String title,
+    required String content,
+    required String confirmLabel,
+    required Color confirmColor,
+    required VoidCallback onConfirm,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colorScheme.surfaceContainerHigh,
+        title: Text(title, style: AppTextStyles.h3),
+        content: Text(content, style: AppTextStyles.bodyMedium),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              l10n.cancel,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              onConfirm();
+            },
+            child: Text(
+              confirmLabel,
+              style: TextStyle(
+                color: confirmColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   static void kickUser({
     required BuildContext context,
     required int sessionId,

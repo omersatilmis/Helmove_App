@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -482,54 +483,58 @@ class _LoginPageState extends State<LoginPage> {
                                       },
                                     ),
 
-                                    const SizedBox(height: 12),
-
-                                    // Apple ile Giriş Butonu
-                                    Consumer<AuthProvider>(
-                                      builder: (context, authProvider, _) {
-                                        return SizedBox(
-                                          width: double.infinity,
-                                          height: 52,
-                                          child: OutlinedButton(
-                                            onPressed: authProvider.isLoading
-                                                ? null
-                                                : () => _handleAppleSignIn(
-                                                    authProvider),
-                                            style: OutlinedButton.styleFrom(
-                                              side: BorderSide(
-                                                color: theme.colorScheme
-                                                    .outlineVariant,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  Icons.apple,
-                                                  size: 22,
+                                    // Apple ile Giriş Butonu — yalnızca iOS'ta
+                                    // gösterilir. Android'de Apple/iPhone girişi
+                                    // desteklenmediği için butonu gizliyoruz.
+                                    if (Platform.isIOS) ...[
+                                      const SizedBox(height: 12),
+                                      Consumer<AuthProvider>(
+                                        builder: (context, authProvider, _) {
+                                          return SizedBox(
+                                            width: double.infinity,
+                                            height: 52,
+                                            child: OutlinedButton(
+                                              onPressed: authProvider.isLoading
+                                                  ? null
+                                                  : () => _handleAppleSignIn(
+                                                      authProvider),
+                                              style: OutlinedButton.styleFrom(
+                                                side: BorderSide(
                                                   color: theme.colorScheme
-                                                      .onSurface,
+                                                      .outlineVariant,
                                                 ),
-                                                const SizedBox(width: 12),
-                                                Text(
-                                                  l10n.continueWithApple,
-                                                  style: theme
-                                                      .textTheme.labelLarge
-                                                      ?.copyWith(
-                                                    fontWeight: FontWeight.w600,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.apple,
+                                                    size: 22,
+                                                    color: theme.colorScheme
+                                                        .onSurface,
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(width: 12),
+                                                  Text(
+                                                    l10n.continueWithApple,
+                                                    style: theme
+                                                        .textTheme.labelLarge
+                                                        ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
-                                    ),
+                                          );
+                                        },
+                                      ),
+                                    ],
 
                                     SizedBox(height: isCompactHeight ? 10 : 16),
                                   ],

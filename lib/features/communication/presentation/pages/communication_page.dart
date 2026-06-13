@@ -26,9 +26,6 @@ import '../../../voice_session/presentation/bloc/voice_session_bloc.dart';
 import '../../../voice_session/presentation/bloc/voice_session_event.dart';
 import '../../../voice_session/presentation/bloc/voice_session_state.dart';
 import '../widgets/active_session_card.dart';
-import '../widgets/nearby_group.dart';
-
-void _noop() {}
 
 class CommunicationPage extends StatefulWidget {
   const CommunicationPage({super.key});
@@ -690,55 +687,8 @@ class _CommunicationPageState extends State<CommunicationPage> {
                           SizedBox(height: isCompact ? 12 : 14),
                         ],
                         const ActiveSessionCard(),
-                        if (AppFeatureFlags.showNearbyGroups) ...[
-                          SizedBox(height: sectionSpacing),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.signal_cellular_alt,
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
-                                ),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                l10n.nearbyGroups,
-                                style: AppTextStyles.h3.copyWith(
-                                  color: colorScheme.onSurface,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: cardSpacing),
-                          Column(
-                            children: const [
-                              Padding(
-                                padding: EdgeInsets.only(bottom: 12),
-                                child: NearbyGroupCard(
-                                  groupName: 'Weekend Riders',
-                                  distance: '1.2 km',
-                                  currentParticipants: 3,
-                                  maxParticipants: 10,
-                                  signalStatus: 'Strong',
-                                  onJoinPressed: _noop,
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(bottom: 12),
-                                child: NearbyGroupCard(
-                                  groupName: 'Mountain Tour',
-                                  distance: '5.4 km',
-                                  currentParticipants: 8,
-                                  maxParticipants: 12,
-                                  signalStatus: 'Good',
-                                  onJoinPressed: _noop,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                        SizedBox(height: sectionSpacing),
+                        _buildDiscoverEntry(context, colorScheme),
                         SizedBox(height: isCompact ? 84 : 100),
                       ],
                     ),
@@ -748,6 +698,49 @@ class _CommunicationPageState extends State<CommunicationPage> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDiscoverEntry(BuildContext context, ColorScheme colorScheme) {
+    return InkWell(
+      onTap: () => context.push('/communication/discover'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colorScheme.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.explore_rounded, color: colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Grup Turlarını Keşfet',
+                    style: AppTextStyles.regular.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Yakındaki ve yaklaşan turları ara',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: colorScheme.onSurfaceVariant),
+          ],
         ),
       ),
     );

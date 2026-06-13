@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:helmove/core/constants/audio_bitrate.dart';
 import '../utils/app_logger.dart';
 
 class WebRtcNetworkMetrics {
@@ -53,7 +52,9 @@ class WebRTCService {
   MediaStream? _localStream;
   MediaStream? _remoteStream;
   final List<RTCIceCandidate> _pendingCandidates = [];
-  int _currentBitrate = AudioBitrate.medium; // Varsayılan: Medium
+  // Sabit ses bitrate'i (24 kbps). Adaptif sistem kapatıldığı için
+  // bitrate hiçbir zaman değiştirilmez; SDP munging bu değeri kullanır.
+  int _currentBitrate = 24000;
   bool _isInitializing = false;
 
   // ============================================================

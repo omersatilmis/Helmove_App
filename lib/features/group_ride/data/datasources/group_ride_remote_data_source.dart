@@ -1,5 +1,6 @@
 import '../api/group_ride_api.dart';
 import '../models/group_ride_model.dart';
+import '../models/group_ride_summary_model.dart';
 import '../dto/create_group_ride_request_dto.dart';
 
 abstract class GroupRideRemoteDataSource {
@@ -8,6 +9,22 @@ abstract class GroupRideRemoteDataSource {
   Future<GroupRideModel> getGroupRideById(int rideId);
   Future<GroupRideModel> updateGroupRide(int rideId, GroupRideModel ride);
   Future<bool> deleteGroupRide(int rideId);
+  Future<List<GroupRideSummaryModel>> searchGroupRides({
+    String? title,
+    String? location,
+    String? difficulty,
+    String? ridingStyle,
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    int page,
+    int pageSize,
+  });
+  Future<List<GroupRideSummaryModel>> getNearbyGroupRides({
+    required double latitude,
+    required double longitude,
+    double radiusKm,
+  });
 }
 
 class GroupRideRemoteDataSourceImpl implements GroupRideRemoteDataSource {
@@ -44,5 +61,43 @@ class GroupRideRemoteDataSourceImpl implements GroupRideRemoteDataSource {
   @override
   Future<bool> deleteGroupRide(int rideId) async {
     return await _api.deleteGroupRide(rideId);
+  }
+
+  @override
+  Future<List<GroupRideSummaryModel>> searchGroupRides({
+    String? title,
+    String? location,
+    String? difficulty,
+    String? ridingStyle,
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    return await _api.searchGroupRides(
+      title: title,
+      location: location,
+      difficulty: difficulty,
+      ridingStyle: ridingStyle,
+      status: status,
+      startDate: startDate,
+      endDate: endDate,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
+  @override
+  Future<List<GroupRideSummaryModel>> getNearbyGroupRides({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 50,
+  }) async {
+    return await _api.getNearbyGroupRides(
+      latitude: latitude,
+      longitude: longitude,
+      radiusKm: radiusKm,
+    );
   }
 }

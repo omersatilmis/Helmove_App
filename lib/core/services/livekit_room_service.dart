@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:helmove/core/constants/audio_bitrate.dart';
 
 /// LiveKit SFU room bağlantı yönetimi.
 /// Ses iletişimi için room'a bağlanma, mikrofon kontrolü ve participant
@@ -52,7 +51,7 @@ class LiveKitRoomService {
   /// LiveKit room'a bağlan.
   /// [url] — LiveKit sunucu WebSocket URL'i (backend'den gelir).
   /// [token] — JWT token (backend'den gelir).
-  /// [maxBitrate] — Başlangıç ses yayın kalitesi (opsiyonel, default: medium).
+  /// [maxBitrate] — Sabit ses yayın bitrate'i (opsiyonel, default: 24 kbps).
   Future<void> connect(String url, String token, {int? maxBitrate}) async {
     // Önceki bağlantıyı temizle
     await disconnect();
@@ -62,7 +61,7 @@ class LiveKitRoomService {
         // Sadece ses — video yok
         defaultAudioPublishOptions: AudioPublishOptions(
           encoding: AudioEncoding(
-            maxBitrate: maxBitrate ?? AudioBitrate.medium,
+            maxBitrate: maxBitrate ?? 24000,
           ),
           dtx: false,
         ),

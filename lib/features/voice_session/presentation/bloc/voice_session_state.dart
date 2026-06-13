@@ -41,6 +41,11 @@ class VoiceSessionState extends Equatable {
   final String? liveKitError;
   final Map<int, IntercomConnectionQuality> participantQualities;
 
+  /// [ODA MODELİ] Kullanıcı ses kanalına katıldı mı? Grup sürüşü bir "oda"dır;
+  /// odaya girmek sese bağlanmak değildir. UI bu alana göre "Sese Katıl" vs
+  /// mikrofon/"Sesten Ayrıl" kontrollerini gösterir.
+  final bool isInVoiceChannel;
+
   const VoiceSessionState({
     this.status = VoiceSessionStatus.initial,
     this.message,
@@ -54,6 +59,7 @@ class VoiceSessionState extends Equatable {
     this.liveKitError,
     this.rtcStatus = RtcConnectionStatus.disconnected,
     this.participantQualities = const {},
+    this.isInVoiceChannel = false,
   });
 
   VoiceSessionState copyWith({
@@ -69,6 +75,7 @@ class VoiceSessionState extends Equatable {
     String? liveKitError,
     RtcConnectionStatus? rtcStatus,
     Map<int, IntercomConnectionQuality>? participantQualities,
+    bool? isInVoiceChannel,
     VoiceSessionEntity? Function()? sessionOverride,
   }) {
     final newMySessions = mySessions ?? this.mySessions;
@@ -112,6 +119,7 @@ class VoiceSessionState extends Equatable {
       liveKitError: liveKitError,
       rtcStatus: rtcStatus ?? this.rtcStatus,
       participantQualities: participantQualities ?? this.participantQualities,
+      isInVoiceChannel: isInVoiceChannel ?? this.isInVoiceChannel,
     );
   }
 
@@ -167,5 +175,6 @@ class VoiceSessionState extends Equatable {
         liveKitError,
         rtcStatus,
         participantQualities,
+        isInVoiceChannel,
       ];
 }

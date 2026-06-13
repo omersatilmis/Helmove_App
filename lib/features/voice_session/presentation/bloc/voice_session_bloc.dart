@@ -67,6 +67,12 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
   String? _activeCallKitId;
 
+  /// [ODA MODELİ] Kullanıcının ses kanalına katılıp katılmadığının tek doğruluk
+  /// kaynağı. Grup sürüşü bir "oda" gibidir; sese bağlanmak JoinVoiceChannelEvent
+  /// ile bilinçli olarak yapılır. Sadece bu true iken detay yenilemeleri
+  /// intercom context'ini günceller (attach).
+  bool _hasJoinedVoice = false;
+
   StreamSubscription? _realtimeSubscription;
   StreamSubscription? _refreshSubscription;
   StreamSubscription? _appSessionUserIdSubscription;
@@ -360,6 +366,7 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
 
     on<ConnectToLiveKitEvent>(_onConnectToLiveKit);
     on<DisconnectFromLiveKitEvent>(_onDisconnectFromLiveKit);
+    on<JoinVoiceChannelEvent>(_onJoinVoiceChannel);
     on<ToggleMicrophoneEvent>(_onToggleMicrophone);
     on<IntercomStateChangedEvent>(
       _onIntercomStateChanged,
@@ -1133,93 +1140,35 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
                 status: VoiceSessionStatus.detailsLoaded,
                 session: updatedSession,
                 mySessions: syncedMySessions,
+                // [ODA MODELİ] Self-healing: bayrak her zaman gerçek durumu
+                // yansıtsın. Yeni bir odaya girince _hasJoinedVoice=false
+                // olduğundan stale "sesteyim" durumu sızmaz.
+                isInVoiceChannel: _hasJoinedVoice,
               ),
             );
 
+            // [ODA MODELİ] Detay yenilemesi ses bağlantısını YALNIZCA kullanıcı
+            // zaten ses kanalına katılmışsa (_hasJoinedVoice) günceller. Böylece
+            // sesteyken yeni katılımcı gelince transport kararı (P2P↔SFU)
+            // tazelenir; ama henüz sese katılmamış kullanıcı için oda UI'sı
+            // güncellenir ve OTOMATİK SES BAĞLANTISI KURULMAZ. Sese katılım ve
+            // CallKit yalnızca JoinVoiceChannelEvent ile başlatılır.
             final currentUserId =
                 state.currentUserId ?? await _ensureCurrentUserId(emit);
-            if (currentUserId != null) {
-              // 'Invited' bilinçli olarak hariç: daveti kabul etmemiş kişi
-              // transport kararına (activeCount) dahil edilirse engine offline
-              // kullanıcıya P2P kurmaya çalışıyor ve davetli tarafta kabul
-              // etmeden ses bağlantısı tetikleniyordu.
-              final intercomParticipants = activeParticipants
-                  .where(
-                    (p) =>
-                        p.status == 'Joined' ||
-                        p.status == 'Accepted' ||
-                        p.status == 'Disconnected',
-                  )
-                  .map(
-                    (p) => IntercomParticipant(
-                      userId: p.userId,
-                      displayName: '${p.firstName ?? ''} ${p.lastName ?? ''}'
-                          .trim(),
-                      isLocal: p.userId == currentUserId,
-                      isSpeaking: state.activeSpeakers.contains(
-                        p.userId.toString(),
-                      ),
-                    ),
-                  )
-                  .toList();
-
-              final activeIds = intercomParticipants
-                  .map((participant) => participant.userId)
-                  .toList();
-
-              // [GUARD] Lokal kullanıcı aktif katılımcı değilse (örn. sadece
-              // Invited — davet önizlemesi details fetch'i tetikliyor) ses
-              // bağlantısı kurulmaz, CallKit başlatılmaz. Aksi halde davetli
-              // daveti kabul etmeden sese bağlanıyordu. Kabul edince gelen
-              // ilk details refresh attach'i normal şekilde yapar.
-              final localIsActive = intercomParticipants.any((p) => p.isLocal);
-
-              // Only call attachSession on the first successful attempt
-              // to prevent the re-initialization loop during retries.
-              //
-              // [PERF] attachSession LiveKit/P2P bağlantısını bekletiyor ve
-              // saniyeler sürebiliyor. Bu handler asyncExpand ile
-              // serileştirildiği için await edilirse sonraki katılımcı
-              // refresh'leri (UserJoined, manuel refresh vb.) bağlantı
-              // kurulana kadar kuyrukta bekliyordu — arka planda çalıştır.
-              if (attempt == 0 && localIsActive) {
-                final attachContext = IntercomSessionContext(
-                  sessionId: session.id,
-                  roomName: session.roomName,
-                  adminId: session.adminId, // Using adminId here!
-                  localUserId: currentUserId,
-                  activeParticipantUserIds: activeIds,
-                  participants: intercomParticipants,
-                );
+            if (currentUserId != null && _hasJoinedVoice && attempt == 0) {
+              final attachContext = _buildIntercomContext(
+                updatedSession,
+                currentUserId,
+              );
+              if (attachContext != null) {
+                // [PERF] attachSession LiveKit/P2P bağlantısını bekletebilir;
+                // handler asyncExpand ile serileştirildiği için bloklamamak
+                // adına arka planda çalıştır.
                 unawaited(
                   intercomEngine.attachSession(attachContext).catchError((e) {
                     debugPrint('VoiceSessionBloc: attachSession failed: $e');
                   }),
                 );
-              }
-
-              // [FIX] Admin CallKit: admin creates group ride which
-              // implicitly creates a voice session server-side. They
-              // never go through Create/JoinVoiceSessionEvent, so
-              // CallKit was never started. Start it here if missing.
-              // [PERF] attachSession ile aynı sebepten arka planda çalışır;
-              // _activeCallKitId çift başlatmayı önlemek için senkron set edilir.
-              if (_activeCallKitId == null && localIsActive) {
-                final uuid = callKitIncomingService.generateCallKitId();
-                _activeCallKitId = uuid;
-                unawaited(() async {
-                  try {
-                    await callKitIncomingService.startOutboundCall(
-                      uuid: uuid,
-                      handle: "Grup Sürüşü",
-                      nameCaller: session.title,
-                    );
-                    await Future.delayed(const Duration(milliseconds: 500));
-                    await callKitIncomingService.markConnected(uuid);
-                  } catch (e) {
-                    // Ignore CallKit initialization errors to avoid crashing details fetch
-                  }
-                }());
               }
             }
           });
@@ -1886,10 +1835,53 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     emit(state.copyWith(currentUserId: event.userId));
   }
 
+  /// Mevcut session detayından intercom bağlam (context) nesnesi kurar.
+  ///
+  /// 'Invited' bilinçli olarak hariç: daveti kabul etmemiş kişi transport
+  /// kararına (activeCount) dahil edilirse engine offline kullanıcıya P2P
+  /// kurmaya çalışıyordu. Lokal kullanıcı aktif katılımcı değilse `null` döner
+  /// (sese katılım/güncelleme yapılmaz).
+  IntercomSessionContext? _buildIntercomContext(
+    VoiceSessionEntity session,
+    int currentUserId,
+  ) {
+    final intercomParticipants = session.participants
+        .where(
+          (p) =>
+              p.status == 'Joined' ||
+              p.status == 'Accepted' ||
+              p.status == 'Disconnected',
+        )
+        .map(
+          (p) => IntercomParticipant(
+            userId: p.userId,
+            displayName: '${p.firstName ?? ''} ${p.lastName ?? ''}'.trim(),
+            isLocal: p.userId == currentUserId,
+            isSpeaking: state.activeSpeakers.contains(p.userId.toString()),
+          ),
+        )
+        .toList();
+
+    final localIsActive = intercomParticipants.any((p) => p.isLocal);
+    if (!localIsActive) return null;
+
+    return IntercomSessionContext(
+      sessionId: session.id,
+      roomName: session.roomName,
+      adminId: session.adminId,
+      localUserId: currentUserId,
+      activeParticipantUserIds: intercomParticipants
+          .map((p) => p.userId)
+          .toList(),
+      participants: intercomParticipants,
+    );
+  }
+
   Future<void> _teardownLocalSession({
     int? sessionId,
     bool leaveSignalRGroup = true,
   }) async {
+    _hasJoinedVoice = false;
     try {
       await intercomEngine.detachSession(stopAudio: true);
     } catch (e) {
@@ -1975,11 +1967,88 @@ class VoiceSessionBloc extends Bloc<VoiceSessionEvent, VoiceSessionState> {
     await intercomEngine.forceSwitchToSfu(reason: 'manual');
   }
 
+  /// [ODA MODELİ] Kullanıcı ses kanalına bilinçli olarak katılır.
+  /// Oda detayı zaten yüklü olmalı (state.session). Mikrofon MUTE başlar.
+  Future<void> _onJoinVoiceChannel(
+    JoinVoiceChannelEvent event,
+    Emitter<VoiceSessionState> emit,
+  ) async {
+    final session = state.session;
+    final currentUserId =
+        state.currentUserId ?? await _ensureCurrentUserId(emit);
+
+    if (session == null || currentUserId == null) {
+      // Oturum detayı henüz yüklenmemiş — sese bağlanamayız. Oda açılışında
+      // _loadSessionDetails zaten çağrılıyor; kullanıcı yüklendikten sonra
+      // tekrar "Sese Katıl" diyebilir.
+      return;
+    }
+
+    final context = _buildIntercomContext(session, currentUserId);
+    if (context == null) {
+      // Lokal kullanıcı aktif katılımcı değil → sese katılamaz.
+      return;
+    }
+
+    _hasJoinedVoice = true;
+    emit(state.copyWith(isInVoiceChannel: true, isMicOn: false));
+
+    try {
+      await intercomEngine.attachSession(context);
+      // Mikrofon MUTE başlasın — kullanıcı konuşmak isteyince açar.
+      await intercomEngine.setMicEnabled(false);
+    } catch (e) {
+      debugPrint('VoiceSessionBloc: joinVoice attach failed: $e');
+    }
+
+    // CallKit yalnızca sese gerçekten katılınca başlatılır (oda girişinde değil).
+    if (_activeCallKitId == null) {
+      final uuid = callKitIncomingService.generateCallKitId();
+      _activeCallKitId = uuid;
+      unawaited(() async {
+        try {
+          await callKitIncomingService.startOutboundCall(
+            uuid: uuid,
+            handle: "Grup Sürüşü",
+            nameCaller: session.title,
+          );
+          await Future.delayed(const Duration(milliseconds: 500));
+          await callKitIncomingService.markConnected(uuid);
+        } catch (e) {
+          // CallKit hatalarını yut — sese katılımı bozmasın.
+        }
+      }());
+    }
+  }
+
+  /// [ODA MODELİ] "Sesten Ayrıl" — ses bağlantısı kesilir ama kullanıcı odada
+  /// kalır. CallKit sonlandırılır, _hasJoinedVoice sıfırlanır.
   Future<void> _onDisconnectFromLiveKit(
     DisconnectFromLiveKitEvent event,
     Emitter<VoiceSessionState> emit,
   ) async {
+    _hasJoinedVoice = false;
     await intercomEngine.detachSession(stopAudio: true);
+
+    if (_activeCallKitId != null) {
+      try {
+        await callKitIncomingService.endCall(_activeCallKitId!);
+      } catch (e) {
+        debugPrint('⚠️ [VoiceSessionBloc] CallKit end warning: $e');
+      } finally {
+        _activeCallKitId = null;
+      }
+    }
+
+    emit(
+      state.copyWith(
+        isInVoiceChannel: false,
+        isMicOn: false,
+        isLiveKitConnected: false,
+        rtcStatus: RtcConnectionStatus.disconnected,
+        activeSpeakers: const [],
+      ),
+    );
   }
 
   Future<void> _onToggleMicrophone(
