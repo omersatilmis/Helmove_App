@@ -1,16 +1,33 @@
-# helmove
+# 🏍️ Helmove - Real-Time Motorcycle Communication & Networking
 
-A new Flutter project.
+Helmove, motorcuların sürüş esnasında yaşadığı iletişim ve sosyalleşme problemlerini kökten çözen, gerçek zamanlı sesli iletişim ve canlı harita tabanlı bir mobil uygulamadır. Kask içi interkom sistemleriyle tam entegre çalışarak, motorcuların sürüş güvenliğini bozmadan birbirleriyle bağ kurmasını sağlar.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 🚀 Öne Çıkan Özellikler
 
-A few resources to get you started if this is your first Flutter project:
+*   **Gerçek Zamanlı Sesli İletişim:** LiveKit ve SignalR altyapısı sayesinde minimum gecikme ve yüksek ses kalitesiyle telsiz (Walkie-Talkie) tarzı grup konuşmaları.
+*   **Canlı Sürüş Haritası:** Çevredeki aktif motorcuları harita üzerinde anlık görme ve anlık grup sürüşü davetleri oluşturma.
+*   **Topluluk ve Ekipman Kütüphanesi:** Motor modelleri, teknik detaylar ve koruma ekipmanları hakkında gerçek kullanıcı deneyimleri ve dürüst incelemeler.
+*   **Gelişmiş Abonelik Yönetimi:** RevenueCat entegrasyonu ile StoreKit 2 ve Google Play Faturalandırma sistemleri üzerinden Plus ve Pro üyelik modelleri.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🛠️ Teknik Yığın (Tech Stack)
+
+*   **Mobil:** Flutter & Dart (Cross-platform)
+*   **Durum Yönetimi (State Management):** BLoC Pattern
+*   **Arka Plan (Backend):** .NET
+*   **Gerçek Zamanlı Altyapı:** LiveKit & SignalR
+*   **Bulut Servisleri:** Firebase, Google Cloud
+*   **Ödeme Altyapısı:** RevenueCat (StoreKit 1/2 & Google Play Billing)
+
+---
+
+## 📦 Kurulum ve Çalıştırma
+
+Projeyi lokalinizde çalıştırmak için aşağıdaki adımları takip edebilirsiniz.
+
+### Prerequisites
+*   Flutter SDK (Son stabil sürüm)
+*   Dart SDK
