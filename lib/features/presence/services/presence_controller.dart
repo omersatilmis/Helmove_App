@@ -68,6 +68,16 @@ class PresenceController {
   /// Servis ilk kez başlatılırken (uygulama ilk açılışı) çağrılır.
   void initialize() => onForeground();
 
+  /// Logout/oturum kapanışında çağrılır: heartbeat timer'ını ve presence
+  /// aboneliklerini ağ çağrısı YAPMADAN durdurur. [dispose]'tan farkı: subject'i
+  /// kapatmaz, böylece tekrar login'de [initialize] ile yeniden kullanılabilir.
+  /// ([onBackground] offline POST atar → token temizlenmişse 401 üretirdi.)
+  void stop() {
+    _stopHeartbeat();
+    _cancelSubscriptions();
+    AppLogger.info("PresenceController: stop — heartbeat ve abonelikler durduruldu");
+  }
+
   // ── Presence Event Handlers ────────────────────────────────────────────────
 
   void _subscribeToPresenceEvents() {

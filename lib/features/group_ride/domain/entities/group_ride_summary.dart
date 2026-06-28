@@ -22,6 +22,11 @@ class GroupRideSummary {
   final String ridingStyle;
 
   final String? coverImageUrl;
+
+  /// Backend'in Mapbox Static Images ile ürettiği rota görüntüsü URL'i.
+  /// Kart kapağında cover yerine öncelikli gösterilir. routeGeometry yoksa null.
+  final String? routeImageUrl;
+
   final int organizerId;
   final String? organizerName;
   final String? organizerAvatarUrl;
@@ -44,6 +49,7 @@ class GroupRideSummary {
     required this.difficulty,
     required this.ridingStyle,
     this.coverImageUrl,
+    this.routeImageUrl,
     required this.organizerId,
     this.organizerName,
     this.organizerAvatarUrl,

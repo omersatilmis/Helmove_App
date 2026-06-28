@@ -1497,18 +1497,18 @@ packages:
     dependency: "direct main"
     description:
       name: purchases_flutter
-      sha256: "88bd00ac44273d4782abc09453dffd8314be39764bc8f67f68a26325ea68b91f"
+      sha256: "7608be2dc1f48cf34f15cc5830af256b89d2d7966d5da63788a87a7a8925ff87"
       url: "https://pub.dev"
     source: hosted
-    version: "9.14.0"
+    version: "9.16.1"
   purchases_ui_flutter:
     dependency: "direct main"
     description:
       name: purchases_ui_flutter
-      sha256: edb15ab48fca177af0bd949aa20939aeafcaf90719903d52f3015ed1414a87f7
+      sha256: f630597686ea55c832482799cedbb863e143070f30352cfc064db58d687cc8eb
       url: "https://pub.dev"
     source: hosted
-    version: "9.14.0"
+    version: "9.16.1"
   rbush:
     dependency: transitive
     description:

@@ -10,6 +10,7 @@ class ParticipantModel extends ParticipantEntity {
     super.profileImageUrl,
     required super.status,
     required super.role,
+    super.joinMessage,
     super.requestDate,
   });
 
@@ -32,11 +33,18 @@ class ParticipantModel extends ParticipantEntity {
       username: json['username'] as String? ?? '',
       firstName: json['firstName'] as String?,
       lastName: json['lastName'] as String?,
-      profileImageUrl: json['profileImageUrl'] as String?,
+      // Backend `profilePictureUrl` gönderiyor; eski `profileImageUrl` anahtarı
+      // fallback olarak korunur.
+      profileImageUrl: (json['profilePictureUrl'] ?? json['profileImageUrl'])
+          as String?,
       status: json['status'] as String? ?? '',
       role: parsedRole,
-      requestDate: json['requestDate'] != null
-          ? DateTime.parse(json['requestDate'] as String)
+      joinMessage: json['joinMessage'] as String?,
+      // Backend `joinedAt` gönderiyor; eski `requestDate` anahtarı fallback.
+      requestDate: (json['joinedAt'] ?? json['requestDate']) != null
+          ? DateTime.parse(
+              (json['joinedAt'] ?? json['requestDate']) as String,
+            )
           : null,
     );
   }
@@ -50,6 +58,7 @@ class ParticipantModel extends ParticipantEntity {
       'profileImageUrl': profileImageUrl,
       'status': status,
       'role': role.index,
+      'joinMessage': joinMessage,
       'requestDate': requestDate?.toIso8601String(),
     };
   }

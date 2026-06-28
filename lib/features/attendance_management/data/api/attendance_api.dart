@@ -64,7 +64,16 @@ class AttendanceApi implements AttendanceRemoteDataSource {
       final response = await _dio.get(
         '/api/GroupRide/$rideId/participation-status',
       );
-      return ParticipationStatusModel.fromJson(response.data['data'] ?? {});
+      final data = response.data['data'];
+      // Backend bu uçta düz bool ("isParticipating") dönebiliyor; obje değilse
+      // fromJson(Map) tip hatası fırlatırdı. Bool/obje/null hepsini tolere et.
+      if (data is Map<String, dynamic>) {
+        return ParticipationStatusModel.fromJson(data);
+      }
+      if (data is bool) {
+        return ParticipationStatusModel(isParticipating: data);
+      }
+      return const ParticipationStatusModel(isParticipating: false);
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e));
     }

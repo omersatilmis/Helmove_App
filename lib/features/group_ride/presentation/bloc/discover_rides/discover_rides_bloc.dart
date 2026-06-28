@@ -32,6 +32,7 @@ class DiscoverRidesBloc extends Bloc<DiscoverRidesEvent, DiscoverRidesState> {
     on<DiscoverModeChanged>(_onMode);
     on<NearbyRequested>(_onNearby);
     on<DiscoverRefreshed>(_onRefresh);
+    on<LoadMoreRequested>(_onLoadMore);
   }
 
   Future<void> _onQuery(
@@ -102,13 +103,20 @@ class DiscoverRidesBloc extends Bloc<DiscoverRidesEvent, DiscoverRidesState> {
   }
 
   Future<void> _loadSearch(Emitter<DiscoverRidesState> emit) async {
-    emit(state.copyWith(status: DiscoverRidesStatus.loading, error: null));
+    emit(
+      state.copyWith(
+        status: DiscoverRidesStatus.loading,
+        error: null,
+        isLoadingMore: false,
+      ),
+    );
     final result = await searchGroupRides.execute(
       SearchGroupRidesParams(
         title: state.query.isEmpty ? null : state.query,
         difficulty: state.difficulty,
         ridingStyle: state.ridingStyle,
         status: _discoverStatus,
+        page: 1,
       ),
     );
     result.fold(
@@ -118,8 +126,51 @@ class DiscoverRidesBloc extends Bloc<DiscoverRidesEvent, DiscoverRidesState> {
           error: _clean(failure.message),
         ),
       ),
-      (rides) => emit(
-        state.copyWith(status: DiscoverRidesStatus.success, rides: rides),
+      (res) => emit(
+        state.copyWith(
+          status: DiscoverRidesStatus.success,
+          rides: res.items,
+          page: res.page,
+          hasMore: res.hasMore,
+          totalCount: res.totalCount,
+          isLoadingMore: false,
+        ),
+      ),
+    );
+  }
+
+  /// Sonsuz kaydırma: sonraki sayfayı çekip mevcut listeye ekler. Yalnız search
+  /// modunda + hasMore + zaten yüklenmiyor iken çalışır. Hata olursa liste korunur,
+  /// sadece spinner kapanır (kullanıcı tekrar deneyebilir).
+  Future<void> _onLoadMore(
+    LoadMoreRequested event,
+    Emitter<DiscoverRidesState> emit,
+  ) async {
+    if (state.mode != DiscoverMode.search) return;
+    if (!state.hasMore || state.isLoadingMore) return;
+    if (state.status == DiscoverRidesStatus.loading) return;
+
+    emit(state.copyWith(isLoadingMore: true));
+    final nextPage = state.page + 1;
+    final result = await searchGroupRides.execute(
+      SearchGroupRidesParams(
+        title: state.query.isEmpty ? null : state.query,
+        difficulty: state.difficulty,
+        ridingStyle: state.ridingStyle,
+        status: _discoverStatus,
+        page: nextPage,
+      ),
+    );
+    result.fold(
+      (failure) => emit(state.copyWith(isLoadingMore: false)),
+      (res) => emit(
+        state.copyWith(
+          rides: [...state.rides, ...res.items],
+          page: res.page,
+          hasMore: res.hasMore,
+          totalCount: res.totalCount,
+          isLoadingMore: false,
+        ),
       ),
     );
   }
@@ -151,7 +202,14 @@ class DiscoverRidesBloc extends Bloc<DiscoverRidesEvent, DiscoverRidesState> {
             b.distanceKm ?? double.infinity,
           ));
         emit(
-          state.copyWith(status: DiscoverRidesStatus.success, rides: sorted),
+          state.copyWith(
+            status: DiscoverRidesStatus.success,
+            rides: sorted,
+            // nearby sayfalı değil → load-more kapalı.
+            hasMore: false,
+            isLoadingMore: false,
+            page: 1,
+          ),
         );
       },
     );

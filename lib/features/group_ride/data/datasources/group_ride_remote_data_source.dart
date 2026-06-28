@@ -2,6 +2,7 @@ import '../api/group_ride_api.dart';
 import '../models/group_ride_model.dart';
 import '../models/group_ride_summary_model.dart';
 import '../dto/create_group_ride_request_dto.dart';
+import '../../domain/entities/group_ride_search_result.dart';
 
 abstract class GroupRideRemoteDataSource {
   Future<GroupRideModel> createGroupRide(CreateGroupRideRequestDto request);
@@ -9,7 +10,7 @@ abstract class GroupRideRemoteDataSource {
   Future<GroupRideModel> getGroupRideById(int rideId);
   Future<GroupRideModel> updateGroupRide(int rideId, GroupRideModel ride);
   Future<bool> deleteGroupRide(int rideId);
-  Future<List<GroupRideSummaryModel>> searchGroupRides({
+  Future<GroupRideSearchResult> searchGroupRides({
     String? title,
     String? location,
     String? difficulty,
@@ -64,7 +65,7 @@ class GroupRideRemoteDataSourceImpl implements GroupRideRemoteDataSource {
   }
 
   @override
-  Future<List<GroupRideSummaryModel>> searchGroupRides({
+  Future<GroupRideSearchResult> searchGroupRides({
     String? title,
     String? location,
     String? difficulty,

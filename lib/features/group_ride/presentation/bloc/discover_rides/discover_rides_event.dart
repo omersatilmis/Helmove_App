@@ -50,3 +50,9 @@ class NearbyRequested extends DiscoverRidesEvent {
 class DiscoverRefreshed extends DiscoverRidesEvent {
   const DiscoverRefreshed();
 }
+
+/// Sonraki sayfayı iste (sonsuz kaydırma). Yalnız search modunda + hasMore iken
+/// işlenir; sonuç mevcut listeye eklenir.
+class LoadMoreRequested extends DiscoverRidesEvent {
+  const LoadMoreRequested();
+}

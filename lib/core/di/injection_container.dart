@@ -158,6 +158,12 @@ import '../../features/group_ride/presentation/bloc/discover_rides/discover_ride
 import '../../features/group_ride/presentation/bloc/group_ride_bloc.dart';
 import '../../features/group_ride/presentation/live_ride/live_ride_controller.dart';
 import '../../features/attendance_management/domain/usecases/leave_group_ride_usecase.dart';
+import '../../features/attendance_management/domain/usecases/join_group_ride_usecase.dart';
+import '../../features/attendance_management/domain/usecases/approve_participant_usecase.dart';
+import '../../features/attendance_management/domain/usecases/reject_participant_usecase.dart';
+import '../../features/attendance_management/domain/usecases/get_ride_participants_usecase.dart';
+import '../../features/attendance_management/domain/usecases/get_participation_status_usecase.dart';
+import '../../features/group_ride/presentation/bloc/ride_detail/ride_detail_bloc.dart';
 
 // Call Feature
 // import '../../features/call/data/api/call_api.dart'; // Removed
@@ -370,7 +376,69 @@ Future<void> ensureCommunicationRuntimeStarted() async {
   }
 }
 
+/// Logout'ta çağrılır: runtime servislerini (presence heartbeat, call/sos
+/// listener, intercom, SignalR) durdurur ve "started" bayrağını sıfırlar.
+///
+/// Olmazsa: token temizlendikten sonra heartbeat timer'ı ve listener'lar
+/// çalışmaya devam edip 401 yağmuruna ("sunucu bağlantısı koptu") yol açar;
+/// ayrıca bayrak true kaldığı için sonraki login'de servisler yeniden başlamaz.
+Future<void> stopCommunicationRuntime() async {
+  // ÖNCE: connectivity watcher'a "kasıtlı kapanış" de ki SignalR durunca
+  // "Sunucu bağlantısı koptu" banner'ı yanlışlıkla çıkmasın.
+  try {
+    if (sl.isRegistered<ConnectivityWatcherService>()) {
+      sl<ConnectivityWatcherService>().resetForLogout();
+    }
+  } catch (e) {
+    debugPrint("⚠️ stopCommunicationRuntime connectivity: $e");
+  }
+  try {
+    if (sl.isRegistered<PresenceController>()) {
+      sl<PresenceController>().stop();
+    }
+  } catch (e) {
+    debugPrint("⚠️ stopCommunicationRuntime presence: $e");
+  }
+  try {
+    if (sl.isRegistered<CallListenerService>()) {
+      sl<CallListenerService>().dispose();
+    }
+  } catch (e) {
+    debugPrint("⚠️ stopCommunicationRuntime call: $e");
+  }
+  try {
+    if (sl.isRegistered<SosAlertListenerService>()) {
+      await sl<SosAlertListenerService>().dispose();
+    }
+  } catch (e) {
+    debugPrint("⚠️ stopCommunicationRuntime sos: $e");
+  }
+  try {
+    if (sl.isRegistered<IntercomEngine>()) {
+      await sl<IntercomEngine>().stop();
+    }
+  } catch (e) {
+    debugPrint("⚠️ stopCommunicationRuntime intercom: $e");
+  }
+  try {
+    if (sl.isRegistered<RealTimeService>()) {
+      await sl<RealTimeService>().stop();
+    }
+  } catch (e) {
+    debugPrint("⚠️ stopCommunicationRuntime realtime: $e");
+  }
+  _communicationRuntimeStarted = false;
+}
+
 Future<void> _handleAuthInvalidationFromInterceptor() async {
+  // Token çalışırken expire olup refresh de başarısız olunca (interceptor'dan
+  // gelir): runtime servislerini durdur ki heartbeat/listener'lar token'sız
+  // çalışıp 401 cascade üretmesin ve tekrar tekrar invalidation tetiklemesin.
+  try {
+    await stopCommunicationRuntime();
+  } catch (e) {
+    debugPrint("⚠️ Auth invalidation runtime stop error: $e");
+  }
   try {
     if (sl.isRegistered<AppSession>()) {
       sl<AppSession>().clearSession();
@@ -397,6 +465,11 @@ void setup() {
 /// Logout sÄ±rasÄ±nda Ã§aÄŸrÄ±lmalÄ± - singleton Ã¶nbelleklerini temizler
 /// Dio ve SharedPreferences hariÃ§ tÃ¼m singleton'larÄ± resetler
 Future<void> resetOnLogout() async {
+  // ÖNCE runtime servislerini durdur: token temizlenmeden timer'lar/listener'lar
+  // kapatılsın ki logout sonrası 401 yağmuru olmasın ve bayrak sıfırlanıp sonraki
+  // login'de servisler yeniden başlasın.
+  await stopCommunicationRuntime();
+
   if (sl.isRegistered<AppSession>()) {
     sl<AppSession>().clearSession();
   }
@@ -1876,6 +1949,36 @@ Future<void> initCore() async {
     }
     if (!sl.isRegistered<LeaveGroupRideUseCase>()) {
       sl.registerFactory(() => LeaveGroupRideUseCase(sl()));
+    }
+    // --- Tur detayı / katılım (attendance) usecase'leri ---
+    if (!sl.isRegistered<JoinGroupRideUseCase>()) {
+      sl.registerFactory(() => JoinGroupRideUseCase(sl()));
+    }
+    if (!sl.isRegistered<ApproveParticipantUseCase>()) {
+      sl.registerFactory(() => ApproveParticipantUseCase(sl()));
+    }
+    if (!sl.isRegistered<RejectParticipantUseCase>()) {
+      sl.registerFactory(() => RejectParticipantUseCase(sl()));
+    }
+    if (!sl.isRegistered<GetRideParticipantsUseCase>()) {
+      sl.registerFactory(() => GetRideParticipantsUseCase(sl()));
+    }
+    if (!sl.isRegistered<GetParticipationStatusUseCase>()) {
+      sl.registerFactory(() => GetParticipationStatusUseCase(sl()));
+    }
+    if (!sl.isRegistered<RideDetailBloc>()) {
+      sl.registerFactory(
+        () => RideDetailBloc(
+          getGroupRideById: sl(),
+          getParticipationStatus: sl(),
+          getRideParticipants: sl(),
+          joinGroupRide: sl(),
+          leaveGroupRide: sl(),
+          approveParticipant: sl(),
+          rejectParticipant: sl(),
+          getCurrentUserId: sl(),
+        ),
+      );
     }
     if (!sl.isRegistered<GroupRideBloc>()) {
       sl.registerFactory(

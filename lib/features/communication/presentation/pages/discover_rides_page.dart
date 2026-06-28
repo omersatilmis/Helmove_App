@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:helmove/core/widgets/app_background.dart';
 import 'package:helmove/features/group_ride/domain/entities/ride_filters.dart';
@@ -372,26 +373,49 @@ class _DiscoverRidesPageState extends State<DiscoverRidesPage> {
           return const _EmptyView();
         }
 
+        // Sona yaklaşınca sonraki sayfayı iste (yalnız search + hasMore).
+        final showFooter = state.hasMore || state.isLoadingMore;
         return RefreshIndicator(
           onRefresh: () async =>
               context.read<DiscoverRidesBloc>().add(const DiscoverRefreshed()),
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: state.rides.length,
-            itemBuilder: (context, i) {
-              final ride = state.rides[i];
-              return RideSummaryCard(
-                ride: ride,
-                showDistance: state.mode == DiscoverMode.nearby,
-                onTap: () {
-                  // Detay → sonraki adım.
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tur detayı yakında.')),
-                  );
-                },
-              );
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (state.hasMore &&
+                  !state.isLoadingMore &&
+                  notification.metrics.pixels >=
+                      notification.metrics.maxScrollExtent - 300) {
+                context.read<DiscoverRidesBloc>().add(const LoadMoreRequested());
+              }
+              return false;
             },
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: state.rides.length + (showFooter ? 1 : 0),
+              itemBuilder: (context, i) {
+                if (i >= state.rides.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                }
+                final ride = state.rides[i];
+                return RideSummaryCard(
+                  ride: ride,
+                  showDistance: state.mode == DiscoverMode.nearby,
+                  onTap: () => context.push(
+                    '/communication/ride-detail/${ride.id}',
+                    extra: ride,
+                  ),
+                );
+              },
+            ),
           ),
         );
       },

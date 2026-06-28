@@ -26,6 +26,10 @@ class GroupParticipantsSection extends StatelessWidget {
   final VoidCallback? onRefresh;
   final VoidCallback onInvite;
   final VoidCallback onSettings;
+
+  /// Organizatöre gösterilen "katılım istekleri" sayı rozeti butonu (person_add
+  /// ile settings arasına yerleşir). Organizatör değilse null geçilir.
+  final Widget? joinRequestsButton;
   final void Function(int targetUserId, String userName) onKickUser;
   final void Function(int targetUserId, String userName) onMuteUser;
   final void Function(int targetUserId, String userName) onTransferHost;
@@ -47,6 +51,7 @@ class GroupParticipantsSection extends StatelessWidget {
     required this.onRefresh,
     required this.onInvite,
     required this.onSettings,
+    this.joinRequestsButton,
     required this.onKickUser,
     required this.onMuteUser,
     required this.onTransferHost,
@@ -88,6 +93,10 @@ class GroupParticipantsSection extends StatelessWidget {
                   iconSize: 20,
                   onTap: onInvite,
                 ),
+                if (joinRequestsButton != null) ...[
+                  const SizedBox(width: 12),
+                  joinRequestsButton!,
+                ],
                 if (showSettingsButton) ...[
                   const SizedBox(width: 12),
                   AppFrostedButton(

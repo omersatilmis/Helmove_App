@@ -3,6 +3,7 @@ import '../datasources/group_ride_remote_data_source.dart';
 import '../models/group_ride_model.dart';
 import '../models/group_ride_summary_model.dart';
 import '../dto/create_group_ride_request_dto.dart';
+import '../../domain/entities/group_ride_search_result.dart';
 
 class GroupRideApi implements GroupRideRemoteDataSource {
   final Dio _dio;
@@ -95,7 +96,7 @@ class GroupRideApi implements GroupRideRemoteDataSource {
   /// Keşfet araması (çoklu kriter). Tüm parametreler opsiyonel; sadece dolu
   /// olanlar gönderilir. lat/lng/radius search'te yok sayıldığı için gönderilmez.
   @override
-  Future<List<GroupRideSummaryModel>> searchGroupRides({
+  Future<GroupRideSearchResult> searchGroupRides({
     String? title,
     String? location,
     String? difficulty,
@@ -121,7 +122,7 @@ class GroupRideApi implements GroupRideRemoteDataSource {
           'pageSize': pageSize,
         },
       );
-      return _parseSummaryList(response.data);
+      return _parseSearchResult(response.data, page, pageSize);
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e));
     }
@@ -147,6 +148,50 @@ class GroupRideApi implements GroupRideRemoteDataSource {
     } on DioException catch (e) {
       throw Exception(_parseErrorMessage(e));
     }
+  }
+
+  /// `{success, message, data[], meta}` zarfını açar → sayfalı sonuç.
+  /// `meta` yoksa data uzunluğundan türetir (geriye dönük uyumlu).
+  GroupRideSearchResult _parseSearchResult(
+    dynamic body,
+    int requestedPage,
+    int requestedPageSize,
+  ) {
+    if (body is Map<String, dynamic>) {
+      if (body['success'] == false) {
+        throw Exception(body['message'] ?? 'Grup turları yüklenemedi');
+      }
+      final List<dynamic> data = body['data'] as List? ?? const [];
+      final items = data
+          .map((e) => GroupRideSummaryModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final meta = body['meta'];
+      if (meta is Map<String, dynamic>) {
+        final page = (meta['page'] as num?)?.toInt() ?? requestedPage;
+        final pageSize = (meta['pageSize'] as num?)?.toInt() ?? requestedPageSize;
+        final totalCount = (meta['totalCount'] as num?)?.toInt() ?? items.length;
+        final hasMore =
+            meta['hasMore'] as bool? ?? (items.length >= pageSize);
+        return GroupRideSearchResult(
+          items: items,
+          page: page,
+          pageSize: pageSize,
+          totalCount: totalCount,
+          hasMore: hasMore,
+        );
+      }
+
+      // meta yok → tam sayfa geldiyse devamı olabilir varsay.
+      return GroupRideSearchResult(
+        items: items,
+        page: requestedPage,
+        pageSize: requestedPageSize,
+        totalCount: items.length,
+        hasMore: items.length >= requestedPageSize,
+      );
+    }
+    return GroupRideSearchResult.empty;
   }
 
   /// `{success, message, data[]}` zarfını açar; data[] → GroupRideSummaryModel.

@@ -21,6 +21,19 @@ class DiscoverRidesState extends Equatable {
   final double? lastLat;
   final double? lastLng;
 
+  // ── Sayfalama (yalnız search modunda anlamlı) ──────────────────────────────
+  /// Son yüklenen sayfa numarası (1 tabanlı).
+  final int page;
+
+  /// Daha fazla sayfa var mı (backend meta.hasMore).
+  final bool hasMore;
+
+  /// Sonraki sayfa yüklenirken (liste altı spinner + tekrar tetiklemeyi engeller).
+  final bool isLoadingMore;
+
+  /// Toplam sonuç sayısı (başlık/bilgi için; meta.totalCount).
+  final int totalCount;
+
   const DiscoverRidesState({
     this.mode = DiscoverMode.search,
     this.status = DiscoverRidesStatus.initial,
@@ -31,6 +44,10 @@ class DiscoverRidesState extends Equatable {
     this.error,
     this.lastLat,
     this.lastLng,
+    this.page = 1,
+    this.hasMore = false,
+    this.isLoadingMore = false,
+    this.totalCount = 0,
   });
 
   DiscoverRidesState copyWith({
@@ -43,6 +60,10 @@ class DiscoverRidesState extends Equatable {
     Object? error = _undefined,
     Object? lastLat = _undefined,
     Object? lastLng = _undefined,
+    int? page,
+    bool? hasMore,
+    bool? isLoadingMore,
+    int? totalCount,
   }) {
     return DiscoverRidesState(
       mode: mode ?? this.mode,
@@ -58,6 +79,10 @@ class DiscoverRidesState extends Equatable {
       error: error == _undefined ? this.error : error as String?,
       lastLat: lastLat == _undefined ? this.lastLat : lastLat as double?,
       lastLng: lastLng == _undefined ? this.lastLng : lastLng as double?,
+      page: page ?? this.page,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      totalCount: totalCount ?? this.totalCount,
     );
   }
 
@@ -74,5 +99,9 @@ class DiscoverRidesState extends Equatable {
     error,
     lastLat,
     lastLng,
+    page,
+    hasMore,
+    isLoadingMore,
+    totalCount,
   ];
 }

@@ -27,6 +27,10 @@ class GroupRideModel extends GroupRideEntity {
     super.routeProfile,
     super.routeDistanceMeters,
     super.routeDurationSeconds,
+    super.routeImageUrl,
+    super.organizerName,
+    super.organizerAvatarUrl,
+    super.coverImageUrl,
   });
 
   factory GroupRideModel.fromJson(Map<String, dynamic> json) {
@@ -60,6 +64,10 @@ class GroupRideModel extends GroupRideEntity {
       routeProfile: json['routeProfile'] as String?,
       routeDistanceMeters: (json['routeDistanceMeters'] as num?)?.toDouble(),
       routeDurationSeconds: json['routeDurationSeconds'] as int?,
+      routeImageUrl: json['routeImageUrl'] as String?,
+      organizerName: json['organizerName'] as String?,
+      organizerAvatarUrl: json['organizerAvatarUrl'] as String?,
+      coverImageUrl: json['coverImageUrl'] as String?,
     );
   }
 

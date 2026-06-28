@@ -49,10 +49,13 @@ class GroupHeaderSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            _buildMetaItem(
-              context,
-              Icons.map,
-              l10n.routePrefix(rideDetails?.endLocation ?? data.destination ?? l10n.notAvailable),
+            Flexible(
+              child: _buildMetaItem(
+                context,
+                Icons.map,
+                l10n.routePrefix(rideDetails?.endLocation ?? data.destination ?? l10n.notAvailable),
+                flexible: true,
+              ),
             ),
             _buildDivider(context),
             _buildMetaItem(
@@ -237,19 +240,28 @@ class GroupHeaderSection extends StatelessWidget {
     );
   }
 
-  Widget _buildMetaItem(BuildContext context, IconData icon, String text) {
+  Widget _buildMetaItem(
+    BuildContext context,
+    IconData icon,
+    String text, {
+    bool flexible = false,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textWidget = Text(
+      text,
+      maxLines: 1,
+      overflow: flexible ? TextOverflow.ellipsis : TextOverflow.clip,
+      style: AppTextStyles.bodySmall.copyWith(
+        color: colorScheme.onSurfaceVariant,
+        fontSize: 11,
+      ),
+    );
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontSize: 11,
-          ),
-        ),
+        flexible ? Flexible(child: textWidget) : textWidget,
       ],
     );
   }

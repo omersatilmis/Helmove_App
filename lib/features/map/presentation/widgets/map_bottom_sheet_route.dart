@@ -30,6 +30,10 @@ class MapBottomSheetRoute extends StatefulWidget {
   final List<LocationEntity> stops;
   final LocationEntity? endPoint;
 
+  /// Grup sürüşü rota planlama modu: navigasyon "Başlat" butonu gizlenir
+  /// (rota MapPage'in "Bu rotayı kullan" FAB'ı ile onaylanır).
+  final bool planningMode;
+
   const MapBottomSheetRoute({
     super.key,
     required this.routes,
@@ -38,6 +42,7 @@ class MapBottomSheetRoute extends StatefulWidget {
     this.startPoint,
     this.stops = const [],
     this.endPoint,
+    this.planningMode = false,
   });
 
   @override
@@ -497,6 +502,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
           const SizedBox(width: 8),
         ] else
           const SizedBox(width: 8),
+        if (!widget.planningMode)
         Expanded(
           flex: isNavigating ? 2 : 1,
           child: AppFrostedTextButton(

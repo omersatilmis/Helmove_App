@@ -421,12 +421,19 @@ class _InviteViewState extends State<_InviteView> {
                                         startLatitude: startLat,
                                         startLongitude: startLng,
                                         endLocation:
-                                            widget
-                                                .args
-                                                .groupData!["destination"] ??
-                                            l10n.destinationNotSpecified,
-                                        endLatitude: 0,
-                                        endLongitude: 0,
+                                            (gd['endLocation']?.toString() ?? '')
+                                                .isNotEmpty
+                                            ? gd['endLocation'].toString()
+                                            : (gd['destination']?.toString() ??
+                                                  l10n.destinationNotSpecified),
+                                        endLatitude:
+                                            (gd['endLatitude'] as num?)
+                                                ?.toDouble() ??
+                                            0.0,
+                                        endLongitude:
+                                            (gd['endLongitude'] as num?)
+                                                ?.toDouble() ??
+                                            0.0,
                                         difficulty:
                                             widget
                                                 .args
@@ -440,6 +447,17 @@ class _InviteViewState extends State<_InviteView> {
                                         invitedUserIds: _selectedRiders
                                             .map((e) => e.userId)
                                             .toList(),
+                                        // Ortak rota (planlayıcıdan)
+                                        routeGeometry: gd['routeGeometry']
+                                            ?.toString(),
+                                        routeProfile: gd['routeProfile']
+                                            ?.toString(),
+                                        routeDistanceMeters:
+                                            (gd['routeDistanceMeters'] as num?)
+                                                ?.toDouble(),
+                                        routeDurationSeconds:
+                                            (gd['routeDurationSeconds'] as num?)
+                                                ?.toInt(),
                                       );
 
                                       context.read<GroupRideBloc>().add(

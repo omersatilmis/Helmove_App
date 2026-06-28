@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-platform :ios, '14.0'
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -37,10 +37,36 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  # ---- Xcode 27 / Swift 6.2 uyumu: RevenueCat PaywallColor.swift ----
+  # Swift 6.2, optional stored property (_underlyingColor) için memberwise init'i
+  # 'init(stringRepresentation:)' olarak sentezliyor ve extension'daki throwing
+  # 'init(stringRepresentation:) throws' ile çakışıyor ("Invalid redeclaration of
+  # synthesized memberwise init"). Struct gövdesine bir init eklenince memberwise
+  # sentez bastırılır ve hata kalkar. RevenueCat upstream'de düzelene kadar yama.
+  paywall_color = File.join(installer.sandbox.root, 'RevenueCat', 'Sources', 'Paywalls', 'PaywallColor.swift')
+  if File.exist?(paywall_color)
+    src = File.read(paywall_color)
+    anchor = 'fileprivate var _underlyingColor: (any Sendable)?'
+    if src.include?(anchor) && !src.include?('xcode27MemberwiseFix')
+      injected = anchor + "\n\n" \
+        "    private init(xcode27MemberwiseFix stringRepresentation: String, underlying: (any Sendable)?) {\n" \
+        "        self.stringRepresentation = stringRepresentation\n" \
+        "        self._underlyingColor = underlying\n" \
+        "    }"
+      File.chmod(0o644, paywall_color)
+      File.write(paywall_color, src.sub(anchor, injected))
+      Pod::UI.puts "Patched RevenueCat PaywallColor.swift for Xcode 27 memberwise init"
+    end
+  end
+
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
 
     target.build_configurations.each do |config|
+      # Xcode 27 yalnızca iOS 15.0+ deployment target'ı destekliyor.
+      # Bazı pod'lar eski (9.0–14.0) hedefle geldiği için hepsini 15.0'a zorla.
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+
       config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
         '$(inherited)',
 

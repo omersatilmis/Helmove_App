@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/group_ride_entity.dart';
 import '../../domain/entities/group_ride_summary.dart';
+import '../../domain/entities/group_ride_search_result.dart';
 import '../../domain/repositories/group_ride_repository.dart';
 import '../datasources/group_ride_remote_data_source.dart';
 import '../dto/create_group_ride_request_dto.dart';
@@ -69,7 +70,7 @@ class GroupRideRepositoryImpl implements GroupRideRepository {
   }
 
   @override
-  Future<Either<Failure, List<GroupRideSummary>>> searchGroupRides({
+  Future<Either<Failure, GroupRideSearchResult>> searchGroupRides({
     String? title,
     String? location,
     String? difficulty,

@@ -15,6 +15,13 @@ class CreateGroupRideRequestDto {
   final String privacy;
   final List<int>? invitedUserIds;
 
+  // Ortak rota (organizatörün planlayıcıda seçtiği rota — seçilen alternatif +
+  // duraklar gömülü). routeGeometry encoded polyline6 (PolylineCodec).
+  final String? routeGeometry;
+  final String? routeProfile;
+  final double? routeDistanceMeters;
+  final int? routeDurationSeconds;
+
   CreateGroupRideRequestDto({
     required this.title,
     this.description,
@@ -31,6 +38,10 @@ class CreateGroupRideRequestDto {
     this.ridingStyle,
     required this.privacy,
     this.invitedUserIds,
+    this.routeGeometry,
+    this.routeProfile,
+    this.routeDistanceMeters,
+    this.routeDurationSeconds,
   });
 
   Map<String, dynamic> toJson() {
@@ -50,6 +61,10 @@ class CreateGroupRideRequestDto {
       'ridingStyle': ridingStyle,
       'privacy': privacy,
       'invitedUserIds': invitedUserIds ?? [],
+      if (routeGeometry != null) 'routeGeometry': routeGeometry,
+      if (routeProfile != null) 'routeProfile': routeProfile,
+      if (routeDistanceMeters != null) 'routeDistanceMeters': routeDistanceMeters,
+      if (routeDurationSeconds != null) 'routeDurationSeconds': routeDurationSeconds,
     };
   }
 }

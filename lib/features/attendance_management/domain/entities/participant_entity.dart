@@ -8,6 +8,9 @@ class ParticipantEntity extends Equatable {
   final String? lastName;
   final String? profileImageUrl;
   final String status; // Pending, Approved, Rejected
+
+  /// Katılırken organizatöre bırakılan opsiyonel mesaj (Pending isteklerde).
+  final String? joinMessage;
   final DateTime? requestDate;
 
   const ParticipantEntity({
@@ -18,6 +21,7 @@ class ParticipantEntity extends Equatable {
     this.profileImageUrl,
     required this.status,
     required this.role,
+    this.joinMessage,
     this.requestDate,
   });
 
@@ -31,6 +35,7 @@ class ParticipantEntity extends Equatable {
     lastName,
     profileImageUrl,
     status,
+    joinMessage,
     requestDate,
   ];
 }

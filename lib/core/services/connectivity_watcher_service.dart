@@ -152,6 +152,20 @@ class ConnectivityWatcherService {
     return ConnectionStatus.none;
   }
 
+  /// Logout/oturum kapanışında çağrılır.
+  ///
+  /// Logout'ta SignalR KASITLI olarak kapatılır → [HubConnectionState.Disconnected].
+  /// Bu, "Sunucu bağlantısı koptu" banner'ını yanlışlıkla tetikliyordu. Bağlanmışlık
+  /// bayrağını sıfırlarız (sonraki Disconnected, "hiç bağlanmadı" sayılıp sessiz
+  /// kalır) ve durumu anında temizleriz. Tekrar login'de SignalR bağlanınca bayrak
+  /// yeniden true olur.
+  void resetForLogout() {
+    _hasSignalRConnectedOnce = false;
+    if (!_statusController.isClosed) {
+      _statusController.add(ConnectionStatus.none);
+    }
+  }
+
   void dispose() {
     _statusController.close();
     _networkTypeController.close();

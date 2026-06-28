@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
-import '../entities/group_ride_summary.dart';
+import '../entities/group_ride_search_result.dart';
 import '../entities/ride_filters.dart';
 import '../repositories/group_ride_repository.dart';
 
@@ -34,7 +34,7 @@ class SearchGroupRidesUseCase {
 
   SearchGroupRidesUseCase(this.repository);
 
-  Future<Either<Failure, List<GroupRideSummary>>> execute(
+  Future<Either<Failure, GroupRideSearchResult>> execute(
     SearchGroupRidesParams params,
   ) async {
     return await repository.searchGroupRides(

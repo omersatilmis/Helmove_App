@@ -29,6 +29,18 @@ class GroupRideEntity {
   final double? routeDistanceMeters;
   final int? routeDurationSeconds;
 
+  /// Backend'in Mapbox Static Images ile ürettiği rota görüntüsü URL'i
+  /// (keşfet kartı + detay kapağı için). routeGeometry yoksa null.
+  final String? routeImageUrl;
+
+  // ── Organizatör + kapak (detayın summary'den bağımsız çalışması için) ──────
+  /// Organizatör görünen adı (backend GET /{id} detayında döner).
+  final String? organizerName;
+  final String? organizerAvatarUrl;
+
+  /// routeImageUrl yoksa kullanılacak jenerik kapak (backend döndürürse).
+  final String? coverImageUrl;
+
   final int? sessionId;
 
   GroupRideEntity({
@@ -57,6 +69,10 @@ class GroupRideEntity {
     this.routeProfile,
     this.routeDistanceMeters,
     this.routeDurationSeconds,
+    this.routeImageUrl,
+    this.organizerName,
+    this.organizerAvatarUrl,
+    this.coverImageUrl,
   });
 
   GroupRideEntity copyWith({
@@ -91,6 +107,10 @@ class GroupRideEntity {
       routeProfile: routeProfile ?? this.routeProfile,
       routeDistanceMeters: routeDistanceMeters ?? this.routeDistanceMeters,
       routeDurationSeconds: routeDurationSeconds ?? this.routeDurationSeconds,
+      routeImageUrl: routeImageUrl,
+      organizerName: organizerName,
+      organizerAvatarUrl: organizerAvatarUrl,
+      coverImageUrl: coverImageUrl,
     );
   }
 }

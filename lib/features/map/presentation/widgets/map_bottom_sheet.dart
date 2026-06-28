@@ -12,10 +12,15 @@ class MapBottomSheet extends StatelessWidget {
   final bool forceCollapsed;
   final double? bottomBarHeight;
 
+  /// Grup sürüşü rota planlama modu — navigasyon başlat butonunu gizlemek için
+  /// alt rota sheet'ine iletilir.
+  final bool planningMode;
+
   const MapBottomSheet({
     super.key,
     this.forceCollapsed = false,
     this.bottomBarHeight,
+    this.planningMode = false,
   });
 
   @override
@@ -58,6 +63,7 @@ class MapBottomSheet extends StatelessWidget {
                         startPoint: state.startPoint,
                         stops: state.stops,
                         endPoint: state.endPoint,
+                        planningMode: planningMode,
                       )
                     : MapBottomSheetDestination(
                         location: location!,

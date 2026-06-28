@@ -16,6 +16,8 @@ import '../../domain/entities/location_entity.dart';
 import '../../domain/entities/route_entity.dart';
 import '../providers/map_bloc.dart';
 import '../providers/map_event.dart';
+import '../models/route_planner_args.dart';
+import '../models/route_plan_result.dart';
 import '../widgets/map_search_bar.dart';
 import '../widgets/map_bottom_sheet.dart';
 import '../widgets/route_poi_panel.dart';
@@ -30,7 +32,12 @@ import '../../../group_ride/presentation/live_ride/live_ride_controller.dart';
 import '../../../group_ride/presentation/live_ride/rider_marker_factory.dart';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  /// null ise normal harita sekmesi. Dolu ise [RoutePlannerArgs] ile "planlama
+  /// modu": grup sürüşü oluştururken organizatör başlangıç+hedef+durak+alternatif
+  /// seçer, "Bu rotayı kullan" ile [RoutePlanResult] döndürür.
+  final RoutePlannerArgs? plannerArgs;
+
+  const MapPage({super.key, this.plannerArgs});
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -133,6 +140,9 @@ class _MapPageState extends State<MapPage> {
   String _resolveStyleUri() =>
       _isDarkMode() ? _nightStyleUri : _dayStyleUri;
 
+  /// Planlama modu mu? (grup sürüşü rota planlayıcı olarak açıldıysa)
+  bool get _isPlanning => widget.plannerArgs != null;
+
   @override
   void initState() {
     super.initState();
@@ -147,10 +157,19 @@ class _MapPageState extends State<MapPage> {
     _themeProvider.addListener(_onThemeChanged);
     _initTileStore();
     _initStylePack();
-    _attachDeepLinkListener();
     unawaited(_resolveInitialCamera());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkRideRecovery());
-    _liveRide.addListener(_onLiveRideChanged);
+    if (_isPlanning) {
+      // Planlama modu: deep-link dinleme, sürüş kurtarma ve live-ride dinleyici
+      // devre dışı (ikinci MapPage instance'ı çakışmasın). Verilen başlangıç/hedef
+      // varsa rotayı yükle.
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _dispatchPlannerRoute(),
+      );
+    } else {
+      _attachDeepLinkListener();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkRideRecovery());
+      _liveRide.addListener(_onLiveRideChanged);
+    }
   }
 
   @override
@@ -1939,6 +1958,8 @@ class _MapPageState extends State<MapPage> {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _isPlanning ? _buildUseRouteFab() : null,
       body: BlocConsumer<MapBloc, MapState>(
         listenWhen: (previous, current) =>
             previous.status != current.status ||
@@ -2095,6 +2116,7 @@ class _MapPageState extends State<MapPage> {
                     removeBottom: true,
                     child: MapBottomSheet(
                       bottomBarHeight: _getBottomBarHeight(context),
+                      planningMode: _isPlanning,
                     ),
                   ),
                 ),
@@ -2131,6 +2153,14 @@ class _MapPageState extends State<MapPage> {
                   child: NavigationBottomHud(
                     currentSpeedKmh: _currentSpeedKmh,
                   ),
+                ),
+
+              // Planlama modu: sol üstte kapat (sonuç döndürmeden geri).
+              if (_isPlanning)
+                Positioned(
+                  left: 16,
+                  top: topSafe + 12 + 52 + 16,
+                  child: _buildPlannerCloseButton(theme),
                 ),
             ],
           );
@@ -2223,6 +2253,96 @@ class _MapPageState extends State<MapPage> {
     );
     if (!mounted) return;
     _showSnackBar(ok ? 'Rota gruba gönderildi.' : 'Rota gönderilemedi.');
+  }
+
+  // ── Rota planlama modu (grup sürüşü oluşturma) ──────────────────────────────
+
+  /// Planlayıcı açılırken verilen başlangıç/hedef varsa rotayı yükle.
+  void _dispatchPlannerRoute() {
+    if (!mounted) return;
+    final args = widget.plannerArgs;
+    final start = args?.start;
+    final end = args?.end;
+    if (start == null || end == null) return;
+    final bloc = context.read<MapBloc>();
+    bloc.add(MapClearRoutingRequested());
+    bloc.add(MapSharedRouteLoaded(start: start, end: end, stops: args!.stops));
+  }
+
+  /// "Bu rotayı kullan" — seçili rotayı [RoutePlanResult] olarak döndür.
+  void _confirmRoutePlan() {
+    final mapState = context.read<MapBloc>().state;
+    final start = mapState.startPoint;
+    final end = mapState.endPoint;
+    if (start == null || end == null || mapState.routeOptions.isEmpty) {
+      _showSnackBar('Önce başlangıç ve hedef seçip rota oluşturun.');
+      return;
+    }
+    final route = mapState.routeOptions[mapState.selectedRouteIndex];
+    final points = route.geometry.coordinates
+        .map((p) => Point(coordinates: p))
+        .toList();
+    if (points.length < 2) {
+      _showSnackBar('Rota geçersiz.');
+      return;
+    }
+    final result = RoutePlanResult(
+      startLat: start.point.coordinates.lat.toDouble(),
+      startLng: start.point.coordinates.lng.toDouble(),
+      startLabel: start.label,
+      endLat: end.point.coordinates.lat.toDouble(),
+      endLng: end.point.coordinates.lng.toDouble(),
+      endLabel: end.label,
+      stops: mapState.stops
+          .map(
+            (s) => RoutePlanStop(
+              lat: s.point.coordinates.lat.toDouble(),
+              lng: s.point.coordinates.lng.toDouble(),
+              label: s.label,
+            ),
+          )
+          .toList(),
+      routeGeometry: PolylineCodec.encode(points),
+      distanceMeters: route.distanceMeters,
+      durationSeconds: route.durationSeconds.round(),
+      profile: 'driving',
+    );
+    Navigator.of(context).pop(result);
+  }
+
+  Widget _buildUseRouteFab() {
+    return BlocBuilder<MapBloc, MapState>(
+      buildWhen: (p, c) =>
+          p.routeOptions != c.routeOptions ||
+          p.startPoint != c.startPoint ||
+          p.endPoint != c.endPoint,
+      builder: (context, state) {
+        final ready = state.routeOptions.isNotEmpty &&
+            state.startPoint != null &&
+            state.endPoint != null;
+        return FloatingActionButton.extended(
+          onPressed: ready ? _confirmRoutePlan : null,
+          icon: const Icon(Icons.check_rounded),
+          label: Text(ready ? 'Bu rotayı kullan' : 'Rota seçin'),
+        );
+      },
+    );
+  }
+
+  Widget _buildPlannerCloseButton(ThemeData theme) {
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: const CircleBorder(),
+      elevation: 4,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => Navigator.of(context).maybePop(),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface),
+        ),
+      ),
+    );
   }
 
   Widget _buildMapControls(ThemeData theme) {

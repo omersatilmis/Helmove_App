@@ -116,7 +116,8 @@ class RideSummaryCard extends StatelessWidget {
   }
 
   Widget _buildCover(ColorScheme colorScheme) {
-    final url = ride.coverImageUrl;
+    // Öncelik: rota görüntüsü (Static Images) → cover → placeholder.
+    final url = ride.routeImageUrl ?? ride.coverImageUrl;
     if (url == null || url.isEmpty) {
       return Container(
         height: 120,
@@ -138,15 +139,19 @@ class RideSummaryCard extends StatelessWidget {
         height: 120,
         color: colorScheme.surfaceContainerHighest,
       ),
-      errorWidget: (_, _, _) => Container(
-        height: 120,
-        color: colorScheme.surfaceContainerHighest,
-        child: Icon(
-          Icons.motorcycle_rounded,
-          size: 44,
-          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-        ),
-      ),
+      errorWidget: (_, failedUrl, error) {
+        // Tanı: rota görüntüsü neden yüklenmedi (401 / bozuk URL vb.).
+        debugPrint('[routeImage] yüklenemedi: $error\nurl: $failedUrl');
+        return Container(
+          height: 120,
+          color: colorScheme.surfaceContainerHighest,
+          child: Icon(
+            Icons.motorcycle_rounded,
+            size: 44,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+          ),
+        );
+      },
     );
   }
 

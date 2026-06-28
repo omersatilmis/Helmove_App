@@ -92,15 +92,18 @@ class BottomBarWrapper extends StatelessWidget {
     final double scale = (size.width / 390).clamp(0.85, 1.2);
 
     // Responsive değişkenler (Sadece scale ile çarpıyoruz)
-    final double iconSizeUnselected = 26.0 * scale;
-    final double iconSizeSelected = 28.0 * scale;
-    final double addIconSize = 48.0 * scale;
+    final double iconSizeUnselected = 30.0 * scale;
+    final double iconSizeSelected = 33.0 * scale;
+    final double addIconSize = 54.0 * scale;
     final double fontSize = 11.0 * scale;
 
-    // Barın yüksekliği: Label gizli olduğu için kompakt (sadece ikonlar)
-    // + Cihazın alt boşluğu (Home çizgisi)
+    // Barın yüksekliği: ikon alanı (yukarı doğru ferah) + cihazın alt boşluğu
+    // (Home çizgisi). Eskiden içerik 20*scale idi → alt boşluğu olmayan
+    // telefonlarda bar çok sıkışık/kötü görünüyordu. İçerik belirgin artırıldı
+    // ve alt boşluk yokken tabana rahat bir minimum bırakıldı.
+    final double navContentHeight = 50.0 * scale;
     final double navBarHeight =
-        (20.0 * scale) + (bottomPadding > 0 ? bottomPadding : 15.0);
+        navContentHeight + (bottomPadding > 0 ? bottomPadding : 14.0);
 
     // Shell indices: 0(Home), 1(Discover), 2(Map), 3(Communication)
     // UI indices:    0(Home), 1(Discover), 2(AddPost), 3(Map), 4(Communication)

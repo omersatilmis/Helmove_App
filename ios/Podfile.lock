@@ -166,22 +166,22 @@ PODS:
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
-  - purchases_flutter (9.14.0):
+  - purchases_flutter (9.16.1):
     - Flutter
-    - PurchasesHybridCommon (= 17.46.1)
-  - purchases_ui_flutter (9.14.0):
+    - PurchasesHybridCommon (= 17.55.1)
+  - purchases_ui_flutter (9.16.1):
     - Flutter
-    - PurchasesHybridCommonUI (= 17.46.1)
-  - PurchasesHybridCommon (17.46.1):
-    - RevenueCat (= 5.61.0)
-  - PurchasesHybridCommonUI (17.46.1):
-    - PurchasesHybridCommon (= 17.46.1)
-    - RevenueCatUI (= 5.61.0)
+    - PurchasesHybridCommonUI (= 17.55.1)
+  - PurchasesHybridCommon (17.55.1):
+    - RevenueCat (= 5.67.1)
+  - PurchasesHybridCommonUI (17.55.1):
+    - PurchasesHybridCommon (= 17.55.1)
+    - RevenueCatUI (= 5.67.1)
   - record_darwin (1.0.0):
     - Flutter
-  - RevenueCat (5.61.0)
-  - RevenueCatUI (5.61.0):
-    - RevenueCat (= 5.61.0)
+  - RevenueCat (5.67.1)
+  - RevenueCatUI (5.67.1):
+    - RevenueCat (= 5.67.1)
   - SDWebImage (5.21.7):
     - SDWebImage/Core (= 5.21.7)
   - SDWebImage/Core (5.21.7)
@@ -384,13 +384,13 @@ SPEC CHECKSUMS:
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
-  purchases_flutter: 1a27b709af72a506ddbc2f1255cae31ba101243d
-  purchases_ui_flutter: 0d1314931e99ba6dfb64e74df2eb1b26830799f9
-  PurchasesHybridCommon: afaf46e9650f9399984196a6966c6d697d6122a2
-  PurchasesHybridCommonUI: 19f4782374f25aa19c87d035a02fa845b4805157
+  purchases_flutter: b44fcb4ff5e68a4dfe53fd0c339683803b04dd2c
+  purchases_ui_flutter: 64afab2a2adc79a73ed5ca77f416c8d360a12734
+  PurchasesHybridCommon: ecd9d7c586287625f1225b8de5e24c1021502270
+  PurchasesHybridCommonUI: 3056a3d261529f6adb8f74ecc3ab7f1cc0d3fab4
   record_darwin: fb1f375f1d9603714f55b8708a903bbb91ffdb0a
-  RevenueCat: 9acbd29a62000b57d59efa16166290c4a119847b
-  RevenueCatUI: 67229fd8c301e0f3df3e0d6c86bd9112311ef1a5
+  RevenueCat: 9357239a9f0978285e68983637b8a602e65c94f0
+  RevenueCatUI: 6f9291da540f98baf405b5bdfc46b2d5547b704a
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   SDWebImageWebPCoder: 0e06e365080397465cc73a7a9b472d8a3bd0f377
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
@@ -404,6 +404,6 @@ SPEC CHECKSUMS:
   WebRTC-SDK: 40d4f5ba05cadff14e4db5614aec402a633f007e
   webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
 
-PODFILE CHECKSUM: 0b9f96728d723ffdf4a13b7848bdb8ecf0c8a497
+PODFILE CHECKSUM: 8bd2f5e69a23cae637c7640d3bbaf9c6cea2dbda
 
 COCOAPODS: 1.16.2

@@ -6,7 +6,7 @@ import UIKit
 import flutter_callkit_incoming
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, PKPushRegistryDelegate, MessagingDelegate {
+@objc class AppDelegate: FlutterAppDelegate, PKPushRegistryDelegate, MessagingDelegate, FlutterImplicitEngineDelegate {
   private var voipRegistry: PKPushRegistry?
 
   override func application(
@@ -15,9 +15,15 @@ import flutter_callkit_incoming
   ) -> Bool {
     FirebaseApp.configure()
     Messaging.messaging().delegate = self
-    GeneratedPluginRegistrant.register(with: self)
     configureVoIPPush()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // UIScene lifecycle (iOS 27): implicit Flutter engine başlatıldığında plugin'leri
+  // kaydet. GeneratedPluginRegistrant.register didFinishLaunchingWithOptions'tan
+  // buraya taşındı; scene tabanlı yaşam döngüsünde doğru zamanlama budur.
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
   // Required when FirebaseAppDelegateProxyEnabled = false

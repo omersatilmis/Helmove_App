@@ -27,10 +27,15 @@ import 'package:helmove/features/discover/presentation/pages/discover_search_pag
 import 'package:helmove/features/addpost/presentation/pages/add_post_page.dart';
 import 'package:helmove/features/map/presentation/pages/map_page.dart';
 import 'package:helmove/features/map/presentation/providers/map_bloc.dart';
+import 'package:helmove/features/map/presentation/models/route_planner_args.dart';
 import 'package:helmove/features/communication/presentation/pages/communication_page.dart';
 import 'package:helmove/features/communication/presentation/pages/create_group_ride.dart';
 import 'package:helmove/features/communication/presentation/pages/discover_rides_page.dart';
+import 'package:helmove/features/communication/presentation/pages/ride_detail_page.dart';
+import 'package:helmove/features/group_ride/domain/entities/group_ride_summary.dart';
 import 'package:helmove/features/group_ride/presentation/bloc/discover_rides/discover_rides_bloc.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/ride_detail/ride_detail_bloc.dart';
+import 'package:helmove/features/group_ride/presentation/bloc/ride_detail/ride_detail_event.dart';
 import 'package:helmove/features/communication/presentation/pages/group_page.dart';
 import 'package:helmove/features/communication/presentation/pages/group_settings.dart';
 import 'package:helmove/features/media/presentation/pages/prepare_media_page.dart';
@@ -472,6 +477,23 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
                     path: 'create-group-ride',
                     builder: (context, state) => const CreateGroupRide(),
                   ),
+                  // Rota planlayıcı (grup sürüşü oluştururken başlangıç+hedef+
+                  // durak+alternatif seç). extra: RoutePlannerArgs (opsiyonel).
+                  // Sonuç: RoutePlanResult (Navigator.pop ile döner).
+                  // parentNavigatorKey: kabuğun üstünde full-screen aç → alt
+                  // navigasyon barı "Bu rotayı kullan" FAB'ını kapatmasın.
+                  GoRoute(
+                    path: 'route-planner',
+                    parentNavigatorKey: rootNavigatorKey,
+                    builder: (context, state) => BlocProvider(
+                      create: (_) => sl<MapBloc>(),
+                      child: MapPage(
+                        plannerArgs: state.extra is RoutePlannerArgs
+                            ? state.extra as RoutePlannerArgs
+                            : const RoutePlannerArgs(),
+                      ),
+                    ),
+                  ),
                   // Grup turlarını keşfet (search + nearby)
                   GoRoute(
                     path: 'discover',
@@ -479,6 +501,26 @@ GoRouter createRouter(AuthProvider authProvider, bool hasShownOnboarding) {
                       create: (_) => sl<DiscoverRidesBloc>(),
                       child: const DiscoverRidesPage(),
                     ),
+                  ),
+                  // Tur detayı (grup dışı kullanıcı görünümü + katıl).
+                  // extra: GroupRideSummary (header'ı anında çizmek için, opsiyonel).
+                  GoRoute(
+                    path: 'ride-detail/:rideId',
+                    builder: (context, state) {
+                      final rideId =
+                          int.tryParse(state.pathParameters['rideId'] ?? '') ?? 0;
+                      final summary = state.extra is GroupRideSummary
+                          ? state.extra as GroupRideSummary
+                          : null;
+                      return BlocProvider(
+                        create: (_) => sl<RideDetailBloc>()
+                          ..add(RideDetailRequested(rideId)),
+                        child: GroupRideDetailPage(
+                          rideId: rideId,
+                          summary: summary,
+                        ),
+                      );
+                    },
                   ),
                   // GroupPage'i buraya 'child' (alt rota) olarak ekle
                   GoRoute(

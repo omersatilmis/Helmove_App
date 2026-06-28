@@ -14,6 +14,7 @@ import 'group_page/sections/group_footer_section.dart';
 import 'group_page/sections/group_header_section.dart';
 import 'group_page/sections/group_lifecycle_section.dart';
 import 'group_page/sections/group_participants_section.dart';
+import 'group_page/sections/join_requests_section.dart';
 import 'group_page/sections/voice_control_bar.dart';
 import '../../../../core/services/connectivity_watcher_service.dart';
 
@@ -254,6 +255,13 @@ class _GroupPageState extends State<GroupPage>
   void _handleLeaveVoice() {
     context.read<VoiceSessionBloc>().add(const DisconnectFromLiveKitEvent());
   }
+
+  /// Mevcut kullanıcı bu turun organizatörü mü (katılım isteklerini yönetebilir).
+  bool _isRideOrganizer(int? currentUserId) =>
+      _rideDetails != null &&
+      currentUserId != null &&
+      _rideDetails!.adminId == currentUserId &&
+      _effectiveRideId > 0;
 
   bool _canAccessSettings(int? currentUserId) {
     if (currentUserId == null || _sessionDetails == null) return false;
@@ -509,12 +517,20 @@ class _GroupPageState extends State<GroupPage>
                   previous.liveKitError != current.liveKitError;
             },
             listener: (context, state) {
-              if (state.status == VoiceSessionStatus.detailsLoaded &&
-                  state.session != null) {
+              // Session her değiştiğinde yerel mirror'ı güncelle: detay yüklendi
+              // VEYA realtime katılımcı delta'sı (ayrıldı/katıldı/disconnected).
+              // Önceden yalnız detailsLoaded'da güncelleniyordu → ayrılan
+              // katılımcının 'Left' delta'sı listeye yansımıyor, kartı ve
+              // üstündeki yeşil online göstergesi takılı kalıyordu.
+              if (state.session != null && state.session != _sessionDetails) {
                 setState(() {
                   _sessionDetails = state.session;
-                  _isLoadingSession = false;
+                  if (state.status == VoiceSessionStatus.detailsLoaded) {
+                    _isLoadingSession = false;
+                  }
                 });
+              } else if (state.status == VoiceSessionStatus.detailsLoaded) {
+                setState(() => _isLoadingSession = false);
               }
 
               if (state.status == VoiceSessionStatus.error &&
@@ -727,6 +743,18 @@ class _GroupPageState extends State<GroupPage>
                                   onTransferHost: _transferHost,
                                   onPromote: _promoteUser,
                                   onDemote: _demoteUser,
+                                  // Organizatör → katılım istekleri sayı rozeti
+                                  // (başlıkta; tıklayınca modal'dan onay/ret).
+                                  joinRequestsButton: _isRideOrganizer(
+                                    currentUserId,
+                                  )
+                                      ? JoinRequestsBadge(
+                                          key: ValueKey(
+                                            'join-requests-$_effectiveRideId',
+                                          ),
+                                          rideId: _effectiveRideId,
+                                        )
+                                      : null,
                                 ),
                                 if (_effectiveRideId > 0) ...[
                                   const SizedBox(height: 16),

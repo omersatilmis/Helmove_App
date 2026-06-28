@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 
 // --- PROJE İMPORTLARI ---
-import '../../../../core/di/injection_container.dart';
 import '../../../map/domain/entities/location_entity.dart';
-import '../../../map/domain/usecases/reverse_geocode_usecase.dart';
+import '../../../map/presentation/models/route_planner_args.dart';
+import '../../../map/presentation/models/route_plan_result.dart';
 import '../../../../core/theme/text_styles.dart';
-import 'start_location_picker_page.dart';
 // Merkezi Input
 import '../../../../core/widgets/app_input_field.dart';
 // Merkezi Butonlar (İkon ve Text için)
@@ -27,7 +25,6 @@ class CreateGroupRide extends StatefulWidget {
 class _CreateGroupRideState extends State<CreateGroupRide> {
   // Kontrolcüler
   final TextEditingController _groupNameController = TextEditingController();
-  final TextEditingController _destinationController = TextEditingController();
   final TextEditingController _ridingStyleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -41,9 +38,9 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   // Başlangıç tarihi & saati (varsayılan: 1 saat sonrası, kullanıcı değiştirir).
   DateTime _selectedStart = DateTime.now().add(const Duration(hours: 1));
 
-  // Organizatörün seçtiği başlangıç noktası. null ise cihazın mevcut GPS
-  // konumu (reverse-geocode ile) kullanılır.
-  LocationEntity? _selectedStartLocation;
+  // Organizatörün haritada planladığı rota (başlangıç + hedef + duraklar +
+  // seçilen alternatif). Zorunlu; null iken "Devam" engellenir.
+  RoutePlanResult? _routePlan;
 
   // GPS konumu alınırken butonu kilitle (çift dokunmayı önle).
   bool _proceeding = false;
@@ -78,7 +75,6 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
   @override
   void dispose() {
     _groupNameController.dispose();
-    _destinationController.dispose();
     _ridingStyleController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -90,6 +86,17 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
 
     if (l10n == null || _proceeding) return;
 
+    // Rota (başlangıç + hedef) zorunlu.
+    final plan = _routePlan;
+    if (plan == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen başlangıç ve hedefi seçip rotayı planlayın.'),
+        ),
+      );
+      return;
+    }
+
     setState(() => _proceeding = true);
 
     final groupName = _groupNameController.text.trim();
@@ -98,54 +105,39 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     final descriptionText = _descriptionController.text.trim();
     final curL10n = l10n!;
 
-    // Başlangıç noktası:
-    //  - Organizatör seçtiyse (_selectedStartLocation) onun koordinatı/adı.
-    //  - Seçmediyse cihazın mevcut GPS konumu + reverse-geocode ile yer adı.
-    //  - Hiçbiri olmazsa 0,0 + "Mevcut Konum" fallback (tur yine oluşur ama
-    //    o turda nearby/mesafe hesabı yapılamaz).
-    double startLat = 0;
-    double startLng = 0;
-    String startLocationName = curL10n.currentLocation;
-    final picked = _selectedStartLocation;
-    if (picked != null) {
-      startLat = picked.point.coordinates.lat.toDouble();
-      startLng = picked.point.coordinates.lng.toDouble();
-      startLocationName = picked.label;
-    } else {
-      try {
-        final pos = await _currentPosition();
-        startLat = pos.latitude;
-        startLng = pos.longitude;
-        final name = await _reverseGeocodeName(startLat, startLng);
-        if (name != null && name.isNotEmpty) startLocationName = name;
-      } catch (_) {
-        // Konum alınamadı (izin yok / kapalı) → 0,0 + "Mevcut Konum" ile devam.
-      }
-    }
-
-    if (!mounted) return;
-
     // InviteArgs.fromExtra() Map yapısına uygun format:
     //   sessionId  → 0 (henüz oluşturulmadı, invite sonrası oluşacak)
     //   isFromCreateGroup → true  (redirect guard'ın isValid kontrolü için gerekli)
-    //   groupData  → grup oluşturma bilgileri
+    //   groupData  → grup oluşturma bilgileri (rota planlayıcıdan gelen
+    //                başlangıç/hedef koordinatları + ortak rota geometry'si)
     final data = {
       'isFromCreateGroup': true,
       'groupData': {
         'groupName': finalGroupName,
         'maxParticipants': maxParticipants,
         'privacy': selectedPrivacy,
-        'destination': _destinationController.text.trim(),
+        'destination': plan.endLabel,
         'ridingStyle': selectedRidingStyle,
         'difficulty': selectedDifficulty,
         'description': descriptionText.isNotEmpty
             ? descriptionText
             : curL10n.notSpecified,
-        // [Veri kalitesi] Gerçek başlangıç tarihi + koordinatı + yer adı.
         'startDateTime': _selectedStart.toIso8601String(),
-        'startLatitude': startLat,
-        'startLongitude': startLng,
-        'startLocation': startLocationName,
+        // Başlangıç (planlayıcıdan)
+        'startLatitude': plan.startLat,
+        'startLongitude': plan.startLng,
+        'startLocation': plan.startLabel,
+        // Hedef (planlayıcıdan)
+        'endLatitude': plan.endLat,
+        'endLongitude': plan.endLng,
+        'endLocation': plan.endLabel,
+        // Ortak rota (seçilen alternatif + duraklar gömülü)
+        'routeGeometry': plan.routeGeometry,
+        'routeProfile': plan.profile,
+        'routeDistanceMeters': plan.distanceMeters,
+        'routeDurationSeconds': plan.durationSeconds,
+        'estimatedDistanceKm': plan.distanceKm,
+        'estimatedDurationMinutes': plan.durationMinutes,
       },
     };
 
@@ -154,40 +146,39 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     context.push('/communication/invite', extra: data);
   }
 
-  Future<Position> _currentPosition() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception('Konum servisleri kapalı.');
-    }
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      throw Exception('Konum izni gerekli.');
-    }
-    return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      ),
-    );
-  }
-
-  /// Koordinattan yer adını (şehir/ilçe) çözer. Mevcut Mapbox reverse-geocode
-  /// usecase'i yeniden kullanılır; kayıtlı değilse veya hata olursa null döner.
-  Future<String?> _reverseGeocodeName(double lat, double lng) async {
-    if (!sl.isRegistered<ReverseGeocodeUseCase>()) return null;
-    try {
-      final loc = await sl<ReverseGeocodeUseCase>()(
-        mb.Point(coordinates: mb.Position(lng, lat)),
-        types: const ['place', 'locality', 'district'],
+  /// Harita planlama modunu aç; dönen [RoutePlanResult]'ı sakla. Mevcut plan
+  /// varsa onunla (düzenleme) açılır.
+  Future<void> _planRoute() async {
+    final plan = _routePlan;
+    RoutePlannerArgs? args;
+    if (plan != null) {
+      args = RoutePlannerArgs(
+        start: LocationEntity(
+          point: mb.Point(
+            coordinates: mb.Position(plan.startLng, plan.startLat),
+          ),
+          label: plan.startLabel,
+        ),
+        end: LocationEntity(
+          point: mb.Point(coordinates: mb.Position(plan.endLng, plan.endLat)),
+          label: plan.endLabel,
+        ),
+        stops: plan.stops
+            .map(
+              (s) => LocationEntity(
+                point: mb.Point(coordinates: mb.Position(s.lng, s.lat)),
+                label: s.label ?? '',
+              ),
+            )
+            .toList(),
       );
-      if (loc == null) return null;
-      return loc.label.isNotEmpty ? loc.label : loc.placeName;
-    } catch (_) {
-      return null;
+    }
+    final result = await context.push<RoutePlanResult>(
+      '/communication/route-planner',
+      extra: args,
+    );
+    if (result != null && mounted) {
+      setState(() => _routePlan = result);
     }
   }
 
@@ -354,21 +345,10 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
 
                             const SizedBox(height: 16),
 
-                            // Başlangıç Noktası
-                            _buildFieldLabel('Başlangıç Noktası'),
+                            // Rota (başlangıç + hedef + duraklar) — zorunlu
+                            _buildFieldLabel('Rota'),
                             const SizedBox(height: 8),
-                            _buildStartLocationField(colorScheme),
-
-                            const SizedBox(height: 16),
-
-                            // Hedef
-                            _buildFieldLabel(l10n.destinationOptional),
-                            const SizedBox(height: 8),
-                            AppInputField(
-                              controller: _destinationController,
-                              hint: l10n.destinationHint,
-                              leadingIcon: Icons.map,
-                            ),
+                            _buildRoutePlanCard(colorScheme),
 
                             const SizedBox(height: 16),
 
@@ -545,20 +525,10 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
     );
   }
 
-  Future<void> _pickStartLocation() async {
-    final result = await Navigator.of(context).push<LocationEntity>(
-      MaterialPageRoute(builder: (_) => const StartLocationPickerPage()),
-    );
-    if (result != null && mounted) {
-      setState(() => _selectedStartLocation = result);
-    }
-  }
-
-  Widget _buildStartLocationField(ColorScheme colorScheme) {
-    final selected = _selectedStartLocation;
-    final label = selected?.label ?? 'Mevcut konumum (GPS)';
+  Widget _buildRoutePlanCard(ColorScheme colorScheme) {
+    final plan = _routePlan;
     return InkWell(
-      onTap: _pickStartLocation,
+      onTap: _planRoute,
       borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -567,47 +537,92 @@ class _CreateGroupRideState extends State<CreateGroupRide> {
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: colorScheme.outline.withValues(alpha: 0.15)),
         ),
-        child: Row(
-          children: [
-            Icon(
-              selected != null
-                  ? Icons.place_rounded
-                  : Icons.my_location_rounded,
-              size: 20,
-              color: colorScheme.primary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            if (selected != null)
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                tooltip: 'Mevcut konuma dön',
-                onPressed: () =>
-                    setState(() => _selectedStartLocation = null),
+        child: plan == null
+            ? Row(
+                children: [
+                  Icon(Icons.route_rounded, size: 20, color: colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Rotayı planla (başlangıç + hedef)',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ],
               )
-            else
-              Icon(
-                Icons.chevron_right_rounded,
-                color: colorScheme.onSurfaceVariant,
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _routeEndpointRow(
+                    colorScheme,
+                    Icons.my_location_rounded,
+                    plan.startLabel,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Icon(
+                      Icons.more_vert_rounded,
+                      size: 16,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _routeEndpointRow(
+                          colorScheme,
+                          Icons.place_rounded,
+                          plan.endLabel,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _planRoute,
+                        child: const Text('Düzenle'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${plan.distanceKm.toStringAsFixed(1)} km · ${plan.durationMinutes} dk'
+                    '${plan.stops.isNotEmpty ? ' · ${plan.stops.length} durak' : ''}',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-          ],
-        ),
       ),
+    );
+  }
+
+  Widget _routeEndpointRow(
+    ColorScheme colorScheme,
+    IconData icon,
+    String label,
+  ) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: colorScheme.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
