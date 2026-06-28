@@ -115,15 +115,15 @@ class _PlanViewState extends State<_PlanView> {
         'Detaylı Sürüş Analitiği',
       ],
       UserTier.plus => [
-        l10n.ad_free_experience,
         l10n.unlimited_route_recording,
+        'Grup Sürüşü Oluşturma',
         'Gelişmiş Sosyal Akış',
         'Plus Rider Rozeti',
       ],
       UserTier.free => [
         l10n.map_access,
         l10n.group_ride_participation,
-        l10n.ad_supported_experience,
+        'Temel Sesli İletişim',
       ],
     };
   }
@@ -288,6 +288,14 @@ class _PlanViewState extends State<_PlanView> {
                           state.currentTier.tierIndex >= authTier.tierIndex
                           ? state.currentTier
                           : authTier;
+
+                      // Halihazırda ücretli aboneliği olan kullanıcıya plan
+                      // seçim ekranı gösterilmez (yalnız abonelik almasını
+                      // istediklerimiz görür). Bunun yerine yönetim görünümü.
+                      if (activeTier.isPremium) {
+                        return _AlreadySubscribedView(tier: activeTier);
+                      }
+
                       final safeIndex = plans.isEmpty
                           ? 0
                           : _currentIndex.clamp(0, plans.length - 1).toInt();
@@ -374,6 +382,95 @@ class _PlanViewState extends State<_PlanView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Zaten ücretli aboneliği olan kullanıcıya gösterilir: plan satışı yerine
+/// mevcut aboneliği yönetme görünümü.
+class _AlreadySubscribedView extends StatelessWidget {
+  final UserTier tier;
+  const _AlreadySubscribedView({required this.tier});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final planName = tier == UserTier.pro ? 'Pro' : 'Plus';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: 0.12),
+              ),
+              child: Icon(
+                Icons.workspace_premium_rounded,
+                size: 48,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Zaten $planName üyeliğin var',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h3.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '$planName planının tüm ayrıcalıklarından yararlanıyorsun. '
+              'Aboneliğini buradan yönetebilirsin.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () =>
+                    sl<SubscriptionService>().presentCustomerCenter(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  'Aboneliği Yönet',
+                  style: AppTextStyles.button.copyWith(color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (Platform.isIOS || Platform.isAndroid)
+              TextButton(
+                onPressed: () => context.read<SubscriptionBloc>().add(
+                  const RestorePurchasesEvent(),
+                ),
+                child: Text(
+                  l10n.restore_purchases,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

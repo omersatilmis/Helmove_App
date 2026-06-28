@@ -128,7 +128,12 @@ class _CoverAppBar extends StatelessWidget {
                 ),
               )
             : CachedNetworkImage(
-                imageUrl: url.toAbsoluteImageUrl(),
+                // Kapak tam genişlik + 200px: kart için üretilen küçük Mapbox
+                // görüntüsü burada bulanık/zoomlu görünmesin diye boyut segmenti
+                // detay kapağına uygun (yaklaşık 2:1) yüksek çözünürlüğe çıkarılır.
+                imageUrl: url
+                    .toMapboxStaticSize(width: 800, height: 420)
+                    .toAbsoluteImageUrl(),
                 fit: BoxFit.cover,
                 placeholder: (_, _) =>
                     Container(color: colorScheme.surfaceContainerHighest),
