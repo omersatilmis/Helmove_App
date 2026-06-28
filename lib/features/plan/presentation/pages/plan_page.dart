@@ -105,25 +105,29 @@ class _PlanViewState extends State<_PlanView> {
     };
   }
 
+  // NOT: Bu listeler yalnızca backend plan özelliği döndürmediğinde kullanılır.
+  // Yalnızca V1.0'da gerçekten çalışan özellikler listelenir (SOS/grup oluşturma/
+  // mikrofon/navigasyon/garaj limiti). Kapalı özellikler (rota paylaşımı, canlı
+  // konum, gelişmiş istatistik) burada YAZILMAZ.
   List<String> _fallbackFeatures(UserTier tier, AppLocalizations l10n) {
     return switch (tier) {
       UserTier.pro => [
-        l10n.unlimited_communication,
-        l10n.rider_radar,
-        l10n.road_captain_tools,
-        'Premium Harita Katmanları',
-        'Detaylı Sürüş Analitiği',
+        'Plus\'ın tüm özellikleri',
+        'Uygulama İçi Navigasyon (Adım Adım Yol Tarifi)',
+        'Sınırsız Motosiklet (Garaj)',
+        'Pro Rider Rozeti',
       ],
       UserTier.plus => [
-        l10n.unlimited_route_recording,
+        'Sesli İnterkomda Konuşma (Mikrofon)',
         'Grup Sürüşü Oluşturma',
-        'Gelişmiş Sosyal Akış',
-        'Plus Rider Rozeti',
+        'SOS Acil Bildirim',
+        '5 Motosiklete Kadar Garaj',
       ],
       UserTier.free => [
-        l10n.map_access,
         l10n.group_ride_participation,
-        'Temel Sesli İletişim',
+        l10n.map_access,
+        'Grubu Dinleme ve Görüntüleme',
+        '1 Motosiklet (Garaj)',
       ],
     };
   }

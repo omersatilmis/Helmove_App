@@ -15,7 +15,6 @@ class SupportSection extends StatefulWidget {
 
 class _SupportSectionState extends State<SupportSection> {
   String _version = '';
-  final String _appReleaseStage = 'Public Beta';
 
   @override
   void initState() {
@@ -66,7 +65,7 @@ class _SupportSectionState extends State<SupportSection> {
           icon: Icons.info_outline_rounded,
           title: AppLocalizations.of(context)!.about,
           subtitle: _version.isNotEmpty
-              ? AppLocalizations.of(context)!.version(_version, _appReleaseStage)
+              ? 'v$_version'
               : AppLocalizations.of(context)!.loading,
           onTap: () => _openWebsite(
             context,

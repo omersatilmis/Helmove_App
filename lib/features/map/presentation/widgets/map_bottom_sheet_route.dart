@@ -511,6 +511,7 @@ class _MapBottomSheetRouteState extends State<MapBottomSheetRoute> {
               if (isNavigating) {
                 context.read<MapBloc>().add(MapStopNavigationPressed());
               } else {
+                // Navigasyon + rota kaydı tek aksiyon ve herkese açık (free).
                 context.read<MapBloc>().add(MapStartNavigationPressed());
               }
             },

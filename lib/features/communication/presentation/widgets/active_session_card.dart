@@ -159,11 +159,11 @@ class ActiveSessionCard extends StatelessWidget {
                   if (!TierLimits.canUseVoiceIntercom(tier)) {
                     TierUpsellSheet.show(
                       context,
-                      requiredTier: UserTier.pro,
-                      featureTitle: 'Sesli interkom Pro özelliği',
+                      requiredTier: UserTier.plus,
+                      featureTitle: 'Sesli interkom Plus özelliği',
                       featureDescription:
-                          'Grup içinde canlı sesli iletişim için Pro üyeliğe geçmen gerekiyor. '
-                          'Free ve Plus üyeler grubu görüntüleyebilir, ama mikrofon Pro\'ya özel.',
+                          'Grup içinde canlı sesli iletişim için Plus üyeliğe geçmen gerekiyor. '
+                          'Free üyeler grubu görüntüleyebilir, ama mikrofon Plus\'a özel.',
                       icon: Icons.mic_none_rounded,
                     );
                     return;

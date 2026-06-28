@@ -16,7 +16,8 @@ class TierLimits {
   static bool canAddMotorcycle(UserTier tier, int currentCount) =>
       currentCount < motorcycleLimit(tier);
 
-  static bool canUseVoiceIntercom(UserTier tier) => tier.isPro;
+  /// Grup içinde canlı sesli iletişim (mikrofon). Plus ve üzeri.
+  static bool canUseVoiceIntercom(UserTier tier) => tier.isPlus;
 
   static bool canSendSos(UserTier tier) => tier.isPlus;
 

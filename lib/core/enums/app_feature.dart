@@ -1,8 +1,8 @@
 import '../enums/user_tier.dart';
 
 enum AppFeature {
-  /// Basic voice intercom (everyone)
-  voiceIntercom(UserTier.free),
+  /// Voice intercom microphone (talking in a group). Plus and above.
+  voiceIntercom(UserTier.plus),
 
   /// Sending/Sharing routes to the group
   routeSharing(UserTier.plus),
